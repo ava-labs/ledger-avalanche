@@ -1,5 +1,5 @@
 import Zemu from '@zondax/zemu'
-import TemplateApp from '@zondax/ledger-template-app'
+import AvalancheApp from '@zondax/ledger-avalanche-app'
 import path from 'path'
 
 const APP_PATH = path.resolve('../build/output/app_s.elf')
@@ -49,7 +49,7 @@ async function main() {
 
   try {
     await sim.start(SIM_OPTIONS)
-    const app = new TemplateApp.default(sim.getTransport())
+    const app = new AvalancheApp.default(sim.getTransport())
 
     ////////////
     /// TIP you can use zemu commands here to take the app to the point where you trigger a breakpoint

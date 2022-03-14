@@ -922,10 +922,9 @@
     "@typescript-eslint/types" "4.33.0"
     eslint-visitor-keys "^2.0.0"
 
-"@zondax/ledger-template-app@link:../js":
-  version "0.1.0"
-  dependencies:
-    "@ledgerhq/hw-transport" "^5.50.0"
+"@zondax/ledger-avalanche-app@link:../js":
+  version "0.0.0"
+  uid ""
 
 "@zondax/zemu@^0.17.2":
   version "0.17.2"

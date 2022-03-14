@@ -51,16 +51,16 @@ $(info ************ LOGGING ENABLED ************)
 endif
 
 ifndef COIN
-COIN=XXX
+COIN=AVAX
 endif
 
 include $(CURDIR)/Makefile.version
 
 $(info COIN  = [$(COIN)])
-ifeq ($(COIN),XXX)
+ifeq ($(COIN),AVAX)
 # Main app configuration
 DEFINES += APP_STANDARD
-APPNAME = "Template"
+APPNAME = "Avalanche"
 APPPATH = "44'/0'"
 else
 define error_message

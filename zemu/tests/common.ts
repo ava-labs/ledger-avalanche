@@ -1,5 +1,5 @@
 import { DEFAULT_START_OPTIONS, DeviceModel } from '@zondax/zemu'
-import { Curve } from '@zondax/ledger-template-app'
+import { Curve } from '@zondax/ledger-avalanche-app'
 
 const Resolve = require('path').resolve
 
