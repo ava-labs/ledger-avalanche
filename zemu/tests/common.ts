@@ -19,6 +19,7 @@ export const defaultOptions = {
   ...DEFAULT_START_OPTIONS,
   logging: true,
   custom: `-s "${APP_SEED}"`,
+  startText: 'DO NOT USE'
 }
 
 export const APP_DERIVATION = "m/44'/0'/0'/0'"
