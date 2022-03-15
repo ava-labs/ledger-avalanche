@@ -78,13 +78,24 @@ APP_STACK_SIZE:=3072
 ICONNAME:=$(CURDIR)/../nanos_icon.gif
 OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_s.elf
 OUTPUT_INSTALLER := $(ARTIFACT_OUTPUT_PATH)/pkg/installer_s.sh
+RUST_TARGET:=thumbv6m-none-eabi
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 ICONNAME:=$(CURDIR)/../nanox_icon.gif
 OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_x.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_x.sh
+RUST_TARGET:=thumbv6m-none-eabi
 endif
+
+ifeq ($(TARGET_NAME),TARGET_NANOS2)
+ICONNAME:=$(CURDIR)/../nanox_icon.gif
+OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_sp.elf
+OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_sp.sh
+#RUST_TARGET:=thumbv8m.main-none-eabi
+RUST_TARGET:=thumbv6m-none-eabi
+endif
+
 
 ifeq ($(APP_TESTING),1)
 RUST_FEATURES:=--features "dev"
@@ -127,7 +138,14 @@ DEFINES		  += HAVE_ECDSA
 
 DEFINES		  += HAVE_HASH HAVE_SHA256
 
-ifeq ($(TARGET_NAME),TARGET_NANOX)
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+DEFINES       += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+
+DEFINES		  += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=32
+DEFINES		  += BAGL_WIDTH_MARGIN=0
+else
+# Assume Nano S+/X
+
 DEFINES       += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 
 DEFINES       += HAVE_GLO096
@@ -138,17 +156,15 @@ DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
 
 DEFINES       += HAVE_UX_FLOW
+endif
 
+# X specific
+ifeq ($(TARGET_NAME),TARGET_NANOX)
 DEFINES       += HAVE_BLE
 DEFINES       += HAVE_BLE_APDU BLE_COMMAND_TIMEOUT_MS=2000
 
 SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
-else
-# Assume Nano S
-DEFINES       += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 endif
-
-# X specific
 
 #Feature temporarily disabled
 DEFINES   += LEDGER_SPECIFIC
@@ -183,7 +199,7 @@ LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
 LDLIBS   += -lrslib
 LDLIBS   += -lm -lgcc -lc
-LDLIBS   += -L../target/thumbv6m-none-eabi/release
+LDLIBS   += -L../target/$(RUST_TARGET)/release
 
 ##########################
 GLYPH_SRC_DIR = glyphs
@@ -198,7 +214,7 @@ SDK_SOURCE_PATH += lib_ux
 
 .PHONY: rust
 rust:
-	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) cargo build --target thumbv6m-none-eabi --release --no-default-features $(RUST_FEATURES)
+	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) cargo build --target $(RUST_TARGET) --release --no-default-features $(RUST_FEATURES)
 
 .PHONY: rust_clean
 rust_clean:
