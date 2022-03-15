@@ -87,7 +87,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
 const SIGN_TEST_DATA = cartesianProduct(curves, [
   {
     name: 'blind sign',
-    nav: { s: [2, 0], x: [3, 0] },
+    nav: { s: [2, 0], x: [3, 0], sp: [3, 0] },
     op: Buffer.from('hello@zondax.ch'),
   },
 ])
@@ -103,7 +103,7 @@ describe.each(models)('Standard [%s]; sign', function (m) {
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot(), 20000)
 
-      const navigation = m.name == 'nanox' ? data.nav.x : data.nav.s
+      const navigation = m.name == 'nanox' ? data.nav.x : m.name == "nanosp" ? data.nav.sp : data.nav.s;
       await sim.navigateAndCompareSnapshots('.', `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`, navigation)
 
       const resp = await respReq
