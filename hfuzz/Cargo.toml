@@ -8,8 +8,7 @@ publish = false
 [dependencies]
 honggfuzz = "0.5"
 
-#zemu-sys = { git = "https://github.com/Zondax/ledger-rust" }
-zemu-sys = { path = "../tmp-vendor/zemu" }
+zemu-sys = { git = "https://github.com/Zondax/ledger-rust" }
 ledger-app = { default-features = false, path = "../app", package = "avalanche-app" }
 
 [[bin]]

@@ -233,7 +233,7 @@ dep/%.d: %.c Makefile
 
 .PHONY: listvariants
 listvariants:
-	@echo VARIANTS COIN XTZ
+	@echo VARIANTS COIN AVAX
 
 .PHONY: version
 version:
