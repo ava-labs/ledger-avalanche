@@ -25,7 +25,7 @@ use crate::{
     handlers::handle_ui_message,
     sys::{
         self,
-        hash::{Hasher, Sha256},
+        hash::{Hasher, Ripemd160, Sha256},
         Error as SysError,
     },
     utils::{hex_encode, ApduBufferRead, ApduPanic},
@@ -86,10 +86,16 @@ impl ApduHandler for GetPublicKey {
 
         //safe because it's all initialized now
         // even tho the hash isn't, we aren't gonna read from it
+        // regardless, there's no invalid representation of the hash
+        // that could trigger UB
         let mut ui = unsafe { ui.assume_init() };
 
         //actually compute pkey hash
-        Sha256::digest_into(ui.pkey.as_ref(), &mut ui.hash).map_err(|_| Error::ExecutionError)?;
+        {
+            let mut tmp = [0; 32];
+            Sha256::digest_into(ui.pkey.as_ref(), &mut tmp).map_err(|_| Error::ExecutionError)?;
+            Ripemd160::digest_into(&tmp, &mut ui.hash).map_err(|_| Error::ExecutionError)?;
+        }
 
         if req_confirmation {
             unsafe { ui.show(flags) }.map_err(|_| Error::ExecutionError)
@@ -110,7 +116,7 @@ impl ApduHandler for GetPublicKey {
 
 pub struct AddrUI {
     pub pkey: crypto::PublicKey,
-    hash: [u8; 32],
+    hash: [u8; 20],
 }
 
 impl Viewable for AddrUI {
@@ -128,10 +134,11 @@ impl Viewable for AddrUI {
         use bolos::{pic_str, PIC};
 
         if let 0 = item_n {
-            let title_content = pic_str!(b"Public Key");
+            let title_content = pic_str!(b"Address");
             title[..title_content.len()].copy_from_slice(title_content);
 
-            let mut mex = [0; 64];
+            let mut mex = [0; 20 * 2];
+            //TODO: Bech32 encoding
             let len = hex_encode(&self.hash[..], &mut mex).apdu_unwrap();
 
             handle_ui_message(&mex[..len], message, page)

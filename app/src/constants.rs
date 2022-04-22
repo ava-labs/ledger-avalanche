@@ -95,7 +95,8 @@ pub const APDU_INDEX_LEN: usize = 4;
 
 pub const APDU_MIN_LENGTH: u32 = 5;
 
-pub const EDWARDS_SIGN_BUFFER_MIN_LENGTH: usize = 64;
+pub const SECP256_SIGN_BUFFER_MIN_LENGTH: usize = 100;
+pub const CHAIN_CODE_SIZE: usize = 32;
 
 pub(crate) mod instructions {
     pub const CLA: u8 = 0xFF;

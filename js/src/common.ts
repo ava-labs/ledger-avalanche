@@ -22,11 +22,11 @@ export const P1_VALUES = {
 }
 
 export const P2_CURVE = {
-  ED25519: 0,
+  SECP256K1: 0,
 }
 
 export enum Curve {
-  Ed25519 = P2_CURVE.ED25519,
+  Secp256K1 = P2_CURVE.SECP256K1,
 }
 
 export enum LedgerError {

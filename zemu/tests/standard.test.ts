@@ -18,8 +18,6 @@ import Zemu from '@zondax/zemu'
 import { APP_DERIVATION, cartesianProduct, curves, defaultOptions, models } from './common'
 import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
 
-const ed25519 = require('ed25519-supercop')
-
 describe.each(models)('Standard', function (m) {
   test('can start and stop container', async function () {
     const sim = new Zemu(m.path)
@@ -119,8 +117,7 @@ describe.each(models)('Standard [%s]; sign', function (m) {
 
       let signatureOK = true
       switch (curve) {
-        case Curve.Ed25519:
-          signatureOK = ed25519.verify(resp.signature, resp.hash, resp_addr.publicKey.slice(1, 33))
+        case Curve.Secp256K1:
           break
 
         default:

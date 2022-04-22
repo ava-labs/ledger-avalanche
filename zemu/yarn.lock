@@ -941,9 +941,8 @@
     eslint-visitor-keys "^2.0.0"
 
 "@zondax/ledger-avalanche-app@link:../js":
-  version "0.1.0"
-  dependencies:
-    "@ledgerhq/hw-transport" "^5.50.0"
+  version "0.0.0"
+  uid ""
 
 "@zondax/zemu@^0.27.0-rc2":
   version "0.27.0-rc2"
@@ -1586,14 +1585,6 @@ domexception@^2.0.1:
   integrity sha512-yxJ2mFy/sibVQlu5qHjOkf9J3K6zgmCxgJ94u2EdvDOV09H+32LtRswEcUsmUWN72pVLOEnTSRaIVVzVQgS0dg==
   dependencies:
     webidl-conversions "^5.0.0"
-
-ed25519-supercop@^2.0.1:
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/ed25519-supercop/-/ed25519-supercop-2.0.1.tgz#5b317dec9b17a0ff2c303d2a5b600983f9df1806"
-  integrity sha512-5K75apA428ygTu/uvWwfOPPqdw65v7lFDLX6CSsV/ByhhVR5xED93KXeKDEMZ7G2Ttd3RyQoL8pFGSoMEWBXHA==
-  dependencies:
-    napi-macros "^2.0.0"
-    node-gyp-build "^4.2.3"
 
 electron-to-chromium@^1.3.886:
   version "1.3.895"
@@ -3141,20 +3132,10 @@ nan@^2.14.1, nan@^2.15.0:
   resolved "https://registry.yarnpkg.com/nan/-/nan-2.15.0.tgz#3f34a473ff18e15c1b5626b62903b5ad6e665fee"
   integrity sha512-8ZtvEnA2c5aYCZYd1cvgdnU6cqwixRoYg70xPLWUws5ORTa/lnw+u4amixRS/Ac5U5mQVgp9pnlSUnbNWFaWZQ==
 
-napi-macros@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/napi-macros/-/napi-macros-2.0.0.tgz#2b6bae421e7b96eb687aa6c77a7858640670001b"
-  integrity sha512-A0xLykHtARfueITVDernsAWdtIMbOJgKgcluwENp3AlsKN/PloyO10HtmoqnFAQAcxPkgZN7wdfPfEd0zNGxbg==
-
 natural-compare@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/natural-compare/-/natural-compare-1.4.0.tgz#4abebfeed7541f2c27acfb29bdbbd15c8d5ba4f7"
   integrity sha1-Sr6/7tdUHywnrPspvbvRXI1bpPc=
-
-node-gyp-build@^4.2.3:
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/node-gyp-build/-/node-gyp-build-4.3.0.tgz#9f256b03e5826150be39c764bf51e993946d71a3"
-  integrity sha512-iWjXZvmboq0ja1pUGULQBexmxq8CV4xBhX7VDOTbL7ZR4FOowwY/VOtRxBN/yKxmdGoIp4j5ysNT4u3S2pDQ3Q==
 
 node-int64@^0.4.0:
   version "0.4.0"

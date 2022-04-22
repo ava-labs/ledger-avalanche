@@ -5,7 +5,10 @@
   "version": "1.0.0",
   "description": "",
   "types": "./dist/index.d.ts",
-  "keywords": ["Zondax", "Ledger"],
+  "keywords": [
+    "Zondax",
+    "Ledger"
+  ],
   "scripts": {
     "test": "jest --detectOpenHandles --testPathIgnorePatterns='dev.*|testvectors.*'",
     "test_dev": "jest --detectOpenHandles",
@@ -22,7 +25,6 @@
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "crypto-js": "4.1.1",
-    "ed25519-supercop": "^2.0.1",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.24.2",
