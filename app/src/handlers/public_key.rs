@@ -24,7 +24,7 @@ use crate::{
     dispatcher::ApduHandler,
     handlers::handle_ui_message,
     sys::{
-        self,
+        self, bech32,
         hash::{Hasher, Ripemd160, Sha256},
         Error as SysError,
     },
@@ -137,9 +137,10 @@ impl Viewable for AddrUI {
             let title_content = pic_str!(b"Address");
             title[..title_content.len()].copy_from_slice(title_content);
 
-            let mut mex = [0; 20 * 2];
+            let mut mex = [0; bech32::estimate_size("avax", &[0; 20])];
             //TODO: Bech32 encoding
-            let len = hex_encode(&self.hash[..], &mut mex).apdu_unwrap();
+            let len = bech32::encode(PIC::new("avax").into_inner(), &self.hash, &mut mex)
+                .map_err(|_| ViewError::Unknown)?;
 
             handle_ui_message(&mex[..len], message, page)
         } else {
