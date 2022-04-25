@@ -96,10 +96,13 @@ pub const APDU_INDEX_LEN: usize = 4;
 pub const APDU_MIN_LENGTH: u32 = 5;
 
 pub const SECP256_SIGN_BUFFER_MIN_LENGTH: usize = 100;
+
+//Constants taken from obsidian app
 pub const CHAIN_CODE_SIZE: usize = 32;
+pub const ASCII_HRP_MAX_SIZE: usize = 24;
 
 pub(crate) mod instructions {
-    pub const CLA: u8 = 0xFF;
+    pub const CLA: u8 = 0x80;
 
     pub const INS_GET_VERSION: u8 = 0x00;
     pub const INS_GET_PUBLIC_KEY: u8 = 0x01;

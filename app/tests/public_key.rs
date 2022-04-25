@@ -26,7 +26,26 @@ fn public_key() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 0, 0, 0], Curve::Secp256K1);
+    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Curve::Secp256K1, Some(&[]));
+
+    handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+
+    assert_error_code!(tx, buffer, ApduError::Success);
+
+    let pk_len = buffer[0] as usize;
+    //secp256k1 pubkey and 20 bytes for hash + 2 for response code
+    assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
+}
+
+#[test]
+fn public_key_with_hrp() {
+    let mut flags = 0u32;
+    let mut tx = 0u32;
+    let rx = 5;
+    let mut buffer = [0u8; 260];
+
+    buffer[..3].copy_from_slice(&[CLA, INS, 0]);
+    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Curve::Secp256K1, Some(b"address"));
 
     handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
 

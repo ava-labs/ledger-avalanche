@@ -15,7 +15,7 @@
  *  limitations under the License.
  ******************************************************************************* */
 import Transport from '@ledgerhq/hw-transport'
-import { serializePath } from './helper'
+import { serializePath, serializeHrp } from './helper'
 import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion } from './types'
 import {
   CHUNK_SIZE,
@@ -146,17 +146,19 @@ export default class AvalancheApp {
     }, processErrorResponse)
   }
 
-  async getAddressAndPubKey(path: string, curve: Curve): Promise<ResponseAddress> {
+  async getAddressAndPubKey(path: string, curve: Curve, hrp?: string): Promise<ResponseAddress> {
     const serializedPath = serializePath(path)
+    const serializedHrp = serializeHrp(hrp)
     return this.transport
-      .send(CLA, INS.GET_ADDR, P1_VALUES.ONLY_RETRIEVE, curve, serializedPath, [LedgerError.NoErrors])
+      .send(CLA, INS.GET_ADDR, P1_VALUES.ONLY_RETRIEVE, curve, Buffer.concat([serializedHrp, serializedPath]), [LedgerError.NoErrors])
       .then(processGetAddrResponse, processErrorResponse)
   }
 
-  async showAddressAndPubKey(path: string, curve: Curve): Promise<ResponseAddress> {
+  async showAddressAndPubKey(path: string, curve: Curve, hrp?: string): Promise<ResponseAddress> {
     const serializedPath = serializePath(path)
+    const serializedHrp = serializeHrp(hrp)
     return this.transport
-      .send(CLA, INS.GET_ADDR, P1_VALUES.SHOW_ADDRESS_IN_DEVICE, curve, serializedPath, [LedgerError.NoErrors])
+      .send(CLA, INS.GET_ADDR, P1_VALUES.SHOW_ADDRESS_IN_DEVICE, curve, Buffer.concat([serializedHrp, serializedPath]), [LedgerError.NoErrors])
       .then(processGetAddrResponse, processErrorResponse)
   }
 
