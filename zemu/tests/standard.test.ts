@@ -105,7 +105,33 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         await sim.close()
       }
     },
-  )
+  );
+
+  test.each(curves)(
+    'show custom hrp addr %s',
+    async function (curve) {
+      const sim = new Zemu(m.path)
+      try {
+        await sim.start({ ...defaultOptions, model: m.name })
+        const app = new AvalancheApp(sim.getTransport())
+        const respReq = app.showAddressAndPubKey(APP_DERIVATION, curve, "zemu")
+
+        await sim.waitScreenChange();
+
+        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-zemu-addr-${curve}`, 2);
+
+        const resp = await respReq;
+        console.log(resp, m.name)
+
+        expect(resp.returnCode).toEqual(0x9000)
+        expect(resp.errorMessage).toEqual('No errors')
+        expect(resp).toHaveProperty('publicKey')
+        expect(resp).toHaveProperty('hash')
+      } finally {
+        await sim.close()
+      }
+    },
+  );
 })
 
 const SIGN_TEST_DATA = cartesianProduct(curves, [
