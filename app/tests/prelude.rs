@@ -44,7 +44,7 @@ pub fn prepare_buffer<const LEN: usize>(
     buffer: &mut [u8; 260],
     path: &[u32],
     curve: Curve,
-    hrp: Option<&[u8]>
+    hrp: Option<&[u8]>,
 ) -> usize {
     let crv: u8 = curve.into();
     let path = BIP32Path::<LEN>::new(path.iter().map(|n| 0x8000_0000 + n))
@@ -59,7 +59,7 @@ pub fn prepare_buffer<const LEN: usize>(
         tx += 1;
         buffer[tx] = hrp.len() as u8;
         tx += 1;
-        buffer[tx..tx+hrp.len()].copy_from_slice(hrp);
+        buffer[tx..tx + hrp.len()].copy_from_slice(hrp);
         tx += hrp.len();
     } else {
         buffer[tx] = path.len() as u8;

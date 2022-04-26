@@ -45,7 +45,12 @@ fn public_key_with_hrp() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Curve::Secp256K1, Some(b"address"));
+    prepare_buffer::<4>(
+        &mut buffer,
+        &[44, 9000, 0, 0],
+        Curve::Secp256K1,
+        Some(b"address"),
+    );
 
     handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
 
@@ -65,7 +70,12 @@ fn public_key_with_too_long_hrp() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Curve::Secp256K1, Some(b"averylonghrpmaybetoolongeven"));
+    prepare_buffer::<4>(
+        &mut buffer,
+        &[44, 9000, 0, 0],
+        Curve::Secp256K1,
+        Some(b"averylonghrpmaybetoolongeven"),
+    );
 
     handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
 
@@ -84,7 +94,12 @@ fn public_key_with_long_hrp() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Curve::Secp256K1, Some(b"exactly24charactherlong!"));
+    prepare_buffer::<4>(
+        &mut buffer,
+        &[44, 9000, 0, 0],
+        Curve::Secp256K1,
+        Some(b"exactly24charactherlong!"),
+    );
 
     handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
 
