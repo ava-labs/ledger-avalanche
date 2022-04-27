@@ -32,3 +32,7 @@ export interface ResponseSign extends ResponseBase {
   hash: Buffer
   signature: Buffer
 }
+
+export interface ResponseWalletId extends ResponseBase {
+  id: Buffer
+}
