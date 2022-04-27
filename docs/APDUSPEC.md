@@ -142,3 +142,23 @@ Data is defined as:
 | SIG_HASH | byte (32)       | Signed hash | Sha256 hash used as signature message |
 | SIG      | byte (variable) | Signature   | signature                             |
 | SW1-SW2  | byte (2)        | Return code | see list of return codes              |
+
+### INS_GET_WALLET_ID
+
+#### Command
+
+| Field   | Type     | Content                   | Expected        |
+|---------|----------|---------------------------|-----------------|
+| CLA     | byte (1) | Application Identifier    | 0x80            |
+| INS     | byte (1) | Instruction ID            | 0x03            |
+| P1      | byte (1) | Request User confirmation | No = 0          |
+| P2      | byte (1) | Curve identifier          | 0 = Secp256K1   |
+| L       | byte (1) | Bytes in payload          | 0               |
+
+#### Response
+
+| Field     | Type     | Content     | Note                     |
+|-----------|----------|-------------|--------------------------|
+| WALLET_ID | byte (6) | Wallet ID   |                          |
+| SW1-SW2   | byte (2) | Return code | see list of return codes |
+

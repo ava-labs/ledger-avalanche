@@ -18,9 +18,9 @@ use core::hint::unreachable_unchecked;
 
 use crate::constants::{instructions::*, ApduError};
 
-use crate::handlers::public_key::GetPublicKey;
-use crate::handlers::signing::Sign;
-use crate::handlers::version::GetVersion;
+use crate::handlers::{
+    public_key::GetPublicKey, signing::Sign, version::GetVersion, wallet_id::WalletId,
+};
 
 #[cfg(feature = "dev")]
 use crate::handlers::dev::*;
@@ -56,6 +56,7 @@ pub fn apdu_dispatch<'apdu>(
         INS_GET_VERSION => GetVersion::handle(flags, tx, apdu_buffer),
         INS_GET_PUBLIC_KEY => GetPublicKey::handle(flags, tx, apdu_buffer),
         INS_SIGN => Sign::handle(flags, tx, apdu_buffer),
+        INS_GET_WALLET_ID => WalletId::handle(flags, tx, apdu_buffer),
 
         #[cfg(feature = "dev")]
         _ => Debug::handle(flags, tx, apdu_buffer),

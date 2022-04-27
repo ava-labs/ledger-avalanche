@@ -16,6 +16,7 @@
 pub mod public_key;
 pub mod signing;
 pub mod version;
+pub mod wallet_id;
 
 #[cfg(feature = "dev")]
 pub mod dev;
