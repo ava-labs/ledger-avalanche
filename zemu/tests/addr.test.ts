@@ -51,7 +51,8 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
 
         await sim.waitScreenChange();
 
-        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-addr-${curve}`, 2);
+        const navigation = m.name == 'nanos' ? 2 : 3;
+        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-addr-${curve}`, navigation);
 
         const resp = await respReq;
         console.log(resp, m.name)
@@ -77,7 +78,8 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
 
         await sim.waitScreenChange();
 
-        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-zemu-addr-${curve}`, 2);
+        const navigation = m.name == 'nanos' ? 2 : 3;
+        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-zemu-addr-${curve}`, navigation);
 
         const resp = await respReq;
         console.log(resp, m.name)
