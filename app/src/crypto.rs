@@ -154,7 +154,7 @@ impl<const B: usize> SecretKey<B> {
 }
 
 impl Curve {
-    pub fn to_secret<'chain, const B: usize>(self, path: &BIP32Path<B>) -> SecretKey<B> {
+    pub fn to_secret<const B: usize>(self, path: &BIP32Path<B>) -> SecretKey<B> {
         SecretKey::new(self, *path)
     }
 }

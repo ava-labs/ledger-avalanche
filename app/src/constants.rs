@@ -100,10 +100,10 @@ pub const SECP256_SIGN_BUFFER_MIN_LENGTH: usize = 100;
 //Constants taken from obsidian app
 pub const CHAIN_ID_LEN: usize = 32;
 pub const CHAIN_ID_CHECKSUM_SIZE: usize = 4;
-pub const DEFAULT_CHAIN_ID: &'static [u8; CHAIN_ID_LEN] = &[0; CHAIN_ID_LEN];
+pub const DEFAULT_CHAIN_ID: &[u8; CHAIN_ID_LEN] = &[0; CHAIN_ID_LEN];
 pub const ASCII_HRP_MAX_SIZE: usize = 24;
 pub const WALLET_ID_LEN: usize = 6;
-pub const WALLET_ID_HMAC_KEY: &'static str = "wallet-id";
+pub const WALLET_ID_HMAC_KEY: &str = "wallet-id";
 
 pub(crate) mod instructions {
     pub const CLA: u8 = 0x80;
