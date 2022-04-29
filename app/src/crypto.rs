@@ -17,7 +17,11 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use std::convert::{TryFrom, TryInto};
 
 use crate::{constants::SECP256_SIGN_BUFFER_MIN_LENGTH, sys, utils::ApduPanic};
-use sys::{crypto::bip32::BIP32Path, errors::Error, hash::Sha256};
+use sys::{
+    crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
+    errors::Error,
+    hash::Sha256,
+};
 
 #[derive(Clone, Copy)]
 pub struct PublicKey(pub(crate) sys::crypto::ecfp256::PublicKey);
@@ -89,22 +93,21 @@ impl TryFrom<sys::crypto::Curve> for Curve {
     }
 }
 
-pub struct SecretKey<'chain, const B: usize>(sys::crypto::ecfp256::SecretKey<'chain, B>);
+pub struct SecretKey<const B: usize>(sys::crypto::ecfp256::SecretKey<B>);
 
 pub enum SignError {
     BufferTooSmall,
     Sys(Error),
 }
 
-impl<'chain, const B: usize> SecretKey<'chain, B> {
-    pub fn new(curve: Curve, path: BIP32Path<B>, chain: &'chain [u8; 32]) -> Self {
+impl<const B: usize> SecretKey<B> {
+    pub fn new(curve: Curve, path: BIP32Path<B>) -> Self {
         use sys::crypto::Mode;
 
         Self(sys::crypto::ecfp256::SecretKey::new(
             Mode::BIP32,
             curve.into(),
             path,
-            Some(chain),
         ))
     }
 
@@ -117,12 +120,16 @@ impl<'chain, const B: usize> SecretKey<'chain, B> {
     }
 
     #[inline(never)]
-    pub fn into_public_into(self, out: &mut MaybeUninit<PublicKey>) -> Result<(), Error> {
+    pub fn into_public_into(
+        self,
+        chaincode: Option<&mut [u8; CHAIN_CODE_LEN]>,
+        out: &mut MaybeUninit<PublicKey>,
+    ) -> Result<(), Error> {
         let inner_pk: &mut MaybeUninit<_> =
             //this is safe because the pointer is valid
             unsafe { &mut *addr_of_mut!((*out.as_mut_ptr()).0).cast() };
 
-        self.0.public_into(inner_pk)
+        self.0.public_into(chaincode, inner_pk)
     }
 
     pub fn curve(&self) -> Curve {
@@ -147,11 +154,7 @@ impl<'chain, const B: usize> SecretKey<'chain, B> {
 }
 
 impl Curve {
-    pub fn to_secret<'chain, const B: usize>(
-        self,
-        path: &BIP32Path<B>,
-        chain_code: &'chain [u8; 32],
-    ) -> SecretKey<'chain, B> {
-        SecretKey::new(self, *path, chain_code)
+    pub fn to_secret<'chain, const B: usize>(self, path: &BIP32Path<B>) -> SecretKey<B> {
+        SecretKey::new(self, *path)
     }
 }

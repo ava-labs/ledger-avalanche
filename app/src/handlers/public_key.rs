@@ -23,8 +23,8 @@ use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{
-        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_CODE_CHECKSUM_SIZE,
-        CHAIN_CODE_SIZE, DEFAULT_CHAIN_CODE,
+        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE,
+        CHAIN_ID_LEN, DEFAULT_CHAIN_ID,
     },
     crypto,
     dispatcher::ApduHandler,
@@ -40,12 +40,12 @@ use crate::{
 pub struct GetPublicKey;
 
 impl GetPublicKey {
-    pub const DEFAULT_CHAIN_CODE: &'static [u8; 32] = DEFAULT_CHAIN_CODE;
+    pub const DEFAULT_CHAIN_ID: &'static [u8; 32] = DEFAULT_CHAIN_ID;
 
     pub const DEFAULT_HRP: &'static [u8; 4] = b"avax";
 
-    pub fn chain_code() -> &'static [u8; 32] {
-        bolos::PIC::new(Self::DEFAULT_CHAIN_CODE).into_inner()
+    pub fn chainid() -> &'static [u8; 32] {
+        bolos::PIC::new(Self::DEFAULT_CHAIN_ID).into_inner()
     }
 
     /// Retrieve the public key with the given curve and bip32 path
@@ -54,11 +54,10 @@ impl GetPublicKey {
         curve: crypto::Curve,
         path: &sys::crypto::bip32::BIP32Path<B>,
         out: &mut MaybeUninit<crypto::PublicKey>,
+        chaincode: Option<&mut [u8; 32]>,
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetAddres::new_key\x00");
-        curve
-            .to_secret(path, Self::chain_code())
-            .into_public_into(out)?;
+        curve.to_secret(path).into_public_into(chaincode, out)?;
 
         //this is safe because it's initialized
         // also unwrapping is fine because the ptr is valid
@@ -119,7 +118,7 @@ impl ApduHandler for GetPublicKey {
             let mut ui_initializer = AddrUIInitializer::new(&mut ui);
             ui_initializer
                 .init_pkey(|key| {
-                    Self::new_key_into(curve, &bip32_path, key)
+                    Self::new_key_into(curve, &bip32_path, key, None)
                         .map_err(|_| AddrUIInitError::KeyInitError)
                 })?
                 .init_hash(|key, hash| {
@@ -128,7 +127,7 @@ impl ApduHandler for GetPublicKey {
                         .and_then(|_| Ripemd160::digest_into(&tmp, hash))
                         .map_err(|_| AddrUIInitError::HashInitError)
                 })?
-                .with_chain(Self::chain_code())?
+                .with_chain(Self::chainid())?
                 .with_hrp(hrp)?;
             ui_initializer.finalize().map_err(|(_, err)| err)?;
         }
@@ -239,26 +238,24 @@ impl<'ui> AddrUIInitializer<'ui> {
         }
     }
 
-    pub fn with_chain(&mut self, chain_code: &[u8]) -> Result<&mut Self, AddrUIInitError> {
-        if chain_code.len() != CHAIN_CODE_SIZE {
+    pub fn with_chain(&mut self, chainid: &[u8]) -> Result<&mut Self, AddrUIInitError> {
+        if chainid.len() != CHAIN_ID_LEN {
             return Err(AddrUIInitError::InvalidChainCode);
         }
 
-        let checksum =
-            Sha256::digest(chain_code).map_err(|_| AddrUIInitError::ChainCodeInitError)?;
+        let checksum = Sha256::digest(chainid).map_err(|_| AddrUIInitError::ChainCodeInitError)?;
 
         let ui = self.ui.as_mut_ptr();
         //get `chain_code` *mut,
         //SAFE: `as_mut` it to &mut [u8; ...]. this is okay as there's not invalid value for u8
         // and we'll be writing on it now
         // unwrap is fine since it's valid pointer
-        let ui_chain =
-            unsafe { addr_of_mut!((*ui).chain_code_with_checksum).as_mut() }.apdu_unwrap();
+        let ui_chain = unsafe { addr_of_mut!((*ui).chain_id_with_checksum).as_mut() }.apdu_unwrap();
         //first CHAIN_CODE_SIZE bytes is the chain code
-        ui_chain[..CHAIN_CODE_SIZE].copy_from_slice(chain_code);
+        ui_chain[..CHAIN_ID_LEN].copy_from_slice(chainid);
         //then we have the checksum, which is the last 4 bytes of sha256(chain_code)
-        ui_chain[CHAIN_CODE_SIZE..]
-            .copy_from_slice(&checksum[checksum.len() - CHAIN_CODE_CHECKSUM_SIZE..]);
+        ui_chain[CHAIN_ID_LEN..]
+            .copy_from_slice(&checksum[checksum.len() - CHAIN_ID_CHECKSUM_SIZE..]);
         self.chain_init = true;
         Ok(self)
     }
@@ -325,7 +322,7 @@ impl<'ui> AddrUIInitializer<'ui> {
 pub struct AddrUI {
     pub pkey: crypto::PublicKey,
     //includes checksum
-    chain_code_with_checksum: [u8; CHAIN_CODE_SIZE + CHAIN_CODE_CHECKSUM_SIZE],
+    chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],
     hash: [u8; Ripemd160::DIGEST_LEN],
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
 }
@@ -344,7 +341,7 @@ impl AddrUI {
     pub fn chain_id(&self) -> (usize, [u8; Self::MAX_CHAIN_CB58_LEN]) {
         let mut out = [0; Self::MAX_CHAIN_CB58_LEN];
 
-        let chain_code = arrayref::array_ref!(self.chain_code_with_checksum, 0, CHAIN_CODE_SIZE);
+        let chain_code = arrayref::array_ref!(self.chain_id_with_checksum, 0, CHAIN_ID_LEN);
         match chain_alias_lookup(chain_code) {
             Ok(alias) => {
                 let alias = alias.as_bytes();
@@ -354,7 +351,7 @@ impl AddrUI {
             }
             Err(_) => {
                 //compute CB58 representation
-                let len = bs58::encode(&self.chain_code_with_checksum)
+                let len = bs58::encode(&self.chain_id_with_checksum)
                     .into(&mut out[..])
                     .apdu_expect("encoded in base58 is not of the right length");
 
@@ -455,12 +452,9 @@ mod tests {
         }
     }
 
-    fn keypair() -> (SecretKey<'static, 1>, PublicKey) {
-        let secret = crypto::SecretKey::new(
-            crypto::Curve::Secp256K1,
-            BIP32Path::<1>::new([44]).unwrap(),
-            &[0; 32],
-        );
+    fn keypair() -> (SecretKey<1>, PublicKey) {
+        let secret =
+            crypto::SecretKey::new(crypto::Curve::Secp256K1, BIP32Path::<1>::new([44]).unwrap());
 
         let public = secret.public().unwrap();
         (secret, public)
@@ -468,7 +462,7 @@ mod tests {
 
     fn test_chain_alias(alias: Option<&str>, chain_code: Option<&[u8; 32]>) {
         let (_, pk) = keypair();
-        let chain_code = chain_code.unwrap_or(GetPublicKey::chain_code());
+        let chain_code = chain_code.unwrap_or(GetPublicKey::chainid());
         let ui = AddrUI::new(&pk, chain_code, GetPublicKey::DEFAULT_HRP);
 
         //construct the expected message

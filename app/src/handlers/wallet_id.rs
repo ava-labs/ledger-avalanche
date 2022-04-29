@@ -39,10 +39,6 @@ impl WalletId {
     pub fn hmac_key() -> &'static str {
         PIC::new(Self::HMAC_KEY).into_inner()
     }
-
-    fn chain_code() -> &'static [u8; 32] {
-        super::public_key::GetPublicKey::chain_code()
-    }
 }
 
 impl ApduHandler for WalletId {
@@ -74,8 +70,8 @@ impl ApduHandler for WalletId {
 
             let mut pkey = MaybeUninit::uninit();
             curve
-                .to_secret(&bip32_path, Self::chain_code())
-                .into_public_into(&mut pkey)
+                .to_secret(&bip32_path)
+                .into_public_into(None, &mut pkey)
                 .map_err(|_| Error::ExecutionError)?;
             //this is safe since we initialized it just now
             let pkey = unsafe { pkey.assume_init() };
