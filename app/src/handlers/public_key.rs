@@ -22,7 +22,10 @@ use std::convert::TryFrom;
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_CODE},
+    constants::{
+        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_CODE_CHECKSUM_SIZE,
+        CHAIN_CODE_SIZE, DEFAULT_CHAIN_CODE,
+    },
     crypto,
     dispatcher::ApduHandler,
     handlers::handle_ui_message,
@@ -38,6 +41,8 @@ pub struct GetPublicKey;
 
 impl GetPublicKey {
     pub const DEFAULT_CHAIN_CODE: &'static [u8; 32] = DEFAULT_CHAIN_CODE;
+
+    pub const DEFAULT_HRP: &'static [u8; 4] = b"avax";
 
     pub fn chain_code() -> &'static [u8; 32] {
         bolos::PIC::new(Self::DEFAULT_CHAIN_CODE).into_inner()
@@ -92,7 +97,7 @@ impl ApduHandler for GetPublicKey {
 
             if hrp_len == 0 {
                 //default
-                bolos::PIC::new(b"avax").into_inner()
+                bolos::PIC::new(Self::DEFAULT_HRP).into_inner()
             } else {
                 match cdata.get(..hrp_len) {
                     None => return Err(Error::DataInvalid),
@@ -123,6 +128,7 @@ impl ApduHandler for GetPublicKey {
                         .and_then(|_| Ripemd160::digest_into(&tmp, hash))
                         .map_err(|_| AddrUIInitError::HashInitError)
                 })?
+                .with_chain(Self::chain_code())?
                 .with_hrp(hrp)?;
             ui_initializer.finalize().map_err(|(_, err)| err)?;
         }
@@ -149,18 +155,22 @@ impl ApduHandler for GetPublicKey {
 
 pub struct AddrUIInitializer<'ui> {
     ui: &'ui mut MaybeUninit<AddrUI>,
+    chain_init: bool,
     hash_init: bool,
     pkey_init: bool,
     hrp_init: bool,
 }
 
+#[cfg_attr(test, derive(Debug))]
 pub enum AddrUIInitError {
     KeyInitError,
     KeyNotInitialized,
     HashInitError,
     HashNotInitialized,
     HrpNotInitialized,
-    FieldsNotInitialized,
+    InvalidChainCode,
+    ChainCodeNotInitialized,
+    ChainCodeInitError,
     HRPTooLong,
     NonASCIIHrp,
 }
@@ -179,6 +189,7 @@ impl<'ui> AddrUIInitializer<'ui> {
             hash_init: false,
             pkey_init: false,
             hrp_init: false,
+            chain_init: false,
         }
     }
 
@@ -228,6 +239,30 @@ impl<'ui> AddrUIInitializer<'ui> {
         }
     }
 
+    pub fn with_chain(&mut self, chain_code: &[u8]) -> Result<&mut Self, AddrUIInitError> {
+        if chain_code.len() != CHAIN_CODE_SIZE {
+            return Err(AddrUIInitError::InvalidChainCode);
+        }
+
+        let checksum =
+            Sha256::digest(chain_code).map_err(|_| AddrUIInitError::ChainCodeInitError)?;
+
+        let ui = self.ui.as_mut_ptr();
+        //get `chain_code` *mut,
+        //SAFE: `as_mut` it to &mut [u8; ...]. this is okay as there's not invalid value for u8
+        // and we'll be writing on it now
+        // unwrap is fine since it's valid pointer
+        let ui_chain =
+            unsafe { addr_of_mut!((*ui).chain_code_with_checksum).as_mut() }.apdu_unwrap();
+        //first CHAIN_CODE_SIZE bytes is the chain code
+        ui_chain[..CHAIN_CODE_SIZE].copy_from_slice(chain_code);
+        //then we have the checksum, which is the last 4 bytes of sha256(chain_code)
+        ui_chain[CHAIN_CODE_SIZE..]
+            .copy_from_slice(&checksum[checksum.len() - CHAIN_CODE_CHECKSUM_SIZE..]);
+        self.chain_init = true;
+        Ok(self)
+    }
+
     /// Initialize the pubkey hash in the given hash output
     pub fn init_hash<
         F: FnOnce(&crypto::PublicKey, &mut [u8; Ripemd160::DIGEST_LEN]) -> Result<(), AddrUIInitError>,
@@ -258,6 +293,19 @@ impl<'ui> AddrUIInitializer<'ui> {
         })
     }
 
+    #[cfg(test)]
+    pub fn compute_hash(&mut self) -> &mut Self {
+        let ui = self.ui.as_mut_ptr();
+        let key = unsafe { addr_of!((*ui).pkey).as_ref() }.apdu_unwrap();
+
+        let tmp = Sha256::digest(key.as_ref()).unwrap();
+        let hash = Ripemd160::digest(&tmp).unwrap();
+
+        unsafe { addr_of_mut!((*ui).hash).write(hash) };
+
+        self
+    }
+
     /// Finalize the initialization, performing any necessary checks to ensure everything is initialized
     pub fn finalize(self) -> Result<(), (Self, AddrUIInitError)> {
         if !self.hash_init {
@@ -266,6 +314,8 @@ impl<'ui> AddrUIInitializer<'ui> {
             Err((self, AddrUIInitError::KeyNotInitialized))
         } else if !self.hrp_init {
             Err((self, AddrUIInitError::HrpNotInitialized))
+        } else if !self.chain_init {
+            Err((self, AddrUIInitError::ChainCodeNotInitialized))
         } else {
             Ok(())
         }
@@ -274,15 +324,43 @@ impl<'ui> AddrUIInitializer<'ui> {
 
 pub struct AddrUI {
     pub pkey: crypto::PublicKey,
+    //includes checksum
+    chain_code_with_checksum: [u8; CHAIN_CODE_SIZE + CHAIN_CODE_CHECKSUM_SIZE],
     hash: [u8; Ripemd160::DIGEST_LEN],
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
 }
 
 impl AddrUI {
+    //36 (32 + 4 checksum) * log(2, 256) / log(2, 58) ~ 49.1
+    // so we round up to 50
+    pub const MAX_CHAIN_CB58_LEN: usize = 50;
+
     fn hrp_as_str(&self) -> &str {
         //this is okey since it's checked when a new instance is made
         let len = rs_strlen(&self.hrp);
         unsafe { core::str::from_utf8_unchecked(&self.hrp[..len]) }
+    }
+
+    pub fn chain_id(&self) -> (usize, [u8; Self::MAX_CHAIN_CB58_LEN]) {
+        let mut out = [0; Self::MAX_CHAIN_CB58_LEN];
+
+        let chain_code = arrayref::array_ref!(self.chain_code_with_checksum, 0, CHAIN_CODE_SIZE);
+        match chain_alias_lookup(chain_code) {
+            Ok(alias) => {
+                let alias = alias.as_bytes();
+                let len = alias.len();
+                out[..len].copy_from_slice(alias);
+                (len, out)
+            }
+            Err(_) => {
+                //compute CB58 representation
+                let len = bs58::encode(&self.chain_code_with_checksum)
+                    .into(&mut out[..])
+                    .apdu_expect("encoded in base58 is not of the right length");
+
+                (len, out)
+            }
+        }
     }
 }
 
@@ -304,8 +382,17 @@ impl Viewable for AddrUI {
             let title_content = pic_str!(b"Address");
             title[..title_content.len()].copy_from_slice(title_content);
 
-            let mut mex = [0; bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN)];
-            let len = bech32::encode(self.hrp_as_str(), &self.hash, &mut mex)
+            const MEX_MAX_SIZE: usize = AddrUI::MAX_CHAIN_CB58_LEN
+                + 1 // the '-' separator
+                + bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN);
+
+            let mut mex = [0; MEX_MAX_SIZE];
+            let (mut len, chain_id) = self.chain_id();
+            mex[..len].copy_from_slice(&chain_id[..len]);
+            mex[len] = b'-';
+            len += 1;
+
+            len += bech32::encode(self.hrp_as_str(), &self.hash, &mut mex[len..])
                 .map_err(|_| ViewError::Unknown)?;
 
             handle_ui_message(&mex[..len], message, page)
@@ -331,5 +418,131 @@ impl Viewable for AddrUI {
 
     fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
         (0, Error::CommandNotAllowed as _)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use arrayref::array_ref;
+    use bolos::crypto::bip32::BIP32Path;
+    use zuit::{MockDriver, Page};
+
+    use crate::{
+        crypto::{PublicKey, SecretKey},
+        utils::strlen,
+    };
+
+    use super::*;
+
+    impl AddrUI {
+        pub fn new(pkey: &crypto::PublicKey, chain_code: &[u8], hrp: &[u8]) -> Self {
+            let mut loc = MaybeUninit::uninit();
+
+            let mut builder = AddrUIInitializer::new(&mut loc);
+            let _ = builder
+                .init_pkey(|key| {
+                    key.write(*pkey);
+                    Ok(())
+                })
+                .unwrap()
+                .compute_hash()
+                .with_chain(chain_code)
+                .unwrap()
+                .with_hrp(hrp);
+            let _ = builder.finalize();
+
+            unsafe { loc.assume_init() }
+        }
+    }
+
+    fn keypair() -> (SecretKey<'static, 1>, PublicKey) {
+        let secret = crypto::SecretKey::new(
+            crypto::Curve::Secp256K1,
+            BIP32Path::<1>::new([44]).unwrap(),
+            &[0; 32],
+        );
+
+        let public = secret.public().unwrap();
+        (secret, public)
+    }
+
+    fn test_chain_alias(alias: Option<&str>, chain_code: Option<&[u8; 32]>) {
+        let (_, pk) = keypair();
+        let chain_code = chain_code.unwrap_or(GetPublicKey::chain_code());
+        let ui = AddrUI::new(&pk, chain_code, GetPublicKey::DEFAULT_HRP);
+
+        //construct the expected message
+        // chainID-bech32(HRP, pkey)
+        let mut expected_message = std::string::String::new();
+        match alias {
+            None => {
+                //calculate CB58 of the chain_code
+                let chain_id = zbs58::encode(chain_code).as_cb58(None).into_string();
+                expected_message.push_str(&chain_id);
+            }
+            Some(alias) => {
+                expected_message.push_str(alias);
+            }
+        }
+        expected_message.push('-');
+        expected_message.push_str(&{
+            let hrp = std::string::String::from_utf8(GetPublicKey::DEFAULT_HRP.to_vec()).unwrap();
+            let mut tmp = [0; bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN)];
+            let len = bech32::encode(&hrp, &ui.hash, &mut tmp).unwrap();
+
+            std::string::String::from_utf8(tmp[..len].to_vec()).unwrap()
+        });
+
+        let mut driver = MockDriver::<_, 18, 4096>::new(ui);
+        driver.with_print(true);
+        driver.drive();
+
+        let produced_ui = driver.out_ui();
+        let produced_pages = &produced_ui[0];
+
+        //mockdriver is big enough to only need 1 page
+        let &Page { title, message } = &produced_pages[0];
+        //ignore pagination at the end of the title,
+        // even tho with MockDriver there shouldn't be any anyways
+        assert!(title.starts_with(b"Address"));
+
+        //avoid trailing zeros
+        let message = {
+            let len = strlen(&message);
+            std::str::from_utf8(&message[..len]).unwrap()
+        };
+        //verify that the address message computed by the UI
+        // and the one computed in the test are the same
+
+        assert_eq!(message, &expected_message)
+    }
+
+    #[test]
+    pub fn p_chain() {
+        test_chain_alias(Some("P"), None)
+    }
+
+    #[test]
+    pub fn x_chain() {
+        let id = hex::decode("ab68eb1ee142a05cfe768c36e11f0b596db5a3c6c77aabe665dad9e638ca94f7")
+            .unwrap();
+        let chain_code = array_ref![id, 0, 32];
+        test_chain_alias(Some("X"), Some(chain_code))
+    }
+
+    #[test]
+    pub fn c_chain() {
+        let id = hex::decode("7fc93d85c6d62c5b2ac0b519c87010ea5294012d1e407030d6acd0021cac10d5")
+            .unwrap();
+        let chain_code = array_ref![id, 0, 32];
+        test_chain_alias(Some("C"), Some(chain_code))
+    }
+
+    #[test]
+    pub fn unknown_chain() {
+        let id = hex::decode("2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")
+            .unwrap();
+        let chain_code = array_ref![id, 0, 32];
+        test_chain_alias(None, Some(chain_code))
     }
 }

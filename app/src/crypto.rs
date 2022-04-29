@@ -108,6 +108,10 @@ impl<'chain, const B: usize> SecretKey<'chain, B> {
         ))
     }
 
+    pub fn public(&self) -> Result<PublicKey, Error> {
+        self.0.public().map(PublicKey)
+    }
+
     pub fn into_public(self) -> Result<PublicKey, Error> {
         self.0.public().map(PublicKey)
     }
