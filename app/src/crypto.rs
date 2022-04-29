@@ -89,21 +89,22 @@ impl TryFrom<sys::crypto::Curve> for Curve {
     }
 }
 
-pub struct SecretKey<const B: usize>(sys::crypto::ecfp256::SecretKey<B>);
+pub struct SecretKey<'chain, const B: usize>(sys::crypto::ecfp256::SecretKey<'chain, B>);
 
 pub enum SignError {
     BufferTooSmall,
     Sys(Error),
 }
 
-impl<const B: usize> SecretKey<B> {
-    pub fn new(curve: Curve, path: BIP32Path<B>) -> Self {
+impl<'chain, const B: usize> SecretKey<'chain, B> {
+    pub fn new(curve: Curve, path: BIP32Path<B>, chain: &'chain [u8; 32]) -> Self {
         use sys::crypto::Mode;
 
         Self(sys::crypto::ecfp256::SecretKey::new(
             Mode::BIP32,
             curve.into(),
             path,
+            Some(chain),
         ))
     }
 
@@ -142,7 +143,11 @@ impl<const B: usize> SecretKey<B> {
 }
 
 impl Curve {
-    pub fn to_secret<const B: usize>(self, path: &BIP32Path<B>) -> SecretKey<B> {
-        SecretKey::new(self, *path)
+    pub fn to_secret<'chain, const B: usize>(
+        self,
+        path: &BIP32Path<B>,
+        chain_code: &'chain [u8; 32],
+    ) -> SecretKey<'chain, B> {
+        SecretKey::new(self, *path, chain_code)
     }
 }

@@ -22,7 +22,7 @@ use std::convert::TryFrom;
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE},
+    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_CODE},
     crypto,
     dispatcher::ApduHandler,
     handlers::handle_ui_message,
@@ -37,6 +37,12 @@ use crate::{
 pub struct GetPublicKey;
 
 impl GetPublicKey {
+    pub const DEFAULT_CHAIN_CODE: &'static [u8; 32] = DEFAULT_CHAIN_CODE;
+
+    pub fn chain_code() -> &'static [u8; 32] {
+        bolos::PIC::new(Self::DEFAULT_CHAIN_CODE).into_inner()
+    }
+
     /// Retrieve the public key with the given curve and bip32 path
     #[inline(never)]
     pub fn new_key_into<const B: usize>(
@@ -45,7 +51,9 @@ impl GetPublicKey {
         out: &mut MaybeUninit<crypto::PublicKey>,
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetAddres::new_key\x00");
-        curve.to_secret(path).into_public_into(out)?;
+        curve
+            .to_secret(path, Self::chain_code())
+            .into_public_into(out)?;
 
         //this is safe because it's initialized
         // also unwrapping is fine because the ptr is valid

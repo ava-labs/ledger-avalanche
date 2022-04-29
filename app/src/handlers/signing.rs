@@ -46,6 +46,10 @@ impl Sign {
         }
     }
 
+    fn chain_code() -> &'static [u8; 32] {
+        super::public_key::GetPublicKey::chain_code()
+    }
+
     //(actual_size, [u8; MAX_SIGNATURE_SIZE])
     #[inline(never)]
     pub fn sign<const LEN: usize>(
@@ -53,7 +57,7 @@ impl Sign {
         path: &BIP32Path<LEN>,
         data: &[u8],
     ) -> Result<(usize, [u8; 100]), Error> {
-        let sk = curve.to_secret(path);
+        let sk = curve.to_secret(path, Self::chain_code());
 
         let mut out = [0; 100];
         let sz = sk
