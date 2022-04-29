@@ -121,3 +121,11 @@ pub use instructions::*;
 pub mod version {
     avalanche_app_derive::version!("Makefile.version");
 }
+
+mod known_chains {
+    use bolos::PIC;
+    use zemu_sys::zemu_log_stack;
+
+    avalanche_app_derive::unroll!("vendor/chainIDs.json");
+}
+pub use known_chains::chain_alias_lookup;
