@@ -19,6 +19,7 @@ use core::{
 };
 use std::convert::TryFrom;
 
+use bolos::PIC;
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
@@ -34,7 +35,7 @@ use crate::{
         hash::{Hasher, Ripemd160, Sha256},
         Error as SysError,
     },
-    utils::{rs_strlen, ApduBufferRead, ApduPanic},
+    utils::{bs58_encode, read_slice, rs_strlen, ApduBufferRead, ApduPanic},
 };
 
 pub struct GetPublicKey;
@@ -44,8 +45,12 @@ impl GetPublicKey {
 
     pub const DEFAULT_HRP: &'static [u8; 4] = b"avax";
 
-    pub fn chainid() -> &'static [u8; 32] {
-        bolos::PIC::new(Self::DEFAULT_CHAIN_ID).into_inner()
+    pub fn default_hrp() -> &'static [u8; 4] {
+        PIC::new(Self::DEFAULT_HRP).into_inner()
+    }
+
+    pub fn default_chainid() -> &'static [u8; 32] {
+        PIC::new(Self::DEFAULT_CHAIN_ID).into_inner()
     }
 
     /// Retrieve the public key with the given curve and bip32 path
@@ -83,30 +88,26 @@ impl ApduHandler for GetPublicKey {
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
         let hrp = {
-            let hrp_len = match cdata.get(0) {
-                Some(&len) => len as usize,
-                None => return Err(Error::DataInvalid),
-            };
-            if hrp_len > ASCII_HRP_MAX_SIZE {
-                return Err(Error::DataInvalid);
-            }
+            let (bytes_read, hrp) = read_slice(cdata).ok_or(Error::DataInvalid)?;
+            cdata = &cdata[bytes_read..];
 
-            //skip hrp_len
-            cdata = &cdata[1..];
-
-            if hrp_len == 0 {
-                //default
-                bolos::PIC::new(Self::DEFAULT_HRP).into_inner()
-            } else {
-                match cdata.get(..hrp_len) {
-                    None => return Err(Error::DataInvalid),
-                    Some(hrp) => {
-                        cdata = &cdata[hrp_len..];
-                        hrp
-                    }
-                }
+            match hrp.len() {
+                0 => Ok(Self::default_hrp().as_slice()),
+                len if len > ASCII_HRP_MAX_SIZE => Err(Error::DataInvalid),
+                _ => Ok(hrp),
             }
-        };
+        }?;
+
+        let chainid = {
+            let (bytes_read, chainid) = read_slice(cdata).ok_or(Error::DataInvalid)?;
+            cdata = &cdata[bytes_read..];
+
+            match chainid.len() {
+                0 => Ok(Self::default_chainid().as_slice()),
+                32 => Ok(chainid),
+                _ => Err(Error::DataInvalid),
+            }
+        }?;
 
         let bip32_path =
             sys::crypto::bip32::BIP32Path::<6>::read(cdata).map_err(|_| Error::DataInvalid)?;
@@ -127,7 +128,7 @@ impl ApduHandler for GetPublicKey {
                         .and_then(|_| Ripemd160::digest_into(&tmp, hash))
                         .map_err(|_| AddrUIInitError::HashInitError)
                 })?
-                .with_chain(Self::chainid())?
+                .with_chain(chainid)?
                 .with_hrp(hrp)?;
             ui_initializer.finalize().map_err(|(_, err)| err)?;
         }
@@ -152,6 +153,8 @@ impl ApduHandler for GetPublicKey {
     }
 }
 
+/// This is a utility struct to initialize the [`AddrUI`]
+/// in a given [`MaybeUninit`] correctly
 pub struct AddrUIInitializer<'ui> {
     ui: &'ui mut MaybeUninit<AddrUI>,
     chain_init: bool,
@@ -338,24 +341,22 @@ impl AddrUI {
         unsafe { core::str::from_utf8_unchecked(&self.hrp[..len]) }
     }
 
-    pub fn chain_id(&self) -> (usize, [u8; Self::MAX_CHAIN_CB58_LEN]) {
-        let mut out = [0; Self::MAX_CHAIN_CB58_LEN];
-
+    /// Returns the CB58 representation (or alias) of the chain_id inside self
+    ///
+    /// The return is the total number of bytes written
+    pub fn chain_id_into(&self, out: &mut [u8; Self::MAX_CHAIN_CB58_LEN]) -> usize {
         let chain_code = arrayref::array_ref!(self.chain_id_with_checksum, 0, CHAIN_ID_LEN);
         match chain_alias_lookup(chain_code) {
             Ok(alias) => {
                 let alias = alias.as_bytes();
                 let len = alias.len();
                 out[..len].copy_from_slice(alias);
-                (len, out)
+                len
             }
             Err(_) => {
-                //compute CB58 representation
-                let len = bs58::encode(&self.chain_id_with_checksum)
-                    .into(&mut out[..])
-                    .apdu_expect("encoded in base58 is not of the right length");
-
-                (len, out)
+                //not found in alias list, compute CB58 representation
+                bs58_encode(&self.chain_id_with_checksum, &mut out[..])
+                    .apdu_expect("encoded in base58 is not of the right length")
             }
         }
     }
@@ -373,7 +374,7 @@ impl Viewable for AddrUI {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        use bolos::{pic_str, PIC};
+        use bolos::pic_str;
 
         if let 0 = item_n {
             let title_content = pic_str!(b"Address");
@@ -384,8 +385,8 @@ impl Viewable for AddrUI {
                 + bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN);
 
             let mut mex = [0; MEX_MAX_SIZE];
-            let (mut len, chain_id) = self.chain_id();
-            mex[..len].copy_from_slice(&chain_id[..len]);
+            let mut len =
+                self.chain_id_into(arrayref::array_mut_ref![mex, 0, AddrUI::MAX_CHAIN_CB58_LEN]);
             mex[len] = b'-';
             len += 1;
 
@@ -462,7 +463,7 @@ mod tests {
 
     fn test_chain_alias(alias: Option<&str>, chain_code: Option<&[u8; 32]>) {
         let (_, pk) = keypair();
-        let chain_code = chain_code.unwrap_or(GetPublicKey::chainid());
+        let chain_code = chain_code.unwrap_or(GetPublicKey::default_chainid());
         let ui = AddrUI::new(&pk, chain_code, GetPublicKey::DEFAULT_HRP);
 
         //construct the expected message

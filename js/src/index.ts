@@ -15,7 +15,7 @@
  *  limitations under the License.
  ******************************************************************************* */
 import Transport from '@ledgerhq/hw-transport'
-import { serializePath, serializeHrp } from './helper'
+import { serializePath, serializeHrp, serializeChainID, } from './helper'
 import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId } from './types'
 import {
   CHUNK_SIZE,
@@ -216,22 +216,25 @@ export default class AvalancheApp {
     }, processErrorResponse)
   }
 
-  private async _pubkey(path: string, curve: Curve, show: boolean, hrp?: string): Promise<ResponseAddress> {
+  private async _pubkey(path: string, curve: Curve, show: boolean, hrp?: string, chainid?: string): Promise<ResponseAddress> {
     const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
     const serializedPath = serializePath(path)
     const serializedHrp = serializeHrp(hrp)
+    const serializedChainID = serializeChainID(chainid);
 
     return this.transport
-      .send(CLA, INS.GET_ADDR, p1, curve, Buffer.concat([serializedHrp, serializedPath]), [LedgerError.NoErrors])
+      .send(CLA, INS.GET_ADDR, p1, curve, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
       .then(processGetAddrResponse, processErrorResponse)
   }
 
-  async getAddressAndPubKey(path: string, curve: Curve, hrp?: string) {
-    return this._pubkey(path, curve, false, hrp)
+  async getAddressAndPubKey(path: string, curve: Curve) {
+    //doesn't make sense to have HRP and ChainID as they are not shown
+    // and they are also not returned by this operation
+    return this._pubkey(path, curve, false)
   }
 
-  async showAddressAndPubKey(path: string, curve: Curve, hrp?: string) {
-    return this._pubkey(path, curve, true, hrp)
+  async showAddressAndPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
+    return this._pubkey(path, curve, true, hrp, chainid)
   }
 
   private async _walletId(show: boolean, curve: Curve): Promise<ResponseWalletId> {

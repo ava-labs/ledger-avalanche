@@ -24,7 +24,6 @@ cfg-if = "1.0.0"
 git-testament = { git = "https://github.com/Zondax/git-testament", branch = "fix/cve-2020-26235", version = "0.2.1", default-features = false }
 
 avalanche-app-derive = { path = "../app-derive" }
-bs58 = { version = "0.4.0", default-features = false }
 arrayref = "0.3.6"
 
 [target.thumbv6m-none-eabi.dev-dependencies]

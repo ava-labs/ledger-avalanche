@@ -20,11 +20,13 @@
     "@zondax/zemu": "^0.27.0-rc2"
   },
   "devDependencies": {
+    "@types/bs58": "^4.0.1",
     "@types/elliptic": "^6.4.14",
     "@types/jest": "^27.0.2",
     "@types/ledgerhq__hw-transport": "^4.21.3",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
+    "bs58": "^5.0.0",
     "crypto-js": "4.1.1",
     "elliptic": "^6.5.4",
     "eslint": "^7.32.0",

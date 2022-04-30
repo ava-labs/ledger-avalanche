@@ -17,6 +17,7 @@
 import Zemu from '@zondax/zemu'
 import { APP_DERIVATION, curves, defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
+import { encode as bs58_encode } from 'bs58'
 
 describe.each(models)('Standard [%s] - pubkey', function (m) {
   test.each(curves)(
@@ -68,17 +69,18 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
   );
 
   test.each(curves)(
-    'show custom hrp addr %s',
+    'show custom hrp & chainID addr %s',
     async function (curve) {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showAddressAndPubKey(APP_DERIVATION, curve, "zemu")
+        const respReq = app.showAddressAndPubKey(APP_DERIVATION, curve,
+          "zemu", bs58_encode(Buffer.alloc(32, 42)))
 
         await sim.waitScreenChange();
 
-        const navigation = m.name == 'nanos' ? 2 : 3;
+        const navigation = m.name == 'nanos' ? 3 : 3;
         await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-zemu-addr-${curve}`, navigation);
 
         const resp = await respReq;

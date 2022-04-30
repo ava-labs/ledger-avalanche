@@ -95,6 +95,58 @@ pub fn hex_encode(
     Ok(input.len() * 2)
 }
 
+pub fn bs58_encode(
+    input: impl AsRef<[u8]>,
+    output: &mut [u8],
+) -> Result<usize, OutputBufferTooSmall> {
+    const ALPHABET_ENCODE: &[u8; 58] =
+        b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    let table = PIC::new(ALPHABET_ENCODE).into_inner();
+
+    let input = input.as_ref();
+    let mut index = 0;
+
+    for &val in input.iter() {
+        let mut carry = val as usize;
+        for byte in &mut output[..index] {
+            carry += (*byte as usize) << 8;
+            *byte = (carry % 58) as u8;
+            carry /= 58;
+        }
+        while carry > 0 {
+            if index == output.len() {
+                return Err(OutputBufferTooSmall);
+            }
+            output[index] = (carry % 58) as u8;
+            index += 1;
+            carry /= 58;
+        }
+    }
+
+    for _ in input.into_iter().take_while(|v| **v == 0) {
+        if index == output.len() {
+            return Err(OutputBufferTooSmall);
+        }
+        output[index] = 0;
+        index += 1;
+    }
+
+    for val in &mut output[..index] {
+        *val = table[*val as usize];
+    }
+
+    output.get_mut(..index).apdu_unwrap().reverse();
+    Ok(index)
+}
+
+/// Reads a byte slice preprended with the slice len
+pub fn read_slice(input: &[u8]) -> Option<(usize, &[u8])> {
+    let len = input.get(0)?;
+    let len = *len as usize;
+
+    input.get(1..1 + len).map(|bytes| (1 + len, bytes))
+}
+
 #[cfg(test)]
 mod maybe_null_terminated_to_string {
     use core::str::Utf8Error;
