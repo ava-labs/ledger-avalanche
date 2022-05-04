@@ -38,7 +38,7 @@ pub struct SECP256K1TransfOutput<'b> {
 impl<'b> SECP256K1TransfOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
-    pub fn fields_from_bytes(
+    fn fields_from_bytes(
         input: &'b [u8],
     ) -> Result<(&'b [u8], (&'b [u8; 20], &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>> {
         let (rem, (ints, addr_len)) = tuple((take(20usize), be_u32))(input)?;
