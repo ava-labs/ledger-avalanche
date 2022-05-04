@@ -50,6 +50,12 @@ impl<'b> SECP256K1TransfOutput<'b> {
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
 
+        let threshold = be_u32(&ints[(ints.len() - 4)..])?.1 as usize;
+
+        if (threshold > addresses.len()) || (addresses.is_empty() && threshold != 0) {
+            return Err(ParserError::InvalidThreshold.into());
+        }
+
         Ok((rem, Self { ints, addresses }))
     }
 
@@ -67,6 +73,12 @@ impl<'b> SECP256K1TransfOutput<'b> {
 
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
+
+        let threshold = be_u32(&ints[(ints.len() - 4)..])?.1 as usize;
+
+        if (threshold > addresses.len()) || (addresses.is_empty() && threshold != 0) {
+            return Err(ParserError::InvalidThreshold.into());
+        }
 
         let out = out.as_mut_ptr();
 
@@ -149,5 +161,28 @@ mod tests {
         assert_eq!(locktime, 0);
         assert_eq!(threshold, 1);
         assert_eq!(output.addresses.len(), 1);
+    }
+
+    #[test]
+    fn parse_secp256k1_output_invalid_threshold() {
+        let raw_output = [
+            0, 0, 0, 7, 0, 0, 0, 0, 5, 215, 92, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0,
+            1, 107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53,
+            186, 0, 0, 0, 0, 0, 0, 0, 0, 127, 201, 61, 133, 198, 214, 44, 91, 42, 192, 181, 25,
+            200, 112, 16, 234, 82, 148, 1, 45, 30, 64, 112, 48, 214, 172, 208, 2, 28, 172, 16, 213,
+            0, 0, 0, 1, 71, 17, 128, 245, 190, 100, 113, 53, 172, 8, 240, 180, 27, 164, 33, 138,
+            21, 117, 13, 78, 36, 121, 31, 186, 118, 70, 237, 151, 61, 204, 110, 123, 0, 0, 0, 0,
+            61, 155, 218, 192, 237, 29, 118, 19, 48, 207, 104, 14, 253, 235, 26, 66, 21, 158, 179,
+            135, 214, 210, 149, 12, 150, 247, 210, 143, 97, 187, 226, 170, 0, 0, 0, 5, 0, 0, 0, 0,
+            5, 230, 158, 192, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 9, 0, 0, 0, 1, 69, 136,
+            235, 111, 206, 248, 241, 99, 249, 22, 126, 93, 117, 195, 56, 35, 129, 23, 81, 11, 56,
+            150, 186, 96, 172, 81, 75, 154, 159, 54, 203, 31, 16, 82, 38, 127, 166, 131, 153, 81,
+            171, 12, 160, 85, 169, 248, 58, 101, 211, 76, 120, 5, 137, 18, 213, 222, 36, 191, 169,
+            28, 203, 145, 255, 8, 0,
+        ];
+
+        // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
+        let output = SECP256K1TransfOutput::from_bytes(&raw_output[4..]).unwrap_err();
+        assert_eq!(output, ParserError::InvalidThreshold.into());
     }
 }
