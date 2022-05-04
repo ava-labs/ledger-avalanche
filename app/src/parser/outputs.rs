@@ -14,5 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
+mod secp256k1_mint_output;
 mod secp256k1_transfer_output;
+pub use secp256k1_mint_output::SECP256K1MintOutput;
 pub use secp256k1_transfer_output::SECP256K1TransfOutput;
