@@ -15,6 +15,8 @@ pub enum ParserError {
     InvalidSignature,
     InvalidPubkeyEncoding,
     InvalidAddressVersion,
+    InvalidAddressLength,
+    InvalidTypeId,
     UnexpectedType,
     UnexpectedBufferEnd,
     UnexpectedNumberItems,
