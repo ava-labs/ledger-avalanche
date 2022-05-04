@@ -15,7 +15,7 @@ export const models: DeviceModel[] = [
   { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
 ]
 
-export const curves: Curve[] = [Curve.Ed25519]
+export const curves: Curve[] = [Curve.Secp256K1]
 
 export const defaultOptions = {
   ...DEFAULT_START_OPTIONS,

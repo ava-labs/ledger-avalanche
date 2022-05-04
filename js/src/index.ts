@@ -15,8 +15,8 @@
  *  limitations under the License.
  ******************************************************************************* */
 import Transport from '@ledgerhq/hw-transport'
-import { serializePath } from './helper'
-import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion } from './types'
+import { serializePath, serializeHrp, serializeChainID, } from './helper'
+import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId } from './types'
 import {
   CHUNK_SIZE,
   CLA,
@@ -66,7 +66,7 @@ export default class AvalancheApp {
     }
   }
 
-  static prepareChunks(message: Buffer, serializedPathBuffer?: Buffer) {
+  private static prepareChunks(message: Buffer, serializedPathBuffer?: Buffer) {
     const chunks = []
 
     // First chunk (only path)
@@ -89,8 +89,78 @@ export default class AvalancheApp {
     return chunks
   }
 
-  async signGetChunks(path: string, message: Buffer) {
+  private async signGetChunks(path: string, message: Buffer) {
     return AvalancheApp.prepareChunks(message, serializePath(path))
+  }
+
+  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, curve?: Curve, ins: number = INS.SIGN): Promise<ResponseSign> {
+    let payloadType = PAYLOAD_TYPE.ADD
+    let p2 = 0
+    if (chunkIdx === 1) {
+      payloadType = PAYLOAD_TYPE.INIT
+      if (curve === undefined) {
+        throw Error('curve type not given')
+      }
+      p2 = curve
+    }
+    if (chunkIdx === chunkNum) {
+      payloadType = PAYLOAD_TYPE.LAST
+    }
+
+    return this.transport
+      .send(CLA, ins, payloadType, p2, chunk, [
+        LedgerError.NoErrors,
+        LedgerError.DataIsInvalid,
+        LedgerError.BadKeyHandle,
+        LedgerError.SignVerifyError,
+      ])
+      .then((response: Buffer) => {
+        const errorCodeData = response.slice(-2)
+        const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
+        let errorMessage = errorCodeToString(returnCode)
+
+        if (
+          returnCode === LedgerError.BadKeyHandle ||
+          returnCode === LedgerError.DataIsInvalid ||
+          returnCode === LedgerError.SignVerifyError
+        ) {
+          errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
+        }
+
+        if (returnCode === LedgerError.NoErrors && response.length > 2) {
+          return {
+            hash: response.slice(0, 32),
+            signature: response.slice(32, -2),
+            returnCode: returnCode,
+            errorMessage: errorMessage,
+          }
+        }
+
+        return {
+          returnCode: returnCode,
+          errorMessage: errorMessage,
+        }
+      }, processErrorResponse)
+  }
+
+  async sign(path: string, curve: Curve, message: Buffer): Promise<ResponseSign> {
+    return this.signGetChunks(path, message).then(chunks => {
+      return this.signSendChunk(1, chunks.length, chunks[0], curve, INS.SIGN).then(async response => {
+        let result = {
+          returnCode: response.returnCode,
+          errorMessage: response.errorMessage,
+          signature: null as null | Buffer,
+        }
+        for (let i = 1; i < chunks.length; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], curve, INS.SIGN)
+          if (result.returnCode !== LedgerError.NoErrors) {
+            break
+          }
+        }
+        return result
+      }, processErrorResponse)
+    }, processErrorResponse)
   }
 
   async getVersion(): Promise<ResponseVersion> {
@@ -146,87 +216,49 @@ export default class AvalancheApp {
     }, processErrorResponse)
   }
 
-  async getAddressAndPubKey(path: string, curve: Curve): Promise<ResponseAddress> {
+  private async _pubkey(path: string, curve: Curve, show: boolean, hrp?: string, chainid?: string): Promise<ResponseAddress> {
+    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
     const serializedPath = serializePath(path)
+    const serializedHrp = serializeHrp(hrp)
+    const serializedChainID = serializeChainID(chainid);
+
     return this.transport
-      .send(CLA, INS.GET_ADDR, P1_VALUES.ONLY_RETRIEVE, curve, serializedPath, [LedgerError.NoErrors])
+      .send(CLA, INS.GET_ADDR, p1, curve, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
       .then(processGetAddrResponse, processErrorResponse)
   }
 
-  async showAddressAndPubKey(path: string, curve: Curve): Promise<ResponseAddress> {
-    const serializedPath = serializePath(path)
-    return this.transport
-      .send(CLA, INS.GET_ADDR, P1_VALUES.SHOW_ADDRESS_IN_DEVICE, curve, serializedPath, [LedgerError.NoErrors])
-      .then(processGetAddrResponse, processErrorResponse)
+  async getAddressAndPubKey(path: string, curve: Curve) {
+    //doesn't make sense to have HRP and ChainID as they are not shown
+    // and they are also not returned by this operation
+    return this._pubkey(path, curve, false)
   }
 
-  async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, curve?: Curve, ins: number = INS.SIGN): Promise<ResponseSign> {
-    let payloadType = PAYLOAD_TYPE.ADD
-    let p2 = 0
-    if (chunkIdx === 1) {
-      payloadType = PAYLOAD_TYPE.INIT
-      if (curve === undefined) {
-        throw Error('curve type not given')
-      }
-      p2 = curve
-    }
-    if (chunkIdx === chunkNum) {
-      payloadType = PAYLOAD_TYPE.LAST
-    }
+  async showAddressAndPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
+    return this._pubkey(path, curve, true, hrp, chainid)
+  }
+
+  private async _walletId(show: boolean, curve: Curve): Promise<ResponseWalletId> {
+    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
 
     return this.transport
-      .send(CLA, ins, payloadType, p2, chunk, [
-        LedgerError.NoErrors,
-        LedgerError.DataIsInvalid,
-        LedgerError.BadKeyHandle,
-        LedgerError.SignVerifyError,
-      ])
-      .then((response: Buffer) => {
+      .send(CLA, INS.WALLET_ID, p1, curve)
+      .then(response => {
         const errorCodeData = response.slice(-2)
-        const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-        let errorMessage = errorCodeToString(returnCode)
-
-        if (
-          returnCode === LedgerError.BadKeyHandle ||
-          returnCode === LedgerError.DataIsInvalid ||
-          returnCode === LedgerError.SignVerifyError
-        ) {
-          errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
-        }
-
-        if (returnCode === LedgerError.NoErrors && response.length > 2) {
-          return {
-            hash: response.slice(0, 32),
-            signature: response.slice(32, -2),
-            returnCode: returnCode,
-            errorMessage: errorMessage,
-          }
-        }
+        const returnCode = (errorCodeData[0] * 256 + errorCodeData[1]) as LedgerError
 
         return {
-          returnCode: returnCode,
-          errorMessage: errorMessage,
+          returnCode,
+          errorMessage: errorCodeToString(returnCode),
+          id: response.slice(0, 6),
         }
       }, processErrorResponse)
   }
 
-  async sign(path: string, curve: Curve, message: Buffer) {
-    return this.signGetChunks(path, message).then(chunks => {
-      return this.signSendChunk(1, chunks.length, chunks[0], curve, INS.SIGN).then(async response => {
-        let result = {
-          returnCode: response.returnCode,
-          errorMessage: response.errorMessage,
-          signature: null as null | Buffer,
-        }
-        for (let i = 1; i < chunks.length; i += 1) {
-          // eslint-disable-next-line no-await-in-loop
-          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], curve, INS.SIGN)
-          if (result.returnCode !== LedgerError.NoErrors) {
-            break
-          }
-        }
-        return result
-      }, processErrorResponse)
-    }, processErrorResponse)
+  async getWalletId(curve: Curve) {
+    return this._walletId(false, curve)
+  }
+
+  async showWalletId(curve: Curve) {
+    return this._walletId(true, curve)
   }
 }

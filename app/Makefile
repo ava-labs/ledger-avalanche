@@ -61,7 +61,7 @@ ifeq ($(COIN),AVAX)
 # Main app configuration
 DEFINES += APP_STANDARD
 APPNAME = "Avalanche"
-APPPATH = "44'/0'"
+APPPATH = "44'/9000'"
 else
 define error_message
 COIN value not supported: [$(COIN)]

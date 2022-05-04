@@ -1,3 +1,5 @@
+import { decode as bs58_decode } from 'bs58'
+
 const HARDENED = 0x80000000
 
 export function serializePath(path: string): Buffer {
@@ -38,4 +40,29 @@ export function serializePath(path: string): Buffer {
   }
 
   return buf
+}
+
+export function serializeHrp(hrp?: string): Buffer {
+  if (hrp) {
+    const bufHrp = Buffer.from(hrp, 'ascii');
+    return Buffer.concat([Buffer.alloc(1, bufHrp.length), bufHrp]);
+  } else {
+    return Buffer.alloc(1, 0);
+  }
+}
+
+export function serializeChainID(chainid?: string): Buffer {
+  if (chainid) {
+    let decoded = bs58_decode(chainid);
+    if (decoded.length == 36) {
+      //chop checksum off
+      decoded = decoded.slice(0, 32);
+    } else if (decoded.length != 32) {
+      throw Error("ChainID was not 32 bytes long (encoded with base58)")
+    }
+
+    return Buffer.concat([Buffer.alloc(1, decoded.length), decoded]);
+  } else {
+    return Buffer.alloc(1, 0);
+  }
 }

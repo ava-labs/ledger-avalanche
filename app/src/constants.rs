@@ -95,18 +95,38 @@ pub const APDU_INDEX_LEN: usize = 4;
 
 pub const APDU_MIN_LENGTH: u32 = 5;
 
-pub const EDWARDS_SIGN_BUFFER_MIN_LENGTH: usize = 64;
+pub const SECP256_SIGN_BUFFER_MIN_LENGTH: usize = 100;
+
+//Constants taken from obsidian app
+pub const CHAIN_ID_LEN: usize = 32;
+pub const CHAIN_ID_CHECKSUM_SIZE: usize = 4;
+pub const DEFAULT_CHAIN_ID: &[u8; CHAIN_ID_LEN] = &[0; CHAIN_ID_LEN];
+pub const ASCII_HRP_MAX_SIZE: usize = 24;
+pub const WALLET_ID_LEN: usize = 6;
+pub const WALLET_ID_HMAC_KEY: &str = "wallet-id";
 
 pub(crate) mod instructions {
-    pub const CLA: u8 = 0xFF;
+    pub const CLA: u8 = 0x80;
 
     pub const INS_GET_VERSION: u8 = 0x00;
     pub const INS_GET_PUBLIC_KEY: u8 = 0x01;
     pub const INS_SIGN: u8 = 0x02;
+    pub const INS_GET_WALLET_ID: u8 = 0x03;
 }
+
+pub const BIP32_PATH_ROOT_0: u32 = 0x8000_0000 + 44;
+pub const BIP32_PATH_ROOT_1: u32 = 0x8000_0000 + 9000;
 
 pub use instructions::*;
 
 pub mod version {
     avalanche_app_derive::version!("Makefile.version");
 }
+
+mod known_chains {
+    use bolos::PIC;
+    use zemu_sys::zemu_log_stack;
+
+    avalanche_app_derive::unroll!("vendor/chainIDs.json");
+}
+pub use known_chains::chain_alias_lookup;

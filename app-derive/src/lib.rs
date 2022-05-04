@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-//! This crate exports a single macro with a specific use case for the ledger-tezos app
+//! This crate exports 2 macros with a specific use case for the ledger-avalanche app
 //!
 //! See [macro@unroll] for more documentation
 
@@ -37,4 +37,21 @@ mod version;
 /// In other words, the provided input path will have the current crate's root directory prepended
 pub fn version(input: TokenStream) -> TokenStream {
     version::version(input)
+}
+
+mod unroll;
+#[proc_macro]
+/// Reads the file located at the provided input path and "unrolls" it.
+///
+/// The expected contents of the file is a JSON array of [unroll::KnownChain],
+/// these will be read and the IDs will be compacted slightly before
+/// being all put in a function that will convert a given chainID to an alias
+///
+/// # Note
+///
+/// The provided path will be made relative to the `CARGO_MANIFEST_DIR` of the invoking crate.
+///
+/// In other words, the provided input path will have the current crate's root directory prepended
+pub fn unroll(input: TokenStream) -> TokenStream {
+    unroll::unroll(input)
 }

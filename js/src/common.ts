@@ -1,13 +1,14 @@
 import Transport from '@ledgerhq/hw-transport'
 
-export const CLA = 0xff
+export const CLA = 0x80
 export const CHUNK_SIZE = 250
-export const APP_KEY = 'XXX'
+export const APP_KEY = 'AVAX'
 
 export const INS = {
   GET_VERSION: 0x00,
   GET_ADDR: 0x01,
   SIGN: 0x02,
+  WALLET_ID: 0x03,
 }
 
 export const PAYLOAD_TYPE = {
@@ -22,11 +23,11 @@ export const P1_VALUES = {
 }
 
 export const P2_CURVE = {
-  ED25519: 0,
+  SECP256K1: 0,
 }
 
 export enum Curve {
-  Ed25519 = P2_CURVE.ED25519,
+  Secp256K1 = P2_CURVE.SECP256K1,
 }
 
 export enum LedgerError {
