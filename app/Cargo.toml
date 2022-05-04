@@ -25,6 +25,9 @@ git-testament = { git = "https://github.com/Zondax/git-testament", branch = "fix
 
 avalanche-app-derive = { path = "../app-derive" }
 arrayref = "0.3.6"
+nom = { version = "7.1.1", default-features = false}
+bytemuck = { version = "1" }
+lexical-core = { version = "0.8", features = ["parse-integers"], default-features = false }
 
 [target.thumbv6m-none-eabi.dev-dependencies]
 panic-halt = "0.2.0"
