@@ -17,6 +17,7 @@ pub enum ParserError {
     InvalidAddressVersion,
     InvalidAddressLength,
     InvalidTypeId,
+    InvalidThreshold,
     UnexpectedType,
     UnexpectedBufferEnd,
     UnexpectedNumberItems,
