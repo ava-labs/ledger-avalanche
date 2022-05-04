@@ -38,10 +38,9 @@ pub struct SECP256K1TransfOutput<'b> {
 impl<'b> SECP256K1TransfOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
-    #[inline(never)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECP256K1TransfOutput::from_bytes\x00");
-
+    pub fn fields_from_bytes(
+        input: &'b [u8],
+    ) -> Result<(&'b [u8], (&'b [u8; 20], &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>> {
         let (rem, (ints, addr_len)) = tuple((take(20usize), be_u32))(input)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
@@ -56,6 +55,14 @@ impl<'b> SECP256K1TransfOutput<'b> {
             return Err(ParserError::InvalidThreshold.into());
         }
 
+        Ok((rem, (ints, addresses)))
+    }
+
+    #[inline(never)]
+    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
+        crate::sys::zemu_log_stack("SECP256K1TransfOutput::from_bytes\x00");
+
+        let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
         Ok((rem, Self { ints, addresses }))
     }
 
@@ -66,19 +73,7 @@ impl<'b> SECP256K1TransfOutput<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECP256K1TransfOutput::from_bytes_into\x00");
 
-        let (rem, (ints, addr_len)) = tuple((take(20usize), be_u32))(input)?;
-
-        let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
-        let ints = arrayref::array_ref!(ints, 0, 20);
-
-        let addresses =
-            bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
-
-        let threshold = be_u32(&ints[(ints.len() - 4)..])?.1 as usize;
-
-        if (threshold > addresses.len()) || (addresses.is_empty() && threshold != 0) {
-            return Err(ParserError::InvalidThreshold.into());
-        }
+        let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
 
         let out = out.as_mut_ptr();
 
