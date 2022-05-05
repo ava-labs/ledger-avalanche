@@ -28,14 +28,14 @@ use crate::parser::ADDRESS_LEN;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
-pub struct SECP256K1TransfOutput<'b> {
+pub struct SECPTransferOutput<'b> {
     // groups amount(u64), locktime(u64), threshold(u32)
     ints: &'b [u8; 20],
     // list of addresses allowed to use this output
     pub addresses: &'b [[u8; ADDRESS_LEN]],
 }
 
-impl<'b> SECP256K1TransfOutput<'b> {
+impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
     fn fields_from_bytes(
@@ -60,7 +60,7 @@ impl<'b> SECP256K1TransfOutput<'b> {
 
     #[inline(never)]
     pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECP256K1TransfOutput::from_bytes\x00");
+        crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes\x00");
 
         let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
         Ok((rem, Self { ints, addresses }))
@@ -71,7 +71,7 @@ impl<'b> SECP256K1TransfOutput<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECP256K1TransfOutput::from_bytes_into\x00");
+        crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes_into\x00");
 
         let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
 
@@ -104,7 +104,7 @@ impl<'b> SECP256K1TransfOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECP256K1TransfOutput<'a> {
+impl<'a> DisplayableItem for SECPTransferOutput<'a> {
     fn num_items(&self) -> usize {
         todo!()
     }
@@ -146,9 +146,7 @@ mod tests {
         ];
 
         // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
-        let output = SECP256K1TransfOutput::from_bytes(&raw_output[4..])
-            .unwrap()
-            .1;
+        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap().1;
         let amount = output.amount().unwrap();
         let locktime = output.locktime().unwrap();
         let threshold = output.threshold().unwrap();
@@ -177,7 +175,7 @@ mod tests {
         ];
 
         // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
-        let output = SECP256K1TransfOutput::from_bytes(&raw_output[4..]).unwrap_err();
+        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap_err();
         assert_eq!(output, ParserError::InvalidThreshold.into());
     }
 }

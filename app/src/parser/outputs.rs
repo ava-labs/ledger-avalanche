@@ -14,7 +14,9 @@
 *  limitations under the License.
 ********************************************************************************/
 
-mod secp256k1_mint_output;
-mod secp256k1_transfer_output;
-pub use secp256k1_mint_output::SECP256K1MintOutput;
-pub use secp256k1_transfer_output::SECP256K1TransfOutput;
+mod nft_transfer_output;
+mod secp_mint_output;
+mod secp_transfer_output;
+pub use nft_transfer_output::NFTTransfOutput;
+pub use secp_mint_output::SECPMintOutput;
+pub use secp_transfer_output::SECPTransferOutput;

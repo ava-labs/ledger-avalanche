@@ -28,14 +28,14 @@ use crate::parser::ADDRESS_LEN;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
-pub struct SECP256K1MintOutput<'b> {
+pub struct SECPMintOutput<'b> {
     // groups locktime(u64), threshold(u32)
     ints: &'b [u8; 12],
     // list of addresses allowed to use this output
     pub addresses: &'b [[u8; ADDRESS_LEN]],
 }
 
-impl<'b> SECP256K1MintOutput<'b> {
+impl<'b> SECPMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000006;
 
     fn fields_from_bytes(
@@ -60,7 +60,7 @@ impl<'b> SECP256K1MintOutput<'b> {
 
     #[inline(never)]
     pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECP256K1MintOutput::from_bytes\x00");
+        crate::sys::zemu_log_stack("SECPMintOutput::from_bytes\x00");
         let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
 
         Ok((rem, Self { ints, addresses }))
@@ -71,7 +71,7 @@ impl<'b> SECP256K1MintOutput<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECP256K1MintOutput::from_bytes_into\x00");
+        crate::sys::zemu_log_stack("SECPMintOutput::from_bytes_into\x00");
 
         let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
         let out = out.as_mut_ptr();
@@ -97,7 +97,7 @@ impl<'b> SECP256K1MintOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECP256K1MintOutput<'a> {
+impl<'a> DisplayableItem for SECPMintOutput<'a> {
     fn num_items(&self) -> usize {
         todo!()
     }
@@ -137,7 +137,7 @@ mod tests {
             101, 211, 76, 120, 5, 137, 18, 213, 222, 36, 191, 169, 28, 203, 145, 255, 8, 0,
         ];
 
-        let output = SECP256K1MintOutput::from_bytes(&raw_output[4..]).unwrap().1;
+        let output = SECPMintOutput::from_bytes(&raw_output[4..]).unwrap().1;
         let locktime = output.locktime().unwrap();
         let threshold = output.threshold().unwrap();
         assert_eq!(locktime, 0);

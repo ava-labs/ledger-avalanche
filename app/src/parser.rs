@@ -21,7 +21,7 @@ mod address;
 mod outputs;
 
 pub use address::{Address, ADDRESS_LEN};
-pub use outputs::SECP256K1TransfOutput;
+pub use outputs::SECPTransferOutput;
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI
