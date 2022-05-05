@@ -15,7 +15,7 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, cartesianProduct, curves, defaultOptions, models } from './common'
+import { APP_DERIVATION, cartesianProduct, curves, defaultOptions, models, enableBlindSigning } from './common'
 import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
 
@@ -36,12 +36,17 @@ describe.each(models)('Standard [%s]; sign', function (m) {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new AvalancheApp(sim.getTransport())
       const msg = data.op
+
+      const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
+      await enableBlindSigning(sim, testcase)
+
+      const currentScreen = sim.snapshot();
       const respReq = app.sign(APP_DERIVATION, curve, msg)
 
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot(), 20000)
+      await sim.waitUntilScreenIsNot(currentScreen, 20000)
 
       const navigation = m.name == 'nanox' ? data.nav.x : m.name == "nanosp" ? data.nav.sp : data.nav.s;
-      await sim.navigateAndCompareSnapshots('.', `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`, navigation)
+      await sim.navigateAndCompareSnapshots('.', testcase, navigation)
 
       const resp = await respReq
 

@@ -22,6 +22,8 @@ use bolos::{
 };
 use zemu_sys::{Show, ViewError, Viewable};
 
+mod blind_sign_toggle;
+
 use crate::{
     constants::ApduError as Error,
     crypto::Curve,
@@ -34,9 +36,9 @@ use crate::{
 #[bolos::lazy_static]
 static mut PATH: Option<(BIP32Path<10>, Curve)> = None;
 
-pub struct Sign;
+pub struct BlindSign;
 
-impl Sign {
+impl BlindSign {
     pub const SIGN_HASH_SIZE: usize = 32;
 
     fn get_derivation_info() -> Result<&'static (BIP32Path<10>, Curve), Error> {
@@ -96,7 +98,7 @@ impl Sign {
     }
 }
 
-impl ApduHandler for Sign {
+impl ApduHandler for BlindSign {
     #[inline(never)]
     fn handle<'apdu>(
         flags: &mut u32,
@@ -107,6 +109,11 @@ impl ApduHandler for Sign {
 
         *tx = 0;
 
+        //blind signing not enabled
+        if !blind_sign_toggle::blind_sign_enabled() {
+            return Err(Error::ApduCodeConditionsNotSatisfied);
+        }
+
         if let Some(upload) = Uploader::new(Self).upload(&buffer)? {
             *tx = Self::start_sign(true, upload.p2, upload.first, upload.data, flags)?;
         }
@@ -116,7 +123,7 @@ impl ApduHandler for Sign {
 }
 
 pub(crate) struct SignUI {
-    hash: [u8; Sign::SIGN_HASH_SIZE],
+    hash: [u8; BlindSign::SIGN_HASH_SIZE],
     send_hash: bool,
 }
 
@@ -138,7 +145,7 @@ impl Viewable for SignUI {
                 let title_content = pic_str!(b"Sign");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let mut hex_buf = [0; Sign::SIGN_HASH_SIZE * 2];
+                let mut hex_buf = [0; BlindSign::SIGN_HASH_SIZE * 2];
                 //this is impossible that will error since the sizes are all checked
                 let len = hex_encode(&self.hash[..], &mut hex_buf).apdu_unwrap();
 
@@ -149,12 +156,12 @@ impl Viewable for SignUI {
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let (path, curve) = match Sign::get_derivation_info() {
+        let (path, curve) = match BlindSign::get_derivation_info() {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
 
-        let (sig_size, sig) = match Sign::sign(*curve, path, &self.hash[..]) {
+        let (sig_size, sig) = match BlindSign::sign(*curve, path, &self.hash[..]) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
@@ -168,8 +175,8 @@ impl Viewable for SignUI {
 
         //write unsigned_hash to buffer
         if self.send_hash {
-            out[tx..tx + Sign::SIGN_HASH_SIZE].copy_from_slice(&self.hash[..]);
-            tx += Sign::SIGN_HASH_SIZE;
+            out[tx..tx + BlindSign::SIGN_HASH_SIZE].copy_from_slice(&self.hash[..]);
+            tx += BlindSign::SIGN_HASH_SIZE;
         }
 
         //wrte signature to buffer

@@ -1,28 +1,28 @@
 /*******************************************************************************
-*   (c) 2019 Zondax GmbH
-*   (c) 2016 Ledger
-*
-*  Licensed under the Apache License, Version 2.0 (the "License");
-*  you may not use this file except in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software
-*  distributed under the License is distributed on an "AS IS" BASIS,
-*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*  See the License for the specific language governing permissions and
-*  limitations under the License.
-********************************************************************************/
+ *   (c) 2019 Zondax GmbH
+ *   (c) 2016 Ledger
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ ********************************************************************************/
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "coin.h"
-#include "zxerror.h"
 #include "view.h"
+#include "zxerror.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-#define CUR_FLOW G_ux.flow_stack[G_ux.stack_count-1]
+#define CUR_FLOW G_ux.flow_stack[G_ux.stack_count - 1]
 
 #define APPROVE_LABEL "APPROVE"
 #define REJECT_LABEL "REJECT"
@@ -42,7 +42,7 @@ typedef struct NanoSBackend {
 
 extern struct NanoSBackend BACKEND_LAZY;
 
-#elif defined (TARGET_NANOX)
+#elif defined(TARGET_NANOX)
 
 #define KEY_SIZE 63
 #define MESSAGE_SIZE 4095
@@ -57,7 +57,7 @@ typedef struct NanoXBackend {
 
 extern struct NanoXBackend BACKEND_LAZY;
 
-#elif defined (TARGET_NANOS2)
+#elif defined(TARGET_NANOS2)
 
 #define KEY_SIZE 63
 #define MESSAGE_SIZE 4095
@@ -74,6 +74,17 @@ extern struct NanoSPBackend BACKEND_LAZY;
 
 #endif
 
+#if defined(BLIND_SIGN_TOGGLE)
+typedef struct blind_sign_toggle_t {
+  bool toggle;
+  char message[8 + 1];
+} blind_sign_toggle_t;
+
+extern blind_sign_toggle_t blind_sign;
+
+void h_blind_sign_toggle();
+void h_blind_sign_update();
+#endif
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
