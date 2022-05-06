@@ -30,7 +30,8 @@ use crate::parser::ADDRESS_LEN;
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPMintOutput<'b> {
     // groups locktime(u64), threshold(u32)
-    ints: &'b [u8; 12],
+    pub locktime: u64,
+    pub threshold: u32,
     // list of addresses allowed to use this output
     pub addresses: &'b [[u8; ADDRESS_LEN]],
 }
@@ -40,30 +41,34 @@ impl<'b> SECPMintOutput<'b> {
 
     fn fields_from_bytes(
         input: &'b [u8],
-    ) -> Result<(&'b [u8], (&'b [u8; 12], &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>> {
-        let (rem, (ints, addr_len)) = tuple((take(12usize), be_u32))(input)?;
+    ) -> Result<(&'b [u8], (u64, u32, &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>> {
+        let (rem, (locktime, threshold, addr_len)) = tuple((be_u64, be_u32, be_u32))(input)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
-        let ints = arrayref::array_ref!(ints, 0, 12);
 
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
 
-        let threshold = be_u32(&ints[(ints.len() - 4)..])?.1 as usize;
-
-        if (threshold > addresses.len()) || (addresses.is_empty() && threshold != 0) {
+        if (threshold as usize > addresses.len()) || (addresses.is_empty() && threshold != 0) {
             return Err(ParserError::InvalidThreshold.into());
         }
 
-        Ok((rem, (ints, addresses)))
+        Ok((rem, (locktime, threshold, addresses)))
     }
 
     #[inline(never)]
     pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPMintOutput::from_bytes\x00");
-        let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
+        let (rem, (locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
 
-        Ok((rem, Self { ints, addresses }))
+        Ok((
+            rem,
+            Self {
+                locktime,
+                threshold,
+                addresses,
+            },
+        ))
     }
 
     #[inline(never)]
@@ -73,27 +78,17 @@ impl<'b> SECPMintOutput<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPMintOutput::from_bytes_into\x00");
 
-        let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
+        let (rem, (locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
         let out = out.as_mut_ptr();
 
         //good ptr and no uninit reads
         unsafe {
-            addr_of_mut!((*out).ints).write(ints);
+            addr_of_mut!((*out).locktime).write(locktime);
+            addr_of_mut!((*out).threshold).write(threshold);
             addr_of_mut!((*out).addresses).write(addresses);
         }
 
         Ok(rem)
-    }
-
-    pub fn locktime(&self) -> Result<u64, nom::Err<ParserError>> {
-        // locktime(u64), threshold(u32)
-        be_u64(self.ints.as_ref()).map(|(_, v)| v)
-    }
-
-    pub fn threshold(&self) -> Result<u32, nom::Err<ParserError>> {
-        // locktime(u64), threshold(u32)
-        let offset = self.ints.len() - 4;
-        be_u32(&self.ints[offset..]).map(|(_, v)| v)
     }
 }
 
@@ -138,10 +133,8 @@ mod tests {
         ];
 
         let output = SECPMintOutput::from_bytes(&raw_output[4..]).unwrap().1;
-        let locktime = output.locktime().unwrap();
-        let threshold = output.threshold().unwrap();
-        assert_eq!(locktime, 0);
-        assert_eq!(threshold, 0);
+        assert_eq!(output.locktime, 0);
+        assert_eq!(output.threshold, 0);
         assert_eq!(output.addresses.len(), 1);
     }
 }
