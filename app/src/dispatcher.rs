@@ -18,9 +18,10 @@ use core::hint::unreachable_unchecked;
 
 use crate::constants::{instructions::*, ApduError};
 
-use crate::handlers::{
-    public_key::GetPublicKey, signing::Sign, version::GetVersion, wallet_id::WalletId,
-};
+use crate::handlers::{public_key::GetPublicKey, version::GetVersion, wallet_id::WalletId};
+
+#[cfg(feature = "blind-sign")]
+use crate::handlers::signing::BlindSign;
 
 #[cfg(feature = "dev")]
 use crate::handlers::dev::*;
@@ -55,7 +56,8 @@ pub fn apdu_dispatch<'apdu>(
     match ins {
         INS_GET_VERSION => GetVersion::handle(flags, tx, apdu_buffer),
         INS_GET_PUBLIC_KEY => GetPublicKey::handle(flags, tx, apdu_buffer),
-        INS_SIGN => Sign::handle(flags, tx, apdu_buffer),
+        #[cfg(feature = "blind-sign")]
+        INS_BLIND_SIGN => BlindSign::handle(flags, tx, apdu_buffer),
         INS_GET_WALLET_ID => WalletId::handle(flags, tx, apdu_buffer),
 
         #[cfg(feature = "dev")]

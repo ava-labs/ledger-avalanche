@@ -17,7 +17,7 @@ mod prelude;
 use prelude::*;
 
 use bolos::hash::{Hasher, Sha256};
-use constants::INS_SIGN as INS;
+use constants::INS_BLIND_SIGN as INS;
 
 const MSG: &[u8] = b"hello@zondax.ch";
 

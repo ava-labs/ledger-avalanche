@@ -20,6 +20,15 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: true
+      - name: Install Miri
+        run: |
+          rustup toolchain install nightly --component miri
+          cargo +nightly miri --version
+      - name: Test with Miri
+        env:
+          MIRIFLAGS: -Zmiri-symbolic-alignment-check
+        run: |
+          cargo +nightly miri test
       - name: show versions
         run: |
           rustup show
