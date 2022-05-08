@@ -21,10 +21,11 @@ use nom::{
 };
 use zemu_sys::ViewError;
 
-use crate::handlers::parser_common::ParserError;
+use crate::handlers::{handle_ui_message, parser_common::ParserError};
 
-use crate::parser::DisplayableItem;
-use crate::parser::ADDRESS_LEN;
+use crate::parser::{Address, DisplayableItem, ADDRESS_LEN};
+
+type Fields<'b> = Result<(&'b [u8], (u64, u32, &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>>;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -39,9 +40,7 @@ pub struct SECPMintOutput<'b> {
 impl<'b> SECPMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000006;
 
-    fn fields_from_bytes(
-        input: &'b [u8],
-    ) -> Result<(&'b [u8], (u64, u32, &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>> {
+    fn fields_from_bytes(input: &'b [u8]) -> Fields {
         let (rem, (locktime, threshold, addr_len)) = tuple((be_u64, be_u32, be_u32))(input)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
@@ -94,20 +93,64 @@ impl<'b> SECPMintOutput<'b> {
 
 impl<'a> DisplayableItem for SECPMintOutput<'a> {
     fn num_items(&self) -> usize {
-        todo!()
+        // output-type, threshold and addresses
+        let items = 1 + 1 + self.addresses.len();
+        // do not show locktime if it is 0
+        items + (self.locktime > 0) as usize
     }
 
     #[inline(never)]
     fn render_item(
         &self,
-        _item_n: u8,
-        _title: &mut [u8],
-        _message: &mut [u8],
-        _page: u8,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
     ) -> Result<u8, ViewError> {
-        //use bolos::{pic_str, PIC};
+        use bolos::{pic_str, PIC};
+        use lexical_core::{write as itoa, Number};
 
-        todo!()
+        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let addr_item_n = self.num_items() - self.addresses.len();
+
+        match item_n as usize {
+            0 => {
+                let title_content = pic_str!(b"Output");
+                title[..title_content.len()].copy_from_slice(title_content);
+
+                handle_ui_message(pic_str!(b"SECPMint"), message, page)
+            }
+
+            1 if self.locktime > 0 => {
+                let title_content = pic_str!(b"Locktime");
+                title[..title_content.len()].copy_from_slice(title_content);
+                itoa(self.locktime, &mut buffer);
+
+                handle_ui_message(&buffer, message, page)
+            }
+
+            x @ 1.. if (x == 1 && self.locktime == 0) || (x == 2 && self.locktime > 0) => {
+                let title_content = pic_str!(b"Threshold");
+                title[..title_content.len()].copy_from_slice(title_content);
+
+                itoa(self.threshold, &mut buffer);
+
+                handle_ui_message(&buffer, message, page)
+            }
+
+            x @ 2.. if x >= addr_item_n => {
+                let idx = x - addr_item_n;
+                if let Some(data) = self.addresses.get(idx as usize) {
+                    let addr = Address::from_bytes(data.as_ref())
+                        .map_err(|_| ViewError::Unknown)?
+                        .1;
+                    addr.render_item(0, title, message, page)
+                } else {
+                    Err(ViewError::NoData)
+                }
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 }
 
