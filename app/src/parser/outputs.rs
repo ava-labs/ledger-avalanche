@@ -14,9 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-mod nft_transfer_output;
 mod secp_mint_output;
 mod secp_transfer_output;
-pub use nft_transfer_output::NFTTransfOutput;
 pub use secp_mint_output::SECPMintOutput;
 pub use secp_transfer_output::SECPTransferOutput;
