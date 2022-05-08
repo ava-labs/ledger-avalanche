@@ -21,16 +21,19 @@ use nom::{
 };
 use zemu_sys::ViewError;
 
-use crate::handlers::parser_common::ParserError;
+use crate::handlers::{handle_ui_message, parser_common::ParserError};
 
-use crate::parser::DisplayableItem;
-use crate::parser::ADDRESS_LEN;
+use crate::parser::{Address, DisplayableItem, ADDRESS_LEN};
+
+type Fields<'b> =
+    Result<(&'b [u8], (u64, u64, u32, &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>>;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPTransferOutput<'b> {
-    // groups amount(u64), locktime(u64), threshold(u32)
-    ints: &'b [u8; 20],
+    pub amount: u64,
+    pub locktime: u64,
+    pub threshold: u32,
     // list of addresses allowed to use this output
     pub addresses: &'b [[u8; ADDRESS_LEN]],
 }
@@ -38,32 +41,36 @@ pub struct SECPTransferOutput<'b> {
 impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
-    fn fields_from_bytes(
-        input: &'b [u8],
-    ) -> Result<(&'b [u8], (&'b [u8; 20], &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>> {
-        let (rem, (ints, addr_len)) = tuple((take(20usize), be_u32))(input)?;
+    fn fields_from_bytes(input: &'b [u8]) -> Fields<'b> {
+        let (rem, (amount, locktime, threshold, addr_len)) =
+            tuple((be_u64, be_u64, be_u32, be_u32))(input)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
-        let ints = arrayref::array_ref!(ints, 0, 20);
 
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
 
-        let threshold = be_u32(&ints[(ints.len() - 4)..])?.1 as usize;
-
-        if (threshold > addresses.len()) || (addresses.is_empty() && threshold != 0) {
+        if (threshold as usize > addresses.len()) || (addresses.is_empty() && threshold != 0) {
             return Err(ParserError::InvalidThreshold.into());
         }
 
-        Ok((rem, (ints, addresses)))
+        Ok((rem, (amount, locktime, threshold, addresses)))
     }
 
     #[inline(never)]
     pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes\x00");
 
-        let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
-        Ok((rem, Self { ints, addresses }))
+        let (rem, (amount, locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
+        Ok((
+            rem,
+            Self {
+                amount,
+                locktime,
+                threshold,
+                addresses,
+            },
+        ))
     }
 
     #[inline(never)]
@@ -73,53 +80,88 @@ impl<'b> SECPTransferOutput<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes_into\x00");
 
-        let (rem, (ints, addresses)) = Self::fields_from_bytes(input)?;
+        let (rem, (amount, locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
 
         let out = out.as_mut_ptr();
 
         //good ptr and no uninit reads
         unsafe {
-            addr_of_mut!((*out).ints).write(ints);
+            addr_of_mut!((*out).amount).write(amount);
+            addr_of_mut!((*out).locktime).write(locktime);
+            addr_of_mut!((*out).threshold).write(threshold);
             addr_of_mut!((*out).addresses).write(addresses);
         }
 
         Ok(rem)
     }
-    pub fn amount(&'b self) -> Result<u64, nom::Err<ParserError>> {
-        //amount(u64), locktime(u64), threshold(u32)
-        be_u64(self.ints.as_ref()).map(|(_, v)| v)
-    }
-
-    pub fn locktime(&self) -> Result<u64, nom::Err<ParserError>> {
-        //amount(u64), locktime(u64), threshold(u32)
-        // skip amount
-        let offset = 8;
-        be_u64(&self.ints[offset..]).map(|(_, v)| v)
-    }
-
-    pub fn threshold(&self) -> Result<u32, nom::Err<ParserError>> {
-        //amount(u64), locktime(u64), threshold(u32)
-        let offset = self.ints.len() - 4;
-        be_u32(&self.ints[offset..]).map(|(_, v)| v)
-    }
 }
 
 impl<'a> DisplayableItem for SECPTransferOutput<'a> {
     fn num_items(&self) -> usize {
-        todo!()
+        // output-type, amount, threshold and addresses
+        let items = 1 + 1 + 1 + self.addresses.len();
+        // do not show locktime if it is 0
+        items + (self.locktime > 0) as usize
     }
 
     #[inline(never)]
     fn render_item(
         &self,
-        _item_n: u8,
-        _title: &mut [u8],
-        _message: &mut [u8],
-        _page: u8,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
     ) -> Result<u8, ViewError> {
-        //use bolos::{pic_str, PIC};
+        use bolos::{pic_str, PIC};
+        use lexical_core::{write as itoa, Number};
 
-        todo!()
+        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let addr_item_n = self.num_items() - self.addresses.len();
+
+        match item_n as usize {
+            0 => {
+                let title_content = pic_str!(b"Output");
+                title[..title_content.len()].copy_from_slice(title_content);
+
+                handle_ui_message(pic_str!(b"SECPTransfer"), message, page)
+            }
+            1 => {
+                let title_content = pic_str!(b"Amount");
+                title[..title_content.len()].copy_from_slice(title_content);
+                itoa(self.amount, &mut buffer);
+
+                handle_ui_message(&buffer, message, page)
+            }
+            2 if self.locktime > 0 => {
+                let title_content = pic_str!(b"Locktime");
+                title[..title_content.len()].copy_from_slice(title_content);
+                itoa(self.locktime, &mut buffer);
+
+                handle_ui_message(&buffer, message, page)
+            }
+
+            x @ 2.. if (x == 2 && self.locktime == 0) || (x == 3 && self.locktime > 0) => {
+                let title_content = pic_str!(b"Threshold");
+                title[..title_content.len()].copy_from_slice(title_content);
+
+                itoa(self.threshold, &mut buffer);
+
+                handle_ui_message(&buffer, message, page)
+            }
+
+            x @ 3.. if x >= addr_item_n => {
+                let idx = x - addr_item_n;
+                if let Some(data) = self.addresses.get(idx as usize) {
+                    let addr = Address::from_bytes(data.as_ref())
+                        .map_err(|_| ViewError::Unknown)?
+                        .1;
+                    addr.render_item(0, title, message, page)
+                } else {
+                    Err(ViewError::NoData)
+                }
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 }
 
@@ -147,12 +189,9 @@ mod tests {
 
         // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
         let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap().1;
-        let amount = output.amount().unwrap();
-        let locktime = output.locktime().unwrap();
-        let threshold = output.threshold().unwrap();
-        assert_eq!(amount, 98000000);
-        assert_eq!(locktime, 0);
-        assert_eq!(threshold, 1);
+        assert_eq!(output.amount, 98000000);
+        assert_eq!(output.locktime, 0);
+        assert_eq!(output.threshold, 1);
         assert_eq!(output.addresses.len(), 1);
     }
 
