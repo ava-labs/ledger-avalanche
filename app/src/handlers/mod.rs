@@ -40,8 +40,8 @@ pub mod resources {
         Debug,
     }
 
-    impl From<super::signing::Sign> for BUFFERAccessors {
-        fn from(_: super::signing::Sign) -> Self {
+    impl From<super::signing::BlindSign> for BUFFERAccessors {
+        fn from(_: super::signing::BlindSign) -> Self {
             Self::Sign
         }
     }
