@@ -169,11 +169,9 @@ mod tests {
             28, 203, 145, 255, 8, 0,
         ];
 
-        let mut out = MaybeUninit::uninit();
-
         // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
-        SECPTransferOutput::from_bytes_into(&raw_output[4..], &mut out).unwrap();
-        let output = unsafe { &*(out.as_ptr()) };
+        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap().1;
+
         assert_eq!(output.amount, 98000000);
         assert_eq!(output.locktime, 0);
         assert_eq!(output.threshold, 1);
