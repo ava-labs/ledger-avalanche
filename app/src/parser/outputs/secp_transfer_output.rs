@@ -25,9 +25,6 @@ use crate::handlers::{handle_ui_message, parser_common::ParserError};
 
 use crate::parser::{Address, DisplayableItem, ADDRESS_LEN};
 
-type Fields<'b> =
-    Result<(&'b [u8], (u64, u64, u32, &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>>;
-
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPTransferOutput<'b> {
@@ -41,7 +38,20 @@ pub struct SECPTransferOutput<'b> {
 impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
-    fn fields_from_bytes(input: &'b [u8]) -> Fields<'b> {
+    #[inline(never)]
+    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
+        let mut out = MaybeUninit::uninit();
+        let rem = Self::from_bytes_into(input, &mut out)?;
+        unsafe { Ok((rem, out.assume_init())) }
+    }
+
+    #[inline(never)]
+    pub fn from_bytes_into(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes_into\x00");
+
         let (rem, (amount, locktime, threshold, addr_len)) =
             tuple((be_u64, be_u64, be_u32, be_u32))(input)?;
 
@@ -54,37 +64,8 @@ impl<'b> SECPTransferOutput<'b> {
             return Err(ParserError::InvalidThreshold.into());
         }
 
-        Ok((rem, (amount, locktime, threshold, addresses)))
-    }
-
-    #[inline(never)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes\x00");
-
-        let (rem, (amount, locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
-        Ok((
-            rem,
-            Self {
-                amount,
-                locktime,
-                threshold,
-                addresses,
-            },
-        ))
-    }
-
-    #[inline(never)]
-    pub fn from_bytes_into(
-        input: &'b [u8],
-        out: &mut MaybeUninit<Self>,
-    ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes_into\x00");
-
-        let (rem, (amount, locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
-
-        let out = out.as_mut_ptr();
-
         //good ptr and no uninit reads
+        let out = out.as_mut_ptr();
         unsafe {
             addr_of_mut!((*out).amount).write(amount);
             addr_of_mut!((*out).locktime).write(locktime);
@@ -128,34 +109,34 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
             1 => {
                 let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
-                itoa(self.amount, &mut buffer);
+                let buffer = itoa(self.amount, &mut buffer);
 
-                handle_ui_message(&buffer, message, page)
+                handle_ui_message(buffer, message, page)
             }
             2 if self.locktime > 0 => {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);
-                itoa(self.locktime, &mut buffer);
+                let buffer = itoa(self.locktime, &mut buffer);
 
-                handle_ui_message(&buffer, message, page)
+                handle_ui_message(buffer, message, page)
             }
 
             x @ 2.. if (x == 2 && self.locktime == 0) || (x == 3 && self.locktime > 0) => {
                 let title_content = pic_str!(b"Threshold");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                itoa(self.threshold, &mut buffer);
+                let buffer = itoa(self.threshold, &mut buffer);
 
-                handle_ui_message(&buffer, message, page)
+                handle_ui_message(buffer, message, page)
             }
 
             x @ 3.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
                 if let Some(data) = self.addresses.get(idx as usize) {
-                    let addr = Address::from_bytes(data.as_ref())
-                        .map_err(|_| ViewError::Unknown)?
-                        .1;
-                    addr.render_item(0, title, message, page)
+                    let mut addr = MaybeUninit::uninit();
+                    Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
+                    let addr = addr.as_ptr();
+                    unsafe { (*addr).render_item(0, title, message, page) }
                 } else {
                     Err(ViewError::NoData)
                 }
@@ -187,8 +168,11 @@ mod tests {
             28, 203, 145, 255, 8, 0,
         ];
 
+        let mut out = MaybeUninit::uninit();
+
         // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
-        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap().1;
+        SECPTransferOutput::from_bytes_into(&raw_output[4..], &mut out).unwrap();
+        let output = unsafe { &*(out.as_ptr()) };
         assert_eq!(output.amount, 98000000);
         assert_eq!(output.locktime, 0);
         assert_eq!(output.threshold, 1);

@@ -25,8 +25,6 @@ use crate::handlers::{handle_ui_message, parser_common::ParserError};
 
 use crate::parser::{Address, DisplayableItem, ADDRESS_LEN};
 
-type Fields<'b> = Result<(&'b [u8], (u64, u32, &'b [[u8; ADDRESS_LEN]])), nom::Err<ParserError>>;
-
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPMintOutput<'b> {
@@ -40,7 +38,20 @@ pub struct SECPMintOutput<'b> {
 impl<'b> SECPMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000006;
 
-    fn fields_from_bytes(input: &'b [u8]) -> Fields {
+    #[inline(never)]
+    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
+        let mut out = MaybeUninit::uninit();
+        let rem = Self::from_bytes_into(input, &mut out)?;
+        unsafe { Ok((rem, out.assume_init())) }
+    }
+
+    #[inline(never)]
+    pub fn from_bytes_into(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        crate::sys::zemu_log_stack("SECPMintOutput::from_bytes_into\x00");
+
         let (rem, (locktime, threshold, addr_len)) = tuple((be_u64, be_u32, be_u32))(input)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
@@ -52,35 +63,8 @@ impl<'b> SECPMintOutput<'b> {
             return Err(ParserError::InvalidThreshold.into());
         }
 
-        Ok((rem, (locktime, threshold, addresses)))
-    }
-
-    #[inline(never)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECPMintOutput::from_bytes\x00");
-        let (rem, (locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
-
-        Ok((
-            rem,
-            Self {
-                locktime,
-                threshold,
-                addresses,
-            },
-        ))
-    }
-
-    #[inline(never)]
-    pub fn from_bytes_into(
-        input: &'b [u8],
-        out: &mut MaybeUninit<Self>,
-    ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("SECPMintOutput::from_bytes_into\x00");
-
-        let (rem, (locktime, threshold, addresses)) = Self::fields_from_bytes(input)?;
-        let out = out.as_mut_ptr();
-
         //good ptr and no uninit reads
+        let out = out.as_mut_ptr();
         unsafe {
             addr_of_mut!((*out).locktime).write(locktime);
             addr_of_mut!((*out).threshold).write(threshold);
@@ -124,27 +108,27 @@ impl<'a> DisplayableItem for SECPMintOutput<'a> {
             1 if self.locktime > 0 => {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);
-                itoa(self.locktime, &mut buffer);
+                let buffer = itoa(self.locktime, &mut buffer);
 
-                handle_ui_message(&buffer, message, page)
+                handle_ui_message(buffer, message, page)
             }
 
             x @ 1.. if (x == 1 && self.locktime == 0) || (x == 2 && self.locktime > 0) => {
                 let title_content = pic_str!(b"Threshold");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                itoa(self.threshold, &mut buffer);
+                let buffer = itoa(self.threshold, &mut buffer);
 
-                handle_ui_message(&buffer, message, page)
+                handle_ui_message(buffer, message, page)
             }
 
             x @ 2.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
                 if let Some(data) = self.addresses.get(idx as usize) {
-                    let addr = Address::from_bytes(data.as_ref())
-                        .map_err(|_| ViewError::Unknown)?
-                        .1;
-                    addr.render_item(0, title, message, page)
+                    let mut addr = MaybeUninit::uninit();
+                    Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
+                    let addr = addr.as_ptr();
+                    unsafe { (*addr).render_item(0, title, message, page) }
                 } else {
                     Err(ViewError::NoData)
                 }
@@ -176,6 +160,7 @@ mod tests {
         ];
 
         let output = SECPMintOutput::from_bytes(&raw_output[4..]).unwrap().1;
+
         assert_eq!(output.locktime, 0);
         assert_eq!(output.threshold, 0);
         assert_eq!(output.addresses.len(), 1);
