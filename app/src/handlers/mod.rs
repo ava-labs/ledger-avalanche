@@ -13,7 +13,6 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-pub mod parser_common;
 pub mod public_key;
 pub mod signing;
 pub mod version;

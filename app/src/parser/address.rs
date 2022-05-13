@@ -17,8 +17,8 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, IResult};
 
 use crate::{
-    handlers::{handle_ui_message, parser_common::ParserError},
-    parser::DisplayableItem,
+    handlers::handle_ui_message,
+    parser::{DisplayableItem, ParserError},
 };
 
 use crate::sys::{bech32, hash::Ripemd160};

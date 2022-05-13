@@ -21,9 +21,10 @@ use nom::{
 };
 use zemu_sys::ViewError;
 
-use crate::handlers::{handle_ui_message, parser_common::ParserError};
-
-use crate::parser::{Address, DisplayableItem, ADDRESS_LEN};
+use crate::{
+    handlers::handle_ui_message,
+    parser::{Address, DisplayableItem, ParserError, ADDRESS_LEN},
+};
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]

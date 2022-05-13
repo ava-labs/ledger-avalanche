@@ -15,12 +15,12 @@
 ********************************************************************************/
 use zemu_sys::ViewError;
 
-use crate::handlers::parser_common::ParserError;
-
 mod address;
+mod error;
 mod outputs;
 
 pub use address::{Address, ADDRESS_LEN};
+pub use error::ParserError;
 pub use outputs::SECPTransferOutput;
 
 ///This trait defines the interface useful in the UI context
