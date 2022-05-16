@@ -39,7 +39,7 @@ pub struct SECPTransferOutput<'b> {
 impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
-    #[inline(never)]
+    #[cfg(test)]
     pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
         let mut out = MaybeUninit::uninit();
         let rem = Self::from_bytes_into(input, &mut out)?;
@@ -196,7 +196,6 @@ mod tests {
             28, 203, 145, 255, 8, 0,
         ];
 
-        // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
         let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap_err();
         assert_eq!(output, ParserError::InvalidThreshold.into());
     }

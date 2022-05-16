@@ -39,7 +39,7 @@ pub struct SECPMintOutput<'b> {
 impl<'b> SECPMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000006;
 
-    #[inline(never)]
+    #[cfg(test)]
     pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
         let mut out = MaybeUninit::uninit();
         let rem = Self::from_bytes_into(input, &mut out)?;
