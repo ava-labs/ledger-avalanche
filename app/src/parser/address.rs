@@ -32,11 +32,11 @@ pub const ADDRESS_LEN: usize = Ripemd160::DIGEST_LEN;
 pub struct Address<'b>(&'b [u8; ADDRESS_LEN]);
 
 impl<'b> Address<'b> {
-    #[inline(never)]
+    #[cfg(test)]
     pub fn from_bytes(input: &'b [u8]) -> IResult<&[u8], Self, ParserError> {
-        let (left, addr) = take(ADDRESS_LEN)(input)?;
-        let addr = arrayref::array_ref!(addr, 0, ADDRESS_LEN);
-        Ok((left, Self(addr)))
+        let mut out = MaybeUninit::uninit();
+        let rem = Self::from_bytes_into(input, &mut out)?;
+        unsafe { Ok((rem, out.assume_init())) }
     }
 
     #[inline(never)]
@@ -47,9 +47,8 @@ impl<'b> Address<'b> {
         let (rem, addr) = take(ADDRESS_LEN)(input)?;
         let addr = arrayref::array_ref!(addr, 0, ADDRESS_LEN);
 
-        let out = out.as_mut_ptr();
-
         //good ptr and no uninit reads
+        let out = out.as_mut_ptr();
         unsafe {
             addr_of_mut!((*out).0).write(addr);
         }
@@ -81,9 +80,7 @@ impl<'a> DisplayableItem for Address<'a> {
 
         let mut addr = [0; MAX_SIZE];
 
-        // TODO what hrp do we use?
-        // AFAICT presence of the hrp only alters the error correction at the end
-        // of the encoded address
+        // TODO see https://github.com/Zondax/ledger-avalanche/issues/10
         let len = bech32::encode("", &self.0, &mut addr[..]).map_err(|_| ViewError::Unknown)?;
 
         let title_content = pic_str!(b"Address");
