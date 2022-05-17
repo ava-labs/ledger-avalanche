@@ -19,13 +19,19 @@ use core::{
 };
 use std::convert::TryFrom;
 
-use bolos::PIC;
+use bolos::{
+    crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
+    PIC,
+};
 use zemu_sys::{Show, ViewError, Viewable};
+
+mod xpub;
+pub use xpub::GetExtendedPublicKey;
 
 use crate::{
     constants::{
-        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE,
-        CHAIN_ID_LEN, DEFAULT_CHAIN_ID,
+        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, BIP32_PATH_ROOT_1,
+        CHAIN_ID_CHECKSUM_SIZE, CHAIN_ID_LEN, DEFAULT_CHAIN_ID,
     },
     crypto,
     dispatcher::ApduHandler,
@@ -69,6 +75,69 @@ impl GetPublicKey {
         let pkey = unsafe { out.as_mut_ptr().as_mut().apdu_unwrap() };
         pkey.compress()
     }
+
+    /// Attempts to read a hrp in the slice, advancing the slice and returning the HRP (or default)
+    pub fn get_hrp<'a>(cdata: &mut &'a [u8]) -> Result<&'a [u8], Error> {
+        let (bytes_read, hrp) = read_slice(cdata).ok_or(Error::DataInvalid)?;
+        *cdata = &cdata[bytes_read..];
+
+        match hrp.len() {
+            0 => Ok(Self::default_hrp().as_slice()),
+            len if len > ASCII_HRP_MAX_SIZE => Err(Error::DataInvalid),
+            _ => Ok(hrp),
+        }
+    }
+
+    /// Attempts to read a chainid in the slice,
+    /// advancing the slice and returning the ChainID (or default)
+    pub fn get_chainid<'a>(cdata: &mut &'a [u8]) -> Result<&'a [u8], Error> {
+        let (bytes_read, chainid) = read_slice(cdata).ok_or(Error::DataInvalid)?;
+        *cdata = &cdata[bytes_read..];
+
+        match chainid.len() {
+            0 => Ok(Self::default_chainid().as_slice()),
+            32 => Ok(chainid),
+            _ => Err(Error::DataInvalid),
+        }
+    }
+
+    /// Handles the request according to the parameters given
+    pub fn initialize_ui<const B: usize>(
+        confirmation: bool,
+        curve: crypto::Curve,
+        hrp: &[u8],
+        chain_id: &[u8],
+        path: BIP32Path<B>,
+        extended: bool,
+        ui: &mut MaybeUninit<AddrUI>,
+    ) -> Result<(), Error> {
+        let path_component_1 = *path.components().get(1).ok_or(Error::DataInvalid)?;
+
+        let mut ui_initializer = AddrUIInitializer::new(ui);
+
+        ui_initializer
+            .init_pkey(|key, cc| {
+                if extended {
+                    *cc = Some(*PIC::new(&[0; 32]).into_inner());
+                };
+
+                Self::new_key_into(curve, &path, key, cc.as_mut())
+                    .map_err(|_| AddrUIInitError::KeyInitError)
+            })?
+            .init_hash(|key, hash| {
+                let mut tmp = [0; Sha256::DIGEST_LEN];
+                Sha256::digest_into(key.as_ref(), &mut tmp)
+                    .and_then(|_| Ripemd160::digest_into(&tmp, hash))
+                    .map_err(|_| AddrUIInitError::HashInitError)
+            })?
+            .with_chain(chain_id)?
+            .with_hrp(hrp)?
+            .set_is_avm(path_component_1 == BIP32_PATH_ROOT_1);
+
+        ui_initializer.finalize().map_err(|(_, err)| err)?;
+
+        Ok(())
+    }
 }
 
 impl ApduHandler for GetPublicKey {
@@ -87,53 +156,24 @@ impl ApduHandler for GetPublicKey {
 
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
-        let hrp = {
-            let (bytes_read, hrp) = read_slice(cdata).ok_or(Error::DataInvalid)?;
-            cdata = &cdata[bytes_read..];
-
-            match hrp.len() {
-                0 => Ok(Self::default_hrp().as_slice()),
-                len if len > ASCII_HRP_MAX_SIZE => Err(Error::DataInvalid),
-                _ => Ok(hrp),
-            }
-        }?;
-
-        let chainid = {
-            let (bytes_read, chainid) = read_slice(cdata).ok_or(Error::DataInvalid)?;
-            cdata = &cdata[bytes_read..];
-
-            match chainid.len() {
-                0 => Ok(Self::default_chainid().as_slice()),
-                32 => Ok(chainid),
-                _ => Err(Error::DataInvalid),
-            }
-        }?;
+        let hrp = Self::get_hrp(&mut cdata)?;
+        let chainid = Self::get_chainid(&mut cdata)?;
 
         let bip32_path =
             sys::crypto::bip32::BIP32Path::<6>::read(cdata).map_err(|_| Error::DataInvalid)?;
 
-        let mut ui = MaybeUninit::<AddrUI>::uninit();
+        let mut ui = MaybeUninit::uninit();
+        Self::initialize_ui(
+            req_confirmation,
+            curve,
+            hrp,
+            chainid,
+            bip32_path,
+            false,
+            &mut ui,
+        )?;
 
-        //initialize UI
-        {
-            let mut ui_initializer = AddrUIInitializer::new(&mut ui);
-            ui_initializer
-                .init_pkey(|key| {
-                    Self::new_key_into(curve, &bip32_path, key, None)
-                        .map_err(|_| AddrUIInitError::KeyInitError)
-                })?
-                .init_hash(|key, hash| {
-                    let mut tmp = [0; Sha256::DIGEST_LEN];
-                    Sha256::digest_into(key.as_ref(), &mut tmp)
-                        .and_then(|_| Ripemd160::digest_into(&tmp, hash))
-                        .map_err(|_| AddrUIInitError::HashInitError)
-                })?
-                .with_chain(chainid)?
-                .with_hrp(hrp)?;
-            ui_initializer.finalize().map_err(|(_, err)| err)?;
-        }
-
-        //safe because it's all initialized now
+        //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };
 
         if req_confirmation {
@@ -186,6 +226,11 @@ impl From<AddrUIInitError> for Error {
 impl<'ui> AddrUIInitializer<'ui> {
     /// Create a new `AddrUI` initialized
     pub fn new(ui: &'ui mut MaybeUninit<AddrUI>) -> Self {
+        unsafe {
+            let ui = ui.as_mut_ptr();
+            addr_of_mut!((*ui).is_avm).write(true);
+        }
+
         Self {
             ui,
             hash_init: false,
@@ -195,9 +240,23 @@ impl<'ui> AddrUIInitializer<'ui> {
         }
     }
 
-    /// Initialize the public key with the given closure
+    /// Override type of AddrUI between EVM or AVM
+    pub fn set_is_avm(&mut self, is_avm: bool) -> &mut Self {
+        unsafe {
+            let ui = self.ui.as_mut_ptr();
+            addr_of_mut!((*ui).is_avm).write(is_avm);
+        }
+
+        self
+    }
+
+    /// Initialize the public key with the given closure,
+    /// also providing access to chain_code, initialized to `None` already
     pub fn init_pkey<
-        F: FnOnce(&mut MaybeUninit<crypto::PublicKey>) -> Result<(), AddrUIInitError>,
+        F: FnOnce(
+            &mut MaybeUninit<crypto::PublicKey>,
+            &mut Option<[u8; CHAIN_CODE_LEN]>,
+        ) -> Result<(), AddrUIInitError>,
     >(
         &mut self,
         init: F,
@@ -211,7 +270,21 @@ impl<'ui> AddrUIInitializer<'ui> {
         let key =
             unsafe { addr_of_mut!((*ui).pkey).cast::<MaybeUninit<_>>().as_mut() }.apdu_unwrap();
 
-        init(key).map(|_| {
+        //get `chain_code` &mut,
+        // cast to MaybeUninit *mut
+        //SAFE: `as_mut` it to &mut MaybeUninit (safe because it's MaybeUninit)
+        // unwrap the option as it's guarantee valid pointer
+        // then initialize to a default, and pass the &mut of it
+        let chain_code: &mut Option<[u8; CHAIN_CODE_LEN]> = unsafe {
+            let cc = addr_of_mut!((*ui).chain_code)
+                .cast::<MaybeUninit<_>>()
+                .as_mut()
+                .apdu_unwrap();
+            cc.write(None);
+            cc.assume_init_mut()
+        };
+
+        init(key, chain_code).map(|_| {
             self.pkey_init = true;
             self
         })
@@ -228,13 +301,19 @@ impl<'ui> AddrUIInitializer<'ui> {
             Ok(_) => {
                 //get ui *mut
                 let ui = self.ui.as_mut_ptr();
-                //get `hrp` *mut,
-                //SAFE: `as_mut` it to &mut [u8; ...]. this is okay as there's not invalid value for u8
-                // and we'll be writing on it now
-                // unwrap is fine since it's valid pointer
-                let ui_hrp = unsafe { addr_of_mut!((*ui).hrp).as_mut() }.apdu_unwrap();
-                ui_hrp[..hrp.len()].copy_from_slice(hrp);
-                ui_hrp[hrp.len()] = 0; //null terminate
+
+                //SAFETY: pointers are all valid since they are coming from rust
+                // they are guaranteed non overlapping and we don't do any reads on uninit memory
+                unsafe {
+                    let ui_hrp = addr_of_mut!((*ui).hrp).cast::<u8>();
+                    //copy hrp into the array
+                    ui_hrp.copy_from_nonoverlapping(hrp.as_ptr(), hrp.len());
+                    //null terminate
+                    ui_hrp
+                        .add(hrp.len())
+                        .write_bytes(0, ASCII_HRP_MAX_SIZE + 1 - hrp.len());
+                }
+
                 self.hrp_init = true;
                 Ok(self)
             }
@@ -245,20 +324,28 @@ impl<'ui> AddrUIInitializer<'ui> {
         if chainid.len() != CHAIN_ID_LEN {
             return Err(AddrUIInitError::InvalidChainCode);
         }
-
         let checksum = Sha256::digest(chainid).map_err(|_| AddrUIInitError::ChainCodeInitError)?;
 
         let ui = self.ui.as_mut_ptr();
-        //get `chain_code` *mut,
-        //SAFE: `as_mut` it to &mut [u8; ...]. this is okay as there's not invalid value for u8
-        // and we'll be writing on it now
-        // unwrap is fine since it's valid pointer
-        let ui_chain = unsafe { addr_of_mut!((*ui).chain_id_with_checksum).as_mut() }.apdu_unwrap();
-        //first CHAIN_CODE_SIZE bytes is the chain code
-        ui_chain[..CHAIN_ID_LEN].copy_from_slice(chainid);
-        //then we have the checksum, which is the last 4 bytes of sha256(chain_code)
-        ui_chain[CHAIN_ID_LEN..]
-            .copy_from_slice(&checksum[checksum.len() - CHAIN_ID_CHECKSUM_SIZE..]);
+        //SAFE: pointers come from rust so they are valid
+        // any write happens with `.write` so we don't read the uninitialized memory
+        unsafe {
+            //get `chain_code` *mut,
+            let chain = addr_of_mut!((*ui).chain_id_with_checksum).cast::<u8>();
+            //write chainid in the array
+            chain.copy_from_nonoverlapping(chainid.as_ptr(), CHAIN_ID_LEN);
+            //offset by CHAIN_ID_LEN bytes and write the checksum
+            // which is the last 4 bytes of sha256(chain_code)
+            chain
+                .add(CHAIN_ID_LEN) //should be same chainid.len()
+                .copy_from_nonoverlapping(
+                    checksum
+                        .as_ptr()
+                        .add(checksum.len() - CHAIN_ID_CHECKSUM_SIZE),
+                    CHAIN_ID_CHECKSUM_SIZE,
+                );
+        }
+
         self.chain_init = true;
         Ok(self)
     }
@@ -285,7 +372,13 @@ impl<'ui> AddrUIInitializer<'ui> {
         //SAFE: `as_mut` it to &mut [u8; ...]. this is okay as there's not invalid value for u8
         // and we'll be writing on it now
         // unwrap is fine since it's valid pointer
-        let hash = unsafe { addr_of_mut!((*ui).hash).as_mut() }.apdu_unwrap();
+        let hash = unsafe {
+            let hash = addr_of_mut!((*ui).hash);
+            //initialize to default to avoid UB
+            hash.write(*PIC::new(&[0; Ripemd160::DIGEST_LEN]).into_inner());
+            hash.as_mut()
+        }
+        .apdu_unwrap();
 
         init(key, hash).map(|_| {
             self.hash_init = true;
@@ -324,6 +417,8 @@ impl<'ui> AddrUIInitializer<'ui> {
 
 pub struct AddrUI {
     pub pkey: crypto::PublicKey,
+    chain_code: Option<[u8; CHAIN_CODE_LEN]>,
+    is_avm: bool,
     //includes checksum
     chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],
     hash: [u8; Ripemd160::DIGEST_LEN],
@@ -364,7 +459,7 @@ impl AddrUI {
 
 impl Viewable for AddrUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
-        Ok(1)
+        Ok(1 + self.chain_code.is_some() as u8)
     }
 
     fn render_item(
@@ -376,26 +471,42 @@ impl Viewable for AddrUI {
     ) -> Result<u8, ViewError> {
         use bolos::pic_str;
 
-        if let 0 = item_n {
-            let title_content = pic_str!(b"Address");
-            title[..title_content.len()].copy_from_slice(title_content);
+        match item_n {
+            0 => {
+                let title_content = pic_str!(b"Address");
+                title[..title_content.len()].copy_from_slice(title_content);
 
-            const MEX_MAX_SIZE: usize = AddrUI::MAX_CHAIN_CB58_LEN
+                const MEX_MAX_SIZE: usize = AddrUI::MAX_CHAIN_CB58_LEN
                 + 1 // the '-' separator
                 + bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN);
 
-            let mut mex = [0; MEX_MAX_SIZE];
-            let mut len =
-                self.chain_id_into(arrayref::array_mut_ref![mex, 0, AddrUI::MAX_CHAIN_CB58_LEN]);
-            mex[len] = b'-';
-            len += 1;
+                let mut mex = [0; MEX_MAX_SIZE];
+                let mut len = self.chain_id_into(arrayref::array_mut_ref![
+                    mex,
+                    0,
+                    AddrUI::MAX_CHAIN_CB58_LEN
+                ]);
+                mex[len] = b'-';
+                len += 1;
 
-            len += bech32::encode(self.hrp_as_str(), &self.hash, &mut mex[len..])
-                .map_err(|_| ViewError::Unknown)?;
+                len += bech32::encode(self.hrp_as_str(), &self.hash, &mut mex[len..])
+                    .map_err(|_| ViewError::Unknown)?;
 
-            handle_ui_message(&mex[..len], message, page)
-        } else {
-            Err(ViewError::NoData)
+                handle_ui_message(&mex[..len], message, page)
+            }
+            1 if self.chain_code.is_some() => {
+                let title_content = pic_str!(b"Path");
+                title[..title_content.len()].copy_from_slice(title_content);
+
+                let path = if self.is_avm {
+                    pic_str!("m/44'/9000'/0'")
+                } else {
+                    pic_str!("m/44'/60'/0'")
+                };
+
+                handle_ui_message(path.as_bytes(), message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 
@@ -438,7 +549,7 @@ mod tests {
 
             let mut builder = AddrUIInitializer::new(&mut loc);
             let _ = builder
-                .init_pkey(|key| {
+                .init_pkey(|key, _| {
                     key.write(*pkey);
                     Ok(())
                 })

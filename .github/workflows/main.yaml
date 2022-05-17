@@ -26,7 +26,7 @@ jobs:
           cargo +nightly miri --version
       - name: Test with Miri
         env:
-          MIRIFLAGS: -Zmiri-symbolic-alignment-check
+          MIRIFLAGS: -Zmiri-symbolic-alignment-check -Zmiri-check-number-validity
         run: |
           cargo +nightly miri test
       - name: show versions

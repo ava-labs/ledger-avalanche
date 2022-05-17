@@ -110,6 +110,7 @@ pub(crate) mod instructions {
 
     pub const INS_GET_VERSION: u8 = 0x00;
     pub const INS_GET_PUBLIC_KEY: u8 = 0x01;
+    pub const INS_GET_EXTENDED_PUBLIC_KEY: u8 = 0x04;
     #[cfg(feature = "blind-sign")]
     pub const INS_BLIND_SIGN: u8 = 0x02;
     pub const INS_GET_WALLET_ID: u8 = 0x03;
