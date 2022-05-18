@@ -123,7 +123,7 @@ pub fn bs58_encode(
         }
     }
 
-    for _ in input.into_iter().take_while(|v| **v == 0) {
+    for _ in input.iter().take_while(|v| **v == 0) {
         if index == output.len() {
             return Err(OutputBufferTooSmall);
         }

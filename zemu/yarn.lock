@@ -965,16 +965,16 @@
   version "0.0.0"
   uid ""
 
-"@zondax/zemu@^0.27.0-rc2":
-  version "0.27.0-rc2"
-  resolved "https://registry.yarnpkg.com/@zondax/zemu/-/zemu-0.27.0-rc2.tgz#a93110c4688e099ae072c9276a39768a9a189ec2"
-  integrity sha512-edc5kdYRE39/ywLFuCurayBGeCLxPYRcm3ZpRN8MVeHLMWHbKiqr4/BKf7OAOfz/oNkGOkwYd5pRcBmlwGBAew==
+"@zondax/zemu@^0.29.1":
+  version "0.29.1"
+  resolved "https://registry.yarnpkg.com/@zondax/zemu/-/zemu-0.29.1.tgz#fac3d4447d3b9c83d7ab46400f12568de2964e37"
+  integrity sha512-l7bO4V5ovkqL2q+JaA7ZxG6xV0EaCq4yi1flokl5+mNoffb2A034nb5/j3wvPObfvwo4/NtUQ8IVLpx1mXnQLA==
   dependencies:
     "@grpc/grpc-js" "^1.5.5"
     "@grpc/proto-loader" "^0.6.9"
     "@ledgerhq/hw-transport" "^6.24.1"
     "@ledgerhq/hw-transport-http" "^6.24.1"
-    axios "^0.26.0"
+    axios "^0.27.2"
     axios-retry "^3.2.0"
     dockerode "^3.3.1"
     elfy "^1.0.0"
@@ -983,7 +983,6 @@
     path "^0.12.7"
     pngjs "^6.0.0"
     randomstring "^1.2.1"
-    rfb2 "^0.2.2"
     sleep "^6.3.0"
 
 abab@^2.0.3, abab@^2.0.5:
@@ -1168,6 +1167,14 @@ axios@^0.26.0:
   integrity sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==
   dependencies:
     follow-redirects "^1.14.8"
+
+axios@^0.27.2:
+  version "0.27.2"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-0.27.2.tgz#207658cc8621606e586c85db4b41a750e756d972"
+  integrity sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==
+  dependencies:
+    follow-redirects "^1.14.9"
+    form-data "^4.0.0"
 
 babel-jest@^27.3.1:
   version "27.3.1"
@@ -2062,10 +2069,24 @@ follow-redirects@^1.14.8:
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.14.9.tgz#dd4ea157de7bfaf9ea9b3fbd85aa16951f78d8d7"
   integrity sha512-MQDfihBQYMcyy5dhRDJUHcw7lb2Pv/TuE6xP1vyraLukNDHKbDxDNaOE3NbCAdKQApno+GPRyo1YAp89yCjK4w==
 
+follow-redirects@^1.14.9:
+  version "1.15.0"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.0.tgz#06441868281c86d0dda4ad8bdaead2d02dca89d4"
+  integrity sha512-aExlJShTV4qOUOL7yF1U5tvLCB0xQuudbf6toyYA0E/acBNw71mvjFTnLaRp50aQaYocMR0a/RMMBIHeZnGyjQ==
+
 form-data@^3.0.0:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/form-data/-/form-data-3.0.1.tgz#ebd53791b78356a99af9a300d4282c4d5eb9755f"
   integrity sha512-RHkBKtLWUVwd7SqRIvCZMEvAMoGUp0XU+seQiZejj0COz3RI3hWP4sCv3gZWWLjJTd7rGwcsF5eKZGii0r/hbg==
+  dependencies:
+    asynckit "^0.4.0"
+    combined-stream "^1.0.8"
+    mime-types "^2.1.12"
+
+form-data@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/form-data/-/form-data-4.0.0.tgz#93919daeaf361ee529584b9b31664dc12c9fa452"
+  integrity sha512-ETEklSGi5t0QMZuiXoA/Q6vcnxcLQP5vdugSpuAyi6SVGi2clPPp+xgEhuMaHC+zGgn31Kd235W35f7Hykkaww==
   dependencies:
     asynckit "^0.4.0"
     combined-stream "^1.0.8"
@@ -3623,11 +3644,6 @@ reusify@^1.0.4:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/reusify/-/reusify-1.0.4.tgz#90da382b1e126efc02146e90845a88db12925d76"
   integrity sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==
-
-rfb2@^0.2.2:
-  version "0.2.2"
-  resolved "https://registry.yarnpkg.com/rfb2/-/rfb2-0.2.2.tgz#f9444b8803e6a31848e57911ace562ce0fee5598"
-  integrity sha512-+Aw0oED0zsoNQYFE3FUsD+a/lm9y8YwdQaERlWHm7G5hey3tiSQGq7tfe5sFAw5fbN7Zms38bVEDxIUAOq3mRw==
 
 rimraf@^3.0.0, rimraf@^3.0.2:
   version "3.0.2"
