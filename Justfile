@@ -15,7 +15,7 @@ tests: build-elfs
     make zemu_test
 
 # Run zemu tests specified by the given filter
-ztest filter:
+ztest filter="":
     cd zemu && yarn test -t {{filter}}
 
 # Start debugging with zemu according to debug.mjs
