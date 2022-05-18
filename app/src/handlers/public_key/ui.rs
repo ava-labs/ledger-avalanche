@@ -32,7 +32,7 @@ use crate::{
 
 use core::{
     mem::MaybeUninit,
-    ptr::{addr_of, addr_of_mut},
+    ptr::{addr_of_mut},
 };
 
 use super::GetPublicKey;
@@ -86,7 +86,7 @@ impl<'ui> AddrUIInitializer<'ui> {
     ) -> Result<(), AddrUIInitError>
            + 'p {
         move |key, cc| {
-            GetPublicKey::new_key_into(curve, &path, key, cc)
+            GetPublicKey::new_key_into(curve, path, key, cc)
                 .map_err(|_| AddrUIInitError::KeyInitError)
         }
     }
