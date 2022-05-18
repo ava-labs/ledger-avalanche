@@ -39,6 +39,6 @@ fn extended_public_key() {
     assert_error_code!(tx, buffer, ApduError::Success);
 
     let pk_len = buffer[0] as usize;
-    //secp256k1 pubkey and 20 bytes for hash + 2 for response code
-    assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
+    //secp256k1 pubkey and 32 bytes for chain code + 2 for response code
+    assert_eq!(tx as usize, 1 + pk_len + 32 + 2);
 }

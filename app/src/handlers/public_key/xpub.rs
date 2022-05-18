@@ -13,17 +13,46 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use core::{convert::TryFrom, mem::MaybeUninit};
+use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 
-use zemu_sys::{Show, Viewable};
+use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::ApduError as Error, crypto, dispatcher::ApduHandler, sys, utils::ApduBufferRead,
+    constants::{ApduError as Error, BIP32_PATH_ROOT_1},
+    crypto,
+    dispatcher::ApduHandler,
+    handlers::handle_ui_message,
+    sys::{
+        self,
+        crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
+        hash::{Hasher},
+        PIC,
+    },
+    utils::{ApduBufferRead, ApduPanic},
 };
 
-use super::GetPublicKey;
+use super::{AddrUI, AddrUIInitError, AddrUIInitializer, GetPublicKey};
 
 pub struct GetExtendedPublicKey;
+
+impl GetExtendedPublicKey {
+    pub fn initialize_ui<const B: usize>(
+        curve: crypto::Curve,
+        hrp: &[u8],
+        chain_id: &[u8],
+        path: BIP32Path<B>,
+        ui: &mut MaybeUninit<ExtendedPubkeyUI>,
+    ) -> Result<(), Error> {
+        let path_component_1 = *path.components().get(1).ok_or(Error::DataInvalid)?;
+
+        let mut initializer = ExtendedPubkeyUIInitializer::new(ui);
+        initializer.set_is_avm(path_component_1 == BIP32_PATH_ROOT_1);
+
+        initializer.initialize_inner(curve, path, chain_id, hrp)?;
+
+        initializer.finalize().map_err(|_| Error::ExecutionError)
+    }
+}
 
 impl ApduHandler for GetExtendedPublicKey {
     #[inline(never)]
@@ -48,15 +77,7 @@ impl ApduHandler for GetExtendedPublicKey {
             sys::crypto::bip32::BIP32Path::<6>::read(cdata).map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
-        GetPublicKey::initialize_ui(
-            req_confirmation,
-            curve,
-            hrp,
-            chainid,
-            bip32_path,
-            true,
-            &mut ui,
-        )?;
+        Self::initialize_ui(curve, hrp, chainid, bip32_path, &mut ui)?;
 
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };
@@ -75,5 +96,178 @@ impl ApduHandler for GetExtendedPublicKey {
                 Ok(())
             }
         }
+    }
+}
+
+pub struct ExtendedPubkeyUI {
+    addr_ui: AddrUI,
+    chain_code: [u8; CHAIN_CODE_LEN],
+    is_avm: bool,
+}
+
+pub struct ExtendedPubkeyUIInitializer<'ui> {
+    ui: &'ui mut MaybeUninit<ExtendedPubkeyUI>,
+    inner_ui_init: bool,
+    chain_code_init: bool,
+}
+
+impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
+    pub fn new(ui: &'ui mut MaybeUninit<ExtendedPubkeyUI>) -> Self {
+        unsafe {
+            let ui = ui.as_mut_ptr();
+            addr_of_mut!((*ui).is_avm).write(true);
+        }
+
+        Self {
+            ui,
+            inner_ui_init: false,
+            chain_code_init: false,
+        }
+    }
+
+    /// Override type of AddrUI between EVM or AVM
+    pub fn set_is_avm(&mut self, is_avm: bool) -> &mut Self {
+        unsafe {
+            let ui = self.ui.as_mut_ptr();
+            addr_of_mut!((*ui).is_avm).write(is_avm);
+        }
+
+        self
+    }
+
+    fn addr_ui_initializer(&mut self) -> AddrUIInitializer<'ui> {
+        let ui = self.ui.as_mut_ptr();
+
+        //get `addr_ui` *mut,
+        // cast to MaybeUninit *mut
+        //SAFE: `as_mut` it to &mut MaybeUninit (safe because it's MaybeUninit)
+        // unwrap the option as it's guarantee valid pointer
+        let inner_ui = unsafe {
+            addr_of_mut!((*ui).addr_ui)
+                .cast::<MaybeUninit<AddrUI>>()
+                .as_mut()
+        }
+        .apdu_unwrap();
+
+        AddrUIInitializer::new(inner_ui)
+    }
+
+    pub fn initialize_inner<const B: usize>(
+        &mut self,
+        curve: crypto::Curve,
+        path: BIP32Path<B>,
+        chain_id: &[u8],
+        hrp: &[u8],
+    ) -> Result<&mut Self, AddrUIInitError> {
+        let mut initializer = self.init_pkey(AddrUIInitializer::key_initializer(curve, path))?;
+        initializer
+            .init_hash(AddrUIInitializer::hash_initializer())?
+            .with_chain(chain_id)?
+            .with_hrp(hrp)?;
+        initializer.finalize().map_err(|(_, err)| err)?;
+
+        self.inner_ui_init = true;
+        Ok(self)
+    }
+
+    pub fn init_pkey<
+        F: FnOnce(
+            &mut MaybeUninit<crypto::PublicKey>,
+            Option<&mut [u8; CHAIN_CODE_LEN]>,
+        ) -> Result<(), AddrUIInitError>,
+    >(
+        &mut self,
+        init: F,
+    ) -> Result<AddrUIInitializer<'_>, AddrUIInitError> {
+        //get `chain_code` &mut,
+        // cast to MaybeUninit *mut
+        //SAFE: `as_mut` it to &mut MaybeUninit (safe because it's MaybeUninit)
+        // unwrap the option as it's guarantee valid pointer
+        // then initialize to a default, and pass the &mut of it
+        let chain_code: Option<&mut [u8; CHAIN_CODE_LEN]> = unsafe {
+            let ui = self.ui.as_mut_ptr();
+            let cc = addr_of_mut!((*ui).chain_code)
+                .cast::<MaybeUninit<_>>()
+                .as_mut()
+                .apdu_unwrap();
+            cc.write(*PIC::new(&[0; CHAIN_CODE_LEN]).into_inner());
+            Some(cc.assume_init_mut())
+        };
+
+        let mut initializer = self.addr_ui_initializer();
+        initializer.init_pkey(chain_code, init)?;
+
+        self.chain_code_init = true;
+
+        Ok(initializer)
+    }
+
+    pub fn finalize(self) -> Result<(), Self> {
+        if self.chain_code_init && self.inner_ui_init {
+            Ok(())
+        } else {
+            Err(self)
+        }
+    }
+}
+
+impl Viewable for ExtendedPubkeyUI {
+    fn num_items(&mut self) -> Result<u8, ViewError> {
+        Ok(2)
+    }
+
+    fn render_item(
+        &mut self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        use bolos::pic_str;
+
+        match item_n {
+            0 => self.addr_ui.render_item(0, title, message, page),
+            1 => {
+                let title_content = pic_str!(b"Path");
+                title[..title_content.len()].copy_from_slice(title_content);
+
+                let path = if self.is_avm {
+                    pic_str!("m/44'/9000'/0'")
+                } else {
+                    pic_str!("m/44'/60'/0'")
+                };
+
+                handle_ui_message(path.as_bytes(), message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
+    }
+
+    fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
+        let pkey = self.addr_ui.pkey.as_ref();
+        let mut tx = 0;
+
+        out[tx] = pkey.len() as u8;
+        tx += 1;
+        //safety: all pointers are valid
+        unsafe {
+            let pkey_out = out[tx..tx + pkey.len()].as_mut_ptr();
+            pkey_out.copy_from(pkey.as_ptr(), pkey.len());
+        };
+        tx += pkey.len();
+
+        let cc = self.chain_code;
+        //safety: all pointers are valid
+        unsafe {
+            let cc_out = out[tx..tx + cc.len()].as_mut_ptr();
+            cc_out.copy_from(cc.as_ptr(), cc.len());
+        }
+        tx += cc.len();
+
+        (tx, Error::Success as _)
+    }
+
+    fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
+        (0, Error::CommandNotAllowed as _)
     }
 }
