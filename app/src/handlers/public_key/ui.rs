@@ -30,10 +30,7 @@ use crate::{
     utils::{bs58_encode, rs_strlen, ApduPanic},
 };
 
-use core::{
-    mem::MaybeUninit,
-    ptr::{addr_of_mut},
-};
+use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
 use super::GetPublicKey;
 
