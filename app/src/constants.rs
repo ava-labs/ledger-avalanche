@@ -118,6 +118,7 @@ pub(crate) mod instructions {
 
 pub const BIP32_PATH_ROOT_0: u32 = 0x8000_0000 + 44;
 pub const BIP32_PATH_ROOT_1: u32 = 0x8000_0000 + 9000;
+pub const MAX_BIP32_PATH_DEPTH: usize = 6;
 
 pub use instructions::*;
 

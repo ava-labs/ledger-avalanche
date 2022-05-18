@@ -18,14 +18,14 @@ use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, BIP32_PATH_ROOT_1},
+    constants::{ApduError as Error, BIP32_PATH_ROOT_1, MAX_BIP32_PATH_DEPTH},
     crypto,
     dispatcher::ApduHandler,
     handlers::handle_ui_message,
     sys::{
         self,
         crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
-        hash::{Hasher},
+        hash::Hasher,
         PIC,
     },
     utils::{ApduBufferRead, ApduPanic},
@@ -36,11 +36,11 @@ use super::{AddrUI, AddrUIInitError, AddrUIInitializer, GetPublicKey};
 pub struct GetExtendedPublicKey;
 
 impl GetExtendedPublicKey {
-    pub fn initialize_ui<const B: usize>(
+    pub fn initialize_ui(
         curve: crypto::Curve,
         hrp: &[u8],
         chain_id: &[u8],
-        path: BIP32Path<B>,
+        path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
         ui: &mut MaybeUninit<ExtendedPubkeyUI>,
     ) -> Result<(), Error> {
         let path_component_1 = *path.components().get(1).ok_or(Error::DataInvalid)?;
@@ -73,8 +73,8 @@ impl ApduHandler for GetExtendedPublicKey {
         let hrp = GetPublicKey::get_hrp(&mut cdata)?;
         let chainid = GetPublicKey::get_chainid(&mut cdata)?;
 
-        let bip32_path =
-            sys::crypto::bip32::BIP32Path::<6>::read(cdata).map_err(|_| Error::DataInvalid)?;
+        let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
+            .map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
         Self::initialize_ui(curve, hrp, chainid, bip32_path, &mut ui)?;
@@ -101,14 +101,20 @@ impl ApduHandler for GetExtendedPublicKey {
 
 pub struct ExtendedPubkeyUI {
     addr_ui: AddrUI,
-    chain_code: [u8; CHAIN_CODE_LEN],
     is_avm: bool,
+}
+
+impl ExtendedPubkeyUI {
+    pub fn key_with_chain_code(&self) -> Result<(crypto::PublicKey, [u8; CHAIN_CODE_LEN]), Error> {
+        let mut out = [0; CHAIN_CODE_LEN];
+        self.addr_ui.pkey(Some(&mut out)).map(|key| (key, out))
+    }
 }
 
 pub struct ExtendedPubkeyUIInitializer<'ui> {
     ui: &'ui mut MaybeUninit<ExtendedPubkeyUI>,
     inner_ui_init: bool,
-    chain_code_init: bool,
+    // chain_code_init: bool,
 }
 
 impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
@@ -121,7 +127,7 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
         Self {
             ui,
             inner_ui_init: false,
-            chain_code_init: false,
+            // chain_code_init: false,
         }
     }
 
@@ -152,16 +158,16 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
         AddrUIInitializer::new(inner_ui)
     }
 
-    pub fn initialize_inner<const B: usize>(
+    pub fn initialize_inner(
         &mut self,
         curve: crypto::Curve,
-        path: BIP32Path<B>,
+        path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
         chain_id: &[u8],
         hrp: &[u8],
     ) -> Result<&mut Self, AddrUIInitError> {
-        let mut initializer = self.init_pkey(AddrUIInitializer::key_initializer(curve, path))?;
+        let mut initializer = self.addr_ui_initializer();
         initializer
-            .init_hash(AddrUIInitializer::hash_initializer())?
+            .with_path(curve, path)
             .with_chain(chain_id)?
             .with_hrp(hrp)?;
         initializer.finalize().map_err(|(_, err)| err)?;
@@ -170,40 +176,8 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
         Ok(self)
     }
 
-    pub fn init_pkey<
-        F: FnOnce(
-            &mut MaybeUninit<crypto::PublicKey>,
-            Option<&mut [u8; CHAIN_CODE_LEN]>,
-        ) -> Result<(), AddrUIInitError>,
-    >(
-        &mut self,
-        init: F,
-    ) -> Result<AddrUIInitializer<'_>, AddrUIInitError> {
-        //get `chain_code` &mut,
-        // cast to MaybeUninit *mut
-        //SAFE: `as_mut` it to &mut MaybeUninit (safe because it's MaybeUninit)
-        // unwrap the option as it's guarantee valid pointer
-        // then initialize to a default, and pass the &mut of it
-        let chain_code: Option<&mut [u8; CHAIN_CODE_LEN]> = unsafe {
-            let ui = self.ui.as_mut_ptr();
-            let cc = addr_of_mut!((*ui).chain_code)
-                .cast::<MaybeUninit<_>>()
-                .as_mut()
-                .apdu_unwrap();
-            cc.write(*PIC::new(&[0; CHAIN_CODE_LEN]).into_inner());
-            Some(cc.assume_init_mut())
-        };
-
-        let mut initializer = self.addr_ui_initializer();
-        initializer.init_pkey(chain_code, init)?;
-
-        self.chain_code_init = true;
-
-        Ok(initializer)
-    }
-
     pub fn finalize(self) -> Result<(), Self> {
-        if self.chain_code_init && self.inner_ui_init {
+        if self.inner_ui_init {
             Ok(())
         } else {
             Err(self)
@@ -244,24 +218,21 @@ impl Viewable for ExtendedPubkeyUI {
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let pkey = self.addr_ui.pkey.as_ref();
+        let (pkey, cc) = match self.key_with_chain_code() {
+            Ok(ok) => ok,
+            Err(e) => return (0, e as _),
+        };
+
+        let pkey_bytes = pkey.as_ref();
         let mut tx = 0;
 
-        out[tx] = pkey.len() as u8;
+        out[tx] = pkey_bytes.len() as u8;
         tx += 1;
-        //safety: all pointers are valid
-        unsafe {
-            let pkey_out = out[tx..tx + pkey.len()].as_mut_ptr();
-            pkey_out.copy_from(pkey.as_ptr(), pkey.len());
-        };
-        tx += pkey.len();
 
-        let cc = self.chain_code;
-        //safety: all pointers are valid
-        unsafe {
-            let cc_out = out[tx..tx + cc.len()].as_mut_ptr();
-            cc_out.copy_from(cc.as_ptr(), cc.len());
-        }
+        out[tx..tx + pkey_bytes.len()].copy_from_slice(pkey_bytes);
+        tx += pkey_bytes.len();
+
+        out[tx..tx + cc.len()].copy_from_slice(&cc);
         tx += cc.len();
 
         (tx, Error::Success as _)

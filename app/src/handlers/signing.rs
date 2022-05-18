@@ -25,7 +25,7 @@ use zemu_sys::{Show, ViewError, Viewable};
 mod blind_sign_toggle;
 
 use crate::{
-    constants::ApduError as Error,
+    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::handle_ui_message,
@@ -34,14 +34,14 @@ use crate::{
 };
 
 #[bolos::lazy_static]
-static mut PATH: Option<(BIP32Path<10>, Curve)> = None;
+static mut PATH: Option<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve)> = None;
 
 pub struct BlindSign;
 
 impl BlindSign {
     pub const SIGN_HASH_SIZE: usize = 32;
 
-    fn get_derivation_info() -> Result<&'static (BIP32Path<10>, Curve), Error> {
+    fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
         match unsafe { &*PATH } {
             None => Err(Error::ApduCodeConditionsNotSatisfied),
             Some(some) => Ok(some),

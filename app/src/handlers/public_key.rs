@@ -26,14 +26,10 @@ mod ui;
 pub use ui::{AddrUI, AddrUIInitError, AddrUIInitializer};
 
 use crate::{
-    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID},
+    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH},
     crypto,
     dispatcher::ApduHandler,
-    sys::{
-        self,
-        hash::{Hasher},
-        Error as SysError,
-    },
+    sys::{self, hash::Hasher, Error as SysError},
     utils::{read_slice, ApduBufferRead, ApduPanic},
 };
 
@@ -95,18 +91,17 @@ impl GetPublicKey {
     }
 
     /// Handles the request according to the parameters given
-    pub fn initialize_ui<const B: usize>(
+    pub fn initialize_ui(
         curve: crypto::Curve,
         hrp: &[u8],
         chain_id: &[u8],
-        path: BIP32Path<B>,
+        path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
         ui: &mut MaybeUninit<AddrUI>,
     ) -> Result<(), Error> {
         let mut ui_initializer = AddrUIInitializer::new(ui);
 
         ui_initializer
-            .init_pkey(None, AddrUIInitializer::key_initializer(curve, path))?
-            .init_hash(AddrUIInitializer::hash_initializer())?
+            .with_path(curve, path)
             .with_chain(chain_id)?
             .with_hrp(hrp)?;
 
@@ -135,8 +130,8 @@ impl ApduHandler for GetPublicKey {
         let hrp = Self::get_hrp(&mut cdata)?;
         let chainid = Self::get_chainid(&mut cdata)?;
 
-        let bip32_path =
-            sys::crypto::bip32::BIP32Path::<6>::read(cdata).map_err(|_| Error::DataInvalid)?;
+        let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
+            .map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
         Self::initialize_ui(curve, hrp, chainid, bip32_path, &mut ui)?;

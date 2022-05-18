@@ -17,7 +17,7 @@
 use crate::{
     constants::{
         chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE,
-        CHAIN_ID_LEN,
+        CHAIN_ID_LEN, MAX_BIP32_PATH_DEPTH,
     },
     crypto,
     handlers::handle_ui_message,
@@ -42,17 +42,15 @@ use super::GetPublicKey;
 pub struct AddrUIInitializer<'ui> {
     ui: &'ui mut MaybeUninit<AddrUI>,
     chain_init: bool,
-    hash_init: bool,
-    pkey_init: bool,
+    path_init: bool,
     hrp_init: bool,
 }
 
 #[cfg_attr(test, derive(Debug))]
 pub enum AddrUIInitError {
     KeyInitError,
-    KeyNotInitialized,
+    PathNotInitialized,
     HashInitError,
-    HashNotInitialized,
     HrpNotInitialized,
     InvalidChainCode,
     ChainCodeNotInitialized,
@@ -72,28 +70,28 @@ impl<'ui> AddrUIInitializer<'ui> {
     pub fn new(ui: &'ui mut MaybeUninit<AddrUI>) -> Self {
         Self {
             ui,
-            hash_init: false,
-            pkey_init: false,
+            path_init: false,
             hrp_init: false,
             chain_init: false,
         }
     }
 
-    /// Produce the closure to initialize the key with `init_pkey`
-    pub fn key_initializer<const B: usize>(
+    /// Produce the closure to initialize a key
+    pub fn key_initializer<'p, const B: usize>(
         curve: crypto::Curve,
-        path: BIP32Path<B>,
+        path: &'p BIP32Path<B>,
     ) -> impl FnOnce(
         &mut MaybeUninit<crypto::PublicKey>,
         Option<&mut [u8; CHAIN_CODE_LEN]>,
-    ) -> Result<(), AddrUIInitError> {
+    ) -> Result<(), AddrUIInitError>
+           + 'p {
         move |key, cc| {
             GetPublicKey::new_key_into(curve, &path, key, cc)
                 .map_err(|_| AddrUIInitError::KeyInitError)
         }
     }
 
-    /// Produce the closure to initialize the hash with `init_hash`
+    /// Produce the closure to initialize the pubkey hash
     pub fn hash_initializer(
     ) -> impl FnOnce(&crypto::PublicKey, &mut [u8; Ripemd160::DIGEST_LEN]) -> Result<(), AddrUIInitError>
     {
@@ -106,31 +104,29 @@ impl<'ui> AddrUIInitializer<'ui> {
         }
     }
 
-    /// Initialize the public key with the given closure,
-    /// also providing access to chain_code, initialized to `None` already
-    pub fn init_pkey<
-        F: FnOnce(
-            &mut MaybeUninit<crypto::PublicKey>,
-            Option<&mut [u8; CHAIN_CODE_LEN]>,
-        ) -> Result<(), AddrUIInitError>,
-    >(
+    /// Initialie the path with the given one
+    pub fn with_path(
         &mut self,
-        cc: Option<&mut [u8; CHAIN_CODE_LEN]>,
-        init: F,
-    ) -> Result<&mut Self, AddrUIInitError> {
+        curve: crypto::Curve,
+        path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
+    ) -> &mut Self {
         //get ui *mut
         let ui = self.ui.as_mut_ptr();
-        //get `pkey` *mut,
-        // cast to MaybeUninit *mut
-        //SAFE: `as_mut` it to &mut MaybeUninit (safe because it's MaybeUninit)
-        // unwrap the option as it's guarantee valid pointer
-        let key =
-            unsafe { addr_of_mut!((*ui).pkey).cast::<MaybeUninit<_>>().as_mut() }.apdu_unwrap();
 
-        init(key, cc).map(|_| {
-            self.pkey_init = true;
-            self
-        })
+        //SAFETY: pointers are all valid since they are coming from rust
+        unsafe {
+            let ui_curve = addr_of_mut!((*ui).curve);
+            ui_curve.write(curve);
+        }
+
+        //SAFETY: pointers are all valid since they are coming from rust
+        unsafe {
+            let ui_path = addr_of_mut!((*ui).path);
+            ui_path.write(path);
+        }
+
+        self.path_init = true;
+        self
     }
 
     /// Initialie the HRP with the given slice
@@ -193,61 +189,10 @@ impl<'ui> AddrUIInitializer<'ui> {
         Ok(self)
     }
 
-    /// Initialize the pubkey hash in the given hash output
-    pub fn init_hash<
-        F: FnOnce(&crypto::PublicKey, &mut [u8; Ripemd160::DIGEST_LEN]) -> Result<(), AddrUIInitError>,
-    >(
-        &mut self,
-        init: F,
-    ) -> Result<&mut Self, AddrUIInitError> {
-        if !self.pkey_init {
-            return Err(AddrUIInitError::KeyNotInitialized);
-        }
-        //get ui *mut
-        let ui = self.ui.as_mut_ptr();
-
-        //gey &pkey
-        // SAFE: `as_ref` is fine since we checked that it's initialized
-        // the unwrap is also fine as the pointer is guaranteed valid
-        let key = unsafe { addr_of!((*ui).pkey).as_ref() }.apdu_unwrap();
-
-        //get `hrp` *mut,
-        //SAFE: `as_mut` it to &mut [u8; ...]. this is okay as there's not invalid value for u8
-        // and we'll be writing on it now
-        // unwrap is fine since it's valid pointer
-        let hash = unsafe {
-            let hash = addr_of_mut!((*ui).hash);
-            //initialize to default to avoid UB
-            hash.write(*PIC::new(&[0; Ripemd160::DIGEST_LEN]).into_inner());
-            hash.as_mut()
-        }
-        .apdu_unwrap();
-
-        init(key, hash).map(|_| {
-            self.hash_init = true;
-            self
-        })
-    }
-
-    #[cfg(test)]
-    pub fn compute_hash(&mut self) -> &mut Self {
-        let ui = self.ui.as_mut_ptr();
-        let key = unsafe { addr_of!((*ui).pkey).as_ref() }.apdu_unwrap();
-
-        let tmp = Sha256::digest(key.as_ref()).unwrap();
-        let hash = Ripemd160::digest(&tmp).unwrap();
-
-        unsafe { addr_of_mut!((*ui).hash).write(hash) };
-
-        self
-    }
-
     /// Finalize the initialization, performing any necessary checks to ensure everything is initialized
     pub fn finalize(self) -> Result<(), (Self, AddrUIInitError)> {
-        if !self.hash_init {
-            Err((self, AddrUIInitError::HashNotInitialized))
-        } else if !self.pkey_init {
-            Err((self, AddrUIInitError::KeyNotInitialized))
+        if !self.path_init {
+            Err((self, AddrUIInitError::PathNotInitialized))
         } else if !self.hrp_init {
             Err((self, AddrUIInitError::HrpNotInitialized))
         } else if !self.chain_init {
@@ -259,10 +204,10 @@ impl<'ui> AddrUIInitializer<'ui> {
 }
 
 pub struct AddrUI {
-    pub pkey: crypto::PublicKey,
+    path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
+    curve: crypto::Curve,
     //includes checksum
     chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],
-    hash: [u8; Ripemd160::DIGEST_LEN],
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
 }
 
@@ -297,9 +242,28 @@ impl AddrUI {
         }
     }
 
-    /// Retrieve the stored hash
-    pub fn hash(&self) -> &[u8; Ripemd160::DIGEST_LEN] {
-        &self.hash
+    /// Comput the public key from the path
+    pub fn pkey(
+        &self,
+        chain_code: Option<&mut [u8; CHAIN_CODE_LEN]>,
+    ) -> Result<crypto::PublicKey, Error> {
+        let mut out = MaybeUninit::uninit();
+
+        AddrUIInitializer::key_initializer(self.curve, &self.path)(&mut out, chain_code)
+            .map_err(|_| Error::ExecutionError)?;
+
+        //SAFETY: out has been initialized by the call above
+        // note, this isn't done in .map since it would also be executed in case of an error
+        Ok(unsafe { out.assume_init() })
+    }
+
+    /// Compute the pkey hash
+    pub fn hash(&self, key: &crypto::PublicKey) -> Result<[u8; Ripemd160::DIGEST_LEN], Error> {
+        let mut out = [0; Ripemd160::DIGEST_LEN];
+
+        AddrUIInitializer::hash_initializer()(key, &mut out)
+            .map_err(|_| Error::ExecutionError)
+            .map(|_| out)
     }
 }
 
@@ -331,7 +295,11 @@ impl Viewable for AddrUI {
             mex[len] = b'-';
             len += 1;
 
-            len += bech32::encode(self.hrp_as_str(), &self.hash, &mut mex[len..])
+            let hash = self
+                .pkey(None)
+                .and_then(|pkey| self.hash(&pkey))
+                .map_err(|_| ViewError::Unknown)?;
+            len += bech32::encode(self.hrp_as_str(), &hash[..], &mut mex[len..])
                 .map_err(|_| ViewError::Unknown)?;
 
             handle_ui_message(&mex[..len], message, page)
@@ -341,16 +309,26 @@ impl Viewable for AddrUI {
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let pkey = self.pkey.as_ref();
+        let pkey = match self.pkey(None) {
+            Ok(pkey) => pkey,
+            Err(e) => return (0, e as _),
+        };
+
+        let pkey_bytes = pkey.as_ref();
         let mut tx = 0;
 
-        out[tx] = pkey.len() as u8;
+        out[tx] = pkey_bytes.len() as u8;
         tx += 1;
-        out[tx..tx + pkey.len()].copy_from_slice(pkey);
-        tx += pkey.len();
+        out[tx..tx + pkey_bytes.len()].copy_from_slice(pkey_bytes);
+        tx += pkey_bytes.len();
 
-        out[tx..tx + self.hash.len()].copy_from_slice(&self.hash[..]);
-        tx += self.hash.len();
+        match self.hash(&pkey) {
+            Ok(hash) => {
+                out[tx..tx + hash.len()].copy_from_slice(&hash[..]);
+                tx += hash.len();
+            }
+            Err(e) => return (0, e as _),
+        }
 
         (tx, Error::Success as _)
     }
@@ -375,17 +353,12 @@ mod tests {
     use super::*;
 
     impl AddrUI {
-        pub fn new(pkey: &crypto::PublicKey, chain_code: &[u8], hrp: &[u8]) -> Self {
+        pub fn new(path: BIP32Path<MAX_BIP32_PATH_DEPTH>, chain_code: &[u8], hrp: &[u8]) -> Self {
             let mut loc = MaybeUninit::uninit();
 
             let mut builder = AddrUIInitializer::new(&mut loc);
             let _ = builder
-                .init_pkey(None, |key, _| {
-                    key.write(*pkey);
-                    Ok(())
-                })
-                .unwrap()
-                .compute_hash()
+                .with_path(crypto::Curve::Secp256K1, path)
                 .with_chain(chain_code)
                 .unwrap()
                 .with_hrp(hrp);
@@ -395,9 +368,12 @@ mod tests {
         }
     }
 
-    fn keypair() -> (SecretKey<1>, PublicKey) {
-        let secret =
-            crypto::SecretKey::new(crypto::Curve::Secp256K1, BIP32Path::<1>::new([44]).unwrap());
+    fn path() -> BIP32Path<MAX_BIP32_PATH_DEPTH> {
+        BIP32Path::new([44]).unwrap()
+    }
+
+    fn keypair() -> (SecretKey<MAX_BIP32_PATH_DEPTH>, PublicKey) {
+        let secret = crypto::SecretKey::new(crypto::Curve::Secp256K1, path());
 
         let public = secret.public().unwrap();
         (secret, public)
@@ -406,7 +382,7 @@ mod tests {
     fn test_chain_alias(alias: Option<&str>, chain_code: Option<&[u8; 32]>) {
         let (_, pk) = keypair();
         let chain_code = chain_code.unwrap_or(GetPublicKey::default_chainid());
-        let ui = AddrUI::new(&pk, chain_code, GetPublicKey::DEFAULT_HRP);
+        let ui = AddrUI::new(path(), chain_code, GetPublicKey::DEFAULT_HRP);
 
         //construct the expected message
         // chainID-bech32(HRP, pkey)
@@ -425,7 +401,8 @@ mod tests {
         expected_message.push_str(&{
             let hrp = std::string::String::from_utf8(GetPublicKey::DEFAULT_HRP.to_vec()).unwrap();
             let mut tmp = [0; bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN)];
-            let len = bech32::encode(&hrp, &ui.hash(), &mut tmp).unwrap();
+            let len =
+                bech32::encode(&hrp, &ui.hash(&ui.pkey(None).unwrap()).unwrap(), &mut tmp).unwrap();
 
             std::string::String::from_utf8(tmp[..len].to_vec()).unwrap()
         });
