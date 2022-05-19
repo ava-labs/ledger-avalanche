@@ -19,8 +19,6 @@ cfg_if! {
     if #[cfg(not(any(unix,windows)))] {
         extern "C" {
             pub fn app_mode_expert() -> bool;
-            pub fn app_mode_reset();
-            pub fn app_mode_set_expert(val: u8);
         }
     } else {
     }
@@ -33,19 +31,5 @@ pub fn is_app_mode_expert() -> bool {
         } else {
            true
         }
-    }
-}
-
-pub fn reset_app_mode() {
-    #[cfg(not(any(unix, windows)))]
-    unsafe {
-        app_mode_reset();
-    }
-}
-
-pub fn set_expert_mode() {
-    #[cfg(not(any(unix, windows)))]
-    unsafe {
-        app_mode_set_expert(1);
     }
 }
