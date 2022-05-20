@@ -24,7 +24,7 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{Address, DisplayableItem, ParserError, ADDRESS_LEN},
-    utils::is_app_mode_expert,
+    utils::{hex_encode, is_app_mode_expert},
 };
 
 const MAX_PAYLOAD_LEN: usize = 1024;
@@ -143,8 +143,8 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
                     handle_ui_message(self.payload, message, page)
                 } else {
                     let sha = Sha256::digest(self.payload).map_err(|_| ViewError::Unknown)?;
-                    let mut hex_buf = [0; 32 * 2];
-                    hex::encode_to_slice(&sha[..], &mut hex_buf).unwrap();
+                    let mut hex_buf = [0; Sha256::DIGEST_LEN * 2];
+                    hex_encode(&sha[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
                     handle_ui_message(&hex_buf, message, page)
                 }
             }
