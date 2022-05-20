@@ -104,6 +104,8 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
         let mut buffer = [0; usize::FORMATTED_SIZE];
         let addr_item_n = self.num_items() - self.addresses.len();
         let render_locktime = self.locktime > 0;
+        // Gets the page at which this field is displayed, by summing the boolean
+        // directly since it offsets the pages by 1 if present
         let render_threshold_at = 2 + render_locktime as usize;
 
         match item_n as usize {

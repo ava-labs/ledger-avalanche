@@ -121,7 +121,11 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
         let addr_item_n = self.num_items() - self.addresses.len();
         let render_payload = !self.payload.is_empty() && is_app_mode_expert();
         let render_locktime = self.locktime > 0;
+        // Gets the page at which this field is displayed, by summing the boolean
+        // directly since it offsets the pages by 1 if present
         let render_locktime_at = 2 + render_payload as usize;
+        // Gets the page at which this field is displayed, by summing the booleans
+        // directly since they offset the pages by 1 or 2 if present
         let render_threshold_at = 2 + render_payload as usize + render_locktime as usize;
 
         match item_n as usize {
