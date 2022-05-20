@@ -141,8 +141,8 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
                 if let Some(data) = self.addresses.get(idx as usize) {
                     let mut addr = MaybeUninit::uninit();
                     Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
-                    let addr = addr.as_ptr();
-                    unsafe { (*addr).render_item(0, title, message, page) }
+                    let addr = unsafe { addr.assume_init() };
+                    addr.render_item(0, title, message, page)
                 } else {
                     Err(ViewError::NoData)
                 }
