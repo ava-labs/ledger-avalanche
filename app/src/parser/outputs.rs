@@ -32,6 +32,61 @@ use crate::handlers::handle_ui_message;
 
 use crate::parser::{error::ParserError, AssetId, DisplayableItem};
 
+#[derive(Clone, Copy, PartialEq)]
+#[repr(C)]
+#[cfg_attr(test, derive(Debug))]
+pub struct TransferableOutput<'b> {
+    asset_id: AssetId<'b>,
+    output: Output<'b>,
+}
+
+impl<'b> TransferableOutput<'b> {
+    #[cfg(test)]
+    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
+        let mut out = MaybeUninit::uninit();
+        let rem = Self::from_bytes_into(input, &mut out)?;
+        unsafe { Ok((rem, out.assume_init())) }
+    }
+
+    #[inline(never)]
+    pub fn from_bytes_into(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        crate::sys::zemu_log_stack("TransferableOutput::from_bytes_into\x00");
+
+        let output = out.as_mut_ptr() as *mut TransferableOutput;
+        let asset = unsafe { &mut *addr_of_mut!((*output).asset_id).cast() };
+        let rem = AssetId::from_bytes_into(input, asset)?;
+
+        //valid pointer
+        let data = unsafe { &mut *addr_of_mut!((*output).output).cast() };
+        Output::from_bytes_into(rem, data)
+    }
+}
+
+impl<'b> DisplayableItem for TransferableOutput<'b> {
+    fn num_items(&self) -> usize {
+        self.asset_id.num_items() + self.output.num_items()
+    }
+
+    fn render_item(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        if (item_n as usize) < self.asset_id.num_items() {
+            self.asset_id.render_item(item_n, title, message, page)
+        } else {
+            let new_item_n = item_n as usize - self.asset_id.num_items();
+            self.output
+                .render_item(new_item_n as _, title, message, page)
+        }
+    }
+}
+
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the Output enum which has the same representation
@@ -188,5 +243,22 @@ impl<'a> DisplayableItem for Output<'a> {
             Self::NFTTransfer(t) => t.render_item(item_n, title, message, page),
             Self::NFTMint(m) => m.render_item(item_n, title, message, page),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DATA: &[u8] = &[
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 1, 22, 54,
+        119, 75, 103, 131, 141, 236, 22, 225, 106, 182, 207, 172, 178, 27, 136, 195, 168, 97,
+    ];
+
+    #[test]
+    fn parse_transferable_output() {
+        let t = TransferableOutput::from_bytes(DATA).unwrap().1;
+        assert!(matches!(t.output, Output::NFTMint(..)));
     }
 }
