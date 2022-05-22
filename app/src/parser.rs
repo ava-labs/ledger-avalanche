@@ -16,10 +16,12 @@
 use zemu_sys::ViewError;
 
 mod address;
+mod asset_id;
 mod error;
 mod outputs;
 
 pub use address::{Address, ADDRESS_LEN};
+pub use asset_id::AssetId;
 pub use error::ParserError;
 pub use outputs::SECPTransferOutput;
 
