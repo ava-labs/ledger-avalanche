@@ -18,17 +18,14 @@ mod nft_mint_output;
 mod nft_transfer_output;
 mod secp_mint_output;
 mod secp_transfer_output;
-use arrayref::array_ref;
 pub use nft_mint_output::NFTMintOutput;
 pub use nft_transfer_output::NFTTransferOutput;
 pub use secp_mint_output::SECPMintOutput;
 pub use secp_transfer_output::SECPTransferOutput;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::take, number::complete::be_u32};
+use nom::number::complete::be_u32;
 use zemu_sys::ViewError;
-
-use crate::handlers::handle_ui_message;
 
 use crate::parser::{error::ParserError, AssetId, DisplayableItem};
 
@@ -92,7 +89,6 @@ impl<'b> DisplayableItem for TransferableOutput<'b> {
 // for the Output enum which has the same representation
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
-#[derive(Debug)]
 enum OutputType {
     SECPTransfer,
     SECPMint,
@@ -213,7 +209,6 @@ impl<'b> Output<'b> {
                 }
                 rem
             }
-            _ => return Err(ParserError::InvalidTypeId.into()),
         };
         Ok(rem)
     }
