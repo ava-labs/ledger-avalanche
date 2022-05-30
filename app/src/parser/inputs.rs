@@ -149,6 +149,10 @@ impl InputType {
 #[repr(C)]
 struct SECPTransferVariant<'b>(InputType, SECPTransferInput<'b>);
 
+// The documentation states that
+// later new input types could be defined
+// that is why this type is defined as an enum(holding one variant for now)
+// because new variants can be easily added
 #[derive(Clone, Copy, PartialEq)]
 // DO not change the representation
 // as it would cause unalignment issues
