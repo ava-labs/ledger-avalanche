@@ -33,10 +33,10 @@ const U32_SIZE: usize = std::mem::size_of::<u32>();
 pub struct SECPTransferInput<'b> {
     pub amount: u64,
     // list of address indices, the indices are u32
-    // but we represent them as an slice of bytes, where
-    // the number of indices is determine by:
-    // address_indices.len()/ size_of(u32)
-    pub address_indices: &'b [u8],
+    // but we represent them as a slice of U32_SIZE byte-arrays
+    // instead of casting it directly to &[u32] because of the
+    // endianness
+    pub address_indices: &'b [[u8; U32_SIZE]],
 }
 
 impl<'b> SECPTransferInput<'b> {
@@ -59,6 +59,8 @@ impl<'b> SECPTransferInput<'b> {
         let (rem, (amount, num_indices)) = tuple((be_u64, be_u32))(input)?;
 
         let (rem, indices) = take(num_indices as usize * U32_SIZE)(rem)?;
+        let indices =
+            bytemuck::try_cast_slice(indices).map_err(|_| ParserError::InvalidAddressLength)?;
 
         //good ptr and no uninit reads
         let out = out.as_mut_ptr();
@@ -71,12 +73,8 @@ impl<'b> SECPTransferInput<'b> {
     }
 
     fn parse_index(&self, index_n: usize) -> Result<(&'b [u8], u32), nom::Err<ParserError>> {
-        // we read U32_SIZE bytes per iteration,
-        // the line below applies this offset
-        let at = index_n * U32_SIZE;
-
-        if let Some(slice) = self.address_indices.get(at..at + U32_SIZE) {
-            let (rem, index) = be_u32(slice)?;
+        if let Some(slice) = self.address_indices.get(index_n) {
+            let (rem, index) = be_u32(&slice[..])?;
             Ok((rem, index))
         } else {
             Err(ParserError::UnexpectedBufferEnd.into())
@@ -87,7 +85,7 @@ impl<'b> SECPTransferInput<'b> {
 impl<'a> DisplayableItem for SECPTransferInput<'a> {
     fn num_items(&self) -> usize {
         // output-type, amount, indices
-        1 + 1 + self.address_indices.len() / U32_SIZE
+        1 + 1 + self.address_indices.len()
     }
 
     #[inline(never)]
@@ -103,7 +101,7 @@ impl<'a> DisplayableItem for SECPTransferInput<'a> {
 
         let mut buffer = [0; usize::FORMATTED_SIZE];
 
-        let num_indices = self.address_indices.len() / U32_SIZE;
+        let num_indices = self.address_indices.len();
 
         match item_n as usize {
             0 => {
@@ -151,7 +149,7 @@ mod tests {
     #[test]
     fn parse_secp256k1_input() {
         let input = SECPTransferInput::from_bytes(&DATA[4..]).unwrap().1;
-        assert_eq!(input.address_indices.len() / U32_SIZE, 10);
+        assert_eq!(input.address_indices.len(), 10);
         assert_eq!(input.amount, 186);
     }
 }
