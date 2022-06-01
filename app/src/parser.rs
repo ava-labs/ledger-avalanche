@@ -18,11 +18,13 @@ use zemu_sys::ViewError;
 mod address;
 mod asset_id;
 mod error;
+mod inputs;
 mod outputs;
 
 pub use address::{Address, ADDRESS_LEN};
 pub use asset_id::AssetId;
 pub use error::ParserError;
+pub use inputs::SECPTransferInput;
 pub use outputs::SECPTransferOutput;
 
 ///This trait defines the interface useful in the UI context
