@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{DisplayableItem, ParserError},
+    parser::{DisplayableItem, FromBytes, ParserError},
 };
 
 const U32_SIZE: usize = std::mem::size_of::<u32>();
@@ -42,15 +42,18 @@ pub struct SECPTransferInput<'b> {
 impl<'b> SECPTransferInput<'b> {
     pub const TYPE_ID: u32 = 0x00000005;
 
-    #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
+    fn parse_index(&self, index_n: usize) -> Result<(&'b [u8], u32), nom::Err<ParserError>> {
+        if let Some(slice) = self.address_indices.get(index_n) {
+            let (rem, index) = be_u32(&slice[..])?;
+            Ok((rem, index))
+        } else {
+            Err(ParserError::UnexpectedBufferEnd.into())
+        }
     }
-
+}
+impl<'b> FromBytes<'b> for SECPTransferInput<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
@@ -70,15 +73,6 @@ impl<'b> SECPTransferInput<'b> {
         }
 
         Ok(rem)
-    }
-
-    fn parse_index(&self, index_n: usize) -> Result<(&'b [u8], u32), nom::Err<ParserError>> {
-        if let Some(slice) = self.address_indices.get(index_n) {
-            let (rem, index) = be_u32(&slice[..])?;
-            Ok((rem, index))
-        } else {
-            Err(ParserError::UnexpectedBufferEnd.into())
-        }
     }
 }
 
