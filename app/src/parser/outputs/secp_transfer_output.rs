@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, DisplayableItem, ParserError, ADDRESS_LEN},
+    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -38,16 +38,10 @@ pub struct SECPTransferOutput<'b> {
 
 impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
-
-    #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
+}
+impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {

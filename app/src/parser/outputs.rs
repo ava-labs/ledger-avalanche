@@ -27,7 +27,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::number::complete::be_u32;
 use zemu_sys::ViewError;
 
-use crate::parser::{error::ParserError, AssetId, DisplayableItem};
+use crate::parser::{error::ParserError, AssetId, DisplayableItem, FromBytes};
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -37,16 +37,9 @@ pub struct TransferableOutput<'b> {
     output: Output<'b>,
 }
 
-impl<'b> TransferableOutput<'b> {
-    #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
+impl<'b> FromBytes<'b> for TransferableOutput<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
@@ -138,16 +131,9 @@ pub enum Output<'b> {
     NFTMint(NFTMintOutput<'b>),
 }
 
-impl<'b> Output<'b> {
-    #[cfg(test)]
-    fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
+impl<'b> FromBytes<'b> for Output<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {

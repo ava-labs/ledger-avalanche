@@ -14,11 +14,11 @@
 *  limitations under the License.
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::take, IResult};
+use nom::bytes::complete::take;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{DisplayableItem, ParserError},
+    parser::{DisplayableItem, FromBytes, ParserError},
 };
 
 use crate::sys::{bech32, hash::Ripemd160};
@@ -31,16 +31,9 @@ pub const ADDRESS_LEN: usize = Ripemd160::DIGEST_LEN;
 #[cfg_attr(test, derive(Debug))]
 pub struct Address<'b>(&'b [u8; ADDRESS_LEN]);
 
-impl<'b> Address<'b> {
-    #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> IResult<&[u8], Self, ParserError> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
+impl<'b> FromBytes<'b> for Address<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {

@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{error::ParserError, AssetId, DisplayableItem},
+    parser::{error::ParserError, AssetId, DisplayableItem, FromBytes},
     utils::hex_encode,
 };
 
@@ -39,16 +39,9 @@ pub struct TransferableInput<'b> {
     input: Input<'b>,
 }
 
-impl<'b> TransferableInput<'b> {
-    #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
+impl<'b> FromBytes<'b> for TransferableInput<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         bytes: &'b [u8],
         inp: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
@@ -163,16 +156,9 @@ pub enum Input<'b> {
     SECPTransfer(SECPTransferInput<'b>),
 }
 
-impl<'b> Input<'b> {
-    #[cfg(test)]
-    fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
+impl<'b> FromBytes<'b> for Input<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {

@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, DisplayableItem, ParserError, ADDRESS_LEN},
+    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -38,16 +38,11 @@ pub struct NFTMintOutput<'b> {
 
 impl<'b> NFTMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x0000000a;
+}
 
-    #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
+impl<'b> FromBytes<'b> for NFTMintOutput<'b> {
     #[inline(never)]
-    pub fn from_bytes_into(
+    fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
@@ -95,10 +90,7 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        use bolos::{
-            hash::{Hasher, Sha256},
-            pic_str, PIC,
-        };
+        use bolos::{pic_str, PIC};
         use lexical_core::{write as itoa, Number};
 
         let mut buffer = [0; usize::FORMATTED_SIZE];
