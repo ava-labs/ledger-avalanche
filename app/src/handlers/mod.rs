@@ -26,7 +26,7 @@ pub use utils::*;
 
 pub mod resources {
     use super::lock::Lock;
-    use bolos::{lazy_static, new_swapping_buffer, SwappingBuffer};
+    use bolos::{lazy_static, new_swapping_buffer, pic::PIC, SwappingBuffer};
 
     #[lazy_static]
     pub static mut BUFFER: Lock<SwappingBuffer<'static, 'static, 0xFF, 0x1FFF>, BUFFERAccessors> =

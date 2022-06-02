@@ -169,27 +169,27 @@ shellSP:
 
 .PHONY: load
 load:
-	${LEDGER_SRC}/pkg/installer_s.sh load
+	${CURDIR}/build/pkg/installer_s.sh load
 
 .PHONY: delete
 delete:
-	${LEDGER_SRC}/pkg/installer_s.sh delete
+	${CURDIR}/build/pkg/installer_s.sh delete
 
 .PHONY: loadX
 loadX:
-	${LEDGER_SRC}/pkg/installer_x.sh load
+	${CURDIR}/build/pkg/installer_x.sh load
 
 .PHONY: deleteX
 deleteX:
-	${LEDGER_SRC}/pkg/installer_x.sh delete
+	${CURDIR}/build/pkg/installer_x.sh delete
 
 .PHONY: loadSP
 loadSP:
-	${LEDGER_SRC}/pkg/installer_sp.sh load
+	${CURDIR}/build/pkg/installer_sp.sh load
 
 .PHONY: deleteSP
 deleteSP:
-	${LEDGER_SRC}/pkg/installer_sp.sh delete
+	${CURDIR}/build/pkg/installer_sp.sh delete
 
 .PHONY: show_info_recovery_mode
 show_info_recovery_mode:
