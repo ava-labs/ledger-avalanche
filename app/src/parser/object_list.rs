@@ -69,10 +69,10 @@ impl<'b> ObjectList<'b> {
         &self,
         out: &mut MaybeUninit<Obj>,
     ) -> Result<Option<usize>, nom::Err<ParserError>> {
-        let data = match self.data.get(self.read..) {
-            Some(data) => data,
-            _ => return Ok(None),
-        };
+        let data = &self.data[self.read..];
+        if data.is_empty() {
+            return Ok(None);
+        }
 
         let rem = Obj::from_bytes_into(data, out)?;
 
