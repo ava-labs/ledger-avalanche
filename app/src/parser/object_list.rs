@@ -42,6 +42,8 @@ impl<'b> ObjectList<'b> {
         let mut bytes_left = rem;
         let mut object = MaybeUninit::uninit();
 
+        // we are not saving parsed data but ensuring everything
+        // parsed correctly.
         for _ in 0..num_objects {
             bytes_left = Obj::from_bytes_into(bytes_left, &mut object)?;
         }
