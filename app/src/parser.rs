@@ -21,13 +21,16 @@ mod address;
 mod asset_id;
 mod error;
 mod inputs;
+mod object_list;
 mod outputs;
 
 pub use address::{Address, ADDRESS_LEN};
 pub use asset_id::AssetId;
 pub use error::ParserError;
 pub use inputs::SECPTransferInput;
+pub use inputs::TransferableInput;
 pub use outputs::SECPTransferOutput;
+pub use outputs::TransferableOutput;
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI
