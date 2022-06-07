@@ -129,17 +129,7 @@ impl<'b> ObjectList<'b> {
     pub fn iter<Obj: FromBytes<'b> + 'b>(
         &'b self,
     ) -> impl Iterator<Item = Result<Obj, nom::Err<ParserError>>> + 'b {
-        // we do not want to change the state
-        // of the current list, as a result, we just
-        // make a copy, in order to reset its read index
-        // so that iteration always starts from the begining
-        let mut list = *self;
-        unsafe {
-            // this is safe as we do not used the current index
-            // setting it at the start of the list,
-            list.set_data_index(0);
-        }
-        ObjectListIterator::new(list)
+        ObjectListIterator::new(self)
     }
 }
 
@@ -153,7 +143,17 @@ impl<'b, Obj> ObjectListIterator<'b, Obj>
 where
     Obj: FromBytes<'b>,
 {
-    fn new(list: ObjectList<'b>) -> Self {
+    fn new(list: &ObjectList<'b>) -> Self {
+        // we do not want to change the state
+        // of the passed in list, as a result, we just
+        // make a copy, in order to reset its read index
+        // so that, iteration always starts from the begining
+        let mut list = *list;
+        unsafe {
+            // this is safe as we do not used the current index
+            // setting it at the start of the list,
+            list.set_data_index(0);
+        }
         Self {
             list,
             marker: PhantomData,
