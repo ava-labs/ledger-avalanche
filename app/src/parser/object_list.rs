@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use core::{mem::MaybeUninit, ptr::addr_of_mut};
+use core::{marker::PhantomData, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32};
 
 use crate::parser::{FromBytes, ParserError};
@@ -28,6 +28,15 @@ pub struct ObjectList<'b> {
 }
 
 impl<'b> ObjectList<'b> {
+    #[cfg(test)]
+    pub fn new<Obj: FromBytes<'b>>(
+        input: &'b [u8],
+    ) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
+        let mut list = MaybeUninit::uninit();
+        let rem = ObjectList::new_into::<Obj>(input, &mut list)?;
+        let list = unsafe { list.assume_init() };
+        Ok((rem, list))
+    }
     #[inline(never)]
     pub fn new_into<Obj: FromBytes<'b>>(
         input: &'b [u8],
@@ -105,12 +114,74 @@ impl<'b> ObjectList<'b> {
             Err(err) => Err(err),
         }
     }
+
+    pub fn data_index(&self) -> usize {
+        self.read
+    }
+
+    // this is unsafe as setting a wrong value can make
+    // further reading impossible. this is intended as a way to
+    // reset the index.
+    pub unsafe fn set_data_index(&mut self, read: usize) {
+        self.read = read;
+    }
+
+    pub fn iter<Obj: FromBytes<'b> + 'b>(
+        &'b self,
+    ) -> impl Iterator<Item = Result<Obj, nom::Err<ParserError>>> + 'b {
+        ObjectListIterator::new(self)
+    }
+}
+
+struct ObjectListIterator<'b, Obj: FromBytes<'b>> {
+    list: ObjectList<'b>,
+    // a simple marker, to ensure this iterator is bound to the expected object
+    marker: PhantomData<Obj>,
+}
+
+impl<'b, Obj> ObjectListIterator<'b, Obj>
+where
+    Obj: FromBytes<'b>,
+{
+    fn new(list: &ObjectList<'b>) -> Self {
+        // we do not want to change the state
+        // of the passed in list, as a result, we just
+        // make a copy, in order to reset its read index
+        // so that, iteration always starts from the begining
+        let mut list = *list;
+        unsafe {
+            // this is safe as we do not used the current index
+            // setting it at the start of the list,
+            list.set_data_index(0);
+        }
+        Self {
+            list,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<'b, Obj> Iterator for ObjectListIterator<'b, Obj>
+where
+    Obj: FromBytes<'b>,
+{
+    type Item = Result<Obj, nom::Err<ParserError>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut output = MaybeUninit::uninit();
+        let res = self.list.parse_next::<Obj>(&mut output);
+        match res {
+            Ok(Some(())) => Some(Ok(unsafe { output.assume_init() })),
+            Ok(None) => None,
+            Err(err) => Some(Err(err)),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::TransferableOutput;
+    use crate::parser::{DisplayableItem, TransferableOutput};
     use core::mem::MaybeUninit;
     const DATA: &[u8] = &[
         0, 0, 0, 10, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -158,16 +229,14 @@ mod tests {
 
     #[test]
     fn parse_object_list() {
-        let mut list = MaybeUninit::uninit();
-        let list = ObjectList::new_into::<TransferableOutput>(DATA, &mut list).unwrap();
+        let (list, _) = ObjectList::new::<TransferableOutput>(DATA).unwrap();
         assert!(list.is_empty());
     }
 
     #[test]
     fn object_list_parse_next() {
-        let mut list = MaybeUninit::uninit();
-        let _ = ObjectList::new_into::<TransferableOutput>(DATA, &mut list).unwrap();
-        let mut list = unsafe { list.assume_init() };
+        let (rem, mut list) = ObjectList::new::<TransferableOutput>(DATA).unwrap();
+        assert!(rem.is_empty());
         let mut output: MaybeUninit<TransferableOutput> = MaybeUninit::uninit();
         let mut count = 0;
         while let Ok(Some(_)) = list.parse_next(&mut output) {
@@ -176,5 +245,18 @@ mod tests {
 
         // we know there are 10 outputs
         assert_eq!(count, 10);
+    }
+
+    #[test]
+    fn object_list_iterator() {
+        let (_, list) = ObjectList::new::<TransferableOutput>(DATA).unwrap();
+        let num_items: usize = list
+            .iter::<TransferableOutput>()
+            .map(|output| output.map(|o| o.num_items()).unwrap())
+            .sum();
+        // the iterator does not change the state of the
+        // main list object, as we return just a copy
+        assert_eq!(list.read, 0);
+        assert!(num_items > 0);
     }
 }

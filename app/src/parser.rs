@@ -19,6 +19,7 @@ use zemu_sys::ViewError;
 
 mod address;
 mod asset_id;
+mod base_tx;
 mod error;
 mod inputs;
 mod object_list;
@@ -26,11 +27,10 @@ mod outputs;
 
 pub use address::{Address, ADDRESS_LEN};
 pub use asset_id::AssetId;
+pub use base_tx::BaseTx;
 pub use error::ParserError;
-pub use inputs::SECPTransferInput;
-pub use inputs::TransferableInput;
-pub use outputs::SECPTransferOutput;
-pub use outputs::TransferableOutput;
+pub use inputs::{Input, SECPTransferInput, TransferableInput};
+pub use outputs::{Output, SECPTransferOutput, TransferableOutput};
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI
