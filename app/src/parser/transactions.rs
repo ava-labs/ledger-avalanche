@@ -15,5 +15,7 @@
 ********************************************************************************/
 
 mod base_tx;
+mod export_tx;
 pub use base_tx::{BaseTx, BLOCKCHAIN_ID_LEN};
+pub use export_tx::ExportTx;
 
