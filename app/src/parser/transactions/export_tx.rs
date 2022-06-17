@@ -69,11 +69,18 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
         let (rem, destination_chain) = take(DESTINATION_CHAIN_LEN)(rem)?;
         let destination_chain = arrayref::array_ref!(destination_chain, 0, DESTINATION_CHAIN_LEN);
 
-        // need to check that base chain and destination chain are
-        // not the same, otherwise, an error should be returned
+        // get chains info
         let base_ptr = base_tx.as_ptr();
         let base_chain_id = unsafe { (&*base_ptr).network_info()?.chain_id };
         let dest_chain_id = ChainId::try_from(destination_chain)?;
+
+        // check that the transaction type corresponds to the chain is was created from
+        match (type_id, base_chain_id) {
+            (PVM_EXPORT_TX, ChainId::PChain) | (AVM_EXPORT_TX, ChainId::XChain) => {}
+            _ => return Err(ParserError::InvalidTransactionType.into()),
+        }
+
+        // Exporting to the same chain is an error
         if dest_chain_id == base_chain_id {
             return Err(ParserError::InvalidTransactionType.into());
         }
@@ -96,8 +103,8 @@ impl<'b> DisplayableItem for ExportTx<'b> {
     fn num_items(&self) -> usize {
         // only support SECP256k1 outputs
         // and to keep compatibility with the legacy app,
-        // we show only 3 items for each output
-        // chains, amount, address and fee which is the sum of all inputs minus all outputs
+        // we show only 4 items for each output
+        // chains info, amount, address and fee which is the sum of all inputs minus all outputs
         1 + self.num_outputs_items() + 1
     }
 
@@ -113,7 +120,7 @@ impl<'b> DisplayableItem for ExportTx<'b> {
 
         if item_n == 0 {
             // render export title and network info
-            return self.render_export_description(item_n, title, message, page);
+            return self.render_export_description(title, message, page);
         }
 
         let outputs_num_items = self.num_outputs_items();
@@ -255,14 +262,12 @@ impl<'b> ExportTx<'b> {
 
     fn render_export_description(
         &self,
-        item_n: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use arrayvec::ArrayString;
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         let title_content = pic_str!(b"Export Tx");
         title[..title_content.len()].copy_from_slice(title_content);
