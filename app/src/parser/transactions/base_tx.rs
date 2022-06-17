@@ -17,9 +17,7 @@
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32, sequence::tuple};
 
-use crate::parser::{FromBytes, ParserError, TransferableInput, TransferableOutput};
-
-use super::object_list::ObjectList;
+use crate::parser::{ObjectList, FromBytes, ParserError, TransferableInput, TransferableOutput};
 
 const BLOCKCHAIN_ID_LEN: usize = 32;
 const MAX_MEMO_LEN: usize = 256;
