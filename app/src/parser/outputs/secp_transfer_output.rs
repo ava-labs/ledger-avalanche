@@ -103,8 +103,8 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
             0 => {
                 let title_content = pic_str!(b"Amount(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.amount, &mut buffer);
-                let buffer = intstr_to_fpstr_inplace(buffer, NANO_AVAX_DECIMAL_DIGITS)
+                itoa(self.amount, &mut buffer);
+                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], NANO_AVAX_DECIMAL_DIGITS)
                     .map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(buffer, message, page)
