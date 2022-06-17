@@ -18,6 +18,8 @@ pub enum ParserError {
     InvalidAddressLength,
     InvalidTypeId,
     InvalidThreshold,
+    InvalidNetworkId,
+    InvalidChainId,
     UnexpectedType,
     UnexpectedBufferEnd,
     UnexpectedNumberItems,

@@ -19,7 +19,7 @@ use nom::{bytes::complete::take, number::complete::be_u32, sequence::tuple};
 
 use crate::parser::{ObjectList, FromBytes, ParserError, TransferableInput, TransferableOutput};
 
-const BLOCKCHAIN_ID_LEN: usize = 32;
+pub const BLOCKCHAIN_ID_LEN: usize = 32;
 const MAX_MEMO_LEN: usize = 256;
 
 #[derive(Clone, Copy, PartialEq)]
