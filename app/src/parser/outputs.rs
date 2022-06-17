@@ -37,6 +37,12 @@ pub struct TransferableOutput<'b> {
     output: Output<'b>,
 }
 
+impl<'b> TransferableOutput<'b> {
+    pub fn amount(&self) -> Option<u64> {
+        self.output.amount()
+    }
+}
+
 impl<'b> FromBytes<'b> for TransferableOutput<'b> {
     #[inline(never)]
     fn from_bytes_into(
@@ -129,6 +135,15 @@ pub enum Output<'b> {
     SECPMint(SECPMintOutput<'b>),
     NFTTransfer(NFTTransferOutput<'b>),
     NFTMint(NFTMintOutput<'b>),
+}
+
+impl<'b> Output<'b> {
+    pub fn amount(&self) -> Option<u64> {
+        match self {
+            Self::SECPTransfer(secp) => Some(secp.amount),
+            _ => None,
+        }
+    }
 }
 
 impl<'b> FromBytes<'b> for Output<'b> {
