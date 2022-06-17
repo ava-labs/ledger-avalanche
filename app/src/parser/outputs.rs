@@ -63,7 +63,9 @@ impl<'b> FromBytes<'b> for TransferableOutput<'b> {
 
 impl<'b> DisplayableItem for TransferableOutput<'b> {
     fn num_items(&self) -> usize {
-        self.asset_id.num_items() + self.output.num_items()
+        // the asset_id is not part of the summary we need from objects of this type,
+        // but could give to higher level objects information to display such information.
+        self.output.num_items()
     }
 
     fn render_item(
@@ -73,13 +75,7 @@ impl<'b> DisplayableItem for TransferableOutput<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        if (item_n as usize) < self.asset_id.num_items() {
-            self.asset_id.render_item(item_n, title, message, page)
-        } else {
-            let new_item_n = item_n as usize - self.asset_id.num_items();
-            self.output
-                .render_item(new_item_n as _, title, message, page)
-        }
+        self.output.render_item(item_n as _, title, message, page)
     }
 }
 
