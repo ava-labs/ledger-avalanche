@@ -24,11 +24,12 @@ use crate::{
     parser::{
         intstr_to_fpstr_inplace, BaseTx, ChainId, DisplayableItem, FromBytes, ObjectList,
         ParserError, TransferableInput, TransferableOutput, AVM_EXPORT_TX,
-        PVM_EXPORT_TX,
+        NANO_AVAX_DECIMAL_DIGITS, PVM_EXPORT_TX,
     },
 };
 
 const DESTINATION_CHAIN_LEN: usize = 32;
+const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
 
 pub fn check_export_tx_types(tx_type: u32) -> bool {
     // The ExportTx type is the same for avm and pvm
@@ -91,6 +92,200 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
     }
 }
 
+impl<'b> DisplayableItem for ExportTx<'b> {
+    fn num_items(&self) -> usize {
+        // only support SECP256k1 outputs
+        // and to keep compatibility with the legacy app,
+        // we show only 3 items for each output
+        // chains, amount, address and fee which is the sum of all inputs minus all outputs
+        1 + self.num_outputs_items() + 1
+    }
+
+    fn render_item(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        use bolos::{pic_str, PIC};
+        use lexical_core::Number;
+
+        if item_n == 0 {
+            // render export title and network info
+            return self.render_export_description(item_n, title, message, page);
+        }
+
+        let outputs_num_items = self.num_outputs_items();
+        let new_item_n = item_n - 1;
+
+        match new_item_n {
+            x @ 0.. if x < outputs_num_items as u8 => self.render_outputs(x, title, message, page),
+            x if x == outputs_num_items as u8 => {
+                let title_content = pic_str!(b"Fee");
+                title[..title_content.len()].copy_from_slice(title_content);
+                let mut buffer = [0; usize::FORMATTED_SIZE + 2];
+                let fee_str = self
+                    .fee_to_fp_str(&mut buffer[..])
+                    .map_err(|_| ViewError::Unknown)?;
+                handle_ui_message(fee_str, message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
+    }
+}
+
+impl<'b> ExportTx<'b> {
+    fn fee(&self) -> Result<u64, ParserError> {
+        let inputs = self.sum_inputs_amount()?;
+        let base_outputs = self.sum_base_outputs_amount()?;
+        let export_outputs = self.sum_export_outputs_amount()?;
+        let total_outputs = base_outputs
+            .checked_add(export_outputs)
+            .ok_or(ParserError::OperationOverflows)?;
+
+        let fee = inputs
+            .checked_sub(total_outputs)
+            .ok_or(ParserError::OperationOverflows)?;
+        Ok(fee)
+    }
+
+    fn fee_to_fp_str(&self, out_str: &'b mut [u8]) -> Result<&mut [u8], ParserError> {
+        use lexical_core::{write as itoa, Number};
+
+        let fee = self.fee()?;
+
+        // the number plus '0.'
+        if out_str.len() < usize::FORMATTED_SIZE_DECIMAL + 2 {
+            return Err(ParserError::UnexpectedBufferEnd);
+        }
+
+        itoa(fee, out_str);
+        intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
+            .map_err(|_| ParserError::UnexpectedError)
+    }
+
+    fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
+        self.base_tx
+            .inputs
+            .iter::<TransferableInput>()
+            .map(|input| {
+                if let Ok(input) = input {
+                    return input.amount().ok_or(ParserError::UnexpectedError);
+                }
+                Err(ParserError::UnexpectedError)
+            })
+            .try_fold(0u64, |acc, x| {
+                let x = x?;
+                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+            })
+    }
+
+    fn sum_base_outputs_amount(&self) -> Result<u64, ParserError> {
+        self.base_tx
+            .outputs
+            .iter::<TransferableOutput>()
+            .map(|output| {
+                if let Ok(output) = output {
+                    return output.amount().ok_or(ParserError::UnexpectedError);
+                }
+                Err(ParserError::UnexpectedError)
+            })
+            .try_fold(0u64, |acc, x| {
+                let x = x?;
+                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+            })
+    }
+
+    fn sum_export_outputs_amount(&self) -> Result<u64, ParserError> {
+        self.outputs
+            .iter::<TransferableOutput>()
+            .map(|output| {
+                if let Ok(output) = output {
+                    return output.amount().ok_or(ParserError::UnexpectedError);
+                }
+                Err(ParserError::UnexpectedError)
+            })
+            .try_fold(0u64, |acc, x| {
+                let x = x?;
+                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+            })
+    }
+
+    fn num_outputs_items(&self) -> usize {
+        self.outputs
+            .iter::<TransferableOutput>()
+            .flatten()
+            .map(|output| output.num_items())
+            .sum()
+    }
+
+    fn render_outputs(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        let mut count = 0usize;
+        let mut obj_item_n = 0;
+        // gets the SECPTranfer output that contains item_n
+        // and its corresponding index
+        let filter = |o: &TransferableOutput| -> bool {
+            let n = o.num_items();
+            for index in 0..n {
+                count += 1;
+                obj_item_n = index;
+                if count == item_n as usize + 1 {
+                    return true;
+                }
+            }
+            false
+        };
+
+        let obj = self
+            .outputs
+            .iter::<TransferableOutput>()
+            .flatten()
+            .find(filter)
+            .ok_or(ViewError::NoData)?;
+
+        obj.render_item(obj_item_n as u8, title, message, page)
+    }
+
+    fn render_export_description(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        use arrayvec::ArrayString;
+        use bolos::{pic_str, PIC};
+        use lexical_core::Number;
+
+        let title_content = pic_str!(b"Export Tx");
+        title[..title_content.len()].copy_from_slice(title_content);
+
+        // render from where this transaction is moving founds to
+        let mut export_str: ArrayString<EXPORT_TX_DESCRIPTION_LEN> = ArrayString::new();
+        let from_alias =
+            chain_alias_lookup(self.base_tx.blockchain_id).map_err(|_| ViewError::Unknown)?;
+        let to_alias =
+            chain_alias_lookup(self.destination_chain).map_err(|_| ViewError::Unknown)?;
+
+        // can we use format! or a better alternative
+        // would we have problems with PIC because of 
+        // the literal strings bellow, the assumpion is that 
+        // copied into.
+        export_str.push_str(from_alias);
+        export_str.push_str(" to ");
+        export_str.push_str(to_alias);
+        export_str.push_str(" Chain");
+
+        handle_ui_message(export_str.as_bytes(), message, page)
+    }
+}
 
 #[cfg(test)]
 mod tests {
