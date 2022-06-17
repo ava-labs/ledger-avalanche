@@ -23,12 +23,12 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         intstr_to_fpstr_inplace, BaseTx, ChainId, DisplayableItem, FromBytes, ObjectList,
-        ParserError, TransferableInput, TransferableOutput, AVM_EXPORT_TX,
+        ParserError, TransferableInput, TransferableOutput, AVM_EXPORT_TX, BLOCKCHAIN_ID_LEN,
         NANO_AVAX_DECIMAL_DIGITS, PVM_EXPORT_TX,
     },
 };
 
-const DESTINATION_CHAIN_LEN: usize = 32;
+const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
 const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
 
 pub fn check_export_tx_types(tx_type: u32) -> bool {
