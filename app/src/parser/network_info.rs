@@ -43,6 +43,10 @@ impl TryFrom<u32> for NetworkId {
     }
 }
 
+// bellow type defines the ID of supported
+// chains, although in the protocol there is room for
+// local networks, the current avalanche wallet does
+// not support transactios from/to it
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
 #[cfg_attr(test, derive(Debug))]

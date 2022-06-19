@@ -54,7 +54,7 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("BaseTx::from_bytes_into\x00");
+        crate::sys::zemu_log_stack("ExportTx::from_bytes_into\x00");
 
         let (rem, type_id) = be_u32(input)?;
         // double check
@@ -279,14 +279,10 @@ impl<'b> ExportTx<'b> {
         let to_alias =
             chain_alias_lookup(self.destination_chain).map_err(|_| ViewError::Unknown)?;
 
-        // can we use format! or a better alternative
-        // would we have problems with PIC because of
-        // the literal strings bellow, the assumpion is that
-        // it is copied into.
         export_str.push_str(from_alias);
-        export_str.push_str(" to ");
+        export_str.push_str(pic_str!(" to "!));
         export_str.push_str(to_alias);
-        export_str.push_str(" Chain");
+        export_str.push_str(pic_str!(" Chain"!));
 
         handle_ui_message(export_str.as_bytes(), message, page)
     }

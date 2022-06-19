@@ -163,10 +163,12 @@ pub enum Input<'b> {
 }
 impl<'b> Input<'b> {
     pub fn amount(&self) -> Option<u64> {
-        if let Self::SECPTransfer(input) = self {
-            return Some(input.amount);
-        }
-        None
+        // follow clippy suggestion,because this enum
+        // holds only one variant, if time comes with
+        // a new requirement of adding a new variant,
+        // we should use a match catchall instead.
+        let Self::SECPTransfer(input) = self;
+        Some(input.amount)
     }
 }
 

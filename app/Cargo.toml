@@ -42,4 +42,4 @@ serial_test = "0.5"
 zuit = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
 bolos = { git = "https://github.com/Zondax/ledger-rust", branch = "dev", features = ["derive-debug"] }
 hex = "0.4.3"
-arrayvec = { version = "0.7", default-features = false }
+arrayvec = { version = "0.7"}
