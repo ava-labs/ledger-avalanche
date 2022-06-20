@@ -22,7 +22,6 @@ use constants::INS_BLIND_SIGN as INS;
 const MSG: &[u8] = b"hello@zondax.ch";
 
 #[test]
-#[ignore] //`set_out` doesn't work properly
 fn sign() {
     let mut flags = 0;
     let mut tx = 0;
@@ -33,8 +32,9 @@ fn sign() {
     buffer[2] = PacketType::Init.into();
     let len = prepare_buffer::<4>(&mut buffer, &[44, 0, 0, 0], Curve::Secp256K1, None, None);
 
-    handle_apdu(&mut flags, &mut tx, 5 + len as u32, &mut buffer);
-    assert_error_code!(tx, buffer, ApduError::Success);
+    let out = handle_apdu(&mut flags, &mut tx, 5 + len as u32, &mut buffer);
+    println!("{}:{}", tx, hex::encode(&out));
+    assert_error_code!(tx, out, ApduError::Success);
 
     buffer[0] = CLA;
     buffer[1] = INS;
@@ -43,11 +43,11 @@ fn sign() {
     buffer[4] = MSG.len() as u8;
     buffer[5..5 + MSG.len()].copy_from_slice(MSG);
 
-    set_out(&mut buffer);
-    handle_apdu(&mut flags, &mut tx, 5 + MSG.len() as u32, &mut buffer);
-    assert_error_code!(tx, buffer, ApduError::Success);
+    let out = handle_apdu(&mut flags, &mut tx, 5 + MSG.len() as u32, &mut buffer);
+    println!("{}:{}", tx, hex::encode(&out));
+    assert_error_code!(tx, out, ApduError::Success);
 
-    let out_hash = &buffer[..32];
+    let out_hash = &out[..32];
     let expected = Sha256::digest(MSG).unwrap();
     assert_eq!(&expected, out_hash);
 }

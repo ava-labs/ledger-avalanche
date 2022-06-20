@@ -34,11 +34,10 @@ fn public_key() {
         Some(&[]),
     );
 
-    handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    assert_error_code!(tx, out, ApduError::Success);
 
-    assert_error_code!(tx, buffer, ApduError::Success);
-
-    let pk_len = buffer[0] as usize;
+    let pk_len = out[0] as usize;
     //secp256k1 pubkey and 20 bytes for hash + 2 for response code
     assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
 }
@@ -59,11 +58,10 @@ fn public_key_with_hrp() {
         Some(&[]),
     );
 
-    handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    assert_error_code!(tx, out, ApduError::Success);
 
-    assert_error_code!(tx, buffer, ApduError::Success);
-
-    let pk_len = buffer[0] as usize;
+    let pk_len = out[0] as usize;
     //secp256k1 pubkey and 20 bytes for hash + 2 for response code
     assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
 }
@@ -85,11 +83,10 @@ fn public_key_with_too_long_hrp() {
         Some(&[]),
     );
 
-    handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    assert_error_code!(tx, out, ApduError::Success);
 
-    assert_error_code!(tx, buffer, ApduError::Success);
-
-    let pk_len = buffer[0] as usize;
+    let pk_len = out[0] as usize;
     //secp256k1 pubkey and 20 bytes for hash + 2 for response code
     assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
 }
@@ -110,11 +107,10 @@ fn public_key_with_long_hrp() {
         Some(&[]),
     );
 
-    handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    assert_error_code!(tx, out, ApduError::Success);
 
-    assert_error_code!(tx, buffer, ApduError::Success);
-
-    let pk_len = buffer[0] as usize;
+    let pk_len = out[0] as usize;
     //secp256k1 pubkey and 20 bytes for hash + 2 for response code
     assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
 }
@@ -135,11 +131,10 @@ fn public_key_with_chainid() {
         Some(&[42; 32]),
     );
 
-    handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    assert_error_code!(tx, out, ApduError::Success);
 
-    assert_error_code!(tx, buffer, ApduError::Success);
-
-    let pk_len = buffer[0] as usize;
+    let pk_len = out[0] as usize;
     //secp256k1 pubkey and 20 bytes for hash + 2 for response code
     assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
 }
@@ -161,11 +156,10 @@ fn public_key_with_bad_chainid() {
         Some(&[42; 10]),
     );
 
-    handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
+    assert_error_code!(tx, out, ApduError::Success);
 
-    assert_error_code!(tx, buffer, ApduError::Success);
-
-    let pk_len = buffer[0] as usize;
+    let pk_len = out[0] as usize;
     //secp256k1 pubkey and 20 bytes for hash + 2 for response code
     assert_eq!(tx as usize, 1 + pk_len + 20 + 2);
 }
