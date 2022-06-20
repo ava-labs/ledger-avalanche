@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{convert::TryFrom, hint::unreachable_unchecked, mem::MaybeUninit, ptr::addr_of_mut};
+use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32};
 use zemu_sys::ViewError;
 
@@ -31,6 +31,11 @@ use crate::{
 const SOURCE_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
 const IMPORT_DESCRIPTION_LEN: usize = 7;
 
+// ImportTx represents a transaction that move
+// founds to the chain indicated by the BaseTx
+// The chainId for which this representation is valid
+// are the P and X chain. C-Chain defines
+// a custom ImportTx type.
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct ImportTx<'b> {
@@ -46,14 +51,13 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("BaseTx::from_bytes_into\x00");
+        crate::sys::zemu_log_stack("ImportTx::from_bytes_into\x00");
 
         let (rem, type_id) = be_u32(input)?;
 
         // The ImportTx type is the same for avm and pvm
         // virtual machines. so we need to check if
-        // the passed in id corresponds to one of these 2 possible
-        // transactions.
+        // the passed in id corresponds to one of them
         if !(type_id == PVM_IMPORT_TX || type_id == AVM_IMPORT_TX) {
             return Err(ParserError::InvalidTransactionType.into());
         }
@@ -70,7 +74,7 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
         let base_chain_id = unsafe { (&*base_ptr).network_info()?.chain_id };
         let dest_chain_id = ChainId::try_from(source_chain)?;
 
-        // check that the transaction type corresponds to the chain is was created from
+        // check that the transaction type corresponds to the chain it was created from
         match (type_id, base_chain_id) {
             (PVM_IMPORT_TX, ChainId::PChain) | (AVM_IMPORT_TX, ChainId::XChain) => {}
             _ => return Err(ParserError::InvalidTransactionType.into()),
@@ -83,7 +87,7 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
 
         let inputs = unsafe { &mut *addr_of_mut!((*out).inputs).cast() };
 
-        let rem = ObjectList::new_into::<TransferableOutput>(rem, inputs)?;
+        let rem = ObjectList::new_into::<TransferableInput>(rem, inputs)?;
 
         //good ptr and no uninit reads
         unsafe {
@@ -98,7 +102,7 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
 impl<'b> ImportTx<'b> {
     fn fee(&self) -> Result<u64, ParserError> {
         let inputs = self.sum_inputs_amount()?;
-        let outputs = self.sum_base_outputs_amount()?;
+        let outputs = self.base_tx.sum_outputs_amount()?;
 
         let fee = inputs
             .checked_sub(outputs)
@@ -122,20 +126,8 @@ impl<'b> ImportTx<'b> {
     }
 
     fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
-        let base_inputs = self
-            .base_tx
-            .inputs
-            .iter::<TransferableInput>()
-            .map(|input| {
-                if let Ok(input) = input {
-                    return input.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
-            .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
-            })?;
+        let base_inputs = self.base_tx.sum_inputs_amount()?;
+
         let import_inputs = self
             .inputs
             .iter::<TransferableInput>()
@@ -149,25 +141,10 @@ impl<'b> ImportTx<'b> {
                 let x = x?;
                 acc.checked_add(x).ok_or(ParserError::OperationOverflows)
             })?;
+
         import_inputs
             .checked_add(base_inputs)
             .ok_or(ParserError::OperationOverflows)
-    }
-
-    fn sum_base_outputs_amount(&self) -> Result<u64, ParserError> {
-        self.base_tx
-            .outputs
-            .iter::<TransferableOutput>()
-            .map(|output| {
-                if let Ok(output) = output {
-                    return output.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
-            .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
-            })
     }
 
     fn num_input_items(&self) -> usize {
@@ -180,7 +157,7 @@ impl<'b> ImportTx<'b> {
     }
 
     // use base.outputs, which contains the amount and address(es)
-    // the founds is being transfered to
+    // the founds is being received from
     fn render_imports(
         &self,
         item_n: u8,
@@ -227,16 +204,12 @@ impl<'b> ImportTx<'b> {
         let title_content = pic_str!(b"From ");
         title[..title_content.len()].copy_from_slice(title_content);
 
-        // render from where this transaction is moving founds to
+        // render from where this transaction is receiving founds to
         let mut export_str: ArrayString<IMPORT_DESCRIPTION_LEN> = ArrayString::new();
         let from_alias = chain_alias_lookup(self.source_chain).map_err(|_| ViewError::Unknown)?;
 
-        // can we use format! or a better alternative
-        // would we have problems with PIC because of
-        // the literal strings bellow, the assumpion is that
-        // it is copied into.
         export_str.push_str(from_alias);
-        export_str.push_str(" Chain");
+        export_str.push_str(pic_str!(" Chain"));
 
         handle_ui_message(export_str.as_bytes(), message, page)
     }
@@ -263,8 +236,6 @@ impl<'b> DisplayableItem for ImportTx<'b> {
         use lexical_core::Number;
 
         if item_n == 0 {
-            // render export title and network info
-            //return self.render_export_description(title, message, page);
             let title_content = pic_str!(b"ImportTx");
             title[..title_content.len()].copy_from_slice(title_content);
             let value_content = pic_str!(b"Sending");
@@ -318,9 +289,9 @@ mod tests {
     fn parse_import_tx() {
         let (rem, tx) = ImportTx::from_bytes(DATA).unwrap();
         assert!(rem.is_empty());
-        let count = tx.inputs.iter::<TransferableOutput>().count();
+        let count = tx.inputs.iter::<TransferableInput>().count();
 
-        // we know there are 1 outputs
+        // we know there are 1 inputs
         assert_eq!(count, 1);
 
         let count = tx.base_tx.outputs.iter::<TransferableOutput>().count();
@@ -328,9 +299,9 @@ mod tests {
         assert_eq!(count, 1);
 
         let source_chain = ChainId::try_from(tx.source_chain).unwrap();
-        assert_eq!(source_chain, ChainId::XChain);
+        assert_eq!(source_chain, ChainId::PChain);
 
         let fee = tx.fee().unwrap();
-        assert_eq!(fee, 1000);
+        assert_eq!(fee, 6000);
     }
 }
