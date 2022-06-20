@@ -17,10 +17,12 @@
 mod nft_mint_output;
 mod nft_transfer_output;
 mod secp_mint_output;
+mod secp_output_owners;
 mod secp_transfer_output;
 pub use nft_mint_output::NFTMintOutput;
 pub use nft_transfer_output::NFTTransferOutput;
 pub use secp_mint_output::SECPMintOutput;
+pub use secp_output_owners::SECPOutputOwners;
 pub use secp_transfer_output::SECPTransferOutput;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
