@@ -25,7 +25,6 @@ use crate::{
     sys::{
         self,
         crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
-        hash::Hasher,
         PIC,
     },
     utils::{ApduBufferRead, ApduPanic},
@@ -83,7 +82,7 @@ impl ApduHandler for GetExtendedPublicKey {
         let mut ui = unsafe { ui.assume_init() };
 
         if req_confirmation {
-            unsafe { ui.show(flags) }.map_err(|_| Error::ExecutionError)
+            crate::show_ui!(ui.show(flags), tx)
         } else {
             //we don't need to show so we execute the "accept" already
             // this way the "formatting" to `buffer` is all in the ui code

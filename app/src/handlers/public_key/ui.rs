@@ -239,7 +239,7 @@ impl AddrUI {
         }
     }
 
-    /// Comput the public key from the path
+    /// Compute the public key from the path
     pub fn pkey(
         &self,
         chain_code: Option<&mut [u8; CHAIN_CODE_LEN]>,
@@ -377,7 +377,6 @@ mod tests {
     }
 
     fn test_chain_alias(alias: Option<&str>, chain_code: Option<&[u8; 32]>) {
-        let (_, pk) = keypair();
         let chain_code = chain_code.unwrap_or(GetPublicKey::default_chainid());
         let ui = AddrUI::new(path(), chain_code, GetPublicKey::DEFAULT_HRP);
 
