@@ -41,6 +41,35 @@ impl<'b> BaseTx<'b> {
     pub fn network_info(&self) -> Result<NetworkInfo, ParserError> {
         NetworkInfo::try_from((self.network_id, self.blockchain_id))
     }
+
+    pub fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
+        self.inputs
+            .iter::<TransferableInput>()
+            .map(|input| {
+                if let Ok(input) = input {
+                    return input.amount().ok_or(ParserError::UnexpectedError);
+                }
+                Err(ParserError::UnexpectedError)
+            })
+            .try_fold(0u64, |acc, x| {
+                let x = x?;
+                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+            })
+    }
+    pub fn sum_outputs_amount(&self) -> Result<u64, ParserError> {
+        self.outputs
+            .iter::<TransferableOutput>()
+            .map(|output| {
+                if let Ok(output) = output {
+                    return output.amount().ok_or(ParserError::UnexpectedError);
+                }
+                Err(ParserError::UnexpectedError)
+            })
+            .try_fold(0u64, |acc, x| {
+                let x = x?;
+                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+            })
+    }
 }
 
 impl<'b> FromBytes<'b> for BaseTx<'b> {
