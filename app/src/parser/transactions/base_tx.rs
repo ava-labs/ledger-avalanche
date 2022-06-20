@@ -14,14 +14,15 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{mem::MaybeUninit, ptr::addr_of_mut};
+use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32, sequence::tuple};
 
-use crate::parser::{FromBytes, ParserError, TransferableInput, TransferableOutput};
+use crate::parser::{
+    ChainId, FromBytes, NetworkId, NetworkInfo, ObjectList, ParserError, TransferableInput,
+    TransferableOutput,
+};
 
-use super::object_list::ObjectList;
-
-const BLOCKCHAIN_ID_LEN: usize = 32;
+pub const BLOCKCHAIN_ID_LEN: usize = 32;
 const MAX_MEMO_LEN: usize = 256;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -34,6 +35,12 @@ pub struct BaseTx<'b> {
     pub outputs: ObjectList<'b>,
     pub inputs: ObjectList<'b>,
     pub memo: &'b [u8],
+}
+
+impl<'b> BaseTx<'b> {
+    pub fn network_info(&self) -> Result<NetworkInfo, ParserError> {
+        NetworkInfo::try_from((self.network_id, self.blockchain_id))
+    }
 }
 
 impl<'b> FromBytes<'b> for BaseTx<'b> {

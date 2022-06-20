@@ -92,9 +92,7 @@ impl BlindSign {
             send_hash,
         };
 
-        unsafe { ui.show(flags) }
-            .map_err(|_| Error::ExecutionError)
-            .map(|_| 0)
+        crate::show_ui!(ui.show(flags))
     }
 }
 

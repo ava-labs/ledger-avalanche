@@ -29,7 +29,7 @@ use crate::{
     constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH},
     crypto,
     dispatcher::ApduHandler,
-    sys::{self, hash::Hasher, Error as SysError},
+    sys::{self, Error as SysError},
     utils::{read_slice, ApduBufferRead, ApduPanic},
 };
 
@@ -140,7 +140,7 @@ impl ApduHandler for GetPublicKey {
         let mut ui = unsafe { ui.assume_init() };
 
         if req_confirmation {
-            unsafe { ui.show(flags) }.map_err(|_| Error::ExecutionError)
+            crate::show_ui!(ui.show(flags), tx)
         } else {
             //we don't need to show so we execute the "accept" already
             // this way the "formatting" to `buffer` is all in the ui code

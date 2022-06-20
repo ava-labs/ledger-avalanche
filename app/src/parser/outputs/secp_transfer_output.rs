@@ -23,7 +23,10 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{
+        intstr_to_fpstr_inplace, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
+        NANO_AVAX_DECIMAL_DIGITS,
+    },
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -74,10 +77,12 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
 
 impl<'a> DisplayableItem for SECPTransferOutput<'a> {
     fn num_items(&self) -> usize {
-        // output-type, amount, threshold and addresses
-        let items = 1 + 1 + 1 + self.addresses.len();
-        // do not show locktime if it is 0
-        items + (self.locktime > 0) as usize
+        // According to avalanche team, and to be "compatible" at presentation layer
+        // we should summarize the items to show. As they suggested we only show the amount
+        // and address. Legacy app errors if there is more than 1 address, in our case we dont yet.
+        //
+        // amount and addresses
+        1 + self.addresses.len()
     }
 
     #[inline(never)]
@@ -91,41 +96,21 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
         use bolos::{pic_str, PIC};
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let mut buffer = [0; usize::FORMATTED_SIZE + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
 
         match item_n as usize {
             0 => {
-                let title_content = pic_str!(b"Output");
+                let title_content = pic_str!(b"Amount(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
-
-                handle_ui_message(pic_str!(b"SECPTransfer"), message, page)
-            }
-            1 => {
-                let title_content = pic_str!(b"Amount");
-                title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.amount, &mut buffer);
-
-                handle_ui_message(buffer, message, page)
-            }
-            2 if self.locktime > 0 => {
-                let title_content = pic_str!(b"Locktime");
-                title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.locktime, &mut buffer);
+                itoa(self.amount, &mut buffer);
+                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], NANO_AVAX_DECIMAL_DIGITS)
+                    .map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(buffer, message, page)
             }
 
-            x @ 2.. if (x == 2 && self.locktime == 0) || (x == 3 && self.locktime > 0) => {
-                let title_content = pic_str!(b"Threshold");
-                title[..title_content.len()].copy_from_slice(title_content);
-
-                let buffer = itoa(self.threshold, &mut buffer);
-
-                handle_ui_message(buffer, message, page)
-            }
-
-            x @ 3.. if x >= addr_item_n => {
+            x @ 1.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
                 if let Some(data) = self.addresses.get(idx as usize) {
                     let mut addr = MaybeUninit::uninit();

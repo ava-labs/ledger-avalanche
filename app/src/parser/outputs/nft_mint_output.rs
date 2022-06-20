@@ -77,7 +77,7 @@ impl<'b> FromBytes<'b> for NFTMintOutput<'b> {
 impl<'a> DisplayableItem for NFTMintOutput<'a> {
     fn num_items(&self) -> usize {
         // output-type, group_id, threshold and addresses
-        let mut items = 1 + 1 + 1 + self.addresses.len();
+        let items = 1 + 1 + 1 + self.addresses.len();
         // do not show locktime if it is 0
         items + (self.locktime > 0) as usize
     }

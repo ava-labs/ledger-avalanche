@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-#![allow(dead_code)]
+#![allow(dead_code, unused_macros)]
 
 use bolos::PIC;
 
@@ -232,6 +232,7 @@ impl<T, E> ApduPanic for Result<T, E> {
         }
     }
 }
+
 impl<T> ApduPanic for Option<T> {
     type Item = T;
 
@@ -250,4 +251,44 @@ impl<T> ApduPanic for Option<T> {
             None => panic!(),
         }
     }
+}
+
+#[macro_export]
+/// Convert the return of Show::show into something more usable for apdu handlers
+///
+/// sets `tx` to the amount returned if given,
+/// otherwise tx is returned only on success and discarded on failure
+macro_rules! show_ui {
+    ($show:expr, $tx:ident) => {
+        match unsafe { $show } {
+            Ok((size, err)) if err == crate::constants::ApduError::Success as u16 => {
+                *$tx = size as _;
+                Ok(())
+            }
+            Ok((size, err)) => {
+                use ::core::convert::TryInto;
+                *$tx = size as _;
+
+                match err.try_into() {
+                    Ok(err) => Err(err),
+                    Err(_) => Err(crate::constants::ApduError::ExecutionError),
+                }
+            }
+            Err(_) => Err(crate::constants::ApduError::ExecutionError),
+        }
+    };
+    ($show:expr) => {
+        match unsafe { $show } {
+            Ok((size, err)) if err == crate::constants::ApduError::Success as u16 => Ok(size as _),
+            Ok((_, err)) => {
+                use ::core::convert::TryInto;
+
+                match err.try_into() {
+                    Ok(err) => Err(err),
+                    Err(_) => Err(crate::constants::ApduError::ExecutionError),
+                }
+            }
+            Err(_) => Err(crate::constants::ApduError::ExecutionError),
+        }
+    };
 }

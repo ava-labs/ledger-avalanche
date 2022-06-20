@@ -67,6 +67,7 @@ define run_docker
 	-e APP=$(BAKING) \
 	-u $(USERID) \
 	-v $(shell pwd):/project \
+	-v $(shell pwd)/vendor:/project/vendor \
 	-e COIN=$(COIN) \
 	-e APP_TESTING=$(APP_TESTING) \
 	$(DOCKER_IMAGE) "$(2)"

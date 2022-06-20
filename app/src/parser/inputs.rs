@@ -39,6 +39,12 @@ pub struct TransferableInput<'b> {
     input: Input<'b>,
 }
 
+impl<'b> TransferableInput<'b> {
+    pub fn amount(&self) -> Option<u64> {
+        self.input.amount()
+    }
+}
+
 impl<'b> FromBytes<'b> for TransferableInput<'b> {
     #[inline(never)]
     fn from_bytes_into(
@@ -154,6 +160,16 @@ struct SECPTransferVariant<'b>(InputType, SECPTransferInput<'b>);
 #[cfg_attr(test, derive(Debug))]
 pub enum Input<'b> {
     SECPTransfer(SECPTransferInput<'b>),
+}
+impl<'b> Input<'b> {
+    pub fn amount(&self) -> Option<u64> {
+        // follow clippy suggestion,because this enum
+        // holds only one variant, if time comes with
+        // a new requirement of adding a new variant,
+        // we should use a match catchall instead.
+        let Self::SECPTransfer(input) = self;
+        Some(input.amount)
+    }
 }
 
 impl<'b> FromBytes<'b> for Input<'b> {
