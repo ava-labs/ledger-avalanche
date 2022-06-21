@@ -23,12 +23,12 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         intstr_to_fpstr_inplace, BaseTx, ChainId, DisplayableItem, FromBytes, ObjectList,
-        ParserError, TransferableInput, TransferableOutput, AVM_EXPORT_TX,
+        ParserError, TransferableInput, TransferableOutput, AVM_EXPORT_TX, BLOCKCHAIN_ID_LEN,
         NANO_AVAX_DECIMAL_DIGITS, PVM_EXPORT_TX,
     },
 };
 
-const DESTINATION_CHAIN_LEN: usize = 32;
+const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
 const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
 
 pub fn check_export_tx_types(tx_type: u32) -> bool {
@@ -144,8 +144,8 @@ impl<'b> DisplayableItem for ExportTx<'b> {
 
 impl<'b> ExportTx<'b> {
     fn fee(&self) -> Result<u64, ParserError> {
-        let inputs = self.sum_inputs_amount()?;
-        let base_outputs = self.sum_base_outputs_amount()?;
+        let inputs = self.base_tx.sum_inputs_amount()?;
+        let base_outputs = self.base_tx.sum_outputs_amount()?;
         let export_outputs = self.sum_export_outputs_amount()?;
         let total_outputs = base_outputs
             .checked_add(export_outputs)
@@ -170,38 +170,6 @@ impl<'b> ExportTx<'b> {
         itoa(fee, out_str);
         intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
             .map_err(|_| ParserError::UnexpectedError)
-    }
-
-    fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
-        self.base_tx
-            .inputs
-            .iter::<TransferableInput>()
-            .map(|input| {
-                if let Ok(input) = input {
-                    return input.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
-            .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
-            })
-    }
-
-    fn sum_base_outputs_amount(&self) -> Result<u64, ParserError> {
-        self.base_tx
-            .outputs
-            .iter::<TransferableOutput>()
-            .map(|output| {
-                if let Ok(output) = output {
-                    return output.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
-            .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
-            })
     }
 
     fn sum_export_outputs_amount(&self) -> Result<u64, ParserError> {
