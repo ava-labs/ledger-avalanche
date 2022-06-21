@@ -45,7 +45,7 @@ pub struct ExportTx<'b> {
     pub type_id: u32,
     pub base_tx: BaseTx<'b>,
     pub destination_chain: &'b [u8; 32],
-    pub outputs: ObjectList<'b>,
+    pub outputs: ObjectList<'b, TransferableOutput<'b>>,
 }
 
 impl<'b> FromBytes<'b> for ExportTx<'b> {
@@ -86,8 +86,7 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
         }
 
         let outputs = unsafe { &mut *addr_of_mut!((*out).outputs).cast() };
-
-        let rem = ObjectList::new_into::<TransferableOutput>(rem, outputs)?;
+        let rem = ObjectList::<TransferableOutput>::new_into(rem, outputs)?;
 
         //good ptr and no uninit reads
         unsafe {
@@ -174,25 +173,15 @@ impl<'b> ExportTx<'b> {
 
     fn sum_export_outputs_amount(&self) -> Result<u64, ParserError> {
         self.outputs
-            .iter::<TransferableOutput>()
-            .map(|output| {
-                if let Ok(output) = output {
-                    return output.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
+            .iter()
+            .map(|output| output.amount().ok_or(ParserError::UnexpectedError))
             .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+                acc.checked_add(x?).ok_or(ParserError::OperationOverflows)
             })
     }
 
     fn num_outputs_items(&self) -> usize {
-        self.outputs
-            .iter::<TransferableOutput>()
-            .flatten()
-            .map(|output| output.num_items())
-            .sum()
+        self.outputs.iter().map(|output| output.num_items()).sum()
     }
 
     fn render_outputs(
@@ -218,12 +207,7 @@ impl<'b> ExportTx<'b> {
             false
         };
 
-        let obj = self
-            .outputs
-            .iter::<TransferableOutput>()
-            .flatten()
-            .find(filter)
-            .ok_or(ViewError::NoData)?;
+        let obj = self.outputs.iter().find(filter).ok_or(ViewError::NoData)?;
 
         obj.render_item(obj_item_n as u8, title, message, page)
     }
@@ -282,12 +266,12 @@ mod tests {
     fn parse_export_tx() {
         let (rem, tx) = ExportTx::from_bytes(DATA).unwrap();
         assert!(rem.is_empty());
-        let count = tx.outputs.iter::<TransferableOutput>().count();
+        let count = tx.outputs.iter().count();
 
         // we know there are 1 outputs
         assert_eq!(count, 1);
 
-        let count = tx.base_tx.outputs.iter::<TransferableOutput>().count();
+        let count = tx.base_tx.outputs.iter().count();
         // we know there are 1 outputs
         assert_eq!(count, 1);
 

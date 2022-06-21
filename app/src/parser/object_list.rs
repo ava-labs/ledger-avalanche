@@ -14,31 +14,50 @@
 *  limitations under the License.
 ********************************************************************************/
 use core::{marker::PhantomData, mem::MaybeUninit, ptr::addr_of_mut};
+use educe::Educe;
 use nom::{bytes::complete::take, number::complete::be_u32};
 
-use crate::parser::{FromBytes, ParserError};
+use crate::{
+    parser::{FromBytes, ParserError},
+    utils::ApduPanic,
+};
 
-#[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(test, derive(Debug))]
-pub struct ObjectList<'b> {
+#[derive(Educe)]
+#[cfg_attr(test, educe(Debug))]
+#[educe(Clone, Copy, PartialEq)]
+/// Represents an object list
+///
+/// The number of objects is prepended as a BE u32 to the objects bytes
+pub struct ObjectList<'b, Obj> {
     data: &'b [u8],
     // counter used to track the amount of bytes
     // that were read when parsing a inner element in the list
+    #[educe(PartialEq(ignore))]
     read: usize,
+    // type of object that the ObjectList contains
+    #[cfg_attr(test, educe(Debug(ignore)))]
+    #[educe(PartialEq(ignore))]
+    _phantom: PhantomData<Obj>,
 }
 
-impl<'b> ObjectList<'b> {
+impl<'b, Obj> ObjectList<'b, Obj>
+where
+    Obj: FromBytes<'b>,
+{
     #[cfg(test)]
-    pub fn new<Obj: FromBytes<'b>>(
-        input: &'b [u8],
-    ) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
+    pub fn new(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
         let mut list = MaybeUninit::uninit();
-        let rem = ObjectList::new_into::<Obj>(input, &mut list)?;
+        let rem = ObjectList::new_into(input, &mut list)?;
         let list = unsafe { list.assume_init() };
         Ok((rem, list))
     }
+
     #[inline(never)]
-    pub fn new_into<Obj: FromBytes<'b>>(
+    /// Attempt to parse the provided input as an [`ObjectList`] of the given `Obj` type
+    ///
+    /// Will fail if the input bytes are not properly encoded for the list or if any of the objects inside fail to parse.
+    /// This also means accessing any inner objects shouldn't fail to parse
+    pub fn new_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
@@ -76,88 +95,98 @@ impl<'b> ObjectList<'b> {
     }
 
     #[inline(never)]
-    fn parse_into<Obj: FromBytes<'b>>(
-        &self,
-        out: &mut MaybeUninit<Obj>,
-    ) -> Result<Option<usize>, nom::Err<ParserError>> {
+    /// Parses an object into the given location, returning the amount of bytes read.
+    ///
+    /// If no bytes could be read (for example, end of list), then None is returned.
+    ///
+    /// # Note
+    /// Does not move the internal cursor forward, useful for peeking
+    fn parse_into(&self, out: &mut MaybeUninit<Obj>) -> Option<usize> {
         let data = &self.data[self.read..];
         if data.is_empty() {
-            return Ok(None);
+            return None;
         }
 
-        let rem = Obj::from_bytes_into(data, out)?;
+        //ok to panic as we parsed beforehand
+        let rem = Obj::from_bytes_into(data, out).apdu_unwrap();
 
-        Ok(Some(self.data.len() - rem.len()))
+        Some(self.data.len() - rem.len())
     }
 
-    pub fn parse_next<Obj: FromBytes<'b>>(
-        &mut self,
-        out: &mut MaybeUninit<Obj>,
-    ) -> Result<Option<()>, nom::Err<ParserError>> {
+    /// Parses an object into the given location.
+    ///
+    /// If no bytes could be read, then None is returned.
+    pub fn parse_next(&mut self, out: &mut MaybeUninit<Obj>) -> Option<()> {
         match self.parse_into(out) {
-            Ok(Some(read)) => {
+            Some(read) => {
                 self.read = read;
-                Ok(Some(()))
+                Some(())
             }
-            Ok(None) => Ok(None),
-            Err(err) => Err(err),
+            None => None,
         }
     }
 
-    pub fn peek_next<Obj: FromBytes<'b>>(
-        &mut self,
-        out: &mut MaybeUninit<Obj>,
-    ) -> Result<Option<()>, nom::Err<ParserError>> {
-        match self.parse_into(out) {
-            Ok(Some(_)) => Ok(Some(())),
-            Ok(None) => Ok(None),
-            Err(err) => Err(err),
-        }
+    /// Parses an object into the given location, without moving forward the internal cursor.
+    ///
+    /// See also [`ObjList::parse_next`].
+    pub fn peek_next(&mut self, out: &mut MaybeUninit<Obj>) -> Option<()> {
+        self.parse_into(out).map(|_| ())
     }
 
+    /// Returns the internal cursor position
     pub fn data_index(&self) -> usize {
         self.read
     }
 
-    // this is unsafe as setting a wrong value can make
-    // further reading impossible. this is intended as a way to
-    // reset the index.
+    /// Overwrite the internal cursor position
+    ///
+    /// Intended to be used as a way to reset the cursor, see below.
+    ///
+    /// # Safety
+    /// Setting `read` to a position that is inside an object will render
+    /// further reading impossible.
+    ///
+    /// If you start to panic when parsing object incorrect usage
+    /// of this method is most likely the cause
     pub unsafe fn set_data_index(&mut self, read: usize) {
         self.read = read;
     }
+}
 
-    pub fn iter<Obj: FromBytes<'b> + 'b>(
-        &'b self,
-    ) -> impl Iterator<Item = Result<Obj, nom::Err<ParserError>>> + 'b {
+impl<'b, Obj> ObjectList<'b, Obj>
+where
+    Obj: FromBytes<'b> + 'b,
+{
+    /// Creates an [`ObjectListIterator`] for object out of the given object list
+    pub fn iter(&'b self) -> impl Iterator<Item = Obj> + 'b {
         ObjectListIterator::new(self)
     }
 }
 
 struct ObjectListIterator<'b, Obj: FromBytes<'b>> {
-    list: ObjectList<'b>,
-    // a simple marker, to ensure this iterator is bound to the expected object
-    marker: PhantomData<Obj>,
+    list: ObjectList<'b, Obj>,
 }
 
 impl<'b, Obj> ObjectListIterator<'b, Obj>
 where
     Obj: FromBytes<'b>,
 {
-    fn new(list: &ObjectList<'b>) -> Self {
+    /// Creates a new [`ObjectListIterator`] by copying the given list
+    ///
+    /// Iteration will always start from the beginning as the internal cursor
+    /// of the copied list is reset
+    fn new(list: &ObjectList<'b, Obj>) -> Self {
         // we do not want to change the state
         // of the passed in list, as a result, we just
-        // make a copy, in order to reset its read index
-        // so that, iteration always starts from the begining
+        // make a copy, so we can reset the read index,
+        // so iteration always starts from the beginning
         let mut list = *list;
         unsafe {
-            // this is safe as we do not used the current index
-            // setting it at the start of the list,
+            // this is safe as we do have not used the current index
+            // and setting it at the start of the list is always safe
             list.set_data_index(0);
         }
-        Self {
-            list,
-            marker: PhantomData,
-        }
+        Self { list }
     }
 }
 
@@ -165,16 +194,13 @@ impl<'b, Obj> Iterator for ObjectListIterator<'b, Obj>
 where
     Obj: FromBytes<'b>,
 {
-    type Item = Result<Obj, nom::Err<ParserError>>;
+    type Item = Obj;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut output = MaybeUninit::uninit();
-        let res = self.list.parse_next::<Obj>(&mut output);
-        match res {
-            Ok(Some(())) => Some(Ok(unsafe { output.assume_init() })),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        }
+        self.list
+            .parse_next(&mut output)
+            .map(|_| unsafe { output.assume_init() })
     }
 }
 
@@ -229,17 +255,17 @@ mod tests {
 
     #[test]
     fn parse_object_list() {
-        let (list, _) = ObjectList::new::<TransferableOutput>(DATA).unwrap();
+        let (list, _) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
         assert!(list.is_empty());
     }
 
     #[test]
     fn object_list_parse_next() {
-        let (rem, mut list) = ObjectList::new::<TransferableOutput>(DATA).unwrap();
+        let (rem, mut list) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
         assert!(rem.is_empty());
         let mut output: MaybeUninit<TransferableOutput> = MaybeUninit::uninit();
         let mut count = 0;
-        while let Ok(Some(_)) = list.parse_next(&mut output) {
+        while let Some(_) = list.parse_next(&mut output) {
             count += 1;
         }
 
@@ -249,11 +275,8 @@ mod tests {
 
     #[test]
     fn object_list_iterator() {
-        let (_, list) = ObjectList::new::<TransferableOutput>(DATA).unwrap();
-        let num_items: usize = list
-            .iter::<TransferableOutput>()
-            .map(|output| output.map(|o| o.num_items()).unwrap())
-            .sum();
+        let (_, list) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
+        let num_items: usize = list.iter().map(|output| output.num_items()).sum();
         // the iterator does not change the state of the
         // main list object, as we return just a copy
         assert_eq!(list.read, 0);
