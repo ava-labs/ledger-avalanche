@@ -61,7 +61,13 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
 
-        if (threshold as usize > addresses.len()) || (addresses.is_empty() && threshold != 0) {
+        // Check for invariants
+        // owner list of address must contain at least one address
+        if addresses.is_empty() {
+            return Err(ParserError::InvalidTransactionType.into());
+        }
+
+        if threshold as usize > addresses.len() {
             return Err(ParserError::InvalidThreshold.into());
         }
 
@@ -79,9 +85,10 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
 
 impl<'a> DisplayableItem for SECPOutputOwners<'a> {
     fn num_items(&self) -> usize {
-        // output-type and addresses
-        let items = 1 + self.addresses.len();
-        // do not show locktime if it is 0
+        // show an item for each address in the list
+        let items = self.addresses.len();
+        // show locktime only if it is higher than zero,
+        // that is why we sum up this boolean
         items + (self.locktime > 0) as usize
     }
 
@@ -114,9 +121,11 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
                     let mut addr = MaybeUninit::uninit();
                     Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
                     let addr = unsafe { addr.assume_init() };
-                    let label = pic_str!("Owners");
                     let ret = addr.render_item(0, title, message, page);
-                    // lets change the title to Owners before leaving
+                    // lets change the title to Owner address
+                    // as it is more clear than just Address which is what
+                    // the Address.render_item method does.
+                    let label = pic_str!("Owner address");
                     title.iter_mut().for_each(|v| *v = 0);
                     title.copy_from_slice(label.as_bytes());
                     ret
@@ -126,5 +135,23 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
             }
             _ => Err(ViewError::NoData),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DATA: &[u8] = &[
+        0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 1, 0, 0, 0, 1, 22, 54, 119, 75, 103, 131,
+        141, 236, 22, 225, 106, 182, 207, 172, 178, 27, 136, 195, 168, 97,
+    ];
+
+    #[test]
+    fn parse_output_owners() {
+        let (_, owner) = SECPOutputOwners::from_bytes(DATA).unwrap();
+        assert_eq!(owner.locktime, 12);
+        assert_eq!(owner.threshold, 1);
+        assert_eq!(owner.addresses.len(), 1);
     }
 }
