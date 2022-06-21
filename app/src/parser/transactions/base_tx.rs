@@ -32,8 +32,8 @@ pub struct BaseTx<'b> {
     pub network_id: u32,
     pub blockchain_id: &'b [u8; BLOCKCHAIN_ID_LEN],
     // lazy parsing of inputs/outpus
-    pub outputs: ObjectList<'b>,
-    pub inputs: ObjectList<'b>,
+    pub outputs: ObjectList<'b, TransferableOutput<'b>>,
+    pub inputs: ObjectList<'b, TransferableInput<'b>>,
     pub memo: &'b [u8],
 }
 
@@ -44,30 +44,18 @@ impl<'b> BaseTx<'b> {
 
     pub fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
         self.inputs
-            .iter::<TransferableInput>()
-            .map(|input| {
-                if let Ok(input) = input {
-                    return input.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
+            .iter()
+            .map(|input| input.amount().ok_or(ParserError::UnexpectedError))
             .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+                acc.checked_add(x?).ok_or(ParserError::OperationOverflows)
             })
     }
     pub fn sum_outputs_amount(&self) -> Result<u64, ParserError> {
         self.outputs
-            .iter::<TransferableOutput>()
-            .map(|output| {
-                if let Ok(output) = output {
-                    return output.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
+            .iter()
+            .map(|output| output.amount().ok_or(ParserError::UnexpectedError))
             .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+                acc.checked_add(x?).ok_or(ParserError::OperationOverflows)
             })
     }
 }
@@ -86,9 +74,11 @@ impl<'b> FromBytes<'b> for BaseTx<'b> {
 
         let out = out.as_mut_ptr();
         let outputs = unsafe { &mut *addr_of_mut!((*out).outputs).cast() };
+        rem = ObjectList::<TransferableOutput>::new_into(rem, outputs)?;
+
         let inputs = unsafe { &mut *addr_of_mut!((*out).inputs).cast() };
-        rem = ObjectList::new_into::<TransferableOutput>(rem, outputs)?;
-        rem = ObjectList::new_into::<TransferableInput>(rem, inputs)?;
+        rem = ObjectList::<TransferableInput>::new_into(rem, inputs)?;
+
         let (rem, memo_len) = be_u32(rem)?;
 
         if memo_len as usize > MAX_MEMO_LEN {
@@ -112,7 +102,6 @@ impl<'b> FromBytes<'b> for BaseTx<'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{TransferableInput, TransferableOutput};
 
     const DATA: &[u8] = &[
         0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -135,15 +124,11 @@ mod tests {
         assert_eq!(base.blockchain_id, &[1; 32]);
         let mut output = MaybeUninit::uninit();
         let mut input = MaybeUninit::uninit();
-        let mut rem = base
-            .outputs
-            .parse_next::<TransferableOutput>(&mut output)
-            .unwrap();
+
+        let mut rem = base.outputs.parse_next(&mut output);
         assert_eq!(rem, Some(()));
-        rem = base
-            .inputs
-            .parse_next::<TransferableInput>(&mut input)
-            .unwrap();
+
+        rem = base.inputs.parse_next(&mut input);
         assert_eq!(rem, Some(()));
     }
 }

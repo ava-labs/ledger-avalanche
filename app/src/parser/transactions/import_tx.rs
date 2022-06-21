@@ -42,7 +42,7 @@ pub struct ImportTx<'b> {
     pub type_id: u32,
     pub base_tx: BaseTx<'b>,
     pub source_chain: &'b [u8; 32],
-    pub inputs: ObjectList<'b>,
+    pub inputs: ObjectList<'b, TransferableInput<'b>>,
 }
 
 impl<'b> FromBytes<'b> for ImportTx<'b> {
@@ -87,7 +87,7 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
 
         let inputs = unsafe { &mut *addr_of_mut!((*out).inputs).cast() };
 
-        let rem = ObjectList::new_into::<TransferableInput>(rem, inputs)?;
+        let rem = ObjectList::<TransferableInput>::new_into(rem, inputs)?;
 
         //good ptr and no uninit reads
         unsafe {
@@ -130,16 +130,10 @@ impl<'b> ImportTx<'b> {
 
         let import_inputs = self
             .inputs
-            .iter::<TransferableInput>()
-            .map(|input| {
-                if let Ok(input) = input {
-                    return input.amount().ok_or(ParserError::UnexpectedError);
-                }
-                Err(ParserError::UnexpectedError)
-            })
+            .iter()
+            .map(|input| input.amount().ok_or(ParserError::UnexpectedError))
             .try_fold(0u64, |acc, x| {
-                let x = x?;
-                acc.checked_add(x).ok_or(ParserError::OperationOverflows)
+                acc.checked_add(x?).ok_or(ParserError::OperationOverflows)
             })?;
 
         import_inputs
@@ -150,8 +144,7 @@ impl<'b> ImportTx<'b> {
     fn num_input_items(&self) -> usize {
         self.base_tx
             .outputs
-            .iter::<TransferableOutput>()
-            .flatten()
+            .iter()
             .map(|output| output.num_items())
             .sum()
     }
@@ -184,8 +177,7 @@ impl<'b> ImportTx<'b> {
         let obj = self
             .base_tx
             .outputs
-            .iter::<TransferableOutput>()
-            .flatten()
+            .iter()
             .find(filter)
             .ok_or(ViewError::NoData)?;
 
@@ -289,12 +281,12 @@ mod tests {
     fn parse_import_tx() {
         let (rem, tx) = ImportTx::from_bytes(DATA).unwrap();
         assert!(rem.is_empty());
-        let count = tx.inputs.iter::<TransferableInput>().count();
+        let count = tx.inputs.iter().count();
 
         // we know there are 1 inputs
         assert_eq!(count, 1);
 
-        let count = tx.base_tx.outputs.iter::<TransferableOutput>().count();
+        let count = tx.base_tx.outputs.iter().count();
         // we know there are 1 outputs
         assert_eq!(count, 1);
 
