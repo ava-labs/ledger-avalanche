@@ -25,6 +25,7 @@ mod inputs;
 mod network_info;
 mod object_list;
 mod outputs;
+mod subnet_auth;
 mod transactions;
 mod utils;
 
@@ -36,6 +37,7 @@ pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use network_info::*;
 pub use object_list::ObjectList;
 pub use outputs::{Output, SECPOutputOwners, SECPTransferOutput, TransferableOutput};
+pub use subnet_auth::SubnetAuth;
 pub use transactions::*;
 pub use utils::*;
 
