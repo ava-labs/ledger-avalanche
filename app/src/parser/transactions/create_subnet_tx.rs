@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::number::complete::be_u32;
+use nom::{bytes::complete::tag, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
@@ -41,11 +41,9 @@ impl<'b> FromBytes<'b> for CreateSubnetTx<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("CreateSubnetTx::from_bytes_into\x00");
 
-        let (rem, type_id) = be_u32(input)?;
         // double check
-        if type_id != PVM_CREATE_SUBNET {
-            return Err(ParserError::InvalidTransactionType.into());
-        }
+        let (rem, raw_type_id) = tag(PVM_CREATE_SUBNET.to_be_bytes())(input)?;
+        let (_, type_id) = be_u32(raw_type_id)?;
 
         let out = out.as_mut_ptr();
         let base_tx = unsafe { &mut *addr_of_mut!((*out).base_tx).cast() };
@@ -81,10 +79,10 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
 
         match item_n {
             0 => {
-                let label = pic_str!("CreateSubnet");
-                title.copy_from_slice(label.as_bytes());
-                let content = pic_str!("transaction");
-                handle_ui_message(content.as_bytes(), message, page)
+                let label = pic_str!(b"CreateSubnet");
+                title.copy_from_slice(label);
+                let content = pic_str!(b"transaction");
+                handle_ui_message(content, message, page)
             }
 
             x @ 1.. if x < owners_items + 1 => {

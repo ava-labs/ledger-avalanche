@@ -15,7 +15,7 @@
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::take,
+    bytes::complete::{tag, take},
     number::complete::{be_u32, be_u64},
     sequence::tuple,
 };
@@ -46,26 +46,19 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPOutputOwners::from_bytes_into\x00");
         // get owners type and check
-        let (rem, owner_type_id) = be_u32(input)?;
-        if owner_type_id != SECPOutputOwners::TYPE_ID {
-            return Err(ParserError::UnexpectedType.into());
-        }
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
         let (rem, (locktime, threshold, addr_len)) = tuple((be_u64, be_u32, be_u32))(rem)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
+        // Check for invariants
+        // owner list of address must contain at least one address
         if addr_len == 0 {
             return Err(ParserError::InvalidAddressLength.into());
         }
 
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
-
-        // Check for invariants
-        // owner list of address must contain at least one address
-        if addresses.is_empty() {
-            return Err(ParserError::InvalidTransactionType.into());
-        }
 
         if threshold as usize > addresses.len() {
             return Err(ParserError::InvalidThreshold.into());
@@ -125,9 +118,9 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
                     // lets change the title to Owner address
                     // as it is more clear than just Address which is what
                     // the Address.render_item method does.
-                    let label = pic_str!("Owner address");
+                    let label = pic_str!(b"Owner address");
                     title.iter_mut().for_each(|v| *v = 0);
-                    title.copy_from_slice(label.as_bytes());
+                    title.copy_from_slice(label);
                     ret
                 } else {
                     Err(ViewError::NoData)
