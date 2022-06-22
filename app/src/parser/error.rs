@@ -36,6 +36,7 @@ impl From<ErrorKind> for ParserError {
             ErrorKind::Eof => ParserError::UnexpectedBufferEnd,
             ErrorKind::Permutation => ParserError::UnexpectedType,
             ErrorKind::TooLarge => ParserError::ValueOutOfRange,
+            ErrorKind::Tag => ParserError::InvalidTypeId,
             _ => ParserError::UnexpectedError,
         }
     }
