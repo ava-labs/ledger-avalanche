@@ -120,7 +120,7 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
                     // the Address.render_item method does.
                     let label = pic_str!(b"Owner address");
                     title.iter_mut().for_each(|v| *v = 0);
-                    title.copy_from_slice(label);
+                    title[..label.len()].copy_from_slice(label);
                     ret
                 } else {
                     Err(ViewError::NoData)

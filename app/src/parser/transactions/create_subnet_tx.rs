@@ -80,7 +80,7 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
         match item_n {
             0 => {
                 let label = pic_str!(b"CreateSubnet");
-                title.copy_from_slice(label);
+                title[..label.len()].copy_from_slice(label);
                 let content = pic_str!(b"transaction");
                 handle_ui_message(content, message, page)
             }
