@@ -15,7 +15,7 @@
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::take,
+    bytes::complete::{tag, take},
     number::complete::{be_u16, be_u32},
 };
 use zemu_sys::ViewError;
@@ -51,11 +51,8 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("CreateChainTx::from_bytes_into\x00");
 
-        let (rem, type_id) = be_u32(input)?;
-        // double check
-        if type_id != PVM_CREATE_CHAIN {
-            return Err(ParserError::InvalidTransactionType.into());
-        }
+        let (rem, raw_type_id) = tag(PVM_CREATE_CHAIN.to_be_bytes())(input)?;
+        let (_, type_id) = be_u32(raw_type_id)?;
 
         let out = out.as_mut_ptr();
         let base_tx = unsafe { &mut *addr_of_mut!((*out).base_tx).cast() };
@@ -116,31 +113,31 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
         let mut hex_buf = [0; Sha256::DIGEST_LEN * 2];
         match item_n {
             0 => {
-                let label = pic_str!("CreateChain");
-                title.copy_from_slice(label.as_bytes());
+                let label = pic_str!(b"CreateChain");
+                title[..label.len()].copy_from_slice(label);
                 let content = pic_str!("transaction");
                 handle_ui_message(content.as_bytes(), message, page)
             }
             1 => {
-                let label = pic_str!("SubnetID");
-                title.copy_from_slice(label.as_bytes());
+                let label = pic_str!(b"SubnetID");
+                title[..label.len()].copy_from_slice(label);
                 hex_encode(&self.subnet_id[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(&hex_buf, message, page)
             }
             2 => {
-                let label = pic_str!("ChainName");
-                title.copy_from_slice(label.as_bytes());
+                let label = pic_str!(b"ChainName");
+                title[..label.len()].copy_from_slice(label);
                 handle_ui_message(self.chain_name, message, page)
             }
             3 => {
-                let label = pic_str!("VMID");
-                title.copy_from_slice(label.as_bytes());
+                let label = pic_str!(b"VMID");
+                title[..label.len()].copy_from_slice(label);
                 hex_encode(&self.vm_id[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(&self.vm_id[..], message, page)
             }
             4 => {
-                let label = pic_str!("GenesisDataHash");
-                title.copy_from_slice(label.as_bytes());
+                let label = pic_str!(b"GenesisDataHash");
+                title[..label.len()].copy_from_slice(label);
                 let sha = Sha256::digest(self.genesis_data).map_err(|_| ViewError::Unknown)?;
                 hex_encode(&sha[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(&hex_buf, message, page)
