@@ -35,7 +35,7 @@ pub use error::ParserError;
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use network_info::*;
 pub use object_list::ObjectList;
-pub use outputs::{Output, SECPTransferOutput, TransferableOutput};
+pub use outputs::{Output, SECPOutputOwners, SECPTransferOutput, TransferableOutput};
 pub use transactions::*;
 pub use utils::*;
 
