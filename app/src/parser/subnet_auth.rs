@@ -14,7 +14,11 @@
 *  limitations under the License.
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::take, number::complete::be_u32, sequence::tuple};
+use nom::{
+    bytes::complete::{tag, take},
+    number::complete::be_u32,
+    sequence::tuple,
+};
 
 use crate::parser::{FromBytes, ParserError};
 
@@ -23,7 +27,6 @@ const U32_SIZE: usize = std::mem::size_of::<u32>();
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SubnetAuth<'b> {
-    pub type_id: u32,
     // list of validator's signature indices, the indices are u32
     // but we represent them as a slice of U32_SIZE byte-arrays
     // instead of casting it directly to &[u32] because of the
@@ -33,16 +36,8 @@ pub struct SubnetAuth<'b> {
 
 impl<'b> SubnetAuth<'b> {
     pub const TYPE_ID: u32 = 0x0000000a;
-
-    fn parse_index(&self, index_n: usize) -> Result<(&'b [u8], u32), nom::Err<ParserError>> {
-        if let Some(slice) = self.sig_indices.get(index_n) {
-            let (rem, index) = be_u32(&slice[..])?;
-            Ok((rem, index))
-        } else {
-            Err(ParserError::UnexpectedBufferEnd.into())
-        }
-    }
 }
+
 impl<'b> FromBytes<'b> for SubnetAuth<'b> {
     #[inline(never)]
     fn from_bytes_into(
@@ -51,11 +46,9 @@ impl<'b> FromBytes<'b> for SubnetAuth<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SubnetAuth::from_bytes_into\x00");
 
-        let (rem, (type_id, num_indices)) = tuple((be_u32, be_u32))(input)?;
-
-        if type_id != Self::TYPE_ID {
-            return Err(ParserError::InvalidTypeId.into());
-        }
+        // double check
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
+        let (rem, num_indices) = be_u32(rem)?;
 
         let (rem, indices) = take(num_indices as usize * U32_SIZE)(rem)?;
         let indices =
@@ -64,7 +57,6 @@ impl<'b> FromBytes<'b> for SubnetAuth<'b> {
         //good ptr and no uninit reads
         let out = out.as_mut_ptr();
         unsafe {
-            addr_of_mut!((*out).type_id).write(type_id);
             addr_of_mut!((*out).sig_indices).write(indices);
         }
 
