@@ -28,6 +28,7 @@ use crate::{
 
 pub const SUBNET_ID_LEN: usize = 32;
 pub const VM_ID_LEN: usize = 32;
+pub const FX_ID_LEN: usize = 32;
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -38,7 +39,7 @@ pub struct CreateChainTx<'b> {
     pub subnet_id: &'b [u8; SUBNET_ID_LEN],
     pub chain_name: &'b [u8],
     pub vm_id: &'b [u8; VM_ID_LEN],
-    pub fx_id: &'b [u8],
+    pub fx_id: &'b [[u8; FX_ID_LEN]],
     pub genesis_data: &'b [u8],
     pub subnet_auth: SubnetAuth<'b>,
 }
@@ -68,8 +69,10 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
         let (rem, vm_id) = take(VM_ID_LEN)(rem)?;
         let vm_id = arrayref::array_ref!(vm_id, 0, VM_ID_LEN);
 
-        let (rem, fx_id_len) = be_u32(rem)?;
-        let (rem, fx_id) = take(fx_id_len as usize)(rem)?;
+        let (rem, num_fx_id) = be_u32(rem)?;
+        let (rem, fx_id) = take(num_fx_id as usize * FX_ID_LEN)(rem)?;
+        let fx_id =
+            bytemuck::try_cast_slice(fx_id).map_err(|_| ParserError::UnexpectedBufferEnd)?;
 
         let (rem, genesis_data_len) = be_u32(rem)?;
         let (rem, genesis_data) = take(genesis_data_len as usize)(rem)?;
@@ -124,6 +127,8 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
                 hex_encode(&self.subnet_id[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(&hex_buf, message, page)
             }
+            // chain name is a valid utf8 string according
+            // to avalanche's docs
             2 => {
                 let label = pic_str!(b"ChainName");
                 title[..label.len()].copy_from_slice(label);
@@ -145,5 +150,36 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
 
             _ => Err(ViewError::NoData),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DATA: &[u8] = &[
+        0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 1, 237, 95, 56, 52, 30, 67, 110, 93, 70, 226, 187, 0,
+        180, 93, 98, 174, 151, 209, 176, 80, 198, 75, 198, 52, 174, 16, 98, 103, 57, 227, 92, 75,
+        0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 39, 16, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0,
+        1, 0, 0, 0, 1, 157, 31, 52, 188, 58, 111, 35, 6, 202, 7, 144, 22, 174, 248, 92, 19, 23,
+        103, 242, 56, 0, 0, 0, 1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 0, 0, 0, 2, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 31, 64, 0, 0,
+        0, 10, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 58, 0, 0, 0, 1, 0, 0, 0, 79, 0, 0, 0, 65, 0, 0, 0,
+        87, 0, 0, 0, 94, 0, 0, 0, 125, 0, 0, 1, 122, 0, 0, 0, 4, 109, 101, 109, 111, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 6, 122,
+        111, 110, 100, 97, 120, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+        5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 12, 103, 101, 110, 101, 115, 105,
+        115, 32, 100, 97, 116, 97, 0, 0, 0, 10, 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3,
+    ];
+
+    #[test]
+    fn parse_create_chain() {
+        let (_, tx) = CreateChainTx::from_bytes(DATA).unwrap();
+        assert_eq!(tx.chain_name, b"zondax");
+        assert_eq!(tx.subnet_id, &[8; SUBNET_ID_LEN]);
+        assert_eq!(tx.fx_id.len(), 1);
     }
 }
