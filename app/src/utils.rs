@@ -21,6 +21,9 @@ git_testament::git_testament_macros!(git);
 
 pub const GIT_COMMIT_HASH: &str = git_commit_hash!();
 
+mod apdu_unwrap;
+pub use apdu_unwrap::*;
+
 mod apdu_wrapper;
 pub use apdu_wrapper::*;
 
