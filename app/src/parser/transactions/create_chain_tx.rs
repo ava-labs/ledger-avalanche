@@ -63,6 +63,12 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
         // The len is define as a u16 for chain_name
         let (rem, chain_name_len) = be_u16(rem)?;
         let (rem, chain_name) = take(chain_name_len as usize)(rem)?;
+        // chain name is a valid utf8 string according
+        // to avalanche's docs
+        // double check for ascii bytes
+        if !chain_name.is_ascii() {
+            return Err(ParserError::InvalidAsciiValue.into());
+        }
 
         let (rem, vm_id) = take(VM_ID_LEN)(rem)?;
         let vm_id = arrayref::array_ref!(vm_id, 0, VM_ID_LEN);
@@ -126,13 +132,7 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
                 hex_encode(&self.subnet_id[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(&hex_buf, message, page)
             }
-            // chain name is a valid utf8 string according
-            // to avalanche's docs
             2 => {
-                // double check for ascii bytes
-                if !self.chain_name.is_ascii() {
-                    return Err(ViewError::Unknown);
-                }
                 let label = pic_str!(b"ChainName");
                 title[..label.len()].copy_from_slice(label);
                 handle_ui_message(self.chain_name, message, page)
