@@ -34,7 +34,6 @@ pub const FX_ID_LEN: usize = 32;
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct CreateChainTx<'b> {
-    pub type_id: u32,
     pub base_tx: BaseTx<'b>,
     pub subnet_id: &'b [u8; SUBNET_ID_LEN],
     pub chain_name: &'b [u8],
@@ -52,8 +51,7 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("CreateChainTx::from_bytes_into\x00");
 
-        let (rem, raw_type_id) = tag(PVM_CREATE_CHAIN.to_be_bytes())(input)?;
-        let (_, type_id) = be_u32(raw_type_id)?;
+        let (rem, _) = tag(PVM_CREATE_CHAIN.to_be_bytes())(input)?;
 
         let out = out.as_mut_ptr();
         let base_tx = unsafe { &mut *addr_of_mut!((*out).base_tx).cast() };
@@ -71,8 +69,10 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
 
         let (rem, num_fx_id) = be_u32(rem)?;
         let (rem, fx_id) = take(num_fx_id as usize * FX_ID_LEN)(rem)?;
-        let fx_id =
-            bytemuck::try_cast_slice(fx_id).map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+        // This would not fail as previous line ensures we take
+        // the right amount of bytes, also the alignemnt is correct
+        let fx_id = bytemuck::try_cast_slice(fx_id).unwrap();
 
         let (rem, genesis_data_len) = be_u32(rem)?;
         let (rem, genesis_data) = take(genesis_data_len as usize)(rem)?;
@@ -82,7 +82,6 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
 
         //good ptr and no uninit reads
         unsafe {
-            addr_of_mut!((*out).type_id).write(type_id);
             addr_of_mut!((*out).subnet_id).write(subnet_id);
             addr_of_mut!((*out).chain_name).write(chain_name);
             addr_of_mut!((*out).vm_id).write(vm_id);
@@ -118,8 +117,8 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
             0 => {
                 let label = pic_str!(b"CreateChain");
                 title[..label.len()].copy_from_slice(label);
-                let content = pic_str!("transaction");
-                handle_ui_message(content.as_bytes(), message, page)
+                let content = pic_str!(b"transaction");
+                handle_ui_message(content, message, page)
             }
             1 => {
                 let label = pic_str!(b"SubnetID");
@@ -130,6 +129,10 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
             // chain name is a valid utf8 string according
             // to avalanche's docs
             2 => {
+                // double check for ascii bytes
+                if !self.chain_name.is_ascii() {
+                    return Err(ViewError::Unknown);
+                }
                 let label = pic_str!(b"ChainName");
                 title[..label.len()].copy_from_slice(label);
                 handle_ui_message(self.chain_name, message, page)

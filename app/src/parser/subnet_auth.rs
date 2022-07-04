@@ -51,8 +51,9 @@ impl<'b> FromBytes<'b> for SubnetAuth<'b> {
         let (rem, num_indices) = be_u32(rem)?;
 
         let (rem, indices) = take(num_indices as usize * U32_SIZE)(rem)?;
-        let indices =
-            bytemuck::try_cast_slice(indices).map_err(|_| ParserError::UnexpectedBufferEnd)?;
+        // This would not fail as previous line ensures we take
+        // the right amount of bytes, also the alignemnt is correct
+        let indices = bytemuck::try_cast_slice(indices).unwrap();
 
         //good ptr and no uninit reads
         let out = out.as_mut_ptr();
