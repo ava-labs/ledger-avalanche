@@ -20,6 +20,7 @@ pub enum ParserError {
     InvalidThreshold,
     InvalidNetworkId,
     InvalidChainId,
+    InvalidAsciiValue,
     UnexpectedType,
     InvalidTransactionType,
     OperationOverflows,
