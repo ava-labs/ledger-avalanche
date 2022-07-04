@@ -17,10 +17,12 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
-    sequence::tuple,
 };
 
-use crate::parser::{FromBytes, ParserError};
+use crate::{
+    parser::{FromBytes, ParserError},
+    utils::ApduPanic,
+};
 
 const U32_SIZE: usize = std::mem::size_of::<u32>();
 
@@ -53,7 +55,7 @@ impl<'b> FromBytes<'b> for SubnetAuth<'b> {
         let (rem, indices) = take(num_indices as usize * U32_SIZE)(rem)?;
         // This would not fail as previous line ensures we take
         // the right amount of bytes, also the alignemnt is correct
-        let indices = bytemuck::try_cast_slice(indices).unwrap();
+        let indices = bytemuck::try_cast_slice(indices).apdu_unwrap();
 
         //good ptr and no uninit reads
         let out = out.as_mut_ptr();

@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{BaseTx, DisplayableItem, FromBytes, ParserError, SubnetAuth, PVM_CREATE_CHAIN},
-    utils::hex_encode,
+    utils::{hex_encode, ApduPanic},
 };
 
 pub const SUBNET_ID_LEN: usize = 32;
@@ -72,7 +72,7 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
 
         // This would not fail as previous line ensures we take
         // the right amount of bytes, also the alignemnt is correct
-        let fx_id = bytemuck::try_cast_slice(fx_id).unwrap();
+        let fx_id = bytemuck::try_cast_slice(fx_id).apdu_unwrap();
 
         let (rem, genesis_data_len) = be_u32(rem)?;
         let (rem, genesis_data) = take(genesis_data_len as usize)(rem)?;
