@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2022 Zondax GmbH
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@ use bolos::PIC;
 git_testament::git_testament_macros!(git);
 
 pub const GIT_COMMIT_HASH: &str = git_commit_hash!();
+
+mod apdu_unwrap;
+pub use apdu_unwrap::*;
 
 mod apdu_wrapper;
 pub use apdu_wrapper::*;
@@ -204,54 +207,6 @@ mod maybe_null_terminated_to_string {
 
 #[cfg(test)]
 pub use maybe_null_terminated_to_string::MaybeNullTerminatedToString;
-
-pub trait ApduPanic: Sized {
-    type Item;
-
-    fn apdu_unwrap(self) -> Self::Item;
-
-    fn apdu_expect(self, s: &str) -> Self::Item;
-}
-
-impl<T, E> ApduPanic for Result<T, E> {
-    type Item = T;
-
-    #[inline]
-    fn apdu_unwrap(self) -> Self::Item {
-        match self {
-            Ok(t) => t,
-            Err(_) => panic!(),
-        }
-    }
-
-    #[inline]
-    fn apdu_expect(self, _: &str) -> Self::Item {
-        match self {
-            Ok(t) => t,
-            Err(_) => panic!(),
-        }
-    }
-}
-
-impl<T> ApduPanic for Option<T> {
-    type Item = T;
-
-    #[inline]
-    fn apdu_unwrap(self) -> Self::Item {
-        match self {
-            Some(t) => t,
-            None => panic!(),
-        }
-    }
-
-    #[inline]
-    fn apdu_expect(self, _: &str) -> Self::Item {
-        match self {
-            Some(t) => t,
-            None => panic!(),
-        }
-    }
-}
 
 #[macro_export]
 /// Convert the return of Show::show into something more usable for apdu handlers

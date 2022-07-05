@@ -15,11 +15,13 @@
 ********************************************************************************/
 
 mod base_tx;
+mod create_chain_tx;
 mod create_subnet_tx;
 mod export_tx;
 mod import_tx;
 
 pub use base_tx::{BaseTx, BLOCKCHAIN_ID_LEN};
+pub use create_chain_tx::CreateChainTx;
 pub use create_subnet_tx::CreateSubnetTx;
 pub use export_tx::ExportTx;
 pub use import_tx::ImportTx;
