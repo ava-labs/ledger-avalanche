@@ -57,7 +57,7 @@ impl<T, A: Eq> Lock<T, A> {
         }
     }
 
-    ///Release the resource if locker by `acquirer`
+    ///Release the resource if locked by `acquirer`
     pub fn release(&mut self, acquirer: impl Into<A>) -> Result<(), LockError> {
         let acq = acquirer.into();
         match self.lock {

@@ -13,11 +13,9 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::convert::TryFrom;
-
 use bolos::{
     crypto::bip32::BIP32Path,
-    hash::{Hasher, Sha256},
+    hash::{Hasher, Keccak},
     pic_str, PIC,
 };
 use zemu_sys::{Show, ViewError, Viewable};
@@ -34,7 +32,7 @@ use crate::{
 pub struct BlindSign;
 
 impl BlindSign {
-    pub const SIGN_HASH_SIZE: usize = 32;
+    pub const SIGN_HASH_SIZE: usize = Keccak::<32>::DIGEST_LEN;
 
     fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
         match unsafe { PATH.acquire(Self) } {
@@ -61,26 +59,25 @@ impl BlindSign {
     }
 
     #[inline(never)]
-    fn sha256_digest(buffer: &[u8]) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
-        Sha256::digest(buffer).map_err(|_| Error::ExecutionError)
+    fn digest(buffer: &[u8]) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
+        Keccak::<32>::digest(buffer).map_err(|_| Error::ExecutionError)
     }
 
     #[inline(never)]
     pub fn start_sign(
         send_hash: bool,
-        p2: u8,
+        _: u8,
         init_data: &[u8],
         data: &'static [u8],
         flags: &mut u32,
     ) -> Result<u32, Error> {
-        let curve = Curve::try_from(p2).map_err(|_| Error::InvalidP1P2)?;
         let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
 
         unsafe {
-            PATH.lock(Self)?.replace((path, curve));
+            PATH.lock(Self)?.replace((path, Curve::Secp256K1));
         }
 
-        let unsigned_hash = Self::sha256_digest(data)?;
+        let unsigned_hash = Self::digest(data)?;
 
         let ui = SignUI {
             hash: unsigned_hash,
@@ -98,7 +95,7 @@ impl ApduHandler for BlindSign {
         tx: &mut u32,
         buffer: ApduBufferRead<'apdu>,
     ) -> Result<(), Error> {
-        sys::zemu_log_stack("Sign::handle\x00");
+        sys::zemu_log_stack("EthSign::handle\x00");
 
         *tx = 0;
 
@@ -135,7 +132,7 @@ impl Viewable for SignUI {
     ) -> Result<u8, ViewError> {
         match item_n {
             0 => {
-                let title_content = pic_str!(b"Sign");
+                let title_content = pic_str!(b"Ethereum Sign");
                 title[..title_content.len()].copy_from_slice(title_content);
 
                 let mut hex_buf = [0; BlindSign::SIGN_HASH_SIZE * 2];
@@ -168,12 +165,12 @@ impl Viewable for SignUI {
 
         //write unsigned_hash to buffer
         if self.send_hash {
-            out[tx..tx + BlindSign::SIGN_HASH_SIZE].copy_from_slice(&self.hash[..]);
+            out[tx..][..BlindSign::SIGN_HASH_SIZE].copy_from_slice(&self.hash[..]);
             tx += BlindSign::SIGN_HASH_SIZE;
         }
 
         //wrte signature to buffer
-        out[tx..tx + sig_size].copy_from_slice(&sig[..sig_size]);
+        out[tx..][..sig_size].copy_from_slice(&sig[..sig_size]);
         tx += sig_size;
 
         (tx, Error::Success as _)

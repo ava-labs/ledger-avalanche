@@ -16,16 +16,19 @@
 
 use core::hint::unreachable_unchecked;
 
-use crate::constants::{instructions::*, ApduError};
+use crate::constants::{evm_instructions::*, instructions::*, ApduError};
 
 use crate::handlers::{
+    eth::public_key::{
+        GetExtendedPublicKey as GetExtendedEthPublicKey, GetPublicKey as GetEthPublicKey,
+    },
     public_key::{GetExtendedPublicKey, GetPublicKey},
     version::GetVersion,
     wallet_id::WalletId,
 };
 
 #[cfg(feature = "blind-sign")]
-use crate::handlers::signing::BlindSign;
+use crate::handlers::{eth::signing::BlindSign as EthBlindSign, signing::BlindSign};
 
 #[cfg(feature = "dev")]
 use crate::handlers::dev::*;
@@ -50,20 +53,28 @@ pub fn apdu_dispatch<'apdu>(
     *flags = 0;
     *tx = 0;
 
-    if apdu_buffer.cla() != CLA {
+    let cla = apdu_buffer.cla();
+    if cla != CLA || cla != CLA_ETH {
         return Err(ApduError::ClaNotSupported);
     }
 
     let ins = apdu_buffer.ins();
 
     //common instructions
-    match ins {
-        INS_GET_VERSION => GetVersion::handle(flags, tx, apdu_buffer),
-        INS_GET_PUBLIC_KEY => GetPublicKey::handle(flags, tx, apdu_buffer),
-        INS_GET_EXTENDED_PUBLIC_KEY => GetExtendedPublicKey::handle(flags, tx, apdu_buffer),
+    match (cla, ins) {
+        (CLA, INS_GET_VERSION) => GetVersion::handle(flags, tx, apdu_buffer),
+        (CLA, INS_GET_PUBLIC_KEY) => GetPublicKey::handle(flags, tx, apdu_buffer),
+        (CLA, INS_GET_EXTENDED_PUBLIC_KEY) => GetExtendedPublicKey::handle(flags, tx, apdu_buffer),
         #[cfg(feature = "blind-sign")]
-        INS_BLIND_SIGN => BlindSign::handle(flags, tx, apdu_buffer),
-        INS_GET_WALLET_ID => WalletId::handle(flags, tx, apdu_buffer),
+        (CLA, INS_BLIND_SIGN) => BlindSign::handle(flags, tx, apdu_buffer),
+        (CLA, INS_GET_WALLET_ID) => WalletId::handle(flags, tx, apdu_buffer),
+
+        (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
+        #[cfg(feature = "blind-sign")]
+        (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_ETH_GET_EXTENDED_PUBLIC_KEY) => {
+            GetExtendedEthPublicKey::handle(flags, tx, apdu_buffer)
+        }
 
         #[cfg(feature = "dev")]
         _ => Debug::handle(flags, tx, apdu_buffer),
