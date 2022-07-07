@@ -169,7 +169,7 @@ impl Viewable for ExtendedPubkeyUI {
                 let title_content = pic_str!(b"Path");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let path = pic_str!("m/44'/9000'/0'");
+                let path = pic_str!("m/44'/60'/0'");
 
                 handle_ui_message(path.as_bytes(), message, page)
             }

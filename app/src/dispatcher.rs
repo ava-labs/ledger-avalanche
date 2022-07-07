@@ -54,7 +54,7 @@ pub fn apdu_dispatch<'apdu>(
     *tx = 0;
 
     let cla = apdu_buffer.cla();
-    if cla != CLA || cla != CLA_ETH {
+    if cla != CLA && cla != CLA_ETH {
         return Err(ApduError::ClaNotSupported);
     }
 
