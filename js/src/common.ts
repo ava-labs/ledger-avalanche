@@ -1,6 +1,7 @@
 import Transport from '@ledgerhq/hw-transport'
 
 export const CLA = 0x80
+export const CLA_ETH = 0xE0
 export const CHUNK_SIZE = 250
 export const APP_KEY = 'AVAX'
 
