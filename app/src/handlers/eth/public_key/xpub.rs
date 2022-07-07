@@ -202,3 +202,61 @@ impl Viewable for ExtendedPubkeyUI {
         (0, Error::CommandNotAllowed as _)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bolos::crypto::bip32::BIP32Path;
+    use zuit::{MockDriver, Page};
+
+    use crate::utils::strlen;
+
+    use super::*;
+
+    impl ExtendedPubkeyUI {
+        pub fn new(path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> Self {
+            let mut loc = MaybeUninit::uninit();
+
+            let mut builder = ExtendedPubkeyUIInitializer::new(&mut loc);
+            let _ = builder.initialize_inner(path);
+            let _ = builder.finalize();
+
+            unsafe { loc.assume_init() }
+        }
+    }
+
+    fn path() -> BIP32Path<MAX_BIP32_PATH_DEPTH> {
+        BIP32Path::new([0x8000_0000 + 44, 0x8000_0000 + 60]).unwrap()
+    }
+
+    #[test]
+    pub fn eth_xpub_ui() {
+        let ui = ExtendedPubkeyUI::new(path());
+
+        let expected_message = "m/44'/60'/0'";
+
+        let mut driver = MockDriver::<_, 18, 4096>::new(ui);
+        driver.with_print(true);
+        driver.drive();
+
+        let produced_ui = driver.out_ui();
+        //skip the first item, since it's produced by Addr UI
+        // that's taken care of the addr ui tests
+        let produced_pages = &produced_ui[1];
+
+        //mockdriver is big enough to only need 1 page
+        let &Page { title, message } = &produced_pages[0];
+        //ignore pagination at the end of the title,
+        // even tho with MockDriver there shouldn't be any anyways
+        assert!(title.starts_with(b"Path"));
+
+        //avoid trailing zeros
+        let message = {
+            let len = strlen(&message);
+            std::str::from_utf8(&message[..len]).unwrap()
+        };
+
+        //verify that the address message computed by the UI
+        // and the one computed in the test are the same
+        assert_eq!(&message, &expected_message)
+    }
+}

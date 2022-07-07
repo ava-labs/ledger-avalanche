@@ -341,11 +341,7 @@ mod tests {
     use bolos::{bech32, crypto::bip32::BIP32Path};
     use zuit::{MockDriver, Page};
 
-    use crate::{
-        crypto::{PublicKey, SecretKey},
-        handlers::public_key::GetPublicKey,
-        utils::strlen,
-    };
+    use crate::{handlers::public_key::GetPublicKey, utils::strlen};
 
     use super::*;
 
@@ -366,14 +362,7 @@ mod tests {
     }
 
     fn path() -> BIP32Path<MAX_BIP32_PATH_DEPTH> {
-        BIP32Path::new([44]).unwrap()
-    }
-
-    fn keypair() -> (SecretKey<MAX_BIP32_PATH_DEPTH>, PublicKey) {
-        let secret = crypto::SecretKey::new(crypto::Curve::Secp256K1, path());
-
-        let public = secret.public().unwrap();
-        (secret, public)
+        BIP32Path::new([0x8000_0000 + 44, 0x8000_0000 + 9000]).unwrap()
     }
 
     fn test_chain_alias(alias: Option<&str>, chain_code: Option<&[u8; 32]>) {
@@ -421,9 +410,9 @@ mod tests {
             let len = strlen(&message);
             std::str::from_utf8(&message[..len]).unwrap()
         };
+
         //verify that the address message computed by the UI
         // and the one computed in the test are the same
-
         assert_eq!(message, &expected_message)
     }
 
