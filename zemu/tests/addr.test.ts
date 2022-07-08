@@ -103,7 +103,7 @@ describe.each(models)('Ethereum [%s] - pubkey', function (m) {
     async function (curve) {
       const sim = new Zemu(m.path)
       try {
-        sim.start({ ...defaultOptions, model: m.name })
+        await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
         const resp = await app.getETHAddressAndPubKey(ETH_DERIVATION, curve)
 
