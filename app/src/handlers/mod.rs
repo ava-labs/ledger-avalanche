@@ -21,12 +21,18 @@ pub mod wallet_id;
 #[cfg(feature = "dev")]
 pub mod dev;
 
+pub mod eth;
+
 mod utils;
 pub use utils::*;
 
 pub mod resources {
+    use crate::{constants::MAX_BIP32_PATH_DEPTH, crypto::Curve};
+
     use super::lock::Lock;
-    use bolos::{lazy_static, new_swapping_buffer, pic::PIC, SwappingBuffer};
+    use bolos::{
+        crypto::bip32::BIP32Path, lazy_static, new_swapping_buffer, pic::PIC, SwappingBuffer,
+    };
 
     #[lazy_static]
     pub static mut BUFFER: Lock<SwappingBuffer<'static, 'static, 0xFF, 0x1FFF>, BUFFERAccessors> =
@@ -35,6 +41,7 @@ pub mod resources {
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum BUFFERAccessors {
         Sign,
+        EthSign,
         #[cfg(feature = "dev")]
         Debug,
     }
@@ -45,10 +52,38 @@ pub mod resources {
         }
     }
 
+    impl From<super::eth::signing::BlindSign> for BUFFERAccessors {
+        fn from(_: super::eth::signing::BlindSign) -> Self {
+            Self::EthSign
+        }
+    }
+
     #[cfg(feature = "dev")]
     impl From<super::dev::Debug> for BUFFERAccessors {
         fn from(_: super::dev::Debug) -> Self {
             Self::Debug
+        }
+    }
+
+    #[lazy_static]
+    pub static mut PATH: Lock<Option<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve)>, PATHAccessors> =
+        Lock::new(None);
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum PATHAccessors {
+        Sign,
+        EthSign,
+    }
+
+    impl From<super::signing::BlindSign> for PATHAccessors {
+        fn from(_: super::signing::BlindSign) -> Self {
+            Self::Sign
+        }
+    }
+
+    impl From<super::eth::signing::BlindSign> for PATHAccessors {
+        fn from(_: super::eth::signing::BlindSign) -> Self {
+            Self::EthSign
         }
     }
 }

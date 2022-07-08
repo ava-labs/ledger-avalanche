@@ -33,6 +33,8 @@ pub use buffer_upload::*;
 mod app_mode;
 pub use app_mode::*;
 
+pub mod blind_sign_toggle;
+
 #[cfg(test)]
 #[macro_export]
 macro_rules! assert_error_code {

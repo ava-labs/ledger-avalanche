@@ -16,7 +16,7 @@
 #![allow(unused_imports)]
 
 pub use rslib::{
-    constants::{self, ApduError, CLA},
+    constants::{self, ApduError, CLA, CLA_ETH},
     crypto::{self, Curve},
     rs_handle_apdu, PacketType,
 };

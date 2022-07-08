@@ -30,7 +30,7 @@ fn sign() {
     buffer[0] = CLA;
     buffer[1] = INS;
     buffer[2] = PacketType::Init.into();
-    let len = prepare_buffer::<4>(&mut buffer, &[44, 0, 0, 0], Curve::Secp256K1, None, None);
+    let len = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Curve::Secp256K1, None, None);
 
     let out = handle_apdu(&mut flags, &mut tx, 5 + len as u32, &mut buffer);
     println!("{}:{}", tx, hex::encode(&out));

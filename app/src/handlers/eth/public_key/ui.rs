@@ -1,0 +1,275 @@
+/*******************************************************************************
+*   (c) 2022 Zondax GmbH
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+********************************************************************************/
+
+use crate::{
+    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
+    crypto,
+    handlers::handle_ui_message,
+    sys::{
+        crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
+        hash::{Hasher, Keccak},
+        ViewError, Viewable, PIC,
+    },
+    utils::hex_encode,
+};
+
+use core::{mem::MaybeUninit, ptr::addr_of_mut};
+
+use super::GetPublicKey;
+
+/// This is a utility struct to initialize the [`AddrUI`]
+/// in a given [`MaybeUninit`] correctly
+pub struct AddrUIInitializer<'ui> {
+    ui: &'ui mut MaybeUninit<AddrUI>,
+    path_init: bool,
+}
+
+#[cfg_attr(test, derive(Debug))]
+pub enum AddrUIInitError {
+    KeyInitError,
+    PathNotInitialized,
+    HashInitError,
+}
+
+impl From<AddrUIInitError> for Error {
+    fn from(_: AddrUIInitError) -> Self {
+        Self::ExecutionError
+    }
+}
+
+impl<'ui> AddrUIInitializer<'ui> {
+    /// Create a new `AddrUI` initialized
+    pub fn new(ui: &'ui mut MaybeUninit<AddrUI>) -> Self {
+        Self {
+            ui,
+            path_init: false,
+        }
+    }
+
+    /// Produce the closure to initialize a key
+    pub fn key_initializer<'p, const B: usize>(
+        path: &'p BIP32Path<B>,
+    ) -> impl FnOnce(
+        &mut MaybeUninit<crypto::PublicKey>,
+        Option<&mut [u8; CHAIN_CODE_LEN]>,
+    ) -> Result<(), AddrUIInitError>
+           + 'p {
+        move |key, cc| {
+            GetPublicKey::new_key_into(path, key, cc).map_err(|_| AddrUIInitError::KeyInitError)
+        }
+    }
+
+    /// Produce the closure to initialize the pubkey hash
+    pub fn hash_initializer() -> impl FnOnce(
+        &crypto::PublicKey,
+        &mut [u8; Keccak::<32>::DIGEST_LEN],
+    ) -> Result<(), AddrUIInitError> {
+        |key, hash| {
+            Keccak::<32>::digest_into(key.as_ref(), hash)
+                .map_err(|_| AddrUIInitError::HashInitError)
+        }
+    }
+
+    /// Initialie the path with the given one
+    pub fn with_path(&mut self, path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> &mut Self {
+        //get ui *mut
+        let ui = self.ui.as_mut_ptr();
+
+        //SAFETY: pointers are all valid since they are coming from rust
+        unsafe {
+            let ui_path = addr_of_mut!((*ui).path);
+            ui_path.write(path);
+        }
+
+        self.path_init = true;
+        self
+    }
+
+    /// Finalize the initialization, performing any necessary checks to ensure everything is initialized
+    pub fn finalize(self) -> Result<(), (Self, AddrUIInitError)> {
+        if !self.path_init {
+            Err((self, AddrUIInitError::PathNotInitialized))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+pub struct AddrUI {
+    path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
+}
+
+impl AddrUI {
+    /// Compute the public key from the path
+    pub fn pkey(
+        &self,
+        chain_code: Option<&mut [u8; CHAIN_CODE_LEN]>,
+    ) -> Result<crypto::PublicKey, Error> {
+        let mut out = MaybeUninit::uninit();
+
+        AddrUIInitializer::key_initializer(&self.path)(&mut out, chain_code)
+            .map_err(|_| Error::ExecutionError)?;
+
+        //SAFETY: out has been initialized by the call above
+        // note, this isn't done in .map since it would also be executed in case of an error
+        Ok(unsafe { out.assume_init() })
+    }
+
+    /// Compute the pkey hash
+    pub fn hash(&self, key: &crypto::PublicKey) -> Result<[u8; Keccak::<32>::DIGEST_LEN], Error> {
+        let mut out = [0; Keccak::<32>::DIGEST_LEN];
+
+        AddrUIInitializer::hash_initializer()(key, &mut out)
+            .map_err(|_| Error::ExecutionError)
+            .map(|_| out)
+    }
+}
+
+impl Viewable for AddrUI {
+    fn num_items(&mut self) -> Result<u8, ViewError> {
+        Ok(1)
+    }
+
+    fn render_item(
+        &mut self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        use bolos::pic_str;
+
+        if let 0 = item_n {
+            let title_content = pic_str!(b"Address");
+            title[..title_content.len()].copy_from_slice(title_content);
+
+            let mut mex = [0; 2 + Keccak::<32>::DIGEST_LEN * 2];
+            mex[0] = b'0';
+            mex[1] = b'x';
+
+            let mut len = 2;
+
+            let hash = self
+                .pkey(None)
+                .and_then(|pkey| self.hash(&pkey))
+                .map_err(|_| ViewError::Unknown)?;
+
+            len += hex_encode(hash, &mut mex[len..]).map_err(|_| ViewError::Unknown)?;
+
+            handle_ui_message(&mex[..len], message, page)
+        } else {
+            Err(ViewError::NoData)
+        }
+    }
+
+    fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
+        let pkey = match self.pkey(None) {
+            Ok(pkey) => pkey,
+            Err(e) => return (0, e as _),
+        };
+
+        let pkey_bytes = pkey.as_ref();
+        let mut tx = 0;
+
+        out[tx] = pkey_bytes.len() as u8;
+        tx += 1;
+        out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
+        tx += pkey_bytes.len();
+
+        match self.hash(&pkey) {
+            Ok(hash) => {
+                out[tx..][..hash.len()].copy_from_slice(&hash[..]);
+                tx += hash.len();
+            }
+            Err(e) => return (0, e as _),
+        }
+
+        (tx, Error::Success as _)
+    }
+
+    fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
+        (0, Error::CommandNotAllowed as _)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bolos::crypto::bip32::BIP32Path;
+    use zuit::{MockDriver, Page};
+
+    use crate::{
+        crypto::{PublicKey, SecretKey},
+        utils::strlen,
+    };
+
+    use super::*;
+
+    impl AddrUI {
+        pub fn new(path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> Self {
+            let mut loc = MaybeUninit::uninit();
+
+            let mut builder = AddrUIInitializer::new(&mut loc);
+            let _ = builder.with_path(path);
+            let _ = builder.finalize();
+
+            unsafe { loc.assume_init() }
+        }
+    }
+
+    fn path() -> BIP32Path<MAX_BIP32_PATH_DEPTH> {
+        BIP32Path::new([44]).unwrap()
+    }
+
+    fn keypair() -> (SecretKey<MAX_BIP32_PATH_DEPTH>, PublicKey) {
+        let secret = crypto::SecretKey::new(crypto::Curve::Secp256K1, path());
+
+        let public = secret.public().unwrap();
+        (secret, public)
+    }
+
+    #[test]
+    pub fn eth_addr_ui() {
+        let ui = AddrUI::new(path());
+
+        //construct the expected message
+        let mut expected_message = std::string::String::new();
+        expected_message.push_str("0x");
+        expected_message.push_str(&hex::encode(ui.hash(&ui.pkey(None).unwrap()).unwrap()));
+
+        let mut driver = MockDriver::<_, 18, 4096>::new(ui);
+        driver.with_print(true);
+        driver.drive();
+
+        let produced_ui = driver.out_ui();
+        let produced_pages = &produced_ui[0];
+
+        //mockdriver is big enough to only need 1 page
+        let &Page { title, message } = &produced_pages[0];
+        //ignore pagination at the end of the title,
+        // even tho with MockDriver there shouldn't be any anyways
+        assert!(title.starts_with(b"Address"));
+
+        //avoid trailing zeros
+        let message = {
+            let len = strlen(&message);
+            std::str::from_utf8(&message[..len]).unwrap()
+        };
+        //verify that the address message computed by the UI
+        // and the one computed in the test are the same
+
+        assert_eq!(message, &expected_message)
+    }
+}

@@ -63,11 +63,8 @@ define run_docker
 	-e SCP_PRIVKEY=$(SCP_PRIVKEY) \
 	-e BOLOS_SDK=$(1) \
 	-e BOLOS_ENV=/opt/bolos \
-	-e BAKING=$(BAKING) \
-	-e APP=$(BAKING) \
 	-u $(USERID) \
 	-v $(shell pwd):/project \
-	-v $(shell pwd)/vendor:/project/vendor \
 	-e COIN=$(COIN) \
 	-e APP_TESTING=$(APP_TESTING) \
 	$(DOCKER_IMAGE) "$(2)"
