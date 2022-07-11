@@ -296,7 +296,7 @@ impl Viewable for AddrUI {
                 .pkey(None)
                 .and_then(|pkey| self.hash(&pkey))
                 .map_err(|_| ViewError::Unknown)?;
-            len += bech32::encode(self.hrp_as_str(), &hash[..], &mut mex[len..])
+            len += bech32::encode(self.hrp_as_str(), &hash[..], &mut mex[len..], bech32::Variant::Bech32)
                 .map_err(|_| ViewError::Unknown)?;
 
             handle_ui_message(&mex[..len], message, page)
@@ -387,7 +387,7 @@ mod tests {
             let hrp = std::string::String::from_utf8(GetPublicKey::DEFAULT_HRP.to_vec()).unwrap();
             let mut tmp = [0; bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN)];
             let len =
-                bech32::encode(&hrp, &ui.hash(&ui.pkey(None).unwrap()).unwrap(), &mut tmp).unwrap();
+                bech32::encode(&hrp, &ui.hash(&ui.pkey(None).unwrap()).unwrap(), &mut tmp, bech32::Variant::Bech32).unwrap();
 
             std::string::String::from_utf8(tmp[..len].to_vec()).unwrap()
         });
