@@ -14,7 +14,7 @@
   "dependencies": {
     "@types/node": "^16.10.3",
     "@zondax/ledger-avalanche-app": "link:../js",
-    "@zondax/zemu": "^0.29.1"
+    "@zondax/zemu": "^0.32"
   },
   "devDependencies": {
     "@types/bs58": "^4.0.1",
