@@ -95,7 +95,7 @@ impl<'a> DisplayableItem for SECPTransferInput<'a> {
         use bolos::{pic_str, PIC};
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let mut buffer = [0; u64::FORMATTED_SIZE];
 
         let num_indices = self.address_indices.len();
 

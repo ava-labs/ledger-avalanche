@@ -114,7 +114,7 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
         };
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let mut buffer = [0; u64::FORMATTED_SIZE];
         let addr_item_n = self.num_items() - self.addresses.len();
         let render_payload = !self.payload.is_empty() && is_app_mode_expert();
         let render_locktime = self.locktime > 0;
