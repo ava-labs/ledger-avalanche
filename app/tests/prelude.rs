@@ -16,26 +16,25 @@
 #![allow(unused_imports)]
 
 pub use rslib::{
-    constants::{self, ApduError, CLA},
+    constants::{self, ApduError, CLA, CLA_ETH},
     crypto::{self, Curve},
     rs_handle_apdu, PacketType,
 };
 
 pub use std::convert::TryInto;
 
-pub use zemu_sys::set_out;
-
 use bolos::crypto::bip32::BIP32Path;
 
-pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8]) {
-    unsafe {
-        rs_handle_apdu(
-            flags,
-            tx,
-            rx,
-            apdu_buffer.as_mut_ptr(),
-            apdu_buffer.len() as u16,
-        )
+pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, buffer: &mut [u8]) -> Vec<u8> {
+    unsafe { rs_handle_apdu(flags, tx, rx, buffer.as_mut_ptr(), buffer.len() as u16) }
+
+    //attempt to retrieve the ui output
+    // if none is returned then the show UI was never invoked
+    // so all the data is in the apdu buffer
+    // otherwise the data is in this buffer
+    match zemu_sys::get_out() {
+        Some((sz, buf)) => Vec::from(&buf[..sz]),
+        None => Vec::from(&buffer[..*tx as usize]),
     }
 }
 

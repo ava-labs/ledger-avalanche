@@ -23,10 +23,15 @@ zemu-sys = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
 
 no-std-compat = { version = "0.4" }
 cfg-if = "1.0.0"
-git-testament = { git = "https://github.com/Zondax/git-testament", branch = "fix/cve-2020-26235", version = "0.2.1", default-features = false }
+git-testament = { version = "0.2.1", default-features = false }
 
 avalanche-app-derive = { path = "../app-derive" }
+arrayvec = { version = "0.7", default-features = false }
 arrayref = "0.3.6"
+nom = { version = "7.1.1", default-features = false}
+bytemuck = { version = "1" }
+lexical-core = { version = "0.7", features = ["libm"], default-features = false }
+educe = "0.4.19"
 
 [target.thumbv6m-none-eabi.dev-dependencies]
 panic-halt = "0.2.0"
@@ -38,3 +43,4 @@ serial_test = "0.5"
 zuit = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
 bolos = { git = "https://github.com/Zondax/ledger-rust", branch = "dev", features = ["derive-debug"] }
 hex = "0.4.3"
+arrayvec = { version = "0.7"}

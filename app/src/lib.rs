@@ -22,6 +22,7 @@ extern crate no_std_compat as std;
 pub mod constants;
 pub mod dispatcher;
 mod handlers;
+mod parser;
 mod sys;
 
 pub use handlers::ZPacketType as PacketType;

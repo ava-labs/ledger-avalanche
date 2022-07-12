@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2022 Zondax GmbH
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-#![allow(dead_code)]
+#![allow(dead_code, unused_macros)]
 
 use bolos::PIC;
 
@@ -21,11 +21,19 @@ git_testament::git_testament_macros!(git);
 
 pub const GIT_COMMIT_HASH: &str = git_commit_hash!();
 
+mod apdu_unwrap;
+pub use apdu_unwrap::*;
+
 mod apdu_wrapper;
 pub use apdu_wrapper::*;
 
 mod buffer_upload;
 pub use buffer_upload::*;
+
+mod app_mode;
+pub use app_mode::*;
+
+pub mod blind_sign_toggle;
 
 #[cfg(test)]
 #[macro_export]
@@ -123,7 +131,7 @@ pub fn bs58_encode(
         }
     }
 
-    for _ in input.into_iter().take_while(|v| **v == 0) {
+    for _ in input.iter().take_while(|v| **v == 0) {
         if index == output.len() {
             return Err(OutputBufferTooSmall);
         }
@@ -202,49 +210,42 @@ mod maybe_null_terminated_to_string {
 #[cfg(test)]
 pub use maybe_null_terminated_to_string::MaybeNullTerminatedToString;
 
-pub trait ApduPanic: Sized {
-    type Item;
+#[macro_export]
+/// Convert the return of Show::show into something more usable for apdu handlers
+///
+/// sets `tx` to the amount returned if given,
+/// otherwise tx is returned only on success and discarded on failure
+macro_rules! show_ui {
+    ($show:expr, $tx:ident) => {
+        match unsafe { $show } {
+            Ok((size, err)) if err == crate::constants::ApduError::Success as u16 => {
+                *$tx = size as _;
+                Ok(())
+            }
+            Ok((size, err)) => {
+                use ::core::convert::TryInto;
+                *$tx = size as _;
 
-    fn apdu_unwrap(self) -> Self::Item;
-
-    fn apdu_expect(self, s: &str) -> Self::Item;
-}
-
-impl<T, E> ApduPanic for Result<T, E> {
-    type Item = T;
-
-    #[inline]
-    fn apdu_unwrap(self) -> Self::Item {
-        match self {
-            Ok(t) => t,
-            Err(_) => panic!(),
+                match err.try_into() {
+                    Ok(err) => Err(err),
+                    Err(_) => Err(crate::constants::ApduError::ExecutionError),
+                }
+            }
+            Err(_) => Err(crate::constants::ApduError::ExecutionError),
         }
-    }
+    };
+    ($show:expr) => {
+        match unsafe { $show } {
+            Ok((size, err)) if err == crate::constants::ApduError::Success as u16 => Ok(size as _),
+            Ok((_, err)) => {
+                use ::core::convert::TryInto;
 
-    #[inline]
-    fn apdu_expect(self, _: &str) -> Self::Item {
-        match self {
-            Ok(t) => t,
-            Err(_) => panic!(),
+                match err.try_into() {
+                    Ok(err) => Err(err),
+                    Err(_) => Err(crate::constants::ApduError::ExecutionError),
+                }
+            }
+            Err(_) => Err(crate::constants::ApduError::ExecutionError),
         }
-    }
-}
-impl<T> ApduPanic for Option<T> {
-    type Item = T;
-
-    #[inline]
-    fn apdu_unwrap(self) -> Self::Item {
-        match self {
-            Some(t) => t,
-            None => panic!(),
-        }
-    }
-
-    #[inline]
-    fn apdu_expect(self, _: &str) -> Self::Item {
-        match self {
-            Some(t) => t,
-            None => panic!(),
-        }
-    }
+    };
 }

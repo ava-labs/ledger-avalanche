@@ -8,6 +8,11 @@ export interface ResponseAddress extends ResponseBase {
   hash: Buffer
 }
 
+export interface ResponseXPub extends ResponseBase {
+  publicKey: Buffer
+  chain_code: Buffer
+}
+
 export interface ResponseVersion extends ResponseBase {
   testMode: boolean
   major: number

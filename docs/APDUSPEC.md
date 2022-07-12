@@ -165,3 +165,37 @@ Data is defined as:
 | WALLET_ID | byte (6) | Wallet ID   |                          |
 | SW1-SW2   | byte (2) | Return code | see list of return codes |
 
+### INS_GET_EXTENDED_PUBLIC_KEY
+
+#### Command
+
+If the HRPLen is 0, then the default HRP of 'avax' is used.
+If the ChainIDLen is 0, then the default ChainID of 32 zero bytes (P-Chain's)
+
+| Field      | Type              | Content                   | Expected        |
+|------------|-------------------|---------------------------|-----------------|
+| CLA        | byte (1)          | Application Identifier    | 0x80            |
+| INS        | byte (1)          | Instruction ID            | 0x04            |
+| P1         | byte (1)          | Request User confirmation | No = 0          |
+| P2         | byte (1)          | Curve identifier          | 0 = Secp256K1   |
+| L          | byte (1)          | Bytes in payload          | (depends)       |
+| HRPLen     | byte (1)          | Length of HRP             | ?               |
+| HRP        | byte (HRPLen)     | HRP                       | ?               |
+| ChainIDLen | byte (1)          | Length of ChainID         | 0 OR 32         |
+| ChainID    | byte (ChainIDLen) | ChainID                   | ?               |
+| PathN      | byte (1)          | Number of path components | ? (typically 4) |
+| Path[0]    | byte (4)          | Derivation Path Data      | 0x8000002c      |
+| Path[1]    | byte (4)          | Derivation Path Data      | 0x80002328      |
+| Path[2]    | byte (4)          | Derivation Path Data      | ?               |
+| Path[3]    | byte (4)          | Derivation Path Data      | ?               |
+| Path[4]    | byte (4)          | Derivation Path Data      | ?               |
+
+#### Response
+
+| Field      | Type      | Content          | Note                     |
+|------------|-----------|------------------|--------------------------|
+| PK_LEN     | byte (1)  | Bytes in PKEY    |                          |
+| PKEY       | byte (??) | Public key bytes |                          |
+| CHAIN_CODE | byte (32) | Key chain code   |                          |
+| SW1-SW2    | byte (2)  | Return code      | see list of return codes |
+

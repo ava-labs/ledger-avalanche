@@ -16,10 +16,11 @@
  ******************************************************************************* */
 import Transport from '@ledgerhq/hw-transport'
 import { serializePath, serializeHrp, serializeChainID, } from './helper'
-import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId } from './types'
+import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId, ResponseXPub } from './types'
 import {
   CHUNK_SIZE,
   CLA,
+  CLA_ETH,
   Curve,
   errorCodeToString,
   getVersion,
@@ -51,6 +52,29 @@ function processGetAddrResponse(response: Buffer) {
   return {
     publicKey,
     hash,
+    returnCode,
+    errorMessage: errorCodeToString(returnCode),
+  }
+}
+
+function processGetXPubResponse(response: Buffer) {
+  let partialResponse = response
+
+  const errorCodeData = partialResponse.slice(-2)
+  const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
+
+  //get public key len (variable)
+  const PKLEN = partialResponse[0]
+  const publicKey = Buffer.from(partialResponse.slice(1, 1 + PKLEN))
+
+  //"advance" buffer
+  partialResponse = partialResponse.slice(1 + PKLEN)
+
+  const chain_code = Buffer.from(partialResponse.slice(0, -2))
+
+  return {
+    publicKey,
+    chain_code,
     returnCode,
     errorMessage: errorCodeToString(returnCode),
   }
@@ -93,7 +117,7 @@ export default class AvalancheApp {
     return AvalancheApp.prepareChunks(message, serializePath(path))
   }
 
-  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, curve?: Curve, ins: number = INS.SIGN): Promise<ResponseSign> {
+  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, curve?: Curve, ins: number = INS.SIGN, evm = false): Promise<ResponseSign> {
     let payloadType = PAYLOAD_TYPE.ADD
     let p2 = 0
     if (chunkIdx === 1) {
@@ -107,8 +131,10 @@ export default class AvalancheApp {
       payloadType = PAYLOAD_TYPE.LAST
     }
 
+    const cla = evm ? CLA_ETH : CLA;
+
     return this.transport
-      .send(CLA, ins, payloadType, p2, chunk, [
+      .send(cla, ins, payloadType, p2, chunk, [
         LedgerError.NoErrors,
         LedgerError.DataIsInvalid,
         LedgerError.BadKeyHandle,
@@ -154,6 +180,26 @@ export default class AvalancheApp {
         for (let i = 1; i < chunks.length; i += 1) {
           // eslint-disable-next-line no-await-in-loop
           result = await this.signSendChunk(1 + i, chunks.length, chunks[i], curve, INS.SIGN)
+          if (result.returnCode !== LedgerError.NoErrors) {
+            break
+          }
+        }
+        return result
+      }, processErrorResponse)
+    }, processErrorResponse)
+  }
+
+  async signETH(path: string, message: Buffer): Promise<ResponseSign> {
+    return this.signGetChunks(path, message).then(chunks => {
+      return this.signSendChunk(1, chunks.length, chunks[0], Curve.Secp256K1, INS.SIGN, true).then(async response => {
+        let result = {
+          returnCode: response.returnCode,
+          errorMessage: response.errorMessage,
+          signature: null as null | Buffer,
+        }
+        for (let i = 1; i < chunks.length; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], Curve.Secp256K1, INS.SIGN, true)
           if (result.returnCode !== LedgerError.NoErrors) {
             break
           }
@@ -216,14 +262,16 @@ export default class AvalancheApp {
     }, processErrorResponse)
   }
 
-  private async _pubkey(path: string, curve: Curve, show: boolean, hrp?: string, chainid?: string): Promise<ResponseAddress> {
+  private async _pubkey(path: string, curve: Curve, show: boolean, evm = false, hrp?: string, chainid?: string): Promise<ResponseAddress> {
     const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
     const serializedPath = serializePath(path)
-    const serializedHrp = serializeHrp(hrp)
-    const serializedChainID = serializeChainID(chainid);
+    const serializedHrp = evm ? Buffer.alloc(0) : serializeHrp(hrp)
+    const serializedChainID = evm ? Buffer.alloc(0) : serializeChainID(chainid);
+
+    const cla = evm ? CLA_ETH : CLA;
 
     return this.transport
-      .send(CLA, INS.GET_ADDR, p1, curve, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
+      .send(cla, INS.GET_ADDR, p1, curve, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
       .then(processGetAddrResponse, processErrorResponse)
   }
 
@@ -234,7 +282,50 @@ export default class AvalancheApp {
   }
 
   async showAddressAndPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
-    return this._pubkey(path, curve, true, hrp, chainid)
+    return this._pubkey(path, curve, true, false, hrp, chainid)
+  }
+
+  async getETHAddressAndPubKey(path: string, curve: Curve) {
+    //doesn't make sense to have HRP and ChainID as they are not shown
+    // and they are also not returned by this operation
+    return this._pubkey(path, curve, false, true)
+  }
+
+  async showETHAddressAndPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
+    return this._pubkey(path, curve, true, true, hrp, chainid)
+  }
+
+  private async _xpub(path: string, curve: Curve, show: boolean, evm = false, hrp?: string, chainid?: string): Promise<ResponseXPub> {
+    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
+    const serializedPath = serializePath(path)
+    const serializedHrp = evm ? Buffer.alloc(0) : serializeHrp(hrp)
+    const serializedChainID = evm ? Buffer.alloc(0) : serializeChainID(chainid);
+
+    const cla = evm ? CLA_ETH : CLA;
+
+    return this.transport
+      .send(cla, INS.GET_EXTENDED_PUBLIC_KEY, p1, curve, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
+      .then(processGetXPubResponse, processErrorResponse)
+  }
+
+  async getExtendedPubKey(path: string, curve: Curve) {
+    //doesn't make sense to have HRP and ChainID as they are not shown
+    // and they are also not returned by this operation
+    return this._xpub(path, curve, false)
+  }
+
+  async showExtendedPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
+    return this._xpub(path, curve, true, false, hrp, chainid)
+  }
+
+  async getExtendedETHPubKey(path: string, curve: Curve) {
+    //doesn't make sense to have HRP and ChainID as they are not shown
+    // and they are also not returned by this operation
+    return this._xpub(path, curve, false, true)
+  }
+
+  async showExtendedETHPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
+    return this._xpub(path, curve, true, true, hrp, chainid)
   }
 
   private async _walletId(show: boolean, curve: Curve): Promise<ResponseWalletId> {

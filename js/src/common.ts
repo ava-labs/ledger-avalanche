@@ -1,12 +1,14 @@
 import Transport from '@ledgerhq/hw-transport'
 
 export const CLA = 0x80
+export const CLA_ETH = 0xE0
 export const CHUNK_SIZE = 250
 export const APP_KEY = 'AVAX'
 
 export const INS = {
   GET_VERSION: 0x00,
   GET_ADDR: 0x01,
+  GET_EXTENDED_PUBLIC_KEY: 0x04,
   SIGN: 0x02,
   WALLET_ID: 0x03,
 }

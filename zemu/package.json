@@ -5,10 +5,7 @@
   "version": "1.0.0",
   "description": "",
   "types": "./dist/index.d.ts",
-  "keywords": [
-    "Zondax",
-    "Ledger"
-  ],
+  "keywords": ["Zondax", "Ledger"],
   "scripts": {
     "test": "jest --detectOpenHandles --testPathIgnorePatterns='dev.*|testvectors.*'",
     "test_dev": "jest --detectOpenHandles",
@@ -17,7 +14,7 @@
   "dependencies": {
     "@types/node": "^16.10.3",
     "@zondax/ledger-avalanche-app": "link:../js",
-    "@zondax/zemu": "^0.27.0-rc2"
+    "@zondax/zemu": "^0.32"
   },
   "devDependencies": {
     "@types/bs58": "^4.0.1",

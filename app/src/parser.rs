@@ -13,9 +13,33 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use core::mem::MaybeUninit;
+
 use zemu_sys::ViewError;
 
-use crate::{crypto::Curve, handlers::parser_common::ParserError};
+mod address;
+mod asset_id;
+mod constants;
+mod error;
+mod inputs;
+mod network_info;
+mod object_list;
+mod outputs;
+mod subnet_auth;
+mod transactions;
+mod utils;
+
+pub use address::{Address, ADDRESS_LEN};
+pub use asset_id::AssetId;
+pub use constants::*;
+pub use error::ParserError;
+pub use inputs::{Input, SECPTransferInput, TransferableInput};
+pub use network_info::*;
+pub use object_list::ObjectList;
+pub use outputs::{Output, SECPOutputOwners, SECPTransferOutput, TransferableOutput};
+pub use subnet_auth::SubnetAuth;
+pub use transactions::*;
+pub use utils::*;
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI
@@ -43,4 +67,38 @@ pub trait DisplayableItem {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError>;
+}
+
+///This trait defines an useful interface to parse
+///objects from bytes.
+///this gives different objects in a transaction
+///a way to define their own deserilization implementation, allowing higher level objects to generalize the
+///parsing of their inner types
+pub trait FromBytes<'b>: Sized {
+    /// this method is avaliable for testing only, as the preferable
+    /// option is to save stack by passing the memory where the object should
+    /// store itself
+    #[cfg(test)]
+    fn from_bytes(input: &'b [u8]) -> Result<(&'b [u8], Self), nom::Err<ParserError>> {
+        let mut out = MaybeUninit::uninit();
+        let rem = Self::from_bytes_into(input, &mut out)?;
+        unsafe { Ok((rem, out.assume_init())) }
+    }
+
+    ///Main deserialization method
+    ///`input` the input data that contains the serialized form in bytes of this object.
+    ///`out` the memory where this object would be stored
+    ///
+    /// returns the remaining bytes on success
+    ///
+    /// `Safety` Dealing with uninitialize memory is undefine behavior
+    /// even in rust, so implementors should follow the rust documentation
+    /// for MaybeUninit and unsafe guidelines.
+    ///
+    /// It's a good idea to always put `#[inline(never)]` on top of this
+    /// function's implementation
+    fn from_bytes_into(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>>;
 }

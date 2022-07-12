@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2022 Zondax GmbH
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -22,29 +22,24 @@ use bolos::{
 };
 use zemu_sys::{Show, ViewError, Viewable};
 
-mod blind_sign_toggle;
-
 use crate::{
-    constants::ApduError as Error,
+    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::handle_ui_message,
+    handlers::{handle_ui_message, resources::PATH},
     sys,
-    utils::{hex_encode, ApduBufferRead, ApduPanic, Uploader},
+    utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic, Uploader},
 };
-
-#[bolos::lazy_static]
-static mut PATH: Option<(BIP32Path<10>, Curve)> = None;
 
 pub struct BlindSign;
 
 impl BlindSign {
     pub const SIGN_HASH_SIZE: usize = 32;
 
-    fn get_derivation_info() -> Result<&'static (BIP32Path<10>, Curve), Error> {
-        match unsafe { &*PATH } {
-            None => Err(Error::ApduCodeConditionsNotSatisfied),
-            Some(some) => Ok(some),
+    fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+        match unsafe { PATH.acquire(Self) } {
+            Ok(Some(some)) => Ok(some),
+            _ => Err(Error::ApduCodeConditionsNotSatisfied),
         }
     }
 
@@ -82,7 +77,7 @@ impl BlindSign {
         let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
 
         unsafe {
-            PATH.replace((path, curve));
+            PATH.lock(Self)?.replace((path, curve));
         }
 
         let unsigned_hash = Self::sha256_digest(data)?;
@@ -92,9 +87,7 @@ impl BlindSign {
             send_hash,
         };
 
-        unsafe { ui.show(flags) }
-            .map_err(|_| Error::ExecutionError)
-            .map(|_| 0)
+        crate::show_ui!(ui.show(flags))
     }
 }
 
@@ -193,7 +186,15 @@ impl Viewable for SignUI {
 }
 
 fn cleanup_globals() -> Result<(), Error> {
-    unsafe { PATH.take() };
+    unsafe {
+        if let Ok(path) = PATH.acquire(BlindSign) {
+            path.take();
+
+            //let's release the lock for the future
+            let _ = PATH.release(BlindSign);
+        }
+    }
+    //if we failed to aquire then someone else is using it anyways
 
     Ok(())
 }
