@@ -15,7 +15,7 @@
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::take,
+    bytes::complete::{tag, take},
     number::complete::{be_u32, be_u64},
     sequence::tuple,
 };
@@ -58,8 +58,10 @@ impl<'b> FromBytes<'b> for SECPTransferInput<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPTransferInput::from_bytes_into\x00");
+        // double check the type
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
-        let (rem, (amount, num_indices)) = tuple((be_u64, be_u32))(input)?;
+        let (rem, (amount, num_indices)) = tuple((be_u64, be_u32))(rem)?;
 
         let (rem, indices) = take(num_indices as usize * U32_SIZE)(rem)?;
         let indices =
@@ -142,7 +144,7 @@ mod tests {
 
     #[test]
     fn parse_secp256k1_input() {
-        let input = SECPTransferInput::from_bytes(&DATA[4..]).unwrap().1;
+        let input = SECPTransferInput::from_bytes(DATA).unwrap().1;
         assert_eq!(input.address_indices.len(), 10);
         assert_eq!(input.amount, 186);
     }
