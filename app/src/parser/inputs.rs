@@ -187,7 +187,7 @@ impl<'b> FromBytes<'b> for Input<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = SECPTransferInput::from_bytes_into(rem, data)?;
+                let rem = SECPTransferInput::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
