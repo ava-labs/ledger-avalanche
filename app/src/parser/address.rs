@@ -17,6 +17,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::take;
 
 use crate::{
+    constants::ASCII_HRP_MAX_SIZE,
     handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, ParserError},
 };
@@ -25,11 +26,26 @@ use crate::sys::{bech32, hash::Ripemd160};
 use zemu_sys::ViewError;
 
 pub const ADDRESS_LEN: usize = Ripemd160::DIGEST_LEN;
+pub const MAX_ADDRESS_ENCODED_LEN: usize = bech32::estimate_size(ASCII_HRP_MAX_SIZE, ADDRESS_LEN);
 
 // ripemd160(sha256(compress(secp256k1.publicKey()))
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Address<'b>(&'b [u8; ADDRESS_LEN]);
+
+impl<'a> Address<'a> {
+    // Get the address encoding
+    pub fn encode_into(&self, hrp: &str, encoded: &mut [u8]) -> Result<usize, ParserError> {
+        if hrp.len() > ASCII_HRP_MAX_SIZE {
+            return Err(ParserError::InvalidAsciiValue);
+        }
+
+        let len =
+            bech32::encode(hrp, &self.0, encoded).map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+        Ok(len)
+    }
+}
 
 impl<'b> FromBytes<'b> for Address<'b> {
     #[inline(never)]
@@ -69,12 +85,11 @@ impl<'a> DisplayableItem for Address<'a> {
             return Err(ViewError::NoData);
         }
 
-        const MAX_SIZE: usize = bech32::estimate_size(0, Ripemd160::DIGEST_LEN);
-
-        let mut addr = [0; MAX_SIZE];
+        let mut addr = [0; MAX_ADDRESS_ENCODED_LEN];
 
         // TODO see https://github.com/Zondax/ledger-avalanche/issues/10
-        let len = bech32::encode("", &self.0, &mut addr[..], bech32::Variant::Bech32)
+        let len = self
+            .encode_into("", &mut addr[..])
             .map_err(|_| ViewError::Unknown)?;
 
         let title_content = pic_str!(b"Address");
