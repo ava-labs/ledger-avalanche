@@ -15,7 +15,7 @@
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::take,
+    bytes::complete::{tag, take},
     number::complete::{be_u32, be_u64},
     sequence::tuple,
 };
@@ -49,9 +49,11 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes_into\x00");
+        // get owners type and check
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
         let (rem, (amount, locktime, threshold, addr_len)) =
-            tuple((be_u64, be_u64, be_u32, be_u32))(input)?;
+            tuple((be_u64, be_u64, be_u32, be_u32))(rem)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
 
@@ -149,7 +151,7 @@ mod tests {
         ];
 
         // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
-        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap().1;
+        let output = SECPTransferOutput::from_bytes(&raw_output[..]).unwrap().1;
 
         assert_eq!(output.amount, 98000000);
         assert_eq!(output.locktime, 0);
@@ -175,7 +177,7 @@ mod tests {
             28, 203, 145, 255, 8, 0,
         ];
 
-        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap_err();
+        let output = SECPTransferOutput::from_bytes(&raw_output).unwrap_err();
         assert_eq!(output, ParserError::InvalidThreshold.into());
     }
 }
