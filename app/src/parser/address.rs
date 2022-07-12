@@ -22,6 +22,8 @@ use crate::{
     parser::{DisplayableItem, FromBytes, ParserError},
 };
 
+use bech32::Variant;
+
 use crate::sys::{bech32, hash::Ripemd160};
 use zemu_sys::ViewError;
 
@@ -40,8 +42,8 @@ impl<'a> Address<'a> {
             return Err(ParserError::InvalidAsciiValue);
         }
 
-        let len =
-            bech32::encode(hrp, &self.0, encoded).map_err(|_| ParserError::UnexpectedBufferEnd)?;
+        let len = bech32::encode(hrp, &self.0, encoded, Variant::Bech32)
+            .map_err(|_| ParserError::UnexpectedBufferEnd)?;
 
         Ok(len)
     }
