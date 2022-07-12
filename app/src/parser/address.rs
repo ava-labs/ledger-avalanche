@@ -74,7 +74,8 @@ impl<'a> DisplayableItem for Address<'a> {
         let mut addr = [0; MAX_SIZE];
 
         // TODO see https://github.com/Zondax/ledger-avalanche/issues/10
-        let len = bech32::encode("", &self.0, &mut addr[..], bech32::Variant::Bech32).map_err(|_| ViewError::Unknown)?;
+        let len = bech32::encode("", &self.0, &mut addr[..], bech32::Variant::Bech32)
+            .map_err(|_| ViewError::Unknown)?;
 
         let title_content = pic_str!(b"Address");
         title[..title_content.len()].copy_from_slice(title_content);
