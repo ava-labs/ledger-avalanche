@@ -20,6 +20,7 @@ use zemu_sys::ViewError;
 mod address;
 mod asset_id;
 mod constants;
+mod coreth;
 mod error;
 mod inputs;
 mod network_info;
