@@ -101,7 +101,7 @@ impl<'a> DisplayableItem for SECPTransferInput<'a> {
 
         match item_n as usize {
             0 => {
-                let title_content = pic_str!(b"Output");
+                let title_content = pic_str!(b"Input");
                 title[..title_content.len()].copy_from_slice(title_content);
 
                 handle_ui_message(pic_str!(b"SECPTransferInput"), message, page)
