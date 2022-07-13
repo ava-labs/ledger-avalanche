@@ -30,6 +30,18 @@ pub enum NetworkId {
     Local,
 }
 
+impl NetworkId {
+    pub fn hrp(&self) -> &'static str {
+        use bolos::PIC;
+
+        match self {
+            Self::Mainnet => PIC::new(HRP_MAINNET).into_inner(),
+            Self::Fuji => PIC::new(HRP_TESTNET).into_inner(),
+            Self::Local => PIC::new(HRP_LOCAL).into_inner(),
+        }
+    }
+}
+
 impl TryFrom<u32> for NetworkId {
     type Error = ParserError;
 

@@ -92,7 +92,7 @@ impl<'b> DisplayableItem for TransferableInput<'b> {
         };
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let mut buffer = [0; u64::FORMATTED_SIZE];
 
         match item_n {
             0 => {
@@ -187,7 +187,7 @@ impl<'b> FromBytes<'b> for Input<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = SECPTransferInput::from_bytes_into(rem, data)?;
+                let rem = SECPTransferInput::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {

@@ -152,14 +152,14 @@ impl<'b> FromBytes<'b> for Output<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("Output::from_bytes_into\x00");
 
-        let (rem, variant_type) = OutputType::from_bytes(input)?;
+        let (_, variant_type) = OutputType::from_bytes(input)?;
         let rem = match variant_type {
             OutputType::SECPTransfer => {
                 let out = out.as_mut_ptr() as *mut SECPTransferVariant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = SECPTransferOutput::from_bytes_into(rem, data)?;
+                let rem = SECPTransferOutput::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
@@ -173,7 +173,7 @@ impl<'b> FromBytes<'b> for Output<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = SECPMintOutput::from_bytes_into(rem, data)?;
+                let rem = SECPMintOutput::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
@@ -187,7 +187,7 @@ impl<'b> FromBytes<'b> for Output<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = NFTTransferOutput::from_bytes_into(rem, data)?;
+                let rem = NFTTransferOutput::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
@@ -200,7 +200,7 @@ impl<'b> FromBytes<'b> for Output<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = NFTMintOutput::from_bytes_into(rem, data)?;
+                let rem = NFTMintOutput::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {

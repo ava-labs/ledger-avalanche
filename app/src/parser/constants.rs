@@ -19,6 +19,11 @@ pub const NETWORK_ID_MAINNET: u32 = 1;
 pub const NETWORK_ID_FUJI: u32 = 5;
 pub const NETWORK_ID_LOCAL: u32 = 12345;
 
+// hrp
+pub const HRP_MAINNET: &str = "avax";
+pub const HRP_TESTNET: &str = "fuji";
+pub const HRP_LOCAL: &str = "local";
+
 // pvm transaction types
 pub const PVM_CREATE_SUBNET: u32 = 0x00000010;
 pub const PVM_EXPORT_TX: u32 = 0x00000011;
