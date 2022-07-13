@@ -14,5 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-mod inputs;
-mod outputs;
+pub mod inputs;
+pub mod outputs;
+
+pub mod import_tx;

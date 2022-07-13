@@ -40,6 +40,10 @@ impl<'b> EVMOutput<'b> {
     pub fn amount(&self) -> Option<u64> {
         Some(self.amount)
     }
+
+    pub fn asset_id(&self) -> &AssetId<'_> {
+        &self.asset_id
+    }
 }
 
 impl<'b> FromBytes<'b> for EVMOutput<'b> {
