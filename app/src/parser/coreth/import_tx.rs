@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2022 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -113,7 +113,7 @@ impl<'b> ImportTx<'b> {
         let fee = self.fee()?;
 
         // the number plus '0.'
-        if out_str.len() < usize::FORMATTED_SIZE_DECIMAL + 2 {
+        if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
             return Err(ParserError::UnexpectedBufferEnd);
         }
 
@@ -228,7 +228,7 @@ impl<'b> DisplayableItem for ImportTx<'b> {
             x if x == (outputs_num_items + 1) => {
                 let title_content = pic_str!(b"Fee");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let mut buffer = [0; usize::FORMATTED_SIZE + 2];
+                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee_str = self
                     .fee_to_fp_str(&mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?;

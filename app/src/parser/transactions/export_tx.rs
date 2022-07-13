@@ -130,7 +130,7 @@ impl<'b> DisplayableItem for ExportTx<'b> {
             x if x == outputs_num_items as u8 => {
                 let title_content = pic_str!(b"Fee");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let mut buffer = [0; u64::FORMATTED_SIZE + 2];
+                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee_str = self
                     .fee_to_fp_str(&mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?;
