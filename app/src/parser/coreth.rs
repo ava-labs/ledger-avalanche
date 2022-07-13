@@ -17,4 +17,5 @@
 pub mod inputs;
 pub mod outputs;
 
+pub mod export_tx;
 pub mod import_tx;

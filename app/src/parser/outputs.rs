@@ -43,6 +43,10 @@ impl<'b> TransferableOutput<'b> {
     pub fn amount(&self) -> Option<u64> {
         self.output.amount()
     }
+
+    pub fn output(&self) -> &Output<'_> {
+        &self.output
+    }
 }
 
 impl<'b> FromBytes<'b> for TransferableOutput<'b> {
