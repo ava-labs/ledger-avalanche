@@ -79,12 +79,6 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
             return Err(ParserError::InvalidTransactionType.into());
         }
 
-        // this export tx is _only_ for CChain
-        let blockchain_id = ChainId::try_from(blockchain)?;
-        if blockchain_id != ChainId::CChain {
-            return Err(ParserError::InvalidTransactionType.into());
-        }
-
         let inputs = unsafe { &mut *addr_of_mut!((*this).inputs).cast() };
         let rem = ObjectList::<EVMInput>::new_into(rem, inputs)?;
 
