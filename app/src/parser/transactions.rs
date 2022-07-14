@@ -14,14 +14,19 @@
 *  limitations under the License.
 ********************************************************************************/
 
-mod base_tx;
-mod create_chain_tx;
-mod create_subnet_tx;
-mod export_tx;
-mod import_tx;
+mod base_export;
+mod base_import;
+mod base_tx_fields;
+mod tx_header;
 
-pub use base_tx::{BaseTx, BLOCKCHAIN_ID_LEN};
-pub use create_chain_tx::CreateChainTx;
-pub use create_subnet_tx::CreateSubnetTx;
-pub use export_tx::ExportTx;
-pub use import_tx::ImportTx;
+//pub use add_validator::AddValidatorTx;
+pub use base_export::BaseExport;
+pub use base_import::BaseImport;
+pub use base_tx_fields::BaseTxFields;
+pub use tx_header::{Header, BLOCKCHAIN_ID_LEN};
+
+mod avm;
+mod pvm;
+
+pub use avm::{AvmExportTx, AvmImportTx};
+pub use pvm::{PvmExportTx, PvmImportTx};
