@@ -25,6 +25,7 @@ mod error;
 mod inputs;
 mod network_info;
 mod object_list;
+mod operations;
 mod outputs;
 mod subnet_auth;
 mod transactions;
@@ -37,7 +38,10 @@ pub use error::ParserError;
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use network_info::*;
 pub use object_list::ObjectList;
-pub use outputs::{Output, SECPOutputOwners, SECPTransferOutput, TransferableOutput};
+pub use outputs::{
+    NFTTransferOutput, Output, SECPMintOutput, SECPOutputOwners, SECPTransferOutput,
+    TransferableOutput,
+};
 pub use subnet_auth::SubnetAuth;
 pub use transactions::*;
 pub use utils::*;
