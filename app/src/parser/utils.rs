@@ -15,9 +15,11 @@
 ********************************************************************************/
 
 // taken from: https://github.com/Zondax/ledger-tezos/blob/main/rust/app/src/handlers/utils.rs
-use core::convert::TryFrom;
 
-use crate::sys::{ViewError, PIC};
+use crate::parser::{ParserError, NANO_AVAX_DECIMAL_DIGITS};
+use crate::sys::PIC;
+use arrayvec::ArrayVec;
+use lexical_core::{write as itoa, Number};
 
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum IntStrToFpStrError {
@@ -30,6 +32,17 @@ pub enum IntStrToFpStrError {
 /// Return the len of the string until null termination
 fn strlen(bytes: &[u8]) -> usize {
     bytes.split(|&n| n == 0).next().unwrap_or(bytes).len()
+}
+
+pub fn nano_avax_to_fp_str(value: u64, out_str: &mut [u8]) -> Result<&mut [u8], ParserError> {
+    // the number plus '0.'
+    if out_str.len() < usize::FORMATTED_SIZE_DECIMAL + 2 {
+        return Err(ParserError::UnexpectedBufferEnd);
+    }
+
+    itoa(value, out_str);
+    intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
+        .map_err(|_| ParserError::UnexpectedError)
 }
 
 #[inline(never)]
