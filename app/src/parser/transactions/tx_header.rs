@@ -16,7 +16,7 @@
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32, sequence::tuple};
 
-use crate::parser::{ChainId, FromBytes, NetworkInfo, ParserError};
+use crate::parser::{ChainId, FromBytes, NetworkId, NetworkInfo, ParserError};
 
 pub const BLOCKCHAIN_ID_LEN: usize = 32;
 
@@ -34,6 +34,10 @@ impl<'b> Header<'b> {
 
     pub fn chain_id(&self) -> Result<ChainId, ParserError> {
         ChainId::try_from(self.blockchain_id)
+    }
+
+    pub fn network_id(&self) -> Result<NetworkId, ParserError> {
+        Ok(NetworkId::try_from(self.network_id)?)
     }
 
     pub fn hrp(&self) -> Result<&'static str, ParserError> {
