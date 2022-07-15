@@ -56,7 +56,7 @@ impl<'b, O> TransferableOutput<'b, O>
 where
     O: FromBytes<'b> + DisplayableItem + Deref<Target = Output<'b>> + 'b,
 {
-    pub fn get_amount(&self) -> Option<u64> {
+    pub fn amount(&self) -> Option<u64> {
         (&*self.output).amount()
     }
 
@@ -297,11 +297,27 @@ mod tests {
         119, 75, 103, 131, 141, 236, 22, 225, 106, 182, 207, 172, 178, 27, 136, 195, 168, 97,
     ];
 
+    const LOCKED_OUTPUT: &[u8] = &[
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x0, 0x0, 0x0, 0x8, 0x00, 0x00, 0x00,
+        0x07, 0x00, 0x00, 0x01, 0xd1, 0xa9, 0x4a, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x3c, 0xb7, 0xd3, 0x84, 0x2e,
+        0x8c, 0xee, 0x6a, 0x0e, 0xbd, 0x09, 0xf1, 0xfe, 0x88, 0x4f, 0x68, 0x61, 0xe1, 0xb2, 0x9c,
+    ];
+
     #[test]
     fn parse_transferable_output_pvm_output() {
         let res = TransferableOutput::<PvmOutput>::from_bytes(DATA);
         // should faild as output for pvm only support secp_transfer and owners
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn parse_locked_output() {
+        let output = TransferableOutput::<PvmOutput>::from_bytes(LOCKED_OUTPUT)
+            .unwrap()
+            .1;
+        assert_eq!(output.output.locktime.unwrap(), 8);
     }
 
     #[test]
