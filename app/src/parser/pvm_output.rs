@@ -22,10 +22,8 @@ use crate::parser::{
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    branch::alt,
     bytes::complete::tag,
     number::complete::{be_u32, be_u64},
-    sequence::tuple,
 };
 use zemu_sys::ViewError;
 
@@ -46,7 +44,7 @@ impl<'b> Deref for PvmOutput<'b> {
 }
 
 impl<'b> PvmOutput<'b> {
-    const LOCKED_OUTPUT_TAG: usize = 0x00000016;
+    const LOCKED_OUTPUT_TAG: u32 = 0x00000016;
 
     pub fn amount(&self) -> Option<u64> {
         self.output.amount()
@@ -67,31 +65,23 @@ impl<'b> FromBytes<'b> for PvmOutput<'b> {
         let mut locktime = None;
         let output = out.as_mut_ptr() as *mut PvmOutput;
 
-        // first branch would try to parse a lockedStakeable output
-        // and if it errors, nom jumps to the second branch, a "normal" output.
-        // locked branch
-        let parse_locked = |input: &'b [u8]| {
-            let (rem, (_, raw_locktime)) =
-                tuple((tag(Self::LOCKED_OUTPUT_TAG.to_be_bytes()), be_u64))(input)?;
+        // check first if this output is locked
+        let rem = if let Ok((r, _)) =
+            tag::<_, _, ParserError>(Self::LOCKED_OUTPUT_TAG.to_be_bytes())(input)
+        {
+            // locked outputs should come with a locktime
+            let (rem, raw_locktime) = be_u64(r)?;
             locktime = Some(raw_locktime);
-            let variant_type = Self::parse_output_type(rem)?;
-
-            let data = unsafe { &mut *addr_of_mut!((*output).output).cast() };
-            let orem = Output::from_bytes(rem, variant_type, data)?;
-
-            Ok((rem, orem))
-        };
-        // normal branch
-        let parse_normal = |input: &'b [u8]| {
-            let data = unsafe { &mut *addr_of_mut!((*output).output).cast() };
-            let variant_type = Self::parse_output_type(input)?;
-            let orem = Output::from_bytes(input, variant_type, data)?;
-            Ok((input, orem))
+            rem
+        } else {
+            input
         };
 
-        // if the first fails jumps to the next one,
-        // returning an error if both fail
-        let (_, rem) = alt((parse_locked, parse_normal))(input)?;
+        // now parse the input
+        let variant_type = Self::parse_output_type(rem)?;
+
+        let data = unsafe { &mut *addr_of_mut!((*output).output).cast() };
+        let rem = Output::from_bytes(rem, variant_type, data)?;
 
         // Safe write, pointer is valid
         unsafe {
