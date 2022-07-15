@@ -125,7 +125,7 @@ where
     pub fn sum_export_outputs_amount(&'b self) -> Result<u64, ParserError> {
         self.outputs
             .iter()
-            .map(|output| (*output).amount().ok_or(ParserError::UnexpectedError))
+            .map(|output| output.amount().ok_or(ParserError::UnexpectedError))
             .try_fold(0u64, |acc, x| {
                 acc.checked_add(x?).ok_or(ParserError::OperationOverflows)
             })
