@@ -92,7 +92,7 @@ impl<'b> DisplayableItem for TransferableInput<'b> {
         };
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; u64::FORMATTED_SIZE];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL];
 
         match item_n {
             0 => {
