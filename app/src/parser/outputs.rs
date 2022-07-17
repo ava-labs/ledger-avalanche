@@ -67,10 +67,6 @@ where
     pub fn output(&self) -> &Output<'b> {
         &*self.output
     }
-
-    pub fn output(&self) -> &Output<'_> {
-        &self.output
-    }
 }
 
 impl<'b, O> FromBytes<'b> for TransferableOutput<'b, O>
