@@ -296,7 +296,8 @@ mod tests {
         assert_eq!(count, 1);
 
         let fee = tx.fee().unwrap();
-        assert_eq!(fee, 0);
+        // 2_000_000 - 1_000_000
+        assert_eq!(fee, 1_000_000);
     }
 
     const DATA2: &[u8] = &[
@@ -332,7 +333,7 @@ mod tests {
         assert_eq!(count, 1);
 
         let amount = tx.sum_outputs_amount().unwrap();
-        assert_eq!(amount, 10_000);
+        assert_eq!(amount, 1_000_000);
 
         let input = tx.inputs.iter().next().unwrap();
         assert_eq!(
@@ -345,6 +346,7 @@ mod tests {
         );
 
         let fee = tx.fee().unwrap();
-        assert_eq!(fee, 1_000);
+        // 2_000_000 - 1_000_000
+        assert_eq!(fee, 1_000_000);
     }
 }
