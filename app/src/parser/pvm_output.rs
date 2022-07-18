@@ -23,7 +23,7 @@ use crate::parser::{
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::tag,
-    number::complete::{be_u32, be_u64},
+    number::complete::{be_i64, be_u32},
 };
 use zemu_sys::ViewError;
 
@@ -31,7 +31,7 @@ use zemu_sys::ViewError;
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PvmOutput<'b> {
-    pub locktime: Option<u64>,
+    pub locktime: Option<i64>,
     pub output: Output<'b>,
 }
 
@@ -70,7 +70,7 @@ impl<'b> FromBytes<'b> for PvmOutput<'b> {
             tag::<_, _, ParserError>(Self::LOCKED_OUTPUT_TAG.to_be_bytes())(input)
         {
             // locked outputs should come with a locktime
-            let (rem, raw_locktime) = be_u64(r)?;
+            let (rem, raw_locktime) = be_i64(r)?;
             locktime = Some(raw_locktime);
             rem
         } else {
