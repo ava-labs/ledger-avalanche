@@ -21,6 +21,7 @@ pub enum ParserError {
     InvalidNetworkId,
     InvalidChainId,
     InvalidAsciiValue,
+    InvalidTimestamp,
     UnexpectedType,
     InvalidTransactionType,
     OperationOverflows,
