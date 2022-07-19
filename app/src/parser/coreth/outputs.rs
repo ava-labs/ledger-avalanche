@@ -159,7 +159,7 @@ impl<'b> DisplayableItem for EVMOutput<'b> {
         use bolos::{pic_str, PIC};
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
 
         match item_n as usize {
             0 => {

@@ -95,7 +95,7 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
         use bolos::{pic_str, PIC};
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
         let render_locktime = self.locktime > 0;
         // Gets the page at which this field is displayed, by summing the boolean
