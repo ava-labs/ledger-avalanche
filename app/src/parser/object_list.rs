@@ -207,7 +207,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{DisplayableItem, TransferableOutput};
+    use crate::parser::{AvmOutput, DisplayableItem, TransferableOutput};
     use core::mem::MaybeUninit;
     const DATA: &[u8] = &[
         0, 0, 0, 10, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -255,15 +255,15 @@ mod tests {
 
     #[test]
     fn parse_object_list() {
-        let (list, _) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
+        let (list, _) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
         assert!(list.is_empty());
     }
 
     #[test]
     fn object_list_parse_next() {
-        let (rem, mut list) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
+        let (rem, mut list) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
         assert!(rem.is_empty());
-        let mut output: MaybeUninit<TransferableOutput> = MaybeUninit::uninit();
+        let mut output: MaybeUninit<_> = MaybeUninit::uninit();
         let mut count = 0;
         while let Some(_) = list.parse_next(&mut output) {
             count += 1;
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn object_list_iterator() {
-        let (_, list) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
+        let (_, list) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
         let num_items: usize = list.iter().map(|output| output.num_items()).sum();
         // the iterator does not change the state of the
         // main list object, as we return just a copy

@@ -15,7 +15,6 @@
 ********************************************************************************/
 
 use core::{
-    convert::TryFrom,
     mem::MaybeUninit,
     ptr::{addr_of, addr_of_mut},
 };
@@ -29,14 +28,13 @@ use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, ChainId, DisplayableItem, FromBytes, ObjectList, Output,
-        ParserError, TransferableOutput, BLOCKCHAIN_ID_LEN, EVM_EXPORT_TX,
-        NANO_AVAX_DECIMAL_DIGITS,
+        intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ObjectList, Output, ParserError,
+        TransferableOutput, BLOCKCHAIN_ID_LEN, EVM_EXPORT_TX, NANO_AVAX_DECIMAL_DIGITS,
     },
     utils::ApduPanic,
 };
 
-use super::inputs::EVMInput;
+use super::{inputs::EVMInput, outputs::EOutput};
 
 const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
 const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
@@ -50,7 +48,7 @@ pub struct ExportTx<'b> {
     /// Identified which blockchain the funds go to
     pub destination_chain: &'b [u8; DESTINATION_CHAIN_LEN],
     pub inputs: ObjectList<'b, EVMInput<'b>>,
-    pub outputs: ObjectList<'b, TransferableOutput<'b>>,
+    pub outputs: ObjectList<'b, TransferableOutput<'b, EOutput<'b>>>,
 }
 
 impl<'b> FromBytes<'b> for ExportTx<'b> {
@@ -83,26 +81,7 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
         let rem = ObjectList::<EVMInput>::new_into(rem, inputs)?;
 
         let outputs = unsafe { &mut *addr_of_mut!((*this).outputs).cast() };
-        let rem = ObjectList::<TransferableOutput>::new_into(rem, outputs)?;
-
-        //verify that all outputs are Secp256K1TransferOutput
-        {
-            let outputs: &ObjectList<TransferableOutput> = unsafe {
-                addr_of!((*this).outputs)
-                    .cast::<MaybeUninit<_>>()
-                    .as_ref()
-                    //we know the pointer is good
-                    .apdu_unwrap()
-                    .assume_init_ref()
-            };
-
-            if outputs
-                .iter()
-                .any(|output| !matches!(output.output(), Output::SECPTransfer(_)))
-            {
-                return Err(ParserError::InvalidTransactionType.into());
-            }
-        }
+        let rem = ObjectList::<TransferableOutput<EOutput>>::new_into(rem, outputs)?;
 
         //good ptr and no uninit reads
         unsafe {
@@ -176,7 +155,7 @@ impl<'b> ExportTx<'b> {
         let mut obj_item_n = 0;
         // gets the SECPTranfer output that contains item_n
         // and its corresponding index
-        let filter = |o: &TransferableOutput| -> bool {
+        let filter = |o: &TransferableOutput<EOutput>| -> bool {
             let n = o.num_items();
             for index in 0..n {
                 count += 1;

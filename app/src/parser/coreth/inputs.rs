@@ -105,7 +105,7 @@ impl<'b> DisplayableItem for EVMInput<'b> {
         use lexical_core::{write as itoa, Number};
 
         let expert = is_app_mode_expert();
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
 
         match item_n as usize {
             0 => {

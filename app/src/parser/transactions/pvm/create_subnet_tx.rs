@@ -20,7 +20,8 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        BaseTx, DisplayableItem, FromBytes, ParserError, SECPOutputOwners, PVM_CREATE_SUBNET,
+        BaseTxFields, DisplayableItem, FromBytes, Header, ParserError, PvmOutput, SECPOutputOwners,
+        PVM_CREATE_SUBNET,
     },
 };
 
@@ -28,8 +29,8 @@ use crate::{
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct CreateSubnetTx<'b> {
-    type_id: u32,
-    base_tx: BaseTx<'b>,
+    pub tx_header: Header<'b>,
+    pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     owners: SECPOutputOwners<'b>,
 }
 
@@ -42,20 +43,19 @@ impl<'b> FromBytes<'b> for CreateSubnetTx<'b> {
         crate::sys::zemu_log_stack("CreateSubnetTx::from_bytes_into\x00");
 
         // double check
-        let (rem, raw_type_id) = tag(PVM_CREATE_SUBNET.to_be_bytes())(input)?;
-        let (_, type_id) = be_u32(raw_type_id)?;
+        let (rem, _) = tag(PVM_CREATE_SUBNET.to_be_bytes())(input)?;
 
         let out = out.as_mut_ptr();
+        // tx header
+        let tx_header = unsafe { &mut *addr_of_mut!((*out).tx_header).cast() };
+        let rem = Header::from_bytes_into(rem, tx_header)?;
+
+        // base_tx
         let base_tx = unsafe { &mut *addr_of_mut!((*out).base_tx).cast() };
-        let rem = BaseTx::from_bytes_into(rem, base_tx)?;
+        let rem = BaseTxFields::<PvmOutput>::from_bytes_into(rem, base_tx)?;
 
         let owners = unsafe { &mut *addr_of_mut!((*out).owners).cast() };
         let rem = SECPOutputOwners::from_bytes_into(rem, owners)?;
-
-        //good ptr and no uninit reads
-        unsafe {
-            addr_of_mut!((*out).type_id).write(type_id);
-        }
 
         Ok(rem)
     }
@@ -99,18 +99,18 @@ mod tests {
     use super::*;
 
     const DATA: &[u8] = &[
-        0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 1, 237, 95, 56, 52, 30, 67, 110, 93, 70, 226, 187, 0,
-        180, 93, 98, 174, 151, 209, 176, 80, 198, 75, 198, 52, 174, 16, 98, 103, 57, 227, 92, 75,
-        0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 39, 16, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0,
-        1, 0, 0, 0, 1, 157, 31, 52, 188, 58, 111, 35, 6, 202, 7, 144, 22, 174, 248, 92, 19, 23,
-        103, 242, 56, 0, 0, 0, 1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 0, 0, 0, 2, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 31, 64, 0, 0,
-        0, 10, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 58, 0, 0, 0, 1, 0, 0, 0, 79, 0, 0, 0, 65, 0, 0, 0,
-        87, 0, 0, 0, 94, 0, 0, 0, 125, 0, 0, 1, 122, 0, 0, 0, 4, 109, 101, 109, 111, 0, 0, 0, 11,
-        0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 1, 0, 0, 0, 1, 22, 54, 119, 75, 103, 131, 141, 236, 22,
-        225, 106, 182, 207, 172, 178, 27, 136, 195, 168, 97,
+        0, 0, 0, 16, 0, 0, 0, 1, 237, 95, 56, 52, 30, 67, 110, 93, 70, 226, 187, 0, 180, 93, 98,
+        174, 151, 209, 176, 80, 198, 75, 198, 52, 174, 16, 98, 103, 57, 227, 92, 75, 0, 0, 0, 1, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 39, 16, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 1, 0, 0, 0, 1,
+        157, 31, 52, 188, 58, 111, 35, 6, 202, 7, 144, 22, 174, 248, 92, 19, 23, 103, 242, 56, 0,
+        0, 0, 1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 0, 0, 0, 2, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 31, 64, 0, 0, 0, 10, 0, 0,
+        0, 4, 0, 0, 0, 5, 0, 0, 0, 58, 0, 0, 0, 1, 0, 0, 0, 79, 0, 0, 0, 65, 0, 0, 0, 87, 0, 0, 0,
+        94, 0, 0, 0, 125, 0, 0, 1, 122, 0, 0, 0, 4, 109, 101, 109, 111, 0, 0, 0, 11, 0, 0, 0, 0, 0,
+        0, 0, 12, 0, 0, 0, 1, 0, 0, 0, 1, 22, 54, 119, 75, 103, 131, 141, 236, 22, 225, 106, 182,
+        207, 172, 178, 27, 136, 195, 168, 97,
     ];
 
     #[test]

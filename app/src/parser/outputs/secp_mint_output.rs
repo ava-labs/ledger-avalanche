@@ -92,7 +92,7 @@ impl<'a> DisplayableItem for SECPMintOutput<'a> {
         use bolos::{pic_str, PIC};
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
 
         match item_n as usize {

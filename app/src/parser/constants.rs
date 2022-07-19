@@ -26,8 +26,8 @@ pub const HRP_LOCAL: &str = "local";
 
 // pvm transaction types
 pub const PVM_CREATE_SUBNET: u32 = 0x00000010;
-pub const PVM_EXPORT_TX: u32 = 0x00000011;
-pub const PVM_IMPORT_TX: u32 = 0x00000012;
+pub const PVM_EXPORT_TX: u32 = 0x00000012;
+pub const PVM_IMPORT_TX: u32 = 0x00000011;
 pub const PVM_ADD_VALIDATOR: u32 = 0x0000000c;
 pub const PVM_ADD_SUBNET_VALIDATOR: u32 = 0x0000000d;
 pub const PVM_ADD_DELEGATOR: u32 = 0x0000000e;

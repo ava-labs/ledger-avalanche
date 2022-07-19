@@ -19,6 +19,7 @@ use zemu_sys::ViewError;
 
 mod address;
 mod asset_id;
+mod avm_output;
 mod constants;
 mod coreth;
 mod error;
@@ -27,21 +28,24 @@ mod network_info;
 mod object_list;
 mod operations;
 mod outputs;
+mod pvm_output;
 mod subnet_auth;
 mod transactions;
 mod utils;
 
-pub use address::{Address, ADDRESS_LEN};
+pub use address::*;
 pub use asset_id::AssetId;
+pub use avm_output::AvmOutput;
 pub use constants::*;
 pub use error::ParserError;
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use network_info::*;
 pub use object_list::ObjectList;
 pub use outputs::{
-    NFTTransferOutput, Output, SECPMintOutput, SECPOutputOwners, SECPTransferOutput,
-    TransferableOutput,
+    NFTMintOutput, NFTTransferOutput, Output, OutputType, SECPMintOutput, SECPOutputOwners,
+    SECPTransferOutput, TransferableOutput,
 };
+pub use pvm_output::PvmOutput;
 pub use subnet_auth::SubnetAuth;
 pub use transactions::*;
 pub use utils::*;
