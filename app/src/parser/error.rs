@@ -1,3 +1,4 @@
+use arrayvec::CapacityError;
 use nom::error::ErrorKind;
 
 #[repr(u32)]
@@ -59,5 +60,11 @@ impl<I> nom::error::ParseError<I> for ParserError {
 impl From<ParserError> for nom::Err<ParserError> {
     fn from(error: ParserError) -> Self {
         nom::Err::Error(error)
+    }
+}
+
+impl From<CapacityError> for ParserError {
+    fn from(error: CapacityError) -> Self {
+        ParserError::UnexpectedBufferEnd
     }
 }
