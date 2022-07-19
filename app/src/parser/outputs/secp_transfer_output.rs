@@ -42,7 +42,7 @@ pub struct SECPTransferOutput<'b> {
 impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
-    pub fn get_address_at(&self, idx: usize) -> Option<Address> {
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
         let data = self.addresses.get(idx as usize)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
