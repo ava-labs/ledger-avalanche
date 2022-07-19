@@ -124,7 +124,7 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
 
             x @ 1.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
-                let addr = self.get_address_at(x as usize).ok_or(ViewError::NoData)?;
+                let addr = self.get_address_at(idx as usize).ok_or(ViewError::NoData)?;
                 addr.render_item(0, title, message, page)
             }
             _ => Err(ViewError::NoData),
