@@ -117,7 +117,8 @@ where
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the Output enum which has the same representation
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 #[repr(u8)]
 pub enum OutputType {
     SECPTransfer,
