@@ -17,8 +17,8 @@
 use crate::parser::TransferableOutput;
 
 use crate::{
-    parser::{FromBytes, ParserError},
-    utils::{hex_encode, ApduPanic},
+    parser::{AvmOutput, FromBytes, ParserError},
+    utils::ApduPanic,
 };
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
@@ -37,7 +37,9 @@ pub struct NFTMintOperation<'b> {
     pub address_indices: &'b [[u8; U32_SIZE]],
     pub group_id: u32,
     pub payload: &'b [u8],
-    pub output: TransferableOutput<'b>,
+    // NFTMintOperation is a x-chain type, so we use
+    // the corresponding output for it
+    pub output: TransferableOutput<'b, AvmOutput<'b>>,
 }
 
 impl<'b> NFTMintOperation<'b> {
@@ -68,7 +70,7 @@ impl<'b> FromBytes<'b> for NFTMintOperation<'b> {
 
         let out = out.as_mut_ptr();
         let output = unsafe { &mut *addr_of_mut!((*out).output).cast() };
-        let rem = TransferableOutput::from_bytes_into(rem, output)?;
+        let rem = TransferableOutput::<AvmOutput>::from_bytes_into(rem, output)?;
 
         //good ptr and no uninit reads
         unsafe {
