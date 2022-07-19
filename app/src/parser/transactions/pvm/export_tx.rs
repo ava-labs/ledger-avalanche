@@ -98,7 +98,7 @@ impl<'b> DisplayableItem for PvmExportTx<'b> {
             x if x == outputs_num_items as u8 => {
                 let title_content = pic_str!(b"Fee");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let mut buffer = [0; usize::FORMATTED_SIZE + 2];
+                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_str =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;

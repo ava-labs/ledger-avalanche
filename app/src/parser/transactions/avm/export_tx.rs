@@ -28,9 +28,7 @@ use crate::{
 
 #[derive(Clone, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
-pub struct AvmExportTx<'b> {
-    pub base_export: BaseExport<'b, AvmOutput<'b>>,
-}
+pub struct AvmExportTx<'b>(BaseExport<'b, AvmOutput<'b>>);
 
 impl<'b> FromBytes<'b> for AvmExportTx<'b> {
     #[inline(never)]
@@ -44,8 +42,8 @@ impl<'b> FromBytes<'b> for AvmExportTx<'b> {
 
         let out = out.as_mut_ptr();
 
-        // base_export
-        let base_export = unsafe { &mut *addr_of_mut!((*out).base_export).cast() };
+        // 0
+        let base_export = unsafe { &mut *addr_of_mut!((*out).0).cast() };
         let rem = BaseExport::<AvmOutput>::from_bytes_into(rem, base_export)?;
 
         Ok(rem)
@@ -58,7 +56,7 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
         // and to keep compatibility with the legacy app,
         // we show only 4 items for each output
         // chains info, amount, address and fee which is the sum of all inputs minus all outputs
-        1 + self.base_export.num_outputs_items() + 1
+        1 + self.0.num_outputs_items() + 1
     }
 
     fn render_item(
@@ -73,22 +71,20 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
 
         if item_n == 0 {
             // render export title and network info
-            return self
-                .base_export
-                .render_export_description(title, message, page);
+            return self.0.render_export_description(title, message, page);
         }
 
-        let outputs_num_items = self.base_export.num_outputs_items();
+        let outputs_num_items = self.0.num_outputs_items();
         let new_item_n = item_n - 1;
 
         match new_item_n {
             x @ 0.. if x < outputs_num_items as u8 => {
-                self.base_export.render_outputs(x, title, message, page)
+                self.0.render_outputs(x, title, message, page)
             }
             x if x == outputs_num_items as u8 => {
                 let title_content = pic_str!(b"Fee");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let mut buffer = [0; usize::FORMATTED_SIZE + 2];
+                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_str =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
@@ -101,7 +97,7 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
 
 impl<'b> AvmExportTx<'b> {
     pub fn fee(&'b self) -> Result<u64, ParserError> {
-        self.base_export.fee()
+        self.0.fee()
     }
 }
 
@@ -132,16 +128,16 @@ mod tests {
     fn parse_export_tx() {
         let (rem, tx) = AvmExportTx::from_bytes(DATA).unwrap();
         assert!(rem.is_empty());
-        let count = tx.base_export.outputs.iter().count();
+        let count = tx.0.outputs.iter().count();
 
         // we know there are 1 outputs
         assert_eq!(count, 1);
 
-        let count = tx.base_export.base_tx.outputs.iter().count();
+        let count = tx.0.base_tx.outputs.iter().count();
         // we know there are 1 outputs
         assert_eq!(count, 1);
 
-        let base_chain_id = tx.base_export.tx_header.chain_id().unwrap();
+        let base_chain_id = tx.0.tx_header.chain_id().unwrap();
         assert_eq!(base_chain_id, ChainId::XChain);
 
         let fee = tx.fee().unwrap();

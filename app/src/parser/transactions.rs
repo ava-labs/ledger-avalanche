@@ -19,7 +19,6 @@ mod base_import;
 mod base_tx_fields;
 mod tx_header;
 
-//pub use add_validator::AddValidatorTx;
 pub use base_export::BaseExport;
 pub use base_import::BaseImport;
 pub use base_tx_fields::BaseTxFields;
