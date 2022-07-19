@@ -47,6 +47,7 @@ pub const EVM_EXPORT_TX: u32 = 0x00000001;
 pub const NANO_AVAX_DECIMAL_DIGITS: usize = 9;
 pub const WEI_NAVAX_DIGITS: usize = 9;
 pub const WEI_AVAX_DIGITS: usize = 18;
+pub const DELEGATION_FEE_DIGITS: usize = 4;
 
 // data formatting constants
 

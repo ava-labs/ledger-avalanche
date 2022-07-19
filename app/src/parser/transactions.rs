@@ -28,4 +28,4 @@ mod avm;
 mod pvm;
 
 pub use avm::{AvmExportTx, AvmImportTx};
-pub use pvm::{CreateChainTx, CreateSubnetTx, PvmExportTx, PvmImportTx};
+pub use pvm::{AddValidatorTx, CreateChainTx, CreateSubnetTx, PvmExportTx, PvmImportTx};

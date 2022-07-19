@@ -23,6 +23,7 @@ pub enum ParserError {
     InvalidChainId,
     InvalidAsciiValue,
     InvalidTimestamp,
+    InvalidStakingAmount,
     UnexpectedType,
     InvalidTransactionType,
     OperationOverflows,
