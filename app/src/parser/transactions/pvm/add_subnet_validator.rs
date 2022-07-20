@@ -14,24 +14,17 @@
 *  limitations under the License.
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{
-    bytes::complete::{tag, take},
-    number::complete::be_u32,
-};
+use nom::bytes::complete::{tag, take};
 use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, subnet_auth, timestamp_to_str_date, Address,
-        BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList, ParserError, PvmOutput,
-        SECPOutputOwners, SubnetAuth, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
-        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_SUBNET_VALIDATOR,
+        nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
+        PvmOutput, SubnetAuth, Validator, PVM_ADD_SUBNET_VALIDATOR,
     },
     utils::{bs58_encode, ApduPanic},
 };
-
-use super::AVAX_TO;
 
 const SUBNET_ID_LEN: usize = 32;
 
@@ -105,7 +98,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let validator_items = self.validator.num_items() as u8;
 
@@ -170,7 +163,6 @@ impl<'b> AddSubnetValidatorTx<'b> {
 mod tests {
     use super::*;
     use crate::parser::U32_SIZE;
-    use lexical_core::Number;
 
     const DATA: &[u8] = &[
         0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x30, 0x39, // blockchain ID
