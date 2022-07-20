@@ -15,8 +15,11 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, ETH_DERIVATION, curves, defaultOptions, models } from './common'
+import { curves, defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
+
+const APP_DERIVATION = "m/44'/9000'/0'"
+const ETH_DERIVATION = "m/44'/60'/0'"
 
 describe.each(models)('Standard [%s] - extended pubkey', function (m) {
   test.each(curves)(
