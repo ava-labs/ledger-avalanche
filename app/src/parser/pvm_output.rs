@@ -30,6 +30,10 @@ use nom::{
 };
 use zemu_sys::ViewError;
 
+// This literal can be defined inline but, it is part of a big
+// buffer on which we write other information so that we need
+// its length to initialize such buffer and having the length defined as a constant and the
+// literal inlined can lead to len mismatch which can cause overlapping.
 const AVAX_UNTIL: &str = " AVAX until ";
 
 #[derive(Clone, Copy, PartialEq)]

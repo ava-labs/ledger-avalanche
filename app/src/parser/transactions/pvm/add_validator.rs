@@ -28,7 +28,7 @@ use crate::{
     },
 };
 
-const AVAX_TO: &str = " AVAX to ";
+use super::AVAX_TO;
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -238,7 +238,7 @@ impl<'b> AddValidatorTx<'b> {
         //  'Transfer' or 'Stake':
         //      '0.5 AVAX to
         //  Address:
-        //      hrp + fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn
+        //      hrp + 1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn
         //  Funds locked:
         //      0.5 AVAX until 2021-05-31 21:28:00 UTC
 
