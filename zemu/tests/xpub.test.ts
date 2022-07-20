@@ -29,7 +29,7 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getExtendedPubKey(APP_DERIVATION, curve)
+        const resp = await app.getExtendedPubKey(APP_DERIVATION, false)
 
         console.log(resp, m.name)
 
@@ -50,7 +50,7 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showExtendedPubKey(APP_DERIVATION, curve)
+        const respReq = app.getExtendedPubKey(APP_DERIVATION, true)
 
         await sim.waitScreenChange();
 
@@ -79,7 +79,7 @@ describe.each(models)('Ethereum [%s] - extended pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getExtendedETHPubKey(ETH_DERIVATION, curve)
+        const resp = await app.getExtendedPubKey(ETH_DERIVATION, false)
 
         console.log(resp, m.name)
 
@@ -100,7 +100,7 @@ describe.each(models)('Ethereum [%s] - extended pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showExtendedETHPubKey(ETH_DERIVATION, curve)
+        const respReq = app.getExtendedPubKey(ETH_DERIVATION, true)
 
         await sim.waitScreenChange();
 

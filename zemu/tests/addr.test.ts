@@ -27,7 +27,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getAddressAndPubKey(APP_DERIVATION, curve)
+        const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
 
         console.log(resp, m.name)
 
@@ -48,7 +48,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showAddressAndPubKey(APP_DERIVATION, curve)
+        const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
 
         await sim.waitScreenChange();
 
@@ -75,7 +75,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showAddressAndPubKey(APP_DERIVATION, curve,
+        const respReq = app.getAddressAndPubKey(APP_DERIVATION, true,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))
 
         await sim.waitScreenChange();
@@ -105,7 +105,7 @@ describe.each(models)('Ethereum [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getETHAddressAndPubKey(ETH_DERIVATION, curve)
+        const resp = await app.getAddressAndPubKey(ETH_DERIVATION, false)
 
         console.log(resp, m.name)
 
@@ -126,7 +126,7 @@ describe.each(models)('Ethereum [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showETHAddressAndPubKey(ETH_DERIVATION, curve)
+        const respReq = app.getAddressAndPubKey(ETH_DERIVATION, true)
 
         await sim.waitScreenChange();
 
