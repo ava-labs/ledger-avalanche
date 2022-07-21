@@ -1,3 +1,4 @@
+mod add_delegator;
 mod add_subnet_validator;
 mod add_validator;
 mod create_chain_tx;
