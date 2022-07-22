@@ -13,24 +13,23 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use crate::sys::{
+    hash::{Hasher, Sha256},
+    ViewError,
+};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::{tag, take};
-use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, SubnetAuth, Validator, PVM_ADD_SUBNET_VALIDATOR,
+        cb58_output_len, nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header,
+        ParserError, PvmOutput, SubnetAuth, Validator, CB58_CHECKSUM_LEN, PVM_ADD_SUBNET_VALIDATOR,
     },
-    utils::{bs58_encode, ApduPanic},
+    utils::bs58_encode,
 };
 
 const SUBNET_ID_LEN: usize = 32;
-
-//36 (32 + 4 checksum) * log(2, 256) / log(2, 58) ~ 49.1
-// so we round up to 50
-const MAX_CHAIN_CB58_LEN: usize = 50;
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -122,11 +121,18 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
                 let label = pic_str!(b"SubnetID");
                 title[..label.len()].copy_from_slice(label);
 
-                let mut encoded = [0; MAX_CHAIN_CB58_LEN];
-                //not found in alias list, compute CB58 representation
-                let encoded_len = bs58_encode(&self.subnet_id, &mut encoded[..])
-                    .apdu_expect("encoded in base58 is not of the right length");
-                handle_ui_message(&encoded[..encoded_len], message, page)
+                let checksum = Sha256::digest(self.subnet_id).map_err(|_| ViewError::Unknown)?;
+                // prepare the data to be encoded by appending last 4-byte
+                let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
+                data[..SUBNET_ID_LEN].copy_from_slice(&self.subnet_id[..]);
+                data[SUBNET_ID_LEN..].copy_from_slice(&checksum[(Sha256::DIGEST_LEN - 4)..]);
+
+                const MAX_SIZE: usize = cb58_output_len::<SUBNET_ID_LEN>();
+                let mut encoded = [0; MAX_SIZE];
+
+                let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(&encoded[..len], message, page)
             }
 
             // render rewards to, delegate fee and fee
@@ -162,7 +168,6 @@ impl<'b> AddSubnetValidatorTx<'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::U32_SIZE;
 
     const DATA: &[u8] = &[
         0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x30, 0x39, // blockchain ID
@@ -209,6 +214,5 @@ mod tests {
     fn parse_add_subnet_validator() {
         let (_, tx) = AddSubnetValidatorTx::from_bytes(DATA).unwrap();
         assert_eq!(tx.subnet_auth.sig_indices.len(), 1);
-        assert_eq!(tx.subnet_auth.sig_indices[0], [0; U32_SIZE]);
     }
 }
