@@ -54,3 +54,6 @@ pub const DELEGATION_FEE_DIGITS: usize = 4;
 // the lenght required to format a date like:
 // yyyy-mm-dd hh:mm:ss UTC
 pub const FORMATTED_STR_DATE_LEN: usize = 23;
+
+// other constants
+pub const CB58_CHECKSUM_LEN: usize = 4;

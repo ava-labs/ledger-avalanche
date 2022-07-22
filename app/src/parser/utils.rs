@@ -16,7 +16,9 @@
 
 // taken from: https://github.com/Zondax/ledger-tezos/blob/main/rust/app/src/handlers/utils.rs
 
-use crate::parser::{ParserError, FORMATTED_STR_DATE_LEN, NANO_AVAX_DECIMAL_DIGITS};
+use crate::parser::{
+    ParserError, CB58_CHECKSUM_LEN, FORMATTED_STR_DATE_LEN, NANO_AVAX_DECIMAL_DIGITS,
+};
 use crate::sys::PIC;
 use arrayvec::ArrayVec;
 use lexical_core::{write as itoa, Number};
@@ -33,6 +35,11 @@ pub enum IntStrToFpStrError {
 /// Return the len of the string until null termination
 fn strlen(bytes: &[u8]) -> usize {
     bytes.split(|&n| n == 0).next().unwrap_or(bytes).len()
+}
+
+pub const fn cb58_output_len<const I: usize>() -> usize {
+    // I * log(2, 256) / log(2, 58) =  ~2 = factor
+    I * 2 + CB58_CHECKSUM_LEN
 }
 
 pub fn nano_avax_to_fp_str(value: u64, out_str: &mut [u8]) -> Result<&mut [u8], ParserError> {
