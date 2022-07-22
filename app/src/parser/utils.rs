@@ -37,6 +37,9 @@ fn strlen(bytes: &[u8]) -> usize {
     bytes.split(|&n| n == 0).next().unwrap_or(bytes).len()
 }
 
+/// Returns the length of a slice
+/// to be use to write the encoding
+/// for an input with length I
 pub const fn cb58_output_len<const I: usize>() -> usize {
     // I * log(2, 256) / log(2, 58) =  ~2 = factor
     I * 2 + CB58_CHECKSUM_LEN

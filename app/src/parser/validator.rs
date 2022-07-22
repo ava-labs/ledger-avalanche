@@ -57,7 +57,7 @@ impl<'b> FromBytes<'b> for Validator<'b> {
         let (rem, (start_time, endtime, weight)) = tuple((be_i64, be_i64, be_u64))(rem)?;
 
         // check for appropiate timestamps
-        if !(endtime > start_time) {
+        if endtime <= start_time {
             return Err(ParserError::InvalidTimestamp.into());
         }
 
@@ -102,10 +102,10 @@ impl<'b> DisplayableItem for Validator<'b> {
                 // prepare the data to be encoded by appending last 4-byte
                 let mut data = [0; NODE_ID_LEN + CB58_CHECKSUM_LEN];
                 data[..NODE_ID_LEN].copy_from_slice(&self.node_id[..]);
-                data[NODE_ID_LEN..].copy_from_slice(&checksum[(Sha256::DIGEST_LEN - 4)..]);
+                data[NODE_ID_LEN..]
+                    .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
 
-                const MAX_SIZE: usize =
-                    cb58_output_len::<{ NODE_ID_LEN + CB58_CHECKSUM_LEN }>() + NODE_ID_PREFIX.len();
+                const MAX_SIZE: usize = cb58_output_len::<NODE_ID_LEN>() + NODE_ID_PREFIX.len();
 
                 let mut node_id = [0; MAX_SIZE];
 

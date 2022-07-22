@@ -125,7 +125,8 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
                 // prepare the data to be encoded by appending last 4-byte
                 let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
                 data[..SUBNET_ID_LEN].copy_from_slice(&self.subnet_id[..]);
-                data[SUBNET_ID_LEN..].copy_from_slice(&checksum[(Sha256::DIGEST_LEN - 4)..]);
+                data[SUBNET_ID_LEN..]
+                    .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
 
                 const MAX_SIZE: usize = cb58_output_len::<SUBNET_ID_LEN>();
                 let mut encoded = [0; MAX_SIZE];

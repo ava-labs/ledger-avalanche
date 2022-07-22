@@ -15,17 +15,16 @@
 ********************************************************************************/
 use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::tag, number::complete::be_u32};
+use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
 use super::AVAX_TO;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, timestamp_to_str_date, Address, BaseTxFields,
-        DisplayableItem, FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
-        TransferableOutput, Validator, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
-        PVM_ADD_DELEGATOR,
+        nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
+        ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator,
+        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR,
     },
 };
 
@@ -92,7 +91,7 @@ impl<'b> FromBytes<'b> for AddDelegatorTx<'b> {
 impl<'b> DisplayableItem for AddDelegatorTx<'b> {
     fn num_items(&self) -> usize {
         // tx_info, base_tx items, validator_items(4),
-        // fee, fee_delegation, rewards_to and stake items
+        // rewards_to, stake items and fee
         1 + self.base_tx.base_outputs_num_items()
             + self.validator.num_items()
             + self.rewards_owner.addresses.len()
@@ -204,7 +203,7 @@ impl<'b> AddDelegatorTx<'b> {
             .stake_output_with_item(item_n)
             .map_err(|_| ViewError::NoData)?;
 
-        // for base_outputs the header is Transfer
+        // for staking the header is Stake
         let header = pic_str!(b"Stake");
 
         self.render_output_with_header(&obj, item_idx, title, message, page, header)
@@ -213,7 +212,7 @@ impl<'b> AddDelegatorTx<'b> {
     // helper function to render any TransferableOutput<PvmOutput>,
     // either locked or normal(comming as part of base_tx_fields)
     // the rendering is the same, the only difference is that
-    // locked outputs uses a Stake label as the first item
+    // locked outputs are labeled with Stake
     fn render_output_with_header(
         &'b self,
         &obj: &TransferableOutput<'b, PvmOutput<'b>>,
@@ -329,7 +328,7 @@ impl<'b> AddDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
@@ -386,7 +385,6 @@ impl<'b> AddDelegatorTx<'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lexical_core::Number;
 
     const DATA: &[u8] = &[
         // base tx:
