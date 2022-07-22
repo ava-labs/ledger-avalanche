@@ -23,13 +23,13 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        BaseTxFields, DisplayableItem, FromBytes, Header, ParserError, PvmOutput, SubnetAuth,
-        PVM_CREATE_CHAIN,
+        cb58_output_len, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError, PvmOutput,
+        SubnetAuth, SubnetId, CB58_CHECKSUM_LEN, PVM_CREATE_CHAIN,
     },
-    utils::{hex_encode, ApduPanic},
+    utils::{bs58_encode, hex_encode, ApduPanic},
 };
 
-pub const SUBNET_ID_LEN: usize = 32;
+pub const VIM_ID_LEN: usize = 32;
 pub const VM_ID_LEN: usize = 32;
 pub const FX_ID_LEN: usize = 32;
 
@@ -39,7 +39,7 @@ pub const FX_ID_LEN: usize = 32;
 pub struct CreateChainTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
-    pub subnet_id: &'b [u8; SUBNET_ID_LEN],
+    pub subnet_id: SubnetId<'b>,
     pub chain_name: &'b [u8],
     pub vm_id: &'b [u8; VM_ID_LEN],
     pub fx_id: &'b [[u8; FX_ID_LEN]],
@@ -67,8 +67,9 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
         let base_tx = unsafe { &mut *addr_of_mut!((*out).base_tx).cast() };
         let rem = BaseTxFields::<PvmOutput>::from_bytes_into(rem, base_tx)?;
 
-        let (rem, subnet_id) = take(SUBNET_ID_LEN)(rem)?;
-        let subnet_id = arrayref::array_ref!(subnet_id, 0, SUBNET_ID_LEN);
+        // SubnetId
+        let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
+        let rem = SubnetId::from_bytes_into(rem, subnet_id)?;
 
         // The len is define as a u16 for chain_name
         let (rem, chain_name_len) = be_u16(rem)?;
@@ -98,7 +99,6 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
 
         //good ptr and no uninit reads
         unsafe {
-            addr_of_mut!((*out).subnet_id).write(subnet_id);
             addr_of_mut!((*out).chain_name).write(chain_name);
             addr_of_mut!((*out).vm_id).write(vm_id);
             addr_of_mut!((*out).fx_id).write(fx_id);
@@ -136,12 +136,7 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
                 let content = pic_str!(b"transaction");
                 handle_ui_message(content, message, page)
             }
-            1 => {
-                let label = pic_str!(b"SubnetID");
-                title[..label.len()].copy_from_slice(label);
-                hex_encode(&self.subnet_id[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
-                handle_ui_message(&hex_buf, message, page)
-            }
+            1 => self.subnet_id.render_item(0, title, message, page),
             2 => {
                 let label = pic_str!(b"ChainName");
                 title[..label.len()].copy_from_slice(label);
@@ -150,8 +145,19 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
             3 => {
                 let label = pic_str!(b"VMID");
                 title[..label.len()].copy_from_slice(label);
-                hex_encode(&self.vm_id[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
-                handle_ui_message(&self.vm_id[..], message, page)
+
+                let checksum = Sha256::digest(self.vm_id).map_err(|_| ViewError::Unknown)?;
+                // prepare the data to be encoded by appending last 4-byte
+                let mut data = [0; VIM_ID_LEN + CB58_CHECKSUM_LEN];
+                data[..VIM_ID_LEN].copy_from_slice(&self.vm_id[..]);
+                data[VIM_ID_LEN..]
+                    .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
+
+                const MAX_SIZE: usize = cb58_output_len::<VIM_ID_LEN>();
+                let mut encoded = [0; MAX_SIZE];
+
+                let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
+                handle_ui_message(&encoded[..len], message, page)
             }
             4 => {
                 let label = pic_str!(b"GenesisDataHash");
@@ -192,7 +198,6 @@ mod tests {
     fn parse_create_chain() {
         let (_, tx) = CreateChainTx::from_bytes(DATA).unwrap();
         assert_eq!(tx.chain_name, b"zondax");
-        assert_eq!(tx.subnet_id, &[8; SUBNET_ID_LEN]);
         assert_eq!(tx.fx_id.len(), 1);
     }
 }

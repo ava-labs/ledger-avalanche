@@ -459,4 +459,22 @@ mod tests {
         assert_eq!(tx.shares, 20_000);
         assert_eq!(tx.validator.weight, 1000000000);
     }
+
+    #[test]
+    fn ui_validator() {
+        let (_, tx) = AddValidatorTx::from_bytes(DATA).unwrap();
+        let mut title = [0; 100];
+        let mut value = [0; 100];
+
+        for i in 0..tx.num_items() {
+            tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
+                .unwrap();
+            let t = std::string::String::from_utf8_lossy(&title);
+            let v = std::string::String::from_utf8_lossy(&value);
+            std::println!("{}:", t);
+            std::println!("     {}", v);
+            title.iter_mut().for_each(|b| *b = 0);
+            value.iter_mut().for_each(|b| *b = 0);
+        }
+    }
 }

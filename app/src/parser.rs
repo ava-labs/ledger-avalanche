@@ -30,6 +30,7 @@ mod operations;
 mod outputs;
 mod pvm_output;
 mod subnet_auth;
+mod subnet_id;
 mod transactions;
 mod utils;
 mod validator;
@@ -48,6 +49,7 @@ pub use outputs::{
 };
 pub use pvm_output::PvmOutput;
 pub use subnet_auth::SubnetAuth;
+pub use subnet_id::*;
 pub use transactions::*;
 pub use utils::*;
 pub use validator::*;

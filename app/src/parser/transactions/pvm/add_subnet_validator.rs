@@ -13,23 +13,17 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::sys::{
-    hash::{Hasher, Sha256},
-    ViewError,
-};
+use crate::sys::ViewError;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::bytes::complete::{tag, take};
+use nom::bytes::complete::tag;
 
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        cb58_output_len, nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header,
-        ParserError, PvmOutput, SubnetAuth, Validator, CB58_CHECKSUM_LEN, PVM_ADD_SUBNET_VALIDATOR,
+        nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
+        PvmOutput, SubnetAuth, SubnetId, Validator, PVM_ADD_SUBNET_VALIDATOR,
     },
-    utils::bs58_encode,
 };
-
-const SUBNET_ID_LEN: usize = 32;
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -38,7 +32,7 @@ pub struct AddSubnetValidatorTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     pub validator: Validator<'b>,
-    pub subnet_id: &'b [u8; SUBNET_ID_LEN],
+    pub subnet_id: SubnetId<'b>,
     pub subnet_auth: SubnetAuth<'b>,
 }
 
@@ -66,17 +60,13 @@ impl<'b> FromBytes<'b> for AddSubnetValidatorTx<'b> {
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
         let rem = Validator::from_bytes_into(rem, validator)?;
 
-        let (rem, subnet_id) = take(SUBNET_ID_LEN)(rem)?;
-        let subnet_id = arrayref::array_ref!(subnet_id, 0, SUBNET_ID_LEN);
+        // SubnetId
+        let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
+        let rem = SubnetId::from_bytes_into(rem, subnet_id)?;
 
         // subnetAuth
         let subnet_auth = unsafe { &mut *addr_of_mut!((*out).subnet_auth).cast() };
         let rem = SubnetAuth::from_bytes_into(rem, subnet_auth)?;
-
-        //good ptr and no uninit reads
-        unsafe {
-            addr_of_mut!((*out).subnet_id).write(subnet_id);
-        }
 
         Ok(rem)
     }
@@ -117,24 +107,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
             x @ 0.. if x < validator_items => self.validator.render_item(x, title, message, page),
 
             // render subnet_id
-            x if x == validator_items => {
-                let label = pic_str!(b"SubnetID");
-                title[..label.len()].copy_from_slice(label);
-
-                let checksum = Sha256::digest(self.subnet_id).map_err(|_| ViewError::Unknown)?;
-                // prepare the data to be encoded by appending last 4-byte
-                let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
-                data[..SUBNET_ID_LEN].copy_from_slice(&self.subnet_id[..]);
-                data[SUBNET_ID_LEN..]
-                    .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
-
-                const MAX_SIZE: usize = cb58_output_len::<SUBNET_ID_LEN>();
-                let mut encoded = [0; MAX_SIZE];
-
-                let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(&encoded[..len], message, page)
-            }
+            x if x == validator_items => self.subnet_id.render_item(0, title, message, page),
 
             // render rewards to, delegate fee and fee
             x if x > validator_items && x < total_items => {
@@ -215,5 +188,23 @@ mod tests {
     fn parse_add_subnet_validator() {
         let (_, tx) = AddSubnetValidatorTx::from_bytes(DATA).unwrap();
         assert_eq!(tx.subnet_auth.sig_indices.len(), 1);
+    }
+
+    #[test]
+    fn ui_subnet() {
+        let (_, tx) = AddSubnetValidatorTx::from_bytes(DATA).unwrap();
+        let mut title = [0; 100];
+        let mut value = [0; 100];
+
+        for i in 0..tx.num_items() {
+            tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
+                .unwrap();
+            let t = std::string::String::from_utf8_lossy(&title);
+            let v = std::string::String::from_utf8_lossy(&value);
+            std::println!("{}:", t);
+            std::println!("     {}", v);
+            title.iter_mut().for_each(|b| *b = 0);
+            value.iter_mut().for_each(|b| *b = 0);
+        }
     }
 }
