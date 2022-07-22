@@ -15,19 +15,22 @@
 ********************************************************************************/
 use crate::handlers::handle_ui_message;
 use crate::parser::{
-    intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ParserError, NANO_AVAX_DECIMAL_DIGITS,
+    cb58_output_len, intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ParserError,
+    CB58_CHECKSUM_LEN, NANO_AVAX_DECIMAL_DIGITS,
 };
-use crate::sys::{bech32, hash::Ripemd160};
+use crate::sys::{
+    hash::{Hasher, Sha256},
+    ViewError, PIC,
+};
+use crate::utils::bs58_encode;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::take,
     number::complete::{be_i64, be_u64},
     sequence::tuple,
 };
-use zemu_sys::ViewError;
 
 pub const NODE_ID_LEN: usize = 20;
-const PREFIX_NODE_ID_LEN: usize = 7;
 const NODE_ID_PREFIX: &[u8] = b"NodeId-";
 
 #[derive(Clone, Copy, PartialEq)]
@@ -84,7 +87,7 @@ impl<'b> DisplayableItem for Validator<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use crate::parser::timestamp_to_str_date;
-        use bolos::{pic_str, PIC};
+        use bolos::pic_str;
         use lexical_core::{write as itoa, Number};
 
         match item_n {
@@ -94,23 +97,23 @@ impl<'b> DisplayableItem for Validator<'b> {
 
                 // format the node_id
                 let prefix = PIC::new(NODE_ID_PREFIX).into_inner();
-                const prefix_len: usize = NODE_ID_PREFIX.len();
+
+                let checksum = Sha256::digest(self.node_id).map_err(|_| ViewError::Unknown)?;
+                // prepare the data to be encoded by appending last 4-byte
+                let mut data = [0; NODE_ID_LEN + CB58_CHECKSUM_LEN];
+                data[..NODE_ID_LEN].copy_from_slice(&self.node_id[..]);
+                data[NODE_ID_LEN..].copy_from_slice(&checksum[(Sha256::DIGEST_LEN - 4)..]);
 
                 const MAX_SIZE: usize =
-                    bech32::estimate_size(0, Ripemd160::DIGEST_LEN) + prefix_len;
+                    cb58_output_len::<{ NODE_ID_LEN + CB58_CHECKSUM_LEN }>() + NODE_ID_PREFIX.len();
 
                 let mut node_id = [0; MAX_SIZE];
 
                 node_id[..prefix.len()].copy_from_slice(prefix);
 
-                let len = bech32::encode(
-                    "",
-                    &self.node_id,
-                    &mut node_id[prefix_len..],
-                    bech32::Variant::Bech32,
-                )
-                .map_err(|_| ViewError::Unknown)?
-                    + prefix_len;
+                let len = bs58_encode(data, &mut node_id[NODE_ID_PREFIX.len()..])
+                    .map_err(|_| ViewError::Unknown)?
+                    + NODE_ID_PREFIX.len();
 
                 handle_ui_message(&node_id[..len], message, page)
             }
