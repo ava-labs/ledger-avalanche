@@ -71,6 +71,40 @@ where
     pub fn inputs(&self) -> &ObjectList<TransferableInput> {
         &self.inputs
     }
+
+    pub fn base_outputs_num_items(&'b self) -> usize {
+        self.outputs.iter().map(|output| output.num_items()).sum()
+    }
+
+    // Gets the obj that contain the item_n, along with the index
+    // of the item. Returns an error otherwise
+    pub fn base_output_with_item(
+        &'b self,
+        item_n: u8,
+    ) -> Result<(TransferableOutput<O>, u8), ParserError> {
+        let mut count = 0usize;
+        let mut obj_item_n = 0;
+        // gets the output that contains item_n
+        // and its corresponding index
+        let filter = |o: &TransferableOutput<'b, O>| -> bool {
+            let n = o.num_items();
+            for index in 0..n {
+                count += 1;
+                obj_item_n = index;
+                if count == item_n as usize + 1 {
+                    return true;
+                }
+            }
+            false
+        };
+
+        let obj = self
+            .outputs
+            .iter()
+            .find(filter)
+            .ok_or(ParserError::DisplayIdxOutOfRange)?;
+        Ok((obj, obj_item_n as u8))
+    }
 }
 
 impl<'b, O> FromBytes<'b> for BaseTxFields<'b, O>

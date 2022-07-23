@@ -13,12 +13,15 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use core::ops::Deref;
-
-use crate::parser::{
-    error::ParserError, DisplayableItem, FromBytes, Output, OutputType, SECPOutputOwners,
-    SECPTransferOutput,
+use crate::{
+    handlers::handle_ui_message,
+    parser::{
+        error::ParserError, nano_avax_to_fp_str, timestamp_to_str_date, Address, DisplayableItem,
+        FromBytes, Output, OutputType, SECPOutputOwners, SECPTransferOutput,
+        FORMATTED_STR_DATE_LEN,
+    },
 };
+use core::ops::Deref;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
@@ -26,6 +29,12 @@ use nom::{
     number::complete::{be_i64, be_u32},
 };
 use zemu_sys::ViewError;
+
+// This literal can be defined inline but, it is part of a big
+// buffer on which we write other information so that we need
+// its length to initialize such buffer and having the length defined as a constant and the
+// literal inlined can lead to len mismatch which can cause overlapping.
+const AVAX_UNTIL: &str = " AVAX until ";
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -52,6 +61,10 @@ impl<'b> PvmOutput<'b> {
 
     pub fn is_locked(&self) -> bool {
         self.locktime.is_some()
+    }
+
+    pub fn num_inner_items(&self) -> usize {
+        self.output.num_items()
     }
 }
 
@@ -98,6 +111,8 @@ impl<'b> PvmOutput<'b> {
 
         let v = match variant_type {
             SECPTransferOutput::TYPE_ID => OutputType::SECPTransfer,
+            // by definition p-chain also uses this type, but the
+            // ecosystem do not support this yet.
             SECPOutputOwners::TYPE_ID => OutputType::SECPOwners,
 
             _ => return Err(ParserError::InvalidTypeId.into()),
@@ -105,13 +120,26 @@ impl<'b> PvmOutput<'b> {
 
         Ok(v)
     }
+
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+        match self.output {
+            Output::SECPTransfer(ref o) => o.get_address_at(idx),
+            Output::SECPOwners(ref o) => o.get_address_at(idx),
+            _ => None,
+        }
+    }
 }
 
 impl<'b> DisplayableItem for PvmOutput<'b> {
     fn num_items(&self) -> usize {
-        // the asset_id is not part of the summary we need from objects of this type,
-        // but could give to higher level objects information to display such information.
-        self.output.num_items()
+        // check if output is locked, if so the number of items
+        // includes the locked information
+        if self.is_locked() {
+            // amount, address and locked info
+            self.num_inner_items() + 1
+        } else {
+            self.num_inner_items()
+        }
     }
 
     fn render_item(
@@ -121,6 +149,52 @@ impl<'b> DisplayableItem for PvmOutput<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        self.output.render_item(item_n as _, title, message, page)
+        use bolos::{pic_str, PIC};
+        use lexical_core::Number;
+
+        let num_inner_items = self.output.num_items() as _;
+        match item_n {
+            // Use the default implementation, if transactions require to improve this they can do
+            // separately in their ui implementation
+            // title
+            0 => self.output.render_item(item_n as _, title, message, page),
+            // render inner output addresses or other info
+            x @ 1.. if x < num_inner_items => {
+                self.output.render_item(item_n as _, title, message, page)
+            }
+            // render "locked" informations which inner output DO not know nothing about
+            // only after rendering all inner_output items
+            x if x == num_inner_items && self.is_locked() => {
+                // legacy app displays:
+                // 'Funds locked', body: '0.5 AVAX until 2021-05-31 21:28:00 UTC'},
+                // so lets do the same thing
+                let t = pic_str!(b"Funds locked");
+                title[..t.len()].copy_from_slice(t);
+
+                let avax_until = PIC::new(AVAX_UNTIL);
+                let mut content = [0; AVAX_UNTIL.len()
+                    + FORMATTED_STR_DATE_LEN
+                    + u64::FORMATTED_SIZE_DECIMAL
+                    + 2];
+                // write the amount
+                let amount = self.amount().ok_or(ViewError::Unknown)?;
+                let len = nano_avax_to_fp_str(amount, &mut content[..])
+                    .map_err(|_| ViewError::Unknown)?
+                    .len();
+                // write avax until
+                content[len..(len + avax_until.len())].copy_from_slice(avax_until.as_bytes());
+                // finally, write the date
+                let locktime = self.locktime.ok_or(ViewError::NoData)?;
+                let date_str = timestamp_to_str_date(locktime).map_err(|_| ViewError::Unknown)?;
+                content[(len + FORMATTED_STR_DATE_LEN)..]
+                    .iter_mut()
+                    .zip(date_str.as_slice())
+                    .take(date_str.len())
+                    .for_each(|(d, s)| *d = *s);
+
+                handle_ui_message(&content[..], message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 }

@@ -30,8 +30,10 @@ mod operations;
 mod outputs;
 mod pvm_output;
 mod subnet_auth;
+mod subnet_id;
 mod transactions;
 mod utils;
+mod validator;
 
 pub use address::*;
 pub use asset_id::AssetId;
@@ -47,8 +49,10 @@ pub use outputs::{
 };
 pub use pvm_output::PvmOutput;
 pub use subnet_auth::SubnetAuth;
+pub use subnet_id::*;
 pub use transactions::*;
 pub use utils::*;
+pub use validator::*;
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI

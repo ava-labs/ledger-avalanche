@@ -47,3 +47,13 @@ pub const EVM_EXPORT_TX: u32 = 0x00000001;
 pub const NANO_AVAX_DECIMAL_DIGITS: usize = 9;
 pub const WEI_NAVAX_DIGITS: usize = 9;
 pub const WEI_AVAX_DIGITS: usize = 18;
+pub const DELEGATION_FEE_DIGITS: usize = 4;
+
+// data formatting constants
+
+// the lenght required to format a date like:
+// yyyy-mm-dd hh:mm:ss UTC
+pub const FORMATTED_STR_DATE_LEN: usize = 23;
+
+// other constants
+pub const CB58_CHECKSUM_LEN: usize = 4;

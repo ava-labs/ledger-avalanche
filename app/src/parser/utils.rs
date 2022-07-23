@@ -16,10 +16,13 @@
 
 // taken from: https://github.com/Zondax/ledger-tezos/blob/main/rust/app/src/handlers/utils.rs
 
-use crate::parser::{ParserError, NANO_AVAX_DECIMAL_DIGITS};
+use crate::parser::{
+    ParserError, CB58_CHECKSUM_LEN, FORMATTED_STR_DATE_LEN, NANO_AVAX_DECIMAL_DIGITS,
+};
 use crate::sys::PIC;
 use arrayvec::ArrayVec;
 use lexical_core::{write as itoa, Number};
+use time::OffsetDateTime;
 
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum IntStrToFpStrError {
@@ -32,6 +35,14 @@ pub enum IntStrToFpStrError {
 /// Return the len of the string until null termination
 fn strlen(bytes: &[u8]) -> usize {
     bytes.split(|&n| n == 0).next().unwrap_or(bytes).len()
+}
+
+/// Returns the length of a slice
+/// to be use to write the encoding
+/// for an input with length I
+pub const fn cb58_output_len<const I: usize>() -> usize {
+    // I * log(2, 256) / log(2, 58) =  1.36 ~= 1.4 ~= 14/10 = factor + 1(just to round-up approximation)
+    (I * 14) / 10 + CB58_CHECKSUM_LEN + 1
 }
 
 pub fn nano_avax_to_fp_str(value: u64, out_str: &mut [u8]) -> Result<&mut [u8], ParserError> {
@@ -148,9 +159,93 @@ pub fn intstr_to_fpstr_inplace(
     Ok(&mut s[..num_chars])
 }
 
+// this is used to add a leading 0
+// to a single digit number, to "emulate"
+// format!("{:0>2}", 1); which returns 01
+// this is used to format month, days, hours, minutes
+// and seconds when formatting timestamps.
+macro_rules! add_padding {
+    ($num:expr, $string:expr, $padding:expr) => {
+        if $num < 10 {
+            $string.try_extend_from_slice($padding)?;
+        }
+    };
+}
+
+/// Conversts a unix `timestamp`
+/// returns a formatted date string  on success
+pub fn timestamp_to_str_date(
+    timestamp: i64,
+) -> Result<ArrayVec<u8, FORMATTED_STR_DATE_LEN>, ParserError> {
+    use bolos::pic_str;
+
+    let date = OffsetDateTime::from_unix_timestamp(timestamp)
+        .map_err(|_| ParserError::InvalidTimestamp)?;
+
+    // unfortunately we can not use
+    // format! due to pic issues moreover, the feature `formatting` of the time crate
+    // requires std, so lines bellow we do the formatting ourselves.
+    // also we use a simple macro to add leading zeros to months, days, hours
+    // and seconds if needed
+    let year = date.year();
+    let month = date.month() as u8;
+    let day = date.day();
+    let (hour, min, sec) = date.to_hms();
+
+    let mut date_str = ArrayVec::<_, FORMATTED_STR_DATE_LEN>::new();
+    let mut num_buff = [0; i32::FORMATTED_SIZE_DECIMAL + 2];
+
+    // separators
+    let dash = pic_str!(b"-"!);
+    let space = pic_str!(b" "!);
+    let colon = pic_str!(b":"!);
+    let zero = pic_str!(b"0"!); // for padding
+    let utc = pic_str!(b"UTC"!);
+
+    // year, does not require adding leading
+    // zeroes
+    let num = itoa(year, &mut num_buff[..]);
+    date_str.try_extend_from_slice(num)?;
+    date_str.try_extend_from_slice(&dash[..])?;
+    // month
+    add_padding!(month, date_str, &zero[..]);
+    let num = itoa(month, &mut num_buff[..]);
+    date_str.try_extend_from_slice(num)?;
+    date_str.try_extend_from_slice(&dash[..])?;
+    // day
+    add_padding!(day, date_str, &zero[..]);
+    let num = itoa(day, &mut num_buff[..]);
+    date_str.try_extend_from_slice(num)?;
+    date_str.try_extend_from_slice(&space[..])?;
+
+    // time
+    // hour
+    add_padding!(hour, date_str, &zero[..]);
+    let num = itoa(hour, &mut num_buff[..]);
+    date_str.try_extend_from_slice(num)?;
+    date_str.try_extend_from_slice(&colon[..])?;
+    // min
+    add_padding!(min, date_str, &zero[..]);
+    let num = itoa(min, &mut num_buff[..]);
+    date_str.try_extend_from_slice(num)?;
+    date_str.try_extend_from_slice(&colon[..])?;
+    // seconds
+    add_padding!(sec, date_str, &zero[..]);
+    let num = itoa(sec, &mut num_buff[..]);
+    date_str.try_extend_from_slice(num)?;
+    date_str.try_extend_from_slice(&space[..])?;
+
+    // it is redundant to have Utc appended at the end
+    // as by definition unix-timestamp is Utc, but this
+    // keeps compatibility with legacy app
+    date_str.try_extend_from_slice(&utc[..])?;
+
+    Ok(date_str)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::intstr_to_fpstr_inplace;
+    use super::{intstr_to_fpstr_inplace, timestamp_to_str_date};
 
     const SUITE: &[(&[u8], usize, &str)] = &[
         //NORMAL
@@ -202,6 +297,28 @@ mod tests {
             let out = core::str::from_utf8(out).unwrap();
 
             assert_eq!(out, expected_output)
+        }
+    }
+
+    #[test]
+    fn timestamp_to_str() {
+        use time::format_description;
+        use time::OffsetDateTime;
+
+        let timestamp = [1657089945, 82870739145, 19778424345, 55471502, 46891483200];
+
+        for t in timestamp {
+            let date = OffsetDateTime::from_unix_timestamp(t).unwrap();
+            let format =
+                format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] UTC")
+                    .unwrap();
+
+            let date_str = date.format(&format).unwrap();
+
+            let test_date = timestamp_to_str_date(t).unwrap();
+            let test_date = std::str::from_utf8(test_date.as_slice()).unwrap();
+
+            assert_eq!(&date_str, test_date);
         }
     }
 }
