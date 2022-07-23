@@ -41,8 +41,8 @@ fn strlen(bytes: &[u8]) -> usize {
 /// to be use to write the encoding
 /// for an input with length I
 pub const fn cb58_output_len<const I: usize>() -> usize {
-    // I * log(2, 256) / log(2, 58) =  ~2 = factor
-    I * 2 + CB58_CHECKSUM_LEN
+    // I * log(2, 256) / log(2, 58) =  1.36 ~= 1.4 ~= 14/10 = factor + 1(just to round-up approximation)
+    (I * 14) / 10 + CB58_CHECKSUM_LEN + 1
 }
 
 pub fn nano_avax_to_fp_str(value: u64, out_str: &mut [u8]) -> Result<&mut [u8], ParserError> {

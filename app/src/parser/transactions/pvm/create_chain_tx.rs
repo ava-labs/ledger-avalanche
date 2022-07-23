@@ -29,7 +29,6 @@ use crate::{
     utils::{bs58_encode, hex_encode, ApduPanic},
 };
 
-pub const VIM_ID_LEN: usize = 32;
 pub const VM_ID_LEN: usize = 32;
 pub const FX_ID_LEN: usize = 32;
 
@@ -148,12 +147,12 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
 
                 let checksum = Sha256::digest(self.vm_id).map_err(|_| ViewError::Unknown)?;
                 // prepare the data to be encoded by appending last 4-byte
-                let mut data = [0; VIM_ID_LEN + CB58_CHECKSUM_LEN];
-                data[..VIM_ID_LEN].copy_from_slice(&self.vm_id[..]);
-                data[VIM_ID_LEN..]
+                let mut data = [0; VM_ID_LEN + CB58_CHECKSUM_LEN];
+                data[..VM_ID_LEN].copy_from_slice(&self.vm_id[..]);
+                data[VM_ID_LEN..]
                     .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
 
-                const MAX_SIZE: usize = cb58_output_len::<VIM_ID_LEN>();
+                const MAX_SIZE: usize = cb58_output_len::<VM_ID_LEN>();
                 let mut encoded = [0; MAX_SIZE];
 
                 let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
