@@ -18,12 +18,11 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
-use super::AVAX_TO;
 use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
-        ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator,
+        ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator, AVAX_TO,
         MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR,
     },
 };
@@ -238,7 +237,7 @@ impl<'b> AddDelegatorTx<'b> {
             0 => {
                 title[..header.len()].copy_from_slice(header);
 
-                let avax_to = PIC::new(AVAX_TO);
+                let avax_to = PIC::new(AVAX_TO).into_inner();
                 let mut content = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO.len()];
 
                 // write the amount
