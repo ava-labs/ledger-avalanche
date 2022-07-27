@@ -413,19 +413,6 @@ mod tests {
     #[test]
     fn parse_add_delegator() {
         let (_, tx) = AddDelegatorTx::from_bytes(DATA).unwrap();
-        let mut title = [0; 100];
-        let mut value = [0; 100];
-
-        for i in 0..tx.num_items() {
-            tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
-                .unwrap();
-            let t = std::string::String::from_utf8_lossy(&title);
-            let v = std::string::String::from_utf8_lossy(&value);
-            std::println!("{}:", t);
-            std::println!("     {}", v);
-            title.iter_mut().for_each(|b| *b = 0);
-            value.iter_mut().for_each(|b| *b = 0);
-        }
         assert_eq!(tx.validator.weight, 2000000000000);
     }
 }
