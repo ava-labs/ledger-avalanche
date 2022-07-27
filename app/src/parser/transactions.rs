@@ -17,11 +17,13 @@
 mod base_export;
 mod base_import;
 mod base_tx_fields;
+mod transfer;
 mod tx_header;
 
 pub use base_export::BaseExport;
 pub use base_import::BaseImport;
 pub use base_tx_fields::BaseTxFields;
+pub use transfer::Transfer;
 pub use tx_header::{Header, BLOCKCHAIN_ID_LEN};
 
 mod avm;
