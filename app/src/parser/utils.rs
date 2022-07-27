@@ -158,17 +158,26 @@ pub fn intstr_to_fpstr_inplace(
 
     // skip the trailing zeroes
     // for example 0.00500, so the last two
-    // zeroes are completely irrelevant
+    // zeroes are completely irrelevant,
+    // the same for 2000.00, the fixed point and the zero
+    // are not important
     let mut len = num_chars;
-    // skip "0.0" characters
-    for x in s[..num_chars].iter().skip(3).rev() {
+    // skip characters before the decimal point
+    for x in s[point_position..num_chars].iter().rev() {
         if *x == b'0' {
             len -= 1;
+        } else if *x == b'.' {
+            // this means everything after
+            // the decimal point is zero
+            // so remove the decimal point as well
+            len -= 1;
+            break;
         } else {
             break;
         }
     }
 
+    // recalculate the new len after the filtering above
     let len = num_chars - (num_chars - len);
 
     Ok(&mut s[..len])
@@ -286,12 +295,13 @@ mod tests {
         (b"00001", 0, "1"),
         (b"000011", 0, "11"),
         (b"10000", 0, "10000"),
+        (b"2000000000000", 9, "2000"),
         //EMPTY
         (b"", 0, "0"),
-        (b"", 1, "0.0"),
-        (b"", 2, "0.0"),
-        (b"", 5, "0.0"),
-        (b"", 10, "0.0"),
+        (b"", 1, "0"),
+        (b"", 2, "0"),
+        (b"", 5, "0"),
+        (b"", 10, "0"),
     ];
 
     #[test]
@@ -300,7 +310,7 @@ mod tests {
             std::dbg!(
                 "SUITE:",
                 (
-                    core::str::from_utf8(&input).unwrap(),
+                    core::str::from_utf8(input).unwrap(),
                     decimals,
                     expected_output
                 )
