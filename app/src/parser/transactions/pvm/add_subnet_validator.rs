@@ -111,7 +111,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
 
             // render rewards to, delegate fee and fee
             x if x > validator_items && x < total_items => {
-                let label = pic_str!(b"Fee");
+                let label = pic_str!(b"Fee(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;

@@ -22,7 +22,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
-        ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator, AVAX_TO,
+        ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator,
         MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR,
     },
 };
@@ -237,18 +237,14 @@ impl<'b> AddDelegatorTx<'b> {
             0 => {
                 title[..header.len()].copy_from_slice(header);
 
-                let avax_to = PIC::new(AVAX_TO).into_inner();
-                let mut content = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO.len()];
+                // render using default obj impl
+                let res = obj.render_item(0, title, message, page);
 
-                // write the amount
-                let amount = obj.amount().ok_or(ViewError::Unknown)?;
-                let len = nano_avax_to_fp_str(amount, &mut content[..])
-                    .map_err(|_| ViewError::Unknown)?
-                    .len();
+                // customize the label
+                title.iter_mut().for_each(|v| *v = 0);
+                title[..header.len()].copy_from_slice(header);
 
-                // write avax
-                content[len..(len + avax_to.len())].copy_from_slice(avax_to.as_bytes());
-                handle_ui_message(&content[..], message, page)
+                res
             }
             // address rendering, according to avax team 99.99% of transactions only comes with one
             // address, but we support rendering any
@@ -417,6 +413,19 @@ mod tests {
     #[test]
     fn parse_add_delegator() {
         let (_, tx) = AddDelegatorTx::from_bytes(DATA).unwrap();
+        let mut title = [0; 100];
+        let mut value = [0; 100];
+
+        for i in 0..tx.num_items() {
+            tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
+                .unwrap();
+            let t = std::string::String::from_utf8_lossy(&title);
+            let v = std::string::String::from_utf8_lossy(&value);
+            std::println!("{}:", t);
+            std::println!("     {}", v);
+            title.iter_mut().for_each(|b| *b = 0);
+            value.iter_mut().for_each(|b| *b = 0);
+        }
         assert_eq!(tx.validator.weight, 2000000000000);
     }
 }

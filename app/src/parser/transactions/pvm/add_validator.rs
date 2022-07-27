@@ -21,9 +21,9 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, timestamp_to_str_date, Address, BaseTxFields,
-        DisplayableItem, FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
-        TransferableOutput, Validator, AVAX_TO, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem,
+        FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
+        TransferableOutput, Validator, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
         PVM_ADD_VALIDATOR,
     },
 };
@@ -232,7 +232,6 @@ impl<'b> AddValidatorTx<'b> {
         page: u8,
         header: &[u8],
     ) -> Result<u8, ViewError> {
-        use lexical_core::Number;
         //  'Transfer' or 'Stake':
         //      '0.5 AVAX to
         //  Address:
@@ -248,18 +247,14 @@ impl<'b> AddValidatorTx<'b> {
             0 => {
                 title[..header.len()].copy_from_slice(header);
 
-                let avax_to = PIC::new(AVAX_TO).into_inner();
-                let mut content = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO.len()];
+                // render using default obj impl
+                let res = obj.render_item(0, title, message, page);
 
-                // write the amount
-                let amount = obj.amount().ok_or(ViewError::Unknown)?;
-                let len = nano_avax_to_fp_str(amount, &mut content[..])
-                    .map_err(|_| ViewError::Unknown)?
-                    .len();
+                // customize the label
+                title.iter_mut().for_each(|v| *v = 0);
+                title[..header.len()].copy_from_slice(header);
 
-                // write avax
-                content[len..(len + avax_to.len())].copy_from_slice(avax_to.as_bytes());
-                handle_ui_message(&content[..], message, page)
+                res
             }
             // address rendering, according to avax team 99.99% of transactions only comes with one
             // address, but we support rendering any
@@ -359,7 +354,7 @@ impl<'b> AddValidatorTx<'b> {
                 handle_ui_message(buffer, message, page)
             }
             x if x == (num_addresses + 1) => {
-                let label = pic_str!(b"Fee");
+                let label = pic_str!(b"Fee(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;

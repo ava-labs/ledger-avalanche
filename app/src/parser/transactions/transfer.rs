@@ -20,7 +20,7 @@ use zemu_sys::ViewError;
 use crate::handlers::handle_ui_message;
 use crate::parser::{
     nano_avax_to_fp_str, AvmOutput, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-    AVAX_TO, MAX_ADDRESS_ENCODED_LEN, TRANSFER_TX,
+    MAX_ADDRESS_ENCODED_LEN, TRANSFER_TX,
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -39,7 +39,6 @@ impl<'b> Transfer<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         let (obj, idx) = self
             .base
@@ -54,21 +53,16 @@ impl<'b> Transfer<'b> {
 
         match idx {
             0 => {
+                // render using default obj impl
+                let res = obj.render_item(0, title, message, page);
+
+                title.iter_mut().for_each(|v| *v = 0);
+
+                // customize the label
                 let label = pic_str!(b"Transfer");
                 title[..label.len()].copy_from_slice(label);
 
-                let avax_to = PIC::new(AVAX_TO).into_inner();
-                let mut content = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO.len()];
-
-                // write the amount
-                let amount = obj.amount().ok_or(ViewError::Unknown)?;
-                let len = nano_avax_to_fp_str(amount, &mut content[..])
-                    .map_err(|_| ViewError::Unknown)?
-                    .len();
-
-                // write avax
-                content[len..(len + avax_to.len())].copy_from_slice(avax_to.as_bytes());
-                handle_ui_message(&content[..], message, page)
+                res
             }
 
             x if x < num_inner_items => {
