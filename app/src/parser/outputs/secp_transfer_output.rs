@@ -23,11 +23,10 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{
-        intstr_to_fpstr_inplace, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
-        NANO_AVAX_DECIMAL_DIGITS,
-    },
+    parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
+
+const AVAX_TO: &str = " AVAX to ";
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -106,20 +105,26 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO.len()];
         let addr_item_n = self.num_items() - self.addresses.len();
 
         match item_n as usize {
             0 => {
                 let title_content = pic_str!(b"Amount(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
-                itoa(self.amount, &mut buffer);
-                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], NANO_AVAX_DECIMAL_DIGITS)
-                    .map_err(|_| ViewError::Unknown)?;
 
-                handle_ui_message(buffer, message, page)
+                let avax_to = PIC::new(AVAX_TO).into_inner();
+
+                // write the amount
+                let len = nano_avax_to_fp_str(self.amount, &mut buffer[..])
+                    .map_err(|_| ViewError::Unknown)?
+                    .len();
+
+                // write avax
+                buffer[len..(len + avax_to.len())].copy_from_slice(avax_to.as_bytes());
+                handle_ui_message(&buffer[..(len + avax_to.len())], message, page)
             }
 
             x @ 1.. if x >= addr_item_n => {

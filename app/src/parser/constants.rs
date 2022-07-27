@@ -59,6 +59,3 @@ pub const FORMATTED_STR_DATE_LEN: usize = 23;
 
 // other constants
 pub const CB58_CHECKSUM_LEN: usize = 4;
-// Defined as a constant as it is part of a big buffer
-// that contain other information, and is used in different transactions.
-pub const AVAX_TO: &str = " AVAX to ";
