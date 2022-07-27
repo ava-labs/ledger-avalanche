@@ -156,7 +156,22 @@ pub fn intstr_to_fpstr_inplace(
 
     num_chars = strlen(s);
 
-    Ok(&mut s[..num_chars])
+    // skip the trailing zeroes
+    // for example 0.00500, so the last two
+    // zeroes are completely irrelevant
+    let mut len = num_chars;
+    // skip "0.0" characters
+    for x in s[..num_chars].iter().skip(3).rev() {
+        if *x == b'0' {
+            len -= 1;
+        } else {
+            break;
+        }
+    }
+
+    let len = num_chars - (num_chars - len);
+
+    Ok(&mut s[..len])
 }
 
 // this is used to add a leading 0
@@ -252,6 +267,7 @@ mod tests {
         (b"1", 0, "1"),
         (b"123", 0, "123"),
         (b"123", 5, "0.00123"),
+        (b"100000", 9, "0.0001"),
         (b"1234", 5, "0.01234"),
         (b"12345", 5, "0.12345"),
         (b"123456", 5, "1.23456"),
@@ -273,9 +289,9 @@ mod tests {
         //EMPTY
         (b"", 0, "0"),
         (b"", 1, "0.0"),
-        (b"", 2, "0.00"),
-        (b"", 5, "0.00000"),
-        (b"", 10, "0.0000000000"),
+        (b"", 2, "0.0"),
+        (b"", 5, "0.0"),
+        (b"", 10, "0.0"),
     ];
 
     #[test]
