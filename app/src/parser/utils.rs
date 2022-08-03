@@ -156,7 +156,31 @@ pub fn intstr_to_fpstr_inplace(
 
     num_chars = strlen(s);
 
-    Ok(&mut s[..num_chars])
+    // skip the trailing zeroes
+    // for example 0.00500, so the last two
+    // zeroes are completely irrelevant,
+    // the same for 2000.00, the fixed point and the zero
+    // are not important
+    let mut len = num_chars;
+    // skip characters before the decimal point
+    for x in s[point_position..num_chars].iter().rev() {
+        if *x == b'0' {
+            len -= 1;
+        } else if *x == b'.' {
+            // this means everything after
+            // the decimal point is zero
+            // so remove the decimal point as well
+            len -= 1;
+            break;
+        } else {
+            break;
+        }
+    }
+
+    // recalculate the new len after the filtering above
+    let len = num_chars - (num_chars - len);
+
+    Ok(&mut s[..len])
 }
 
 // this is used to add a leading 0
@@ -252,6 +276,7 @@ mod tests {
         (b"1", 0, "1"),
         (b"123", 0, "123"),
         (b"123", 5, "0.00123"),
+        (b"100000", 9, "0.0001"),
         (b"1234", 5, "0.01234"),
         (b"12345", 5, "0.12345"),
         (b"123456", 5, "1.23456"),
@@ -270,12 +295,13 @@ mod tests {
         (b"00001", 0, "1"),
         (b"000011", 0, "11"),
         (b"10000", 0, "10000"),
+        (b"2000000000000", 9, "2000"),
         //EMPTY
         (b"", 0, "0"),
-        (b"", 1, "0.0"),
-        (b"", 2, "0.00"),
-        (b"", 5, "0.00000"),
-        (b"", 10, "0.0000000000"),
+        (b"", 1, "0"),
+        (b"", 2, "0"),
+        (b"", 5, "0"),
+        (b"", 10, "0"),
     ];
 
     #[test]
@@ -284,7 +310,7 @@ mod tests {
             std::dbg!(
                 "SUITE:",
                 (
-                    core::str::from_utf8(&input).unwrap(),
+                    core::str::from_utf8(input).unwrap(),
                     decimals,
                     expected_output
                 )

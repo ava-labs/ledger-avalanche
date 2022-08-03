@@ -24,6 +24,8 @@ pub const HRP_MAINNET: &str = "avax";
 pub const HRP_TESTNET: &str = "fuji";
 pub const HRP_LOCAL: &str = "local";
 
+pub const TRANSFER_TX: u32 = 0;
+
 // pvm transaction types
 pub const PVM_CREATE_SUBNET: u32 = 0x00000010;
 pub const PVM_EXPORT_TX: u32 = 0x00000012;
