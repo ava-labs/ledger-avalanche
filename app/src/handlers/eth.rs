@@ -14,6 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
+pub mod blind_signing;
 pub mod provide_erc20;
 pub mod public_key;
 pub mod signing;

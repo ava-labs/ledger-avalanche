@@ -14,4 +14,5 @@
 *  limitations under the License.
 ********************************************************************************/
 
+pub mod blind_signing;
 pub mod signing;
