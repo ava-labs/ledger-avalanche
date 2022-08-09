@@ -15,14 +15,13 @@
 ********************************************************************************/
 
 // taken from: https://github.com/Zondax/ledger-tezos/blob/main/rust/app/src/handlers/utils.rs
+//
+mod time;
+pub use self::time::{timestamp_to_str_date, TimeError};
 
-use crate::parser::{
-    ParserError, CB58_CHECKSUM_LEN, FORMATTED_STR_DATE_LEN, NANO_AVAX_DECIMAL_DIGITS,
-};
+use crate::parser::{ParserError, CB58_CHECKSUM_LEN, NANO_AVAX_DECIMAL_DIGITS};
 use crate::sys::PIC;
-use arrayvec::ArrayVec;
-use lexical_core::{write as itoa, Number};
-use time::OffsetDateTime;
+use lexical_core::Number;
 
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum IntStrToFpStrError {
@@ -47,14 +46,55 @@ pub const fn cb58_output_len<const I: usize>() -> usize {
 
 pub fn nano_avax_to_fp_str(value: u64, out_str: &mut [u8]) -> Result<&mut [u8], ParserError> {
     // the number plus '0.'
-    if out_str.len() < usize::FORMATTED_SIZE_DECIMAL + 2 {
+    if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
         return Err(ParserError::UnexpectedBufferEnd);
     }
 
-    itoa(value, out_str);
+    u64_to_str(value, &mut out_str[..])?;
+
     intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
         .map_err(|_| ParserError::UnexpectedError)
 }
+
+macro_rules! num_to_str {
+    // we can use a procedural macro to "attach " the type name to the function name
+    // but lets do it later.
+    ($int_type:ty, $_name: ident) => {
+        pub fn $_name(number: $int_type, output: &mut [u8]) -> Result<&mut [u8], ParserError> {
+            if output.len() < <$int_type>::FORMATTED_SIZE_DECIMAL {
+                return Err(ParserError::UnexpectedBufferEnd);
+            }
+
+            if number == 0 {
+                output[0] = b'0';
+                return Ok(&mut output[..1]);
+            }
+
+            let mut offset = 0;
+            let mut number = number;
+            while number != 0 {
+                let rem = number % 10;
+                output[offset] = b'0' + rem as u8;
+                offset += 1;
+                number /= 10;
+            }
+
+            // swap values
+            let len = offset;
+            let mut idx = 0;
+            while idx < offset {
+                offset -= 1;
+                output.swap(idx, offset);
+                idx += 1;
+            }
+
+            Ok(&mut output[..len])
+        }
+    };
+}
+
+num_to_str!(u64, u64_to_str);
+num_to_str!(u8, u8_to_str);
 
 #[inline(never)]
 /// Converts an integer number string
@@ -183,93 +223,12 @@ pub fn intstr_to_fpstr_inplace(
     Ok(&mut s[..len])
 }
 
-// this is used to add a leading 0
-// to a single digit number, to "emulate"
-// format!("{:0>2}", 1); which returns 01
-// this is used to format month, days, hours, minutes
-// and seconds when formatting timestamps.
-macro_rules! add_padding {
-    ($num:expr, $string:expr, $padding:expr) => {
-        if $num < 10 {
-            $string.try_extend_from_slice($padding)?;
-        }
-    };
-}
-
-/// Conversts a unix `timestamp`
-/// returns a formatted date string  on success
-pub fn timestamp_to_str_date(
-    timestamp: i64,
-) -> Result<ArrayVec<u8, FORMATTED_STR_DATE_LEN>, ParserError> {
-    use bolos::pic_str;
-
-    let date = OffsetDateTime::from_unix_timestamp(timestamp)
-        .map_err(|_| ParserError::InvalidTimestamp)?;
-
-    // unfortunately we can not use
-    // format! due to pic issues moreover, the feature `formatting` of the time crate
-    // requires std, so lines bellow we do the formatting ourselves.
-    // also we use a simple macro to add leading zeros to months, days, hours
-    // and seconds if needed
-    let year = date.year();
-    let month = date.month() as u8;
-    let day = date.day();
-    let (hour, min, sec) = date.to_hms();
-
-    let mut date_str = ArrayVec::<_, FORMATTED_STR_DATE_LEN>::new();
-    let mut num_buff = [0; i32::FORMATTED_SIZE_DECIMAL + 2];
-
-    // separators
-    let dash = pic_str!(b"-"!);
-    let space = pic_str!(b" "!);
-    let colon = pic_str!(b":"!);
-    let zero = pic_str!(b"0"!); // for padding
-    let utc = pic_str!(b"UTC"!);
-
-    // year, does not require adding leading
-    // zeroes
-    let num = itoa(year, &mut num_buff[..]);
-    date_str.try_extend_from_slice(num)?;
-    date_str.try_extend_from_slice(&dash[..])?;
-    // month
-    add_padding!(month, date_str, &zero[..]);
-    let num = itoa(month, &mut num_buff[..]);
-    date_str.try_extend_from_slice(num)?;
-    date_str.try_extend_from_slice(&dash[..])?;
-    // day
-    add_padding!(day, date_str, &zero[..]);
-    let num = itoa(day, &mut num_buff[..]);
-    date_str.try_extend_from_slice(num)?;
-    date_str.try_extend_from_slice(&space[..])?;
-
-    // time
-    // hour
-    add_padding!(hour, date_str, &zero[..]);
-    let num = itoa(hour, &mut num_buff[..]);
-    date_str.try_extend_from_slice(num)?;
-    date_str.try_extend_from_slice(&colon[..])?;
-    // min
-    add_padding!(min, date_str, &zero[..]);
-    let num = itoa(min, &mut num_buff[..]);
-    date_str.try_extend_from_slice(num)?;
-    date_str.try_extend_from_slice(&colon[..])?;
-    // seconds
-    add_padding!(sec, date_str, &zero[..]);
-    let num = itoa(sec, &mut num_buff[..]);
-    date_str.try_extend_from_slice(num)?;
-    date_str.try_extend_from_slice(&space[..])?;
-
-    // it is redundant to have Utc appended at the end
-    // as by definition unix-timestamp is Utc, but this
-    // keeps compatibility with legacy app
-    date_str.try_extend_from_slice(&utc[..])?;
-
-    Ok(date_str)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{intstr_to_fpstr_inplace, timestamp_to_str_date};
+    use super::{intstr_to_fpstr_inplace, u64_to_str};
+    use lexical_core::Number;
+    use rand::Rng;
+    use std::{format, string::String, vec::Vec};
 
     const SUITE: &[(&[u8], usize, &str)] = &[
         //NORMAL
@@ -304,6 +263,31 @@ mod tests {
         (b"", 10, "0"),
     ];
 
+    fn create_number_table() -> std::vec::Vec<(u64, String)> {
+        let mut rng = rand::thread_rng();
+        (0..200)
+            .map(|_| {
+                let num = rng.gen_range(0..u64::MAX);
+                let string = format!("{}", num);
+                (num, string)
+            })
+            .collect::<Vec<(u64, String)>>()
+    }
+
+    #[test]
+    fn int_to_str() {
+        let mut output = [0; u64::FORMATTED_SIZE_DECIMAL];
+        let test = create_number_table();
+        for (number, dat) in test {
+            let res = {
+                let res = u64_to_str(number as _, &mut output[..]).unwrap();
+                core::str::from_utf8(res).unwrap()
+            };
+            assert_eq!(dat, res);
+            output.iter_mut().for_each(|v| *v = 0);
+        }
+    }
+
     #[test]
     fn intstr_to_fpstr_inplace_test() {
         for &(input, decimals, expected_output) in SUITE.iter() {
@@ -323,28 +307,6 @@ mod tests {
             let out = core::str::from_utf8(out).unwrap();
 
             assert_eq!(out, expected_output)
-        }
-    }
-
-    #[test]
-    fn timestamp_to_str() {
-        use time::format_description;
-        use time::OffsetDateTime;
-
-        let timestamp = [1657089945, 82870739145, 19778424345, 55471502, 46891483200];
-
-        for t in timestamp {
-            let date = OffsetDateTime::from_unix_timestamp(t).unwrap();
-            let format =
-                format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] UTC")
-                    .unwrap();
-
-            let date_str = date.format(&format).unwrap();
-
-            let test_date = timestamp_to_str_date(t).unwrap();
-            let test_date = std::str::from_utf8(test_date.as_slice()).unwrap();
-
-            assert_eq!(&date_str, test_date);
         }
     }
 }
