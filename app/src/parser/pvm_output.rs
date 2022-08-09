@@ -34,7 +34,7 @@ use zemu_sys::ViewError;
 // buffer on which we write other information so that we need
 // its length to initialize such buffer and having the length defined as a constant and the
 // literal inlined can lead to len mismatch which can cause overlapping.
-const AVAX_UNTIL: &str = " AVAX until ";
+const AVAX_UNTIL: &[u8; 12] = b" AVAX until ";
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -171,28 +171,30 @@ impl<'b> DisplayableItem for PvmOutput<'b> {
                 let t = pic_str!(b"Funds locked");
                 title[..t.len()].copy_from_slice(t);
 
-                let avax_until = PIC::new(AVAX_UNTIL);
+                let avax_until = PIC::new(AVAX_UNTIL).into_inner();
                 let mut content = [0; AVAX_UNTIL.len()
                     + FORMATTED_STR_DATE_LEN
                     + u64::FORMATTED_SIZE_DECIMAL
                     + 2];
                 // write the amount
                 let amount = self.amount().ok_or(ViewError::Unknown)?;
-                let len = nano_avax_to_fp_str(amount, &mut content[..])
+                let num_len = nano_avax_to_fp_str(amount, &mut content[..])
                     .map_err(|_| ViewError::Unknown)?
                     .len();
                 // write avax until
-                content[len..(len + avax_until.len())].copy_from_slice(avax_until.as_bytes());
+                let mut total_len = num_len + avax_until.len();
+                content[num_len..total_len].copy_from_slice(avax_until);
                 // finally, write the date
                 let locktime = self.locktime.ok_or(ViewError::NoData)?;
                 let date_str = timestamp_to_str_date(locktime).map_err(|_| ViewError::Unknown)?;
-                content[(len + FORMATTED_STR_DATE_LEN)..]
+                content[total_len..]
                     .iter_mut()
                     .zip(date_str.as_slice())
                     .take(date_str.len())
                     .for_each(|(d, s)| *d = *s);
+                total_len += date_str.len();
 
-                handle_ui_message(&content[..], message, page)
+                handle_ui_message(&content[..total_len], message, page)
             }
             _ => Err(ViewError::NoData),
         }
