@@ -21,8 +21,8 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem,
-        FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
+        DisplayableItem, FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
         TransferableOutput, Validator, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
         PVM_ADD_VALIDATOR,
     },
@@ -346,7 +346,7 @@ impl<'b> AddValidatorTx<'b> {
             x if x >= num_addresses && x < (num_addresses + 1) => {
                 let label = pic_str!(b"Delegate fee(%)");
                 title[..label.len()].copy_from_slice(label);
-                itoa(self.shares, &mut buffer);
+                u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
                 let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
                     .map_err(|_| ViewError::Unknown)?;

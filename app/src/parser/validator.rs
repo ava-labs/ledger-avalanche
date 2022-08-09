@@ -15,8 +15,8 @@
 ********************************************************************************/
 use crate::handlers::handle_ui_message;
 use crate::parser::{
-    cb58_output_len, intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ParserError,
-    CB58_CHECKSUM_LEN, NANO_AVAX_DECIMAL_DIGITS,
+    cb58_output_len, nano_avax_to_fp_str, DisplayableItem, FromBytes, ParserError,
+    CB58_CHECKSUM_LEN,
 };
 use crate::sys::{
     hash::{Hasher, Sha256},
@@ -31,7 +31,7 @@ use nom::{
 };
 
 pub const NODE_ID_LEN: usize = 20;
-const NODE_ID_PREFIX: &[u8] = b"NodeId-";
+const NODE_ID_PREFIX_LEN: usize = 7;
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
@@ -88,32 +88,33 @@ impl<'b> DisplayableItem for Validator<'b> {
     ) -> Result<u8, zemu_sys::ViewError> {
         use crate::parser::timestamp_to_str_date;
         use bolos::pic_str;
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         match item_n {
             0 => {
                 let label = pic_str!(b"Validator");
                 title[..label.len()].copy_from_slice(label);
 
-                // format the node_id
-                let prefix = PIC::new(NODE_ID_PREFIX).into_inner();
-
-                let checksum = Sha256::digest(self.node_id).map_err(|_| ViewError::Unknown)?;
-                // prepare the data to be encoded by appending last 4-byte
                 let mut data = [0; NODE_ID_LEN + CB58_CHECKSUM_LEN];
                 data[..NODE_ID_LEN].copy_from_slice(&self.node_id[..]);
+
+                let checksum = Sha256::digest(&self.node_id[..]).map_err(|_| ViewError::Unknown)?;
+                // format the node_id
+                let prefix = pic_str!(b"NodeId-"!);
+
+                // prepare the data to be encoded by appending last 4-byte
                 data[NODE_ID_LEN..]
                     .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
 
-                const MAX_SIZE: usize = cb58_output_len::<NODE_ID_LEN>() + NODE_ID_PREFIX.len();
+                const MAX_SIZE: usize = cb58_output_len::<NODE_ID_LEN>() + NODE_ID_PREFIX_LEN;
 
                 let mut node_id = [0; MAX_SIZE];
 
                 node_id[..prefix.len()].copy_from_slice(prefix);
 
-                let len = bs58_encode(data, &mut node_id[NODE_ID_PREFIX.len()..])
+                let len = bs58_encode(data, &mut node_id[NODE_ID_PREFIX_LEN..])
                     .map_err(|_| ViewError::Unknown)?
-                    + NODE_ID_PREFIX.len();
+                    + NODE_ID_PREFIX_LEN;
 
                 handle_ui_message(&node_id[..len], message, page)
             }
@@ -135,13 +136,10 @@ impl<'b> DisplayableItem for Validator<'b> {
                 title[..label.len()].copy_from_slice(label);
 
                 let mut buffer = [0; u64::FORMATTED_SIZE + 2];
-
-                itoa(self.weight, &mut buffer);
-
-                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], NANO_AVAX_DECIMAL_DIGITS)
+                let num = nano_avax_to_fp_str(self.weight, &mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?;
 
-                handle_ui_message(buffer, message, page)
+                handle_ui_message(num, message, page)
             }
 
             _ => Err(ViewError::NoData),
