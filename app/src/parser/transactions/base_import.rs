@@ -36,7 +36,7 @@ const IMPORT_DESCRIPTION_LEN: usize = 7;
 // The chainId for which this representation is valid
 // are the P and X chain and local. C-Chain defines
 // a custom BaseImport<'b, O> type.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct BaseImport<'b, O>
 where

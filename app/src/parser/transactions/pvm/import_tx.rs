@@ -34,7 +34,7 @@ const IMPORT_DESCRIPTION_LEN: usize = 7;
 // The chainId for which this representation is valid
 // are the P and X chain, locals?. C-Chain defines
 // a custom PvmImportTx type.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PvmImportTx<'b>(BaseImport<'b, PvmOutput<'b>>);
 

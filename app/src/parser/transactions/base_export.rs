@@ -31,7 +31,7 @@ use crate::{
 pub const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
 const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct BaseExport<'b, O>
 where

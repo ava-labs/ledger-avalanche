@@ -26,7 +26,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct AvmExportTx<'b>(BaseExport<'b, AvmOutput<'b>>);
 
