@@ -76,12 +76,8 @@ impl TryFrom<&[u8; BLOCKCHAIN_ID_LEN]> for ChainId {
         use bolos::{pic_str, PIC};
 
         match chain_alias_lookup(value).map(|a| a.as_bytes()) {
-            Ok(b"X") => {
-                Ok(Self::XChain)
-            }
-            Ok(b"P") => {
-                Ok(Self::PChain)
-            }
+            Ok(b"X") => Ok(Self::XChain),
+            Ok(b"P") => Ok(Self::PChain),
             Ok(b"C") => Ok(Self::CChain),
             _ => Ok(Self::Local),
         }
