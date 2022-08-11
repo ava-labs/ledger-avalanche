@@ -17,10 +17,12 @@ mod prelude;
 use prelude::*;
 
 use bolos::hash::{Hasher, Sha256};
+#[cfg(feature = "blind-sign")]
 use constants::INS_BLIND_SIGN as INS;
 
 const MSG: &[u8] = b"hello@zondax.ch";
 
+#[cfg(feature = "blind-sign")]
 #[test]
 fn sign() {
     let mut flags = 0;
