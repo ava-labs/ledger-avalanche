@@ -26,7 +26,7 @@ use crate::{
     parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
-const AVAX_TO: &[u8; 9] = b" AVAX to ";
+const AVAX_TO_LEN: usize = 9; //b" AVAX to "
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -107,7 +107,7 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
         use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO.len()];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO_LEN];
         let addr_item_n = self.num_items() - self.addresses.len();
 
         match item_n as usize {
@@ -115,7 +115,7 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
                 let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let avax_to = PIC::new(AVAX_TO).into_inner();
+                let avax_to = pic_str!(b" AVAX to ");
 
                 // write the amount
                 let len = nano_avax_to_fp_str(self.amount, &mut buffer[..])

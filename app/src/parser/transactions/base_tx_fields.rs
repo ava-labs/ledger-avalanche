@@ -89,20 +89,20 @@ where
         let filter = |o: &TransferableOutput<'b, O>| -> bool {
             let n = o.num_items();
             for index in 0..n {
-                count += 1;
                 obj_item_n = index;
-                if count == item_n as usize + 1 {
+                if count == item_n as usize {
                     return true;
                 }
+                count += 1;
             }
             false
         };
 
         let obj = self
-            .outputs
-            .iter()
-            .find(filter)
+            .outputs()
+            .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
+
         Ok((obj, obj_item_n as u8))
     }
 }
