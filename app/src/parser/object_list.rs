@@ -126,6 +126,38 @@ where
         }
     }
 
+    /// Looks for the first object in the list that meets
+    /// the condition defined by the closure `f`.
+    ///
+    /// it is like iter().filter(), but memory efficient.
+    /// `None` is returned if no object meets that condition
+    ///
+    /// This function does not change the internal state.
+    pub fn get_obj_if<F>(&self, mut f: F) -> Option<Obj>
+    where
+        F: FnMut(&Obj) -> bool,
+    {
+        let mut out = MaybeUninit::uninit();
+        // lets clone and start from the begining
+        let mut this = *self;
+        unsafe {
+            this.set_data_index(0);
+        }
+        while let Some(()) = this.parse_next(&mut out) {
+            let obj_ptr = out.as_mut_ptr();
+            if f(unsafe { &*obj_ptr }) {
+                return Some(unsafe { out.assume_init() });
+            }
+            // drop the object, this is safe
+            // as user does not longer hold a reference
+            // to this object.
+            unsafe {
+                obj_ptr.drop_in_place();
+            }
+        }
+        None
+    }
+
     /// Parses an object into the given location, without moving forward the internal cursor.
     ///
     /// See also [`ObjList::parse_next`].
