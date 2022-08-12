@@ -188,24 +188,38 @@ where
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use arrayvec::ArrayString;
+        use arrayvec::{ArrayString, ArrayVec};
         use bolos::{pic_str, PIC};
 
         let title_content = pic_str!(b"Export Tx");
         title[..title_content.len()].copy_from_slice(title_content);
 
+        let to = pic_str!(b" to "!);
+        let chain = pic_str!(b" Chain");
+
         // render from where this transaction is moving founds to
-        let mut export_str: ArrayString<EXPORT_TX_DESCRIPTION_LEN> = ArrayString::new();
-        let from_alias =
-            chain_alias_lookup(self.tx_header.blockchain_id).map_err(|_| ViewError::Unknown)?;
-        let to_alias =
-            chain_alias_lookup(self.destination_chain).map_err(|_| ViewError::Unknown)?;
+        let mut export_str: ArrayVec<u8, EXPORT_TX_DESCRIPTION_LEN> = ArrayVec::new();
 
-        export_str.push_str(from_alias);
-        export_str.push_str(pic_str!(" to "!));
-        export_str.push_str(to_alias);
-        export_str.push_str(pic_str!(" Chain"));
+        match self.tx_header.chain_id().map_err(|_| ViewError::Unknown)? {
+            ChainId::PChain => export_str.push(b'P'),
+            ChainId::XChain => export_str.push(b'X'),
+            ChainId::CChain => export_str.push(b'C'),
+            _ => return Err(ViewError::Unknown),
+        }
+        let to_alias = chain_alias_lookup(self.destination_chain)
+            .map(|a| a.as_bytes())
+            .map_err(|_| ViewError::Unknown)?;
 
-        handle_ui_message(export_str.as_bytes(), message, page)
+        export_str
+            .try_extend_from_slice(to)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(to_alias)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(chain)
+            .map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&export_str, message, page)
     }
 }
