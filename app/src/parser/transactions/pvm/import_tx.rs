@@ -22,12 +22,9 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseImport, DisplayableItem, FromBytes, ObjectList, ParserError,
-        PvmOutput, TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN, PVM_IMPORT_TX,
+        PvmOutput, TransferableInput, PVM_IMPORT_TX,
     },
 };
-
-const SOURCE_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const IMPORT_DESCRIPTION_LEN: usize = 7;
 
 // PvmImportTx represents a transaction that move
 // founds to the chain indicated by the header
