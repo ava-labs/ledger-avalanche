@@ -73,7 +73,11 @@ where
     }
 
     pub fn base_outputs_num_items(&'b self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     // Gets the obj that contain the item_n, along with the index
