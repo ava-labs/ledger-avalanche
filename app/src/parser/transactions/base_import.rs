@@ -146,37 +146,13 @@ where
         &'b self,
         item_n: u8,
     ) -> Result<(TransferableOutput<O>, u8), ViewError> {
-        let mut count = 0usize;
-        let mut obj_item_n = 0;
-        // gets the output that contains item_n
-        // and its corresponding index
-        let filter = |o: &TransferableOutput<'b, O>| -> bool {
-            let n = o.num_items();
-            for index in 0..n {
-                count += 1;
-                obj_item_n = index;
-                if count == item_n as usize + 1 {
-                    return true;
-                }
-            }
-            false
-        };
-
-        let obj = self
-            .base_tx
-            .outputs()
-            .iter()
-            .find(filter)
-            .ok_or(ViewError::NoData)?;
-        Ok((obj, obj_item_n as u8))
+        self.base_tx
+            .base_output_with_item(item_n)
+            .map_err(|_| ViewError::Unknown)
     }
 
     pub fn num_input_items(&'b self) -> usize {
-        self.base_tx
-            .outputs
-            .iter()
-            .map(|output| output.num_items())
-            .sum()
+        self.base_tx.base_outputs_num_items()
     }
 
     // default render_item implementation that
@@ -206,7 +182,7 @@ where
         title[..title_content.len()].copy_from_slice(title_content);
 
         // render from where this transaction is receiving founds to
-        let mut export_str: ArrayString<IMPORT_DESCRIPTION_LEN> = ArrayString::new();
+        let mut export_str: ArrayString<{ IMPORT_DESCRIPTION_LEN + 1 }> = ArrayString::new();
         let from_alias = chain_alias_lookup(self.source_chain).map_err(|_| ViewError::Unknown)?;
 
         export_str.push_str(from_alias);
