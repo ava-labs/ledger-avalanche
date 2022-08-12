@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
+const EXPORT_TX_DESCRIPTION_LEN: usize = 13; //X to C Chain
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -135,7 +135,11 @@ where
     // inner objects, but callers might want to filter it
     // out.
     pub fn num_outputs_items(&'b self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     // Gets the obj that contain the item_n, along with the index
@@ -160,7 +164,7 @@ where
             false
         };
 
-        let obj = self.outputs.iter().find(filter).ok_or(ViewError::NoData)?;
+        let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
         Ok((obj, obj_item_n as u8))
     }
 
@@ -200,7 +204,7 @@ where
         export_str.push_str(from_alias);
         export_str.push_str(pic_str!(" to "!));
         export_str.push_str(to_alias);
-        export_str.push_str(pic_str!(" Chain"!));
+        export_str.push_str(pic_str!(" Chain"));
 
         handle_ui_message(export_str.as_bytes(), message, page)
     }
