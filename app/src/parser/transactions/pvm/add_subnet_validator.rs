@@ -89,10 +89,8 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
         use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
-        let validator_items = self.validator.num_items() as u8;
-
         if item_n == 0 {
-            let label = pic_str!(b"AddSubnetValidator");
+            let label = pic_str!(b"SubnetValidator");
             title[..label.len()].copy_from_slice(label);
             let content = pic_str!(b"Transaction");
             return handle_ui_message(content, message, page);
@@ -100,7 +98,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
 
         let item_n = item_n - 1;
 
-        let total_items = self.num_items() as u8;
+        let validator_items = self.validator.num_items() as u8;
 
         match item_n {
             // render validator info
@@ -110,7 +108,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
             x if x == validator_items => self.subnet_id.render_item(0, title, message, page),
 
             // render fee
-            x if x == total_items - 1 => {
+            x if x == validator_items + 1 => {
                 let label = pic_str!(b"Fee(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 

@@ -47,10 +47,9 @@ describe.each(models)('Standard [%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
 
-      const currentScreen = sim.snapshot();
       const respReq = app.sign(APP_DERIVATION, msg)
 
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
       await sim.compareSnapshotsAndApprove('.', testcase)
 
