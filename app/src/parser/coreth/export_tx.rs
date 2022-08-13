@@ -14,10 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{
-    mem::MaybeUninit,
-    ptr::{addr_of, addr_of_mut},
-};
+use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
@@ -28,16 +25,15 @@ use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ObjectList, Output, ParserError,
-        TransferableOutput, BLOCKCHAIN_ID_LEN, EVM_EXPORT_TX, NANO_AVAX_DECIMAL_DIGITS,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, DisplayableItem, FromBytes, ObjectList,
+        ParserError, TransferableOutput, BLOCKCHAIN_ID_LEN, EVM_EXPORT_TX,
     },
-    utils::ApduPanic,
 };
 
 use super::{inputs::EVMInput, outputs::EOutput};
 
 const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
+const EXPORT_TX_DESCRIPTION_LEN: usize = 13; //X to C Chain
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -108,7 +104,7 @@ impl<'b> ExportTx<'b> {
     }
 
     fn fee_to_fp_str(&self, out_str: &'b mut [u8]) -> Result<&mut [u8], ParserError> {
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let fee = self.fee()?;
 
@@ -116,10 +112,7 @@ impl<'b> ExportTx<'b> {
         if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
             return Err(ParserError::UnexpectedBufferEnd);
         }
-
-        itoa(fee, out_str);
-        intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
-            .map_err(|_| ParserError::UnexpectedError)
+        nano_avax_to_fp_str(fee, out_str)
     }
 
     fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
@@ -141,7 +134,11 @@ impl<'b> ExportTx<'b> {
     }
 
     fn num_outputs_items(&self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     fn render_outputs(
@@ -167,7 +164,7 @@ impl<'b> ExportTx<'b> {
             false
         };
 
-        let obj = self.outputs.iter().find(filter).ok_or(ViewError::NoData)?;
+        let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
 
         obj.render_item(obj_item_n as u8, title, message, page)
     }
@@ -178,22 +175,33 @@ impl<'b> ExportTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use arrayvec::ArrayString;
+        use arrayvec::ArrayVec;
         use bolos::{pic_str, PIC};
 
         let title_content = pic_str!(b"Export Tx");
         title[..title_content.len()].copy_from_slice(title_content);
+        let to = pic_str!(b"C to "!);
+        let chain = pic_str!(b" Chain");
 
         // render from where this transaction is moving founds to
-        let mut export_str: ArrayString<EXPORT_TX_DESCRIPTION_LEN> = ArrayString::new();
-        let to_alias =
-            chain_alias_lookup(self.destination_chain).map_err(|_| ViewError::Unknown)?;
+        let mut export_str: ArrayVec<u8, EXPORT_TX_DESCRIPTION_LEN> = ArrayVec::new();
 
-        export_str.push_str(pic_str!("C to "!));
-        export_str.push_str(to_alias);
-        export_str.push_str(pic_str!(" Chain"!));
+        // render from where this transaction is moving founds to
+        let to_alias = chain_alias_lookup(self.destination_chain)
+            .map(|a| a.as_bytes())
+            .map_err(|_| ViewError::Unknown)?;
 
-        handle_ui_message(export_str.as_bytes(), message, page)
+        export_str
+            .try_extend_from_slice(to)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(to_alias)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(chain)
+            .map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&export_str, message, page)
     }
 }
 

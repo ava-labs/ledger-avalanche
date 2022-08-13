@@ -165,7 +165,6 @@ impl<'b> ImportTx<'b> {
         };
 
         let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
-        crate::sys::zemu_log_stack("got_output_to_render\x00");
 
         obj.render_item(obj_item_n as u8, title, message, page)
     }
@@ -188,7 +187,6 @@ impl<'b> ImportTx<'b> {
 
         export_str.push_str(from_alias);
         export_str.push_str(pic_str!(" Chain"));
-        crate::sys::zemu_log_stack("render_import_des_done\x00");
 
         handle_ui_message(export_str.as_bytes(), message, page)
     }
