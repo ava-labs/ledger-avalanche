@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
+use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
@@ -25,9 +25,8 @@ use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        coreth::outputs::EVMOutput, intstr_to_fpstr_inplace, ChainId, DisplayableItem, FromBytes,
-        ObjectList, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN, EVM_IMPORT_TX,
-        NANO_AVAX_DECIMAL_DIGITS,
+        coreth::outputs::EVMOutput, nano_avax_to_fp_str, DisplayableItem, FromBytes, ObjectList,
+        ParserError, TransferableInput, BLOCKCHAIN_ID_LEN, EVM_IMPORT_TX,
     },
 };
 
@@ -102,7 +101,7 @@ impl<'b> ImportTx<'b> {
     }
 
     fn fee_to_fp_str(&self, out_str: &'b mut [u8]) -> Result<&mut [u8], ParserError> {
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let fee = self.fee()?;
 
@@ -111,9 +110,7 @@ impl<'b> ImportTx<'b> {
             return Err(ParserError::UnexpectedBufferEnd);
         }
 
-        itoa(fee, out_str);
-        intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
-            .map_err(|_| ParserError::UnexpectedError)
+        nano_avax_to_fp_str(fee, out_str)
     }
 
     fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
@@ -135,7 +132,11 @@ impl<'b> ImportTx<'b> {
     }
 
     fn num_output_items(&self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     // use outputs, which contains the amount
@@ -163,7 +164,8 @@ impl<'b> ImportTx<'b> {
             false
         };
 
-        let obj = self.outputs.iter().find(filter).ok_or(ViewError::NoData)?;
+        let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
+        crate::sys::zemu_log_stack("got_output_to_render\x00");
 
         obj.render_item(obj_item_n as u8, title, message, page)
     }
@@ -186,6 +188,7 @@ impl<'b> ImportTx<'b> {
 
         export_str.push_str(from_alias);
         export_str.push_str(pic_str!(" Chain"));
+        crate::sys::zemu_log_stack("render_import_des_done\x00");
 
         handle_ui_message(export_str.as_bytes(), message, page)
     }
