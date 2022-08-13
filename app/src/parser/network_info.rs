@@ -66,7 +66,6 @@ pub enum ChainId {
     PChain,
     XChain,
     CChain,
-    Local,
 }
 
 impl TryFrom<&[u8; BLOCKCHAIN_ID_LEN]> for ChainId {
@@ -79,7 +78,7 @@ impl TryFrom<&[u8; BLOCKCHAIN_ID_LEN]> for ChainId {
             Ok(b"X") => Ok(Self::XChain),
             Ok(b"P") => Ok(Self::PChain),
             Ok(b"C") => Ok(Self::CChain),
-            _ => Ok(Self::Local),
+            _ => Err(ParserError::InvalidChainId),
         }
     }
 }
