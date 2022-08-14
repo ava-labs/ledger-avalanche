@@ -15,6 +15,7 @@
 ********************************************************************************/
 use core::ops::Deref;
 
+use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::take;
 use zemu_sys::ViewError;
@@ -24,7 +25,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, ParserError,
-        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN,
+        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN, MAX_ADDRESS_ENCODED_LEN,
     },
 };
 
@@ -179,7 +180,42 @@ where
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         let (obj, obj_item_n) = self.get_output_with_item(item_n)?;
-        obj.render_item(obj_item_n as u8, title, message, page)
+
+        // Base Import/Export only supports secp_transfer types
+        let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
+
+        // get the number of items for the obj wrapped up by PvmOutput
+        let num_inner_items = obj.num_items() as _;
+
+        // do a custom rendering of the first base_output_items
+        match obj_item_n {
+            0 => {
+                // render amount
+                obj.render_item(0, title, message, page)
+            }
+            // address rendering, according to avax team 99.99% of transactions only comes with one
+            // address, but we support rendering any
+            x @ 1.. if x < num_inner_items => {
+                // get the address index
+                let address_idx = x - 1;
+                let address = obj
+                    .get_address_at(address_idx as usize)
+                    .ok_or(ViewError::NoData)?;
+                // render encoded address with proper hrp,
+                let t = pic_str!(b"Address");
+                title[..t.len()].copy_from_slice(t);
+
+                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+                let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+
+                let addr_len = address
+                    .encode_into(hrp, &mut encoded[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(&encoded[..addr_len], message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 
     pub fn render_export_description(
@@ -188,8 +224,7 @@ where
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use arrayvec::{ArrayString, ArrayVec};
-        use bolos::{pic_str, PIC};
+        use arrayvec::ArrayVec;
 
         let title_content = pic_str!(b"Export Tx");
         title[..title_content.len()].copy_from_slice(title_content);
