@@ -113,6 +113,10 @@ impl<'b> EVMOutput<'b> {
     pub fn asset_id(&self) -> &AssetId<'_> {
         &self.asset_id
     }
+
+    pub fn address(&self) -> &Address<'_> {
+        &self.address
+    }
 }
 
 impl<'b> FromBytes<'b> for EVMOutput<'b> {
@@ -145,8 +149,8 @@ impl<'b> FromBytes<'b> for EVMOutput<'b> {
 
 impl<'b> DisplayableItem for EVMOutput<'b> {
     fn num_items(&self) -> usize {
-        //type, asset id, amount, address
-        1 + self.asset_id.num_items() + 1 + self.address.num_items()
+        // amount, address
+        1 + self.address.num_items()
     }
 
     fn render_item(
@@ -163,20 +167,13 @@ impl<'b> DisplayableItem for EVMOutput<'b> {
 
         match item_n as usize {
             0 => {
-                let title_content = pic_str!(b"Output");
-                title[..title_content.len()].copy_from_slice(title_content);
-
-                handle_ui_message(pic_str!(b"EVM Output"), message, page)
-            }
-            1 => self.asset_id.render_item(0, title, message, page),
-            2 => {
                 let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
                 let buffer = itoa(self.amount, &mut buffer);
 
                 handle_ui_message(buffer, message, page)
             }
-            3 => self.address.render_item(0, title, message, page),
+            1 => self.address.render_item(0, title, message, page),
             _ => Err(ViewError::NoData),
         }
     }
