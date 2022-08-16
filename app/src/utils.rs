@@ -27,6 +27,9 @@ pub use apdu_unwrap::*;
 mod apdu_wrapper;
 pub use apdu_wrapper::*;
 
+mod keccak;
+pub(crate) use keccak::{Hasher as KHasher, Keccak};
+
 mod buffer_upload;
 pub use buffer_upload::*;
 
