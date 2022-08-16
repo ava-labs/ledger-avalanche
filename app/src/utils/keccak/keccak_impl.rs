@@ -124,72 +124,12 @@ macro_rules! keccak_function {
 }
 
 /// A trait for hashing an arbitrary stream of bytes.
-///
-/// # Example
-///
-/// ```no_run
-/// # use tiny_keccak::Hasher;
-/// #
-/// # fn foo<H: Hasher>(mut hasher: H) {
-/// let input_a = b"hello world";
-/// let input_b = b"!";
-/// let mut output = [0u8; 32];
-/// hasher.update(input_a);
-/// hasher.update(input_b);
-/// hasher.finalize(&mut output);
-/// # }
-/// ```
 pub(crate) trait Hasher {
     /// Absorb additional input. Can be called multiple times.
     fn update(&mut self, input: &[u8]);
 
     /// Pad and squeeze the state to the output.
     fn finalize(self, output: &mut [u8]);
-}
-
-/// A trait used to convert [`Hasher`] into it's [`Xof`] counterpart.
-///
-/// # Example
-///
-/// ```no_run
-/// # use tiny_keccak::IntoXof;
-/// #
-/// # fn foo<H: IntoXof>(hasher: H) {
-/// let xof = hasher.into_xof();
-/// # }
-/// ```
-///
-/// [`Hasher`]: trait.Hasher.html
-/// [`Xof`]: trait.Xof.html
-pub trait IntoXof {
-    /// A type implementing [`Xof`], eXtendable-output function interface.
-    ///
-    /// [`Xof`]: trait.Xof.html
-    type Xof: Xof;
-
-    /// A method used to convert type into [`Xof`].
-    ///
-    /// [`Xof`]: trait.Xof.html
-    fn into_xof(self) -> Self::Xof;
-}
-
-/// Extendable-output function (`XOF`) is a function on bit strings in which the output can be
-/// extended to any desired length.
-///
-/// # Example
-///
-/// ```no_run
-/// # use tiny_keccak::Xof;
-/// #
-/// # fn foo<X: Xof>(mut xof: X) {
-/// let mut output = [0u8; 64];
-/// xof.squeeze(&mut output[0..32]);
-/// xof.squeeze(&mut output[32..]);
-/// # }
-/// ```
-pub trait Xof {
-    /// A method used to retrieve another part of hash function output.
-    fn squeeze(&mut self, output: &mut [u8]);
 }
 
 struct EncodedLen {
@@ -201,26 +141,6 @@ impl EncodedLen {
     fn value(&self) -> &[u8] {
         &self.buffer[self.offset..]
     }
-}
-
-fn left_encode(len: usize) -> EncodedLen {
-    let mut buffer = [0u8; 9];
-    buffer[1..].copy_from_slice(&(len as u64).to_be_bytes());
-    let offset = buffer.iter().position(|i| *i != 0).unwrap_or(8);
-    buffer[offset - 1] = 9 - offset as u8;
-
-    EncodedLen {
-        offset: offset - 1,
-        buffer,
-    }
-}
-
-fn right_encode(len: usize) -> EncodedLen {
-    let mut buffer = [0u8; 9];
-    buffer[..8].copy_from_slice(&(len as u64).to_be_bytes());
-    let offset = buffer.iter().position(|i| *i != 0).unwrap_or(7);
-    buffer[8] = 8 - offset as u8;
-    EncodedLen { offset, buffer }
 }
 
 #[derive(Default, Clone)]
