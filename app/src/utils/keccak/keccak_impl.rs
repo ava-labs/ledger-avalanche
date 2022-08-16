@@ -40,7 +40,6 @@ const ROUNDS: usize = 24;
 
 macro_rules! keccak_function {
     ($doc: expr, $name: ident, $rounds: expr, $rc: expr) => {
-        #[doc = $doc]
         #[allow(unused_assignments)]
         #[allow(non_upper_case_globals)]
         pub fn $name(a: &mut [u64; WORDS]) {
@@ -128,7 +127,7 @@ macro_rules! keccak_function {
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// # use tiny_keccak::Hasher;
 /// #
 /// # fn foo<H: Hasher>(mut hasher: H) {
@@ -152,7 +151,7 @@ pub(crate) trait Hasher {
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// # use tiny_keccak::IntoXof;
 /// #
 /// # fn foo<H: IntoXof>(hasher: H) {
@@ -179,7 +178,7 @@ pub trait IntoXof {
 ///
 /// # Example
 ///
-/// ```
+/// ```no_run
 /// # use tiny_keccak::Xof;
 /// #
 /// # fn foo<X: Xof>(mut xof: X) {

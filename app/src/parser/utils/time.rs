@@ -23,7 +23,6 @@ use lexical_core::Number;
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum TimeError {
     InvalidTimestamp,
-    UnknownMonth,
     BufferTooSmall,
 }
 

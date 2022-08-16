@@ -28,7 +28,7 @@ impl<const N: usize> Hasher for Keccak<N> {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// # use tiny_keccak::{Hasher, Keccak};
     /// #
     /// # fn main() {
@@ -45,7 +45,7 @@ impl<const N: usize> Hasher for Keccak<N> {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// # use tiny_keccak::{Hasher, Keccak};
     /// #
     /// # fn main() {
