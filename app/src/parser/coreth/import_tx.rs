@@ -30,7 +30,7 @@ use crate::{
 };
 
 const SOURCE_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const IMPORT_DESCRIPTION_LEN: usize = 7;
+const IMPORT_DESCRIPTION_LEN: usize = 8;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
