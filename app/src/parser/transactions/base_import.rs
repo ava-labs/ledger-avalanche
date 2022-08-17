@@ -30,7 +30,7 @@ use crate::{
 };
 
 const SOURCE_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const IMPORT_DESCRIPTION_LEN: usize = 7;
+const IMPORT_DESCRIPTION_LEN: usize = 8;
 
 // BaseImport<'b, O> represents a transaction that move
 // founds to the chain indicated by the BaseTx
@@ -216,7 +216,7 @@ where
         title[..title_content.len()].copy_from_slice(title_content);
 
         // render from where this transaction is receiving founds to
-        let mut export_str: ArrayString<{ IMPORT_DESCRIPTION_LEN + 1 }> = ArrayString::new();
+        let mut export_str: ArrayString<IMPORT_DESCRIPTION_LEN> = ArrayString::new();
         let from_alias = chain_alias_lookup(self.source_chain).map_err(|_| ViewError::Unknown)?;
 
         export_str.push_str(from_alias);
