@@ -20,19 +20,9 @@ use arrayvec::CapacityError;
 
 use lexical_core::Number;
 
-#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
-pub enum TimeError {
-    InvalidTimestamp,
-    BufferTooSmall,
-}
+const MONTH_DAYS: &[u8; 12] = &[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-impl From<CapacityError> for TimeError {
-    fn from(_: CapacityError) -> Self {
-        TimeError::BufferTooSmall
-    }
-}
-
-const YEAR_LOOKUP: &[u32] = &[
+const YEAR_LOOKUP: &[u32; 400] = &[
     0, 365, 730, 1096, 1461, 1826, 2191, 2557, 2922, 3287, 3652, 4018, 4383, 4748, 5113, 5479,
     5844, 6209, 6574, 6940, 7305, 7670, 8035, 8401, 8766, 9131, 9496, 9862, 10227, 10592, 10957,
     11323, 11688, 12053, 12418, 12784, 13149, 13514, 13879, 14245, 14610, 14975, 15340, 15706,
@@ -67,6 +57,18 @@ const YEAR_LOOKUP: &[u32] = &[
     145366, 145732,
 ];
 
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
+pub enum TimeError {
+    InvalidTimestamp,
+    BufferTooSmall,
+}
+
+impl From<CapacityError> for TimeError {
+    fn from(_: CapacityError) -> Self {
+        TimeError::BufferTooSmall
+    }
+}
+
 // this is used to add a leading 0
 // to a single digit number, to "emulate"
 // format!("{:0>2}", 1); which returns 01
@@ -92,12 +94,8 @@ pub struct Date {
 /// Conversts a unix `timestamp`
 /// returns a date
 pub fn timestamp_to_date(timestamp: i64) -> Result<Date, TimeError> {
-    let month_days: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-    let year_lookup = unsafe {
-        let ptr = PIC::manual(YEAR_LOOKUP.as_ptr() as usize);
-        core::slice::from_raw_parts(ptr as *const u32, YEAR_LOOKUP.len())
-    };
+    let month_days = PIC::new(MONTH_DAYS).into_inner();
+    let year_lookup = PIC::new(YEAR_LOOKUP).into_inner();
 
     let mut t = timestamp;
     let mut tm_day: u8;
