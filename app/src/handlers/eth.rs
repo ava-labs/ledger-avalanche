@@ -19,11 +19,7 @@ pub mod public_key;
 pub mod signing;
 
 mod utils {
-    use crate::{
-        constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
-        parser::ParserError,
-        utils::ApduPanic,
-    };
+    use crate::{constants::MAX_BIP32_PATH_DEPTH, parser::ParserError, utils::ApduPanic};
     use bolos::crypto::bip32::BIP32Path;
     use nom::{bytes::complete::take, number::complete::le_u8};
 

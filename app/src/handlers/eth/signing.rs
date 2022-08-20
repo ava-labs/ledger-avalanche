@@ -21,13 +21,18 @@ use bolos::{
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
+    constants::{ApduError as Error, APDU_MIN_LENGTH, MAX_BIP32_PATH_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::{handle_ui_message, resources::PATH},
+    handlers::{
+        handle_ui_message,
+        resources::{BUFFER, PATH},
+    },
     sys,
     utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic, Uploader},
 };
+
+use super::utils::parse_bip32_eth;
 
 pub struct BlindSign;
 
@@ -66,18 +71,10 @@ impl BlindSign {
     #[inline(never)]
     pub fn start_sign(
         send_hash: bool,
-        _: u8,
-        init_data: &[u8],
-        data: &'static [u8],
+        txdata: &'static [u8],
         flags: &mut u32,
     ) -> Result<u32, Error> {
-        let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
-
-        unsafe {
-            PATH.lock(Self)?.replace((path, Curve::Secp256K1));
-        }
-
-        let unsigned_hash = Self::digest(data)?;
+        let unsigned_hash = Self::digest(txdata)?;
 
         let ui = SignUI {
             hash: unsigned_hash,
@@ -85,6 +82,75 @@ impl BlindSign {
         };
 
         crate::show_ui!(ui.show(flags))
+    }
+
+    /// Return the number of bytes of the ethereum tx
+    ///
+    /// Note: the tx version is expected
+    ///
+    /// Returns the number of bytes read and the number of bytes to read
+    fn get_tx_rlp_len(mut data: &[u8]) -> Result<(usize, u64), Error> {
+        const U64_SIZE: usize = core::mem::size_of::<u64>();
+
+        let mut read = 0;
+
+        //skip version if present/recognized
+        // otherwise tx is probably legacy so no version, just rlp data
+        let version = *data.get(0).ok_or(Error::DataInvalid)?;
+        match version {
+            0x01 | 0x02 => {
+                data = data.get(1..).ok_or(Error::DataInvalid)?;
+                read += 1;
+            }
+            _ => {}
+        }
+
+        let marker = *data.get(0).ok_or(Error::DataInvalid)?;
+
+        match marker {
+            _num @ 0..=0x7F => Ok((read + 1, 0)),
+            sstring @ 0x80..=0xB7 => Ok((read + 1, sstring as u64 - 0x7F)),
+            string @ 0xB8..=0xBF => {
+                // For strings longer than 55 bytes the length is encoded
+                // differently.
+                // The number of bytes that compose the length is encoded
+                // in the marker
+                // And then the length is just the number BE encoded
+                let num_bytes = string as usize - 0xB7;
+                let num = data
+                    .get(1..)
+                    .ok_or(Error::DataInvalid)?
+                    .get(..num_bytes)
+                    .ok_or(Error::DataInvalid)?;
+
+                let mut array = [0; U64_SIZE];
+                array[U64_SIZE - num_bytes..].copy_from_slice(num);
+
+                let num = u64::from_be_bytes(array);
+                Ok((read + 1 + num_bytes, num))
+            }
+            slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xBF)),
+            list @ 0xF8.. => {
+                // For lists longer than 55 bytes the length is encoded
+                // differently.
+                // The number of bytes that compose the length is encoded
+                // in the marker
+                // And then the length is just the number BE encoded
+
+                let num_bytes = list as usize - 0xF7;
+                let num = data
+                    .get(1..)
+                    .ok_or(Error::DataInvalid)?
+                    .get(..num_bytes)
+                    .ok_or(Error::DataInvalid)?;
+
+                let mut array = [0; U64_SIZE];
+                array[U64_SIZE - num_bytes..].copy_from_slice(num);
+
+                let num = u64::from_be_bytes(array);
+                Ok((read + 1 + num_bytes, num))
+            }
+        }
     }
 }
 
@@ -104,11 +170,97 @@ impl ApduHandler for BlindSign {
             return Err(Error::ApduCodeConditionsNotSatisfied);
         }
 
-        if let Some(upload) = Uploader::new(Self).upload(&buffer)? {
-            *tx = Self::start_sign(true, upload.p2, upload.first, upload.data, flags)?;
-        }
+        // hw-app-eth encodes the packet type in p1
+        // with 0x00 being init and 0x80 being next
+        //
+        // the end of the transmission is implicit based on the received data
+        // an eth transaction is RLP encoded (https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/#definition)
+        // with the first byte being the version (0x01 EIP2930 or 0x02 EIP1559 or legacy if neither/missing)
+        // and then a RLP list
+        //
+        // therefore, the data received self-describes how many bytes the app can expect and
+        // when all data has been received
 
-        Ok(())
+        let packet_type = buffer.p1();
+
+        match packet_type {
+            //init
+            0x00 => {
+                //we can't use .payload here since it's not prefixed with the length
+                // of the payload
+                let apdu_buffer = buffer.write();
+                let payload = &apdu_buffer
+                    .get(APDU_MIN_LENGTH as usize..)
+                    .ok_or(Error::DataInvalid)?;
+
+                //parse path to verify it's the data we expect
+                let (rest, bip32_path) =
+                    parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
+
+                unsafe {
+                    PATH.lock(Self)?.replace((bip32_path, Curve::Secp256K1));
+                }
+
+                //parse the length of the RLP message
+                let (read, to_read) = Self::get_tx_rlp_len(rest)?;
+
+                let len = core::cmp::min(to_read as usize + read, rest.len());
+
+                //write the rest to the swapping buffer so we persist this data
+                let buffer = unsafe { BUFFER.lock(Self)? };
+                buffer.reset();
+
+                buffer
+                    .write(&rest[..len])
+                    .map_err(|_| Error::ExecutionError)?;
+
+                //if the number of bytes read and the number of bytes to read
+                // is the same as what we read...
+                if to_read as usize + read - len == 0 {
+                    //then we actually had all bytes in this tx!
+                    // we should sign directly
+                    *tx = Self::start_sign(true, buffer.read_exact(), flags)?;
+                }
+
+                Ok(())
+            }
+            //next
+            0x80 => {
+                //we can't use .payload here since it's not prefixed with the length
+                // of the payload
+                let apdu_buffer = buffer.write();
+                let payload = &apdu_buffer
+                    .get(APDU_MIN_LENGTH as usize..)
+                    .ok_or(Error::DataInvalid)?;
+
+                let buffer = unsafe { BUFFER.acquire(Self)? };
+
+                //we could unwrap here as this data should be guaranteed correct
+                // we read back what we wrote to see how many bytes we expect
+                // to have to collect
+                let (read, to_read) = Self::get_tx_rlp_len(buffer.read_exact())?;
+
+                // let's ignore the little header at the start
+                let rlp_read = buffer.read_exact().len() - read;
+
+                //either the entire buffer of the remaining bytes we expect
+                let missing = to_read as usize - rlp_read;
+                let len = core::cmp::min(missing, payload.len());
+
+                buffer
+                    .write(&payload[..len])
+                    .map_err(|_| Error::ExecutionError)?;
+
+                if missing - len == 0 {
+                    //we read all the missing bytes so we can proceed with the signature
+                    // nwo
+                    *tx = Self::start_sign(true, buffer.read_exact(), flags)?;
+                }
+
+                Ok(())
+            }
+            _ => Err(Error::InvalidP1P2),
+        }
     }
 }
 
@@ -190,8 +342,31 @@ fn cleanup_globals() -> Result<(), Error> {
             //let's release the lock for the future
             let _ = PATH.release(BlindSign);
         }
-    }
-    //if we failed to aquire then someone else is using it anyways
 
+        if let Ok(buffer) = BUFFER.acquire(BlindSign) {
+            buffer.reset();
+
+            //let's release the lock for the future
+            let _ = BUFFER.release(BlindSign);
+        }
+    }
+
+    //if we failed to aquire then someone else is using it anyways
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rlp_decoder() {
+        let data = hex::decode("02f878018402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c080a01e514f7fc78197c66589083cc8fd06376bae627a4080f5fb58d52d90c0df340da049b048717f215e622c93722ff5b1e38e1d1a4ab9e26a39183969a34a5f8dea75").unwrap();
+
+        let (read, to_read) =
+            BlindSign::get_tx_rlp_len(&data).expect("unable to minimally parse tx data");
+
+        assert_eq!(read, 3);
+        assert_eq!(to_read, 0x78);
+    }
 }
