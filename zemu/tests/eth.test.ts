@@ -19,8 +19,6 @@ import { ETH_DERIVATION, defaultOptions, models, enableBlindSigning } from './co
 import Eth from '@ledgerhq/hw-app-eth'
 import { ec } from 'elliptic'
 
-const secp256k1 = new ec('secp256k1')
-
 const SIGN_TEST_DATA = [
   {
     name: 'blind sign',
@@ -47,7 +45,7 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       const respReq = app.signTransaction(ETH_DERIVATION, msg.toString('hex'))
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
-      await sim.navigateAndCompareUntilText('.', testcase, 'Approve')
+      await sim.navigateAndCompareUntilText('.', testcase, 'APPROVE')
 
       const resp = await respReq
 
@@ -56,12 +54,6 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       expect(resp).toHaveProperty('s')
       expect(resp).toHaveProperty('r')
       expect(resp).toHaveProperty('v')
-
-      const resp_addr = await app.getAddress(ETH_DERIVATION, false)
-      const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)
-
-      // let signatureOK = pkey.verify(resp.hash, resp.signature)
-      // expect(signatureOK).toEqual(true)
     } finally {
       await sim.close()
     }
@@ -93,7 +85,7 @@ describe.each(models)('Ethereum [%s] - pubkey', function (m) {
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
       await sim.waitScreenChange()
-      await sim.navigateAndCompareUntilText('.', `${m.prefix.toLowerCase()}-eth-addr`, 'Approve')
+      await sim.navigateAndCompareUntilText('.', `${m.prefix.toLowerCase()}-eth-addr`, 'APPROVE')
 
       const resp = await respReq
       console.log(resp, m.name)

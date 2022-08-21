@@ -17,6 +17,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use std::convert::{TryFrom, TryInto};
 
 use crate::{constants::SECP256_SIGN_BUFFER_MIN_LENGTH, sys, utils::ApduPanic};
+use bolos::hash::{Hasher, HasherId};
 use sys::{
     crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
     errors::Error,
@@ -139,16 +140,17 @@ impl<const B: usize> SecretKey<B> {
         self.0.curve().try_into().apdu_unwrap()
     }
 
-    pub fn sign(&self, data: &[u8], out: &mut [u8]) -> Result<usize, SignError> {
+    pub fn sign<H>(&self, data: &[u8], out: &mut [u8]) -> Result<usize, SignError>
+    where
+        H: HasherId,
+        H::Id: Into<u8>,
+    {
         match self.curve() {
             Curve::Secp256K1 if out.len() < SECP256_SIGN_BUFFER_MIN_LENGTH => {
                 Err(SignError::BufferTooSmall)
             }
 
-            Curve::Secp256K1 => self
-                .0
-                .sign::<Sha256>(data, out) //pass Sha256 for the signature nonce hasher
-                .map_err(SignError::Sys),
+            Curve::Secp256K1 => self.0.sign::<H>(data, out).map_err(SignError::Sys),
         }
     }
 }

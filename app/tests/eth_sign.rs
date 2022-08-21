@@ -14,6 +14,12 @@
 *  limitations under the License.
 ********************************************************************************/
 mod prelude;
+use std::convert::TryFrom;
+
+use k256::{
+    ecdsa::{self, recoverable, signature::Verifier},
+    elliptic_curve::generic_array::GenericArray,
+};
 use prelude::*;
 
 use bolos::{
@@ -39,8 +45,9 @@ fn eth_sign() {
     buffer[1] = INS;
     buffer[2] = 0x00;
     buffer[3] = 0x00;
-    buffer[4..][..path.len()].copy_from_slice(&path);
-    buffer[4 + path.len()..][..data.len()].copy_from_slice(&data);
+    buffer[4] = path.len() as u8;
+    buffer[5..][..path.len()].copy_from_slice(&path);
+    buffer[5 + path.len()..][..data.len()].copy_from_slice(&data);
 
     let out = handle_apdu(
         &mut flags,
@@ -51,7 +58,15 @@ fn eth_sign() {
     println!("{}:{}", tx, hex::encode(&out));
     assert_error_code!(tx, out, ApduError::Success);
 
-    let out_hash = &out[..32];
-    let expected = Keccak::<32>::digest(&data).unwrap();
-    assert_eq!(&expected, out_hash);
+    let sig = ecdsa::Signature::try_from(&out[1..][..64]).expect("signature was not RS encoded");
+    let sig = recoverable::Signature::new(
+        &sig,
+        recoverable::Id::new(out[0] & 0x01).expect("invalid V"),
+    )
+    .expect("not a recoverable signature");
+
+    let key = sig
+        .recover_verify_key(&data)
+        .expect("unable to retrieve verifying key");
+    assert!(key.verify(&data, &sig).is_ok())
 }

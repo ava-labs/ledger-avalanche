@@ -13,6 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use arrayref::array_mut_ref;
 use bolos::{
     crypto::bip32::BIP32Path,
     hash::{Hasher, Keccak},
@@ -32,7 +33,7 @@ use crate::{
     utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic, Uploader},
 };
 
-use super::utils::parse_bip32_eth;
+use super::utils::{convert_der_to_rs, parse_bip32_eth};
 
 pub struct BlindSign;
 
@@ -57,7 +58,7 @@ impl BlindSign {
 
         let mut out = [0; 100];
         let sz = sk
-            .sign(data, &mut out[..])
+            .sign::<Keccak<32>>(data, &mut out[..])
             .map_err(|_| Error::ExecutionError)?;
 
         Ok((sz, out))
@@ -69,16 +70,11 @@ impl BlindSign {
     }
 
     #[inline(never)]
-    pub fn start_sign(
-        send_hash: bool,
-        txdata: &'static [u8],
-        flags: &mut u32,
-    ) -> Result<u32, Error> {
+    pub fn start_sign(txdata: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
         let unsigned_hash = Self::digest(txdata)?;
 
         let ui = SignUI {
             hash: unsigned_hash,
-            send_hash,
         };
 
         crate::show_ui!(ui.show(flags))
@@ -219,7 +215,7 @@ impl ApduHandler for BlindSign {
                 if to_read as usize + read - len == 0 {
                     //then we actually had all bytes in this tx!
                     // we should sign directly
-                    *tx = Self::start_sign(true, buffer.read_exact(), flags)?;
+                    *tx = Self::start_sign(buffer.read_exact(), flags)?;
                 }
 
                 Ok(())
@@ -254,7 +250,7 @@ impl ApduHandler for BlindSign {
                 if missing - len == 0 {
                     //we read all the missing bytes so we can proceed with the signature
                     // nwo
-                    *tx = Self::start_sign(true, buffer.read_exact(), flags)?;
+                    *tx = Self::start_sign(buffer.read_exact(), flags)?;
                 }
 
                 Ok(())
@@ -266,7 +262,6 @@ impl ApduHandler for BlindSign {
 
 pub(crate) struct SignUI {
     hash: [u8; BlindSign::SIGN_HASH_SIZE],
-    send_hash: bool,
 }
 
 impl Viewable for SignUI {
@@ -303,27 +298,46 @@ impl Viewable for SignUI {
             Ok(k) => k,
         };
 
-        let (sig_size, sig) = match BlindSign::sign(*curve, path, &self.hash[..]) {
+        let (sig_size, mut sig) = match BlindSign::sign(*curve, path, &self.hash[..]) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
-
-        let mut tx = 0;
 
         //reset globals to avoid skipping `Init`
         if let Err(e) = cleanup_globals() {
             return (0, e as _);
         }
 
-        //write unsigned_hash to buffer
-        if self.send_hash {
-            out[tx..][..BlindSign::SIGN_HASH_SIZE].copy_from_slice(&self.hash[..]);
-            tx += BlindSign::SIGN_HASH_SIZE;
-        }
+        let mut tx = 0;
 
-        //wrte signature to buffer
-        out[tx..][..sig_size].copy_from_slice(&sig[..sig_size]);
-        tx += sig_size;
+        //write signature as VRS
+        //write V, which is the LSB of the firsts byte
+        out[tx] = sig[0] & 0x01;
+        tx += 1;
+
+        //reset to 0x30 for the conversion
+        sig[0] = 0x30;
+        {
+            //local copy of the mutable slice
+            let out = &mut out[tx..];
+
+            //create 2 mut subslices (r, s) that are 32 byte long
+            // and are referencing out
+            let (r, out) = out.split_at_mut(32);
+            let r = array_mut_ref![r, 0, 32];
+            tx += 32;
+
+            //no need to save the second part of the split
+            let (s, _) = out.split_at_mut(32);
+            let s = array_mut_ref![s, 0, 32];
+            tx += 32;
+
+            //write as R S (V written earlier)
+            // this will write directly to buffer
+            if convert_der_to_rs(&sig[..sig_size], r, s).is_err() {
+                return (0, Error::ExecutionError as _);
+            }
+        }
 
         (tx, Error::Success as _)
     }
