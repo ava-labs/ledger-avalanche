@@ -34,6 +34,10 @@ use crate::{
 pub struct Sign;
 
 impl Sign {
+    // For avax transactions which includes P, C, X chains,
+    // sha256 is used
+    pub const SIGN_HASH_SIZE: usize = Sha256::DIGEST_LEN;
+
     fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
         match unsafe { PATH.acquire(Self) } {
             Ok(Some(some)) => Ok(some),
