@@ -54,7 +54,7 @@ impl BlindSign {
 
         let mut out = [0; 100];
         let sz = sk
-            .sign::<Sha256>(data, &mut out[..])
+            .sign(data, &mut out[..])
             .map_err(|_| Error::ExecutionError)?;
 
         Ok((sz, out))
