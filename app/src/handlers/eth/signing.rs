@@ -30,7 +30,7 @@ use crate::{
         resources::{BUFFER, PATH},
     },
     sys,
-    utils::{hex_encode, ApduBufferRead, ApduPanic, Uploader},
+    utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic, Uploader},
 };
 
 use super::utils::{convert_der_to_rs, parse_bip32_eth};
