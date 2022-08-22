@@ -318,24 +318,25 @@ impl Viewable for SignUI {
         //reset to 0x30 for the conversion
         sig[0] = 0x30;
         {
-            //local copy of the mutable slice
-            let out = &mut out[tx..];
-
-            //create 2 mut subslices (r, s) that are 32 byte long
-            // and are referencing out
-            let (r, out) = out.split_at_mut(32);
-            let r = array_mut_ref![r, 0, 32];
-            tx += 32;
-
-            //no need to save the second part of the split
-            let (s, _) = out.split_at_mut(32);
-            let s = array_mut_ref![s, 0, 32];
-            tx += 32;
+            let mut r = [0; 33];
+            let mut s = [0; 33];
 
             //write as R S (V written earlier)
             // this will write directly to buffer
-            if convert_der_to_rs(&sig[..sig_size], r, s).is_err() {
-                return (0, Error::ExecutionError as _);
+            match convert_der_to_rs(&sig[..sig_size], &mut r, &mut s) {
+                Ok((written_r, written_s)) => {
+                    //format R and S by only having 32 bytes each,
+                    // skipping the first byte if necessary
+                    let r = if written_r == 33 { &r[1..] } else { &r[..32] };
+                    let s = if written_s == 33 { &s[1..] } else { &s[..32] };
+
+                    out[tx..][..32].copy_from_slice(r);
+                    tx += 32;
+
+                    out[tx..][..32].copy_from_slice(s);
+                    tx += 32;
+                }
+                Err(_) => return (0, Error::ExecutionError as _),
             }
         }
 

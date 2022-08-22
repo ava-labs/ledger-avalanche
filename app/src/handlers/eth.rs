@@ -69,7 +69,7 @@ mod utils {
         sig: &[u8],
         out_r: &mut [u8; R],
         out_s: &mut [u8; S],
-    ) -> Result<(), ConvertError<R, S>> {
+    ) -> Result<(usize, usize), ConvertError<R, S>> {
         const MINPAYLOADLEN: usize = 1;
         const PAYLOADLEN: usize = 32;
         const MAXPAYLOADLEN: usize = 33;
@@ -122,8 +122,12 @@ mod utils {
             return Err(ConvertError::InvalidRLen(r_len));
         }
 
+        if R < r_len {
+            return Err(ConvertError::TooShort);
+        }
+
         //sig[4], after DER, after Payload, after marker after len
-        let r = &sig[4..4 + r_len];
+        let r = &sig[4..][..r_len];
 
         //retrieve S
         if sig[4 + r_len] != 0x02 {
@@ -131,19 +135,24 @@ mod utils {
         }
 
         let s_len = sig[4 + r_len + 1] as usize;
-        if !payload_range.contains(&r_len) {
+        if !payload_range.contains(&s_len) {
+            sys::zemu_log("eth:der_rs invalid S len\n\x00");
             return Err(ConvertError::InvalidSLen(s_len));
         }
 
+        if S < s_len {
+            return Err(ConvertError::TooShort);
+        }
+
         //after r (4 + r_len), after marker, after len
-        let s = &sig[4 + r_len + 2..4 + r_len + 2 + s_len];
+        let s = &sig[4 + r_len + 2..][..s_len];
 
         out_r.fill(0);
-        out_r[PAYLOADLEN - r_len..].copy_from_slice(r);
+        out_r[..r_len].copy_from_slice(r);
 
         out_s.fill(0);
-        out_s[PAYLOADLEN - s_len..].copy_from_slice(s);
+        out_s[..s_len].copy_from_slice(s);
 
-        Ok(())
+        Ok((r_len, s_len))
     }
 }
