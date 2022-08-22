@@ -99,7 +99,7 @@ RUST_TARGET:=thumbv6m-none-eabi
 APP_LOAD_PARAMS += --appFlags 0x000
 endif
 
-RUST_FEATURES:=--features ""
+RUST_FEATURES:=--features "blind-sign-toggle"
 DEFINES += BLIND_SIGN_TOGGLE
 ifeq ($(APP_TESTING),1)
 RUST_FEATURES:=$(RUST_FEATURES),"dev"

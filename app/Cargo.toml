@@ -13,7 +13,6 @@ crate-type = ["staticlib", "rlib"]
 [features]
 dev = []
 derive-debug = []
-blind-sign = []
 blind-sign-toggle = ["blind-sign"]
 default = ["derive-debug", "blind-sign-toggle"]
 
