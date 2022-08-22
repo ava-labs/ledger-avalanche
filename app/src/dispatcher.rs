@@ -19,8 +19,11 @@ use core::hint::unreachable_unchecked;
 use crate::constants::{evm_instructions::*, instructions::*, ApduError};
 
 use crate::handlers::{
-    eth::public_key::{
-        GetExtendedPublicKey as GetExtendedEthPublicKey, GetPublicKey as GetEthPublicKey,
+    eth::{
+        provide_erc20::ProvideERC20,
+        public_key::{
+            GetExtendedPublicKey as GetExtendedEthPublicKey, GetPublicKey as GetEthPublicKey,
+        },
     },
     public_key::{GetExtendedPublicKey, GetPublicKey},
     version::GetVersion,
@@ -70,6 +73,7 @@ pub fn apdu_dispatch<'apdu>(
         (CLA, INS_GET_WALLET_ID) => WalletId::handle(flags, tx, apdu_buffer),
 
         (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_ETH_PROVIDE_ERC20) => ProvideERC20::handle(flags, tx, apdu_buffer),
         #[cfg(feature = "blind-sign")]
         (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_GET_EXTENDED_PUBLIC_KEY) => {
