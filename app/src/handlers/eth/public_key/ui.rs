@@ -14,6 +14,8 @@
 *  limitations under the License.
 ********************************************************************************/
 
+use arrayref::array_mut_ref;
+
 use crate::{
     constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto,
@@ -136,6 +138,19 @@ impl AddrUI {
             .map_err(|_| Error::ExecutionError)
             .map(|_| out)
     }
+
+    /// Compute the address
+    ///
+    /// The ethereum address is the hex encoded string
+    /// of the last 20 bytes
+    /// of the Keccak256 hash of the public key
+    pub fn address(&self, key: &crypto::PublicKey, out: &mut [u8; 20 * 2]) -> Result<(), Error> {
+        let hash = self.hash(key)?;
+
+        hex_encode(&hash[hash.len() - 20..], out).map_err(|_| Error::ExecutionError)?;
+
+        Ok(())
+    }
 }
 
 impl Viewable for AddrUI {
@@ -189,11 +204,12 @@ impl Viewable for AddrUI {
         out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
         tx += pkey_bytes.len();
 
-        match self.hash(&pkey) {
-            Ok(hash) => {
-                out[tx..][..hash.len()].copy_from_slice(&hash[..]);
-                tx += hash.len();
-            }
+        //etereum address is 40 bytes
+        out[tx] = 40;
+        tx += 1;
+
+        match self.address(&pkey, array_mut_ref![out, tx, 40]) {
+            Ok(_) => tx += 40,
             Err(e) => return (0, e as _),
         }
 

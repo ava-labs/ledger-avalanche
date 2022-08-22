@@ -50,10 +50,8 @@ impl GetPublicKey {
             .to_secret(path)
             .into_public_into(chaincode, out)?;
 
-        //this is safe because it's initialized
-        // also unwrapping is fine because the ptr is valid
-        let pkey = unsafe { out.as_mut_ptr().as_mut().apdu_unwrap() };
-        pkey.compress()
+        //we don't compress the public key for ethereum
+        Ok(())
     }
 
     /// Handles the request according to the parameters given
@@ -74,7 +72,7 @@ impl GetPublicKey {
 impl ApduHandler for GetPublicKey {
     #[inline(never)]
     fn handle<'apdu>(
-        _: &mut u32,
+        flags: &mut u32,
         tx: &mut u32,
         buffer: ApduBufferRead<'apdu>,
     ) -> Result<(), Error> {
@@ -82,6 +80,7 @@ impl ApduHandler for GetPublicKey {
 
         *tx = 0;
 
+        let req_confirmation = buffer.p1() >= 1;
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
         let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| Error::DataInvalid)?;
@@ -92,15 +91,19 @@ impl ApduHandler for GetPublicKey {
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };
 
-        //we don't need to show so we execute the "accept" already
-        // this way the "formatting" to `buffer` is all in the ui code
-        let (sz, code) = ui.accept(buffer.write());
-
-        if code != Error::Success as u16 {
-            Err(Error::try_from(code).map_err(|_| Error::ExecutionError)?)
+        if req_confirmation {
+            crate::show_ui!(ui.show(flags), tx)
         } else {
-            *tx = sz as u32;
-            Ok(())
+            //we don't need to show so we execute the "accept" already
+            // this way the "formatting" to `buffer` is all in the ui code
+            let (sz, code) = ui.accept(buffer.write());
+
+            if code != Error::Success as u16 {
+                Err(Error::try_from(code).map_err(|_| Error::ExecutionError)?)
+            } else {
+                *tx = sz as u32;
+                Ok(())
+            }
         }
     }
 }
