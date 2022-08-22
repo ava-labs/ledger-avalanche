@@ -259,7 +259,11 @@ mod tests {
         //construct the expected message
         let mut expected_message = std::string::String::new();
         expected_message.push_str("0x");
-        expected_message.push_str(&hex::encode(ui.hash(&ui.pkey(None).unwrap()).unwrap()));
+        {
+            let mut addr = [0; 40];
+            ui.address(&ui.pkey(None).unwrap(), &mut addr).unwrap();
+            expected_message.push_str(std::str::from_utf8(&addr).unwrap());
+        }
 
         let mut driver = MockDriver::<_, 18, 4096>::new(ui);
         driver.with_print(true);
