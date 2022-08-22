@@ -71,7 +71,6 @@ mod utils {
         out_s: &mut [u8; S],
     ) -> Result<(usize, usize), ConvertError<R, S>> {
         const MINPAYLOADLEN: usize = 1;
-        const PAYLOADLEN: usize = 32;
         const MAXPAYLOADLEN: usize = 33;
 
         let payload_range = core::ops::RangeInclusive::new(MINPAYLOADLEN, MAXPAYLOADLEN);
@@ -136,7 +135,6 @@ mod utils {
 
         let s_len = sig[4 + r_len + 1] as usize;
         if !payload_range.contains(&s_len) {
-            sys::zemu_log("eth:der_rs invalid S len\n\x00");
             return Err(ConvertError::InvalidSLen(s_len));
         }
 
