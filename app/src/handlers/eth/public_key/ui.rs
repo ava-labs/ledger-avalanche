@@ -171,20 +171,16 @@ impl Viewable for AddrUI {
             let title_content = pic_str!(b"Address");
             title[..title_content.len()].copy_from_slice(title_content);
 
-            let mut mex = [0; 2 + Keccak::<32>::DIGEST_LEN * 2];
+            let mut mex = [0; 2 + 40];
             mex[0] = b'0';
             mex[1] = b'x';
 
             let mut len = 2;
-
-            let hash = self
-                .pkey(None)
-                .and_then(|pkey| self.hash(&pkey))
+            self.pkey(None)
+                .and_then(|pkey| self.address(&pkey, array_mut_ref![mex, len, 40]))
                 .map_err(|_| ViewError::Unknown)?;
 
-            len += hex_encode(hash, &mut mex[len..]).map_err(|_| ViewError::Unknown)?;
-
-            handle_ui_message(&mex[..len], message, page)
+            handle_ui_message(&mex[..], message, page)
         } else {
             Err(ViewError::NoData)
         }
