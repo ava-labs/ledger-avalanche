@@ -97,7 +97,7 @@ impl<'b> DisplayableItem for AvmImportTx<'b> {
             x @ 0.. if x < inputs_num_items as u8 => self.0.render_imports(x, title, message, page),
             x if x == inputs_num_items => self.0.render_import_description(title, message, page),
             x if x == (inputs_num_items + 1) => {
-                let title_content = pic_str!(b"Fee");
+                let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
