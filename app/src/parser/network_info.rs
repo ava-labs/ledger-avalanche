@@ -72,12 +72,13 @@ impl TryFrom<&[u8; BLOCKCHAIN_ID_LEN]> for ChainId {
     type Error = ParserError;
 
     fn try_from(value: &[u8; BLOCKCHAIN_ID_LEN]) -> Result<Self, Self::Error> {
-        let id = chain_alias_lookup(value);
-        match id {
-            Ok("P") => Ok(Self::PChain),
-            Ok("C") => Ok(Self::CChain),
-            Ok("X") => Ok(Self::XChain),
-            _ => Err(ParserError::InvalidNetworkId),
+        use bolos::{pic_str, PIC};
+
+        match chain_alias_lookup(value).map(|a| a.as_bytes()) {
+            Ok(b"X") => Ok(Self::XChain),
+            Ok(b"P") => Ok(Self::PChain),
+            Ok(b"C") => Ok(Self::CChain),
+            _ => Err(ParserError::InvalidChainId),
         }
     }
 }

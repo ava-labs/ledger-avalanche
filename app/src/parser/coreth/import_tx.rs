@@ -14,32 +14,28 @@
 *  limitations under the License.
 ********************************************************************************/
 
+use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{
-    bytes::complete::{tag, take},
-    number::complete::be_u32,
-};
+use nom::bytes::complete::{tag, take};
 use zemu_sys::ViewError;
 
 use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        coreth::outputs::EVMOutput, intstr_to_fpstr_inplace, ChainId, DisplayableItem, FromBytes,
-        ObjectList, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN, EVM_IMPORT_TX,
-        NANO_AVAX_DECIMAL_DIGITS,
+        coreth::outputs::EVMOutput, nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes,
+        Header, ObjectList, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN, EVM_IMPORT_TX,
+        MAX_ADDRESS_ENCODED_LEN,
     },
 };
 
 const SOURCE_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const IMPORT_DESCRIPTION_LEN: usize = 7;
+const IMPORT_DESCRIPTION_LEN: usize = 8;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct ImportTx<'b> {
-    pub network_id: u32,
-    /// Identifies which blockchain this transaction was issued to
-    pub blockchain_id: &'b [u8; BLOCKCHAIN_ID_LEN],
+    pub tx_header: Header<'b>,
     /// Identified which blockchain the funds come from
     pub source_chain: &'b [u8; SOURCE_CHAIN_LEN],
     pub inputs: ObjectList<'b, TransferableInput<'b>>,
@@ -58,16 +54,18 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
 
         let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
-        let (rem, network_id) = be_u32(rem)?;
-
-        let (rem, blockchain_id) = take(BLOCKCHAIN_ID_LEN)(rem)?;
-        let blockchain = arrayref::array_ref!(blockchain_id, 0, BLOCKCHAIN_ID_LEN);
-
+        // tx header
+        let tx_header = unsafe { &mut *addr_of_mut!((*this).tx_header).cast() };
+        let rem = Header::from_bytes_into(rem, tx_header)?;
         let (rem, source_chain_id) = take(SOURCE_CHAIN_LEN)(rem)?;
         let source_chain = arrayref::array_ref!(source_chain_id, 0, SOURCE_CHAIN_LEN);
+        // get chains info
+        let header = tx_header.as_ptr();
+        let blockchain_id = unsafe { (&*header).chain_id()? };
+        let src_id = ChainId::try_from(source_chain)?;
 
         // Importing from the same chain is an error
-        if blockchain_id == source_chain_id {
+        if blockchain_id == src_id {
             return Err(ParserError::InvalidTransactionType.into());
         }
 
@@ -79,8 +77,6 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
 
         //good ptr and no uninit reads
         unsafe {
-            addr_of_mut!((*this).network_id).write(network_id);
-            addr_of_mut!((*this).blockchain_id).write(blockchain);
             addr_of_mut!((*this).source_chain).write(source_chain);
         }
 
@@ -102,7 +98,7 @@ impl<'b> ImportTx<'b> {
     }
 
     fn fee_to_fp_str(&self, out_str: &'b mut [u8]) -> Result<&mut [u8], ParserError> {
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let fee = self.fee()?;
 
@@ -111,9 +107,7 @@ impl<'b> ImportTx<'b> {
             return Err(ParserError::UnexpectedBufferEnd);
         }
 
-        itoa(fee, out_str);
-        intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
-            .map_err(|_| ParserError::UnexpectedError)
+        nano_avax_to_fp_str(fee, out_str)
     }
 
     fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
@@ -135,7 +129,11 @@ impl<'b> ImportTx<'b> {
     }
 
     fn num_output_items(&self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     // use outputs, which contains the amount
@@ -163,9 +161,32 @@ impl<'b> ImportTx<'b> {
             false
         };
 
-        let obj = self.outputs.iter().find(filter).ok_or(ViewError::NoData)?;
+        let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
 
-        obj.render_item(obj_item_n as u8, title, message, page)
+        // do a custom rendering of the first base_output_items
+        match obj_item_n {
+            0 => {
+                // render amount
+                obj.render_item(0, title, message, page)
+            }
+            // render output's address
+            1 => {
+                let address = obj.address();
+                // render encoded address with proper hrp,
+                let t = pic_str!(b"Address");
+                title[..t.len()].copy_from_slice(t);
+
+                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+                let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+
+                let addr_len = address
+                    .encode_into(hrp, &mut encoded[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(&encoded[..addr_len], message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 
     fn render_import_description(
@@ -175,7 +196,6 @@ impl<'b> ImportTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use arrayvec::ArrayString;
-        use bolos::{pic_str, PIC};
 
         let title_content = pic_str!(b"From ");
         title[..title_content.len()].copy_from_slice(title_content);
@@ -204,7 +224,6 @@ impl<'b> DisplayableItem for ImportTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
         if item_n == 0 {
@@ -238,9 +257,9 @@ mod tests {
     use super::*;
 
     const DATA: &[u8] = &[
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x91, 0x06, 0x0e, 0xab, 0xfb, 0x5a, 0x57,
-        0x17, 0x20, 0x10, 0x9b, 0x58, 0x96, 0xe5, 0xff, 0x00, 0x01, 0x0a, 0x1c, 0xfe, 0x6b, 0x10,
-        0x3d, 0x58, 0x5e, 0x6e, 0xbf, 0x27, 0xb9, 0x7a, 0x17, 0x35, 0xd8, 0x91, 0xad, 0x56, 0x05,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x9d, 0x07, 0x75, 0xf4, 0x50, 0x60, 0x4b,
+        0xd2, 0xfb, 0xc4, 0x9c, 0xe0, 0xc5, 0xc1, 0xc6, 0xdf, 0xeb, 0x2d, 0xc2, 0xac, 0xb8, 0xc9,
+        0x2c, 0x26, 0xee, 0xae, 0x6e, 0x6d, 0xf4, 0x50, 0x2b, 0x19, 0xd8, 0x91, 0xad, 0x56, 0x05,
         0x6d, 0x9c, 0x01, 0xf1, 0x8f, 0x43, 0xf5, 0x8b, 0x5c, 0x78, 0x4a, 0xd0, 0x7a, 0x4a, 0x49,
         0xcf, 0x3d, 0x1f, 0x11, 0x62, 0x38, 0x04, 0xb5, 0xcb, 0xa2, 0xc6, 0xbf, 0x00, 0x00, 0x00,
         0x01, 0x66, 0x13, 0xa4, 0x0d, 0xcd, 0xd8, 0xd2, 0x2e, 0xa4, 0xaa, 0x99, 0xa4, 0xc8, 0x43,

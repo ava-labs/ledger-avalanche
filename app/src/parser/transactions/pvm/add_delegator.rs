@@ -170,7 +170,11 @@ impl<'b> AddDelegatorTx<'b> {
     }
 
     fn num_stake_items(&self) -> usize {
-        self.stake.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.stake.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     fn render_base_outputs(
@@ -221,7 +225,6 @@ impl<'b> AddDelegatorTx<'b> {
         page: u8,
         header: &[u8],
     ) -> Result<u8, ViewError> {
-        use lexical_core::Number;
         //  'Transfer' or 'Stake':
         //      '0.5 AVAX to
         //  Address:
@@ -370,8 +373,7 @@ impl<'b> AddDelegatorTx<'b> {
 
         let obj = self
             .stake
-            .iter()
-            .find(filter)
+            .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
         Ok((obj, obj_item_n as u8))
     }

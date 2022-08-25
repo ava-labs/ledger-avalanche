@@ -15,6 +15,7 @@
 ********************************************************************************/
 use core::ops::Deref;
 
+use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::take;
 use zemu_sys::ViewError;
@@ -24,19 +25,19 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, ParserError,
-        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN,
+        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN, MAX_ADDRESS_ENCODED_LEN,
     },
 };
 
 const SOURCE_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const IMPORT_DESCRIPTION_LEN: usize = 7;
+const IMPORT_DESCRIPTION_LEN: usize = 8;
 
 // BaseImport<'b, O> represents a transaction that move
 // founds to the chain indicated by the BaseTx
 // The chainId for which this representation is valid
 // are the P and X chain and local. C-Chain defines
 // a custom BaseImport<'b, O> type.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct BaseImport<'b, O>
 where
@@ -146,37 +147,13 @@ where
         &'b self,
         item_n: u8,
     ) -> Result<(TransferableOutput<O>, u8), ViewError> {
-        let mut count = 0usize;
-        let mut obj_item_n = 0;
-        // gets the output that contains item_n
-        // and its corresponding index
-        let filter = |o: &TransferableOutput<'b, O>| -> bool {
-            let n = o.num_items();
-            for index in 0..n {
-                count += 1;
-                obj_item_n = index;
-                if count == item_n as usize + 1 {
-                    return true;
-                }
-            }
-            false
-        };
-
-        let obj = self
-            .base_tx
-            .outputs()
-            .iter()
-            .find(filter)
-            .ok_or(ViewError::NoData)?;
-        Ok((obj, obj_item_n as u8))
+        self.base_tx
+            .base_output_with_item(item_n)
+            .map_err(|_| ViewError::Unknown)
     }
 
     pub fn num_input_items(&'b self) -> usize {
-        self.base_tx
-            .outputs
-            .iter()
-            .map(|output| output.num_items())
-            .sum()
+        self.base_tx.base_outputs_num_items()
     }
 
     // default render_item implementation that
@@ -190,7 +167,41 @@ where
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         let (obj, obj_item_n) = self.get_output_with_item(item_n)?;
-        obj.render_item(obj_item_n as u8, title, message, page)
+        // Base Import/Export only supports secp_transfer types
+        let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
+
+        // get the number of items for the obj wrapped up by PvmOutput
+        let num_inner_items = obj.num_items() as _;
+
+        // do a custom rendering of the first base_output_items
+        match obj_item_n {
+            0 => {
+                // render amount
+                obj.render_item(0, title, message, page)
+            }
+            // address rendering, according to avax team 99.99% of transactions only comes with one
+            // address, but we support rendering any
+            x @ 1.. if x < num_inner_items => {
+                // get the address index
+                let address_idx = x - 1;
+                let address = obj
+                    .get_address_at(address_idx as usize)
+                    .ok_or(ViewError::NoData)?;
+                // render encoded address with proper hrp,
+                let t = pic_str!(b"Address");
+                title[..t.len()].copy_from_slice(t);
+
+                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+                let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+
+                let addr_len = address
+                    .encode_into(hrp, &mut encoded[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(&encoded[..addr_len], message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 
     pub fn render_import_description(
@@ -200,7 +211,6 @@ where
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use arrayvec::ArrayString;
-        use bolos::{pic_str, PIC};
 
         let title_content = pic_str!(b"From ");
         title[..title_content.len()].copy_from_slice(title_content);

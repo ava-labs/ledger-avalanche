@@ -73,7 +73,11 @@ where
     }
 
     pub fn base_outputs_num_items(&'b self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     // Gets the obj that contain the item_n, along with the index
@@ -89,20 +93,20 @@ where
         let filter = |o: &TransferableOutput<'b, O>| -> bool {
             let n = o.num_items();
             for index in 0..n {
-                count += 1;
                 obj_item_n = index;
-                if count == item_n as usize + 1 {
+                if count == item_n as usize {
                     return true;
                 }
+                count += 1;
             }
             false
         };
 
         let obj = self
-            .outputs
-            .iter()
-            .find(filter)
+            .outputs()
+            .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
+
         Ok((obj, obj_item_n as u8))
     }
 }

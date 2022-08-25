@@ -26,6 +26,7 @@ mod parser;
 mod sys;
 
 pub use handlers::ZPacketType as PacketType;
+pub use parser::Transaction;
 
 #[cfg(not(fuzzing))]
 sys::panic_handler! {}

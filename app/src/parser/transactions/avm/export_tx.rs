@@ -26,7 +26,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct AvmExportTx<'b>(BaseExport<'b, AvmOutput<'b>>);
 
@@ -82,7 +82,7 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
                 self.0.render_outputs(x, title, message, page)
             }
             x if x == outputs_num_items as u8 => {
-                let title_content = pic_str!(b"Fee");
+                let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;

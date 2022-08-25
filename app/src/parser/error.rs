@@ -18,6 +18,7 @@ pub enum ParserError {
     InvalidAddressVersion,
     InvalidAddressLength,
     InvalidTypeId,
+    InvalidCodec,
     InvalidThreshold,
     InvalidNetworkId,
     InvalidChainId,
@@ -67,5 +68,15 @@ impl From<ParserError> for nom::Err<ParserError> {
 impl From<CapacityError> for ParserError {
     fn from(error: CapacityError) -> Self {
         ParserError::UnexpectedBufferEnd
+    }
+}
+
+impl From<nom::Err<Self>> for ParserError {
+    fn from(e: nom::Err<Self>) -> Self {
+        match e {
+            nom::Err::Error(e) => e,
+            nom::Err::Failure(e) => e,
+            nom::Err::Incomplete(_) => Self::UnexpectedBufferEnd,
+        }
     }
 }

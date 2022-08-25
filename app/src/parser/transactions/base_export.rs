@@ -15,6 +15,7 @@
 ********************************************************************************/
 use core::ops::Deref;
 
+use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::take;
 use zemu_sys::ViewError;
@@ -24,14 +25,14 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, ParserError,
-        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN,
+        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN, MAX_ADDRESS_ENCODED_LEN,
     },
 };
 
 pub const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
+const EXPORT_TX_DESCRIPTION_LEN: usize = 13; //X to C Chain
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct BaseExport<'b, O>
 where
@@ -135,7 +136,11 @@ where
     // inner objects, but callers might want to filter it
     // out.
     pub fn num_outputs_items(&'b self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     // Gets the obj that contain the item_n, along with the index
@@ -160,7 +165,7 @@ where
             false
         };
 
-        let obj = self.outputs.iter().find(filter).ok_or(ViewError::NoData)?;
+        let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
         Ok((obj, obj_item_n as u8))
     }
 
@@ -175,7 +180,42 @@ where
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         let (obj, obj_item_n) = self.get_output_with_item(item_n)?;
-        obj.render_item(obj_item_n as u8, title, message, page)
+
+        // Base Import/Export only supports secp_transfer types
+        let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
+
+        // get the number of items for the obj wrapped up by PvmOutput
+        let num_inner_items = obj.num_items() as _;
+
+        // do a custom rendering of the first base_output_items
+        match obj_item_n {
+            0 => {
+                // render amount
+                obj.render_item(0, title, message, page)
+            }
+            // address rendering, according to avax team 99.99% of transactions only comes with one
+            // address, but we support rendering any
+            x @ 1.. if x < num_inner_items => {
+                // get the address index
+                let address_idx = x - 1;
+                let address = obj
+                    .get_address_at(address_idx as usize)
+                    .ok_or(ViewError::NoData)?;
+                // render encoded address with proper hrp,
+                let t = pic_str!(b"Address");
+                title[..t.len()].copy_from_slice(t);
+
+                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+                let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+
+                let addr_len = address
+                    .encode_into(hrp, &mut encoded[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(&encoded[..addr_len], message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 
     pub fn render_export_description(
@@ -184,24 +224,37 @@ where
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use arrayvec::ArrayString;
-        use bolos::{pic_str, PIC};
+        use arrayvec::ArrayVec;
 
         let title_content = pic_str!(b"Export Tx");
         title[..title_content.len()].copy_from_slice(title_content);
 
+        let to = pic_str!(b" to "!);
+        let chain = pic_str!(b" Chain");
+
         // render from where this transaction is moving founds to
-        let mut export_str: ArrayString<EXPORT_TX_DESCRIPTION_LEN> = ArrayString::new();
-        let from_alias =
-            chain_alias_lookup(self.tx_header.blockchain_id).map_err(|_| ViewError::Unknown)?;
-        let to_alias =
-            chain_alias_lookup(self.destination_chain).map_err(|_| ViewError::Unknown)?;
+        let mut export_str: ArrayVec<u8, EXPORT_TX_DESCRIPTION_LEN> = ArrayVec::new();
 
-        export_str.push_str(from_alias);
-        export_str.push_str(pic_str!(" to "!));
-        export_str.push_str(to_alias);
-        export_str.push_str(pic_str!(" Chain"!));
+        match self.tx_header.chain_id().map_err(|_| ViewError::Unknown)? {
+            ChainId::PChain => export_str.push(b'P'),
+            ChainId::XChain => export_str.push(b'X'),
+            ChainId::CChain => export_str.push(b'C'),
+            _ => return Err(ViewError::Unknown),
+        }
+        let to_alias = chain_alias_lookup(self.destination_chain)
+            .map(|a| a.as_bytes())
+            .map_err(|_| ViewError::Unknown)?;
 
-        handle_ui_message(export_str.as_bytes(), message, page)
+        export_str
+            .try_extend_from_slice(to)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(to_alias)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(chain)
+            .map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&export_str, message, page)
     }
 }

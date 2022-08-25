@@ -14,37 +14,29 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{
-    mem::MaybeUninit,
-    ptr::{addr_of, addr_of_mut},
-};
-use nom::{
-    bytes::complete::{tag, take},
-    number::complete::be_u32,
-};
+use bolos::{pic_str, PIC};
+use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
+use nom::bytes::complete::{tag, take};
 use zemu_sys::ViewError;
 
 use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ObjectList, Output, ParserError,
-        TransferableOutput, BLOCKCHAIN_ID_LEN, EVM_EXPORT_TX, NANO_AVAX_DECIMAL_DIGITS,
+        nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes, Header, ObjectList, ParserError,
+        TransferableOutput, BLOCKCHAIN_ID_LEN, EVM_EXPORT_TX, MAX_ADDRESS_ENCODED_LEN,
     },
-    utils::ApduPanic,
 };
 
 use super::{inputs::EVMInput, outputs::EOutput};
 
 const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
-const EXPORT_TX_DESCRIPTION_LEN: usize = 12; //X to C Chain
+const EXPORT_TX_DESCRIPTION_LEN: usize = 13; //X to C Chain
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct ExportTx<'b> {
-    pub network_id: u32,
-    /// Identifies which blockchain this transaction was issued to
-    pub blockchain_id: &'b [u8; BLOCKCHAIN_ID_LEN],
+    pub tx_header: Header<'b>,
     /// Identified which blockchain the funds go to
     pub destination_chain: &'b [u8; DESTINATION_CHAIN_LEN],
     pub inputs: ObjectList<'b, EVMInput<'b>>,
@@ -63,17 +55,21 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
 
         let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
-        let (rem, network_id) = be_u32(rem)?;
-
-        let (rem, blockchain_id) = take(BLOCKCHAIN_ID_LEN)(rem)?;
-        let blockchain = arrayref::array_ref!(blockchain_id, 0, BLOCKCHAIN_ID_LEN);
+        // tx header
+        let tx_header = unsafe { &mut *addr_of_mut!((*this).tx_header).cast() };
+        let rem = Header::from_bytes_into(rem, tx_header)?;
 
         let (rem, destination_chain_id) = take(DESTINATION_CHAIN_LEN)(rem)?;
         let destination_chain =
             arrayref::array_ref!(destination_chain_id, 0, DESTINATION_CHAIN_LEN);
 
+        // get chains info
+        let header = tx_header.as_ptr();
+        let blockchain_id = unsafe { (&*header).chain_id()? };
+        let dest_id = ChainId::try_from(destination_chain)?;
+
         // Exporting to the same chain is an error
-        if blockchain_id == destination_chain_id {
+        if blockchain_id == dest_id {
             return Err(ParserError::InvalidTransactionType.into());
         }
 
@@ -85,8 +81,6 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
 
         //good ptr and no uninit reads
         unsafe {
-            addr_of_mut!((*this).network_id).write(network_id);
-            addr_of_mut!((*this).blockchain_id).write(blockchain);
             addr_of_mut!((*this).destination_chain).write(destination_chain);
         }
 
@@ -108,7 +102,7 @@ impl<'b> ExportTx<'b> {
     }
 
     fn fee_to_fp_str(&self, out_str: &'b mut [u8]) -> Result<&mut [u8], ParserError> {
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let fee = self.fee()?;
 
@@ -116,10 +110,7 @@ impl<'b> ExportTx<'b> {
         if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
             return Err(ParserError::UnexpectedBufferEnd);
         }
-
-        itoa(fee, out_str);
-        intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
-            .map_err(|_| ParserError::UnexpectedError)
+        nano_avax_to_fp_str(fee, out_str)
     }
 
     fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
@@ -141,7 +132,11 @@ impl<'b> ExportTx<'b> {
     }
 
     fn num_outputs_items(&self) -> usize {
-        self.outputs.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.outputs.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     fn render_outputs(
@@ -167,9 +162,42 @@ impl<'b> ExportTx<'b> {
             false
         };
 
-        let obj = self.outputs.iter().find(filter).ok_or(ViewError::NoData)?;
+        let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
+        // ETH Import/Export only supports secp_transfer types
+        let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
 
-        obj.render_item(obj_item_n as u8, title, message, page)
+        // get the number of items for Output
+        let num_inner_items = obj.num_items() as _;
+
+        // do a custom rendering of the first base_output_items
+        match obj_item_n {
+            0 => {
+                // render amount
+                obj.render_item(0, title, message, page)
+            }
+            // address rendering, according to avax team 99.99% of transactions only comes with one
+            // address, but we support rendering any
+            x @ 1.. if x < num_inner_items => {
+                // get the address index
+                let address_idx = x - 1;
+                let address = obj
+                    .get_address_at(address_idx as usize)
+                    .ok_or(ViewError::NoData)?;
+                // render encoded address with proper hrp,
+                let t = pic_str!(b"Address");
+                title[..t.len()].copy_from_slice(t);
+
+                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+                let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+
+                let addr_len = address
+                    .encode_into(hrp, &mut encoded[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(&encoded[..addr_len], message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 
     fn render_export_description(
@@ -178,22 +206,32 @@ impl<'b> ExportTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use arrayvec::ArrayString;
-        use bolos::{pic_str, PIC};
+        use arrayvec::ArrayVec;
 
         let title_content = pic_str!(b"Export Tx");
         title[..title_content.len()].copy_from_slice(title_content);
+        let to = pic_str!(b"C to "!);
+        let chain = pic_str!(b" Chain");
 
         // render from where this transaction is moving founds to
-        let mut export_str: ArrayString<EXPORT_TX_DESCRIPTION_LEN> = ArrayString::new();
-        let to_alias =
-            chain_alias_lookup(self.destination_chain).map_err(|_| ViewError::Unknown)?;
+        let mut export_str: ArrayVec<u8, EXPORT_TX_DESCRIPTION_LEN> = ArrayVec::new();
 
-        export_str.push_str(pic_str!("C to "!));
-        export_str.push_str(to_alias);
-        export_str.push_str(pic_str!(" Chain"!));
+        // render from where this transaction is moving founds to
+        let to_alias = chain_alias_lookup(self.destination_chain)
+            .map(|a| a.as_bytes())
+            .map_err(|_| ViewError::Unknown)?;
 
-        handle_ui_message(export_str.as_bytes(), message, page)
+        export_str
+            .try_extend_from_slice(to)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(to_alias)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_extend_from_slice(chain)
+            .map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&export_str, message, page)
     }
 }
 
@@ -210,7 +248,6 @@ impl<'b> DisplayableItem for ExportTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
         if item_n == 0 {
@@ -243,9 +280,9 @@ mod tests {
     use super::*;
 
     const DATA: &[u8] = &[
-        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x91, 0x06, 0x0e, 0xab, 0xfb, 0x5a, 0x57,
-        0x17, 0x20, 0x10, 0x9b, 0x58, 0x96, 0xe5, 0xff, 0x00, 0x01, 0x0a, 0x1c, 0xfe, 0x6b, 0x10,
-        0x3d, 0x58, 0x5e, 0x6e, 0xbf, 0x27, 0xb9, 0x7a, 0x17, 0x35, 0xd8, 0x91, 0xad, 0x56, 0x05,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x9d, 0x07, 0x75, 0xf4, 0x50, 0x60, 0x4b,
+        0xd2, 0xfb, 0xc4, 0x9c, 0xe0, 0xc5, 0xc1, 0xc6, 0xdf, 0xeb, 0x2d, 0xc2, 0xac, 0xb8, 0xc9,
+        0x2c, 0x26, 0xee, 0xae, 0x6e, 0x6d, 0xf4, 0x50, 0x2b, 0x19, 0xd8, 0x91, 0xad, 0x56, 0x05,
         0x6d, 0x9c, 0x01, 0xf1, 0x8f, 0x43, 0xf5, 0x8b, 0x5c, 0x78, 0x4a, 0xd0, 0x7a, 0x4a, 0x49,
         0xcf, 0x3d, 0x1f, 0x11, 0x62, 0x38, 0x04, 0xb5, 0xcb, 0xa2, 0xc6, 0xbf, 0x00, 0x00, 0x00,
         0x01, 0x8d, 0xb9, 0x7c, 0x7c, 0xec, 0xe2, 0x49, 0xc2, 0xb9, 0x8b, 0xdc, 0x02, 0x26, 0xcc,

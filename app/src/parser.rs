@@ -39,6 +39,7 @@ pub use address::*;
 pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
 pub use constants::*;
+pub use coreth::{export_tx::ExportTx, import_tx::ImportTx};
 pub use error::ParserError;
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use network_info::*;

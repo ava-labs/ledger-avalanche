@@ -21,8 +21,8 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem,
-        FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
+        DisplayableItem, FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
         TransferableOutput, Validator, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
         PVM_ADD_VALIDATOR,
     },
@@ -181,7 +181,11 @@ impl<'b> AddValidatorTx<'b> {
     }
 
     fn num_stake_items(&self) -> usize {
-        self.stake.iter().map(|output| output.num_items()).sum()
+        let mut items = 0;
+        self.stake.iterate_with(|o| {
+            items += o.num_items();
+        });
+        items
     }
 
     fn render_base_outputs(
@@ -333,7 +337,7 @@ impl<'b> AddValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
@@ -346,7 +350,7 @@ impl<'b> AddValidatorTx<'b> {
             x if x >= num_addresses && x < (num_addresses + 1) => {
                 let label = pic_str!(b"Delegate fee(%)");
                 title[..label.len()].copy_from_slice(label);
-                itoa(self.shares, &mut buffer);
+                u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
                 let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
                     .map_err(|_| ViewError::Unknown)?;
@@ -390,8 +394,7 @@ impl<'b> AddValidatorTx<'b> {
 
         let obj = self
             .stake
-            .iter()
-            .find(filter)
+            .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
         Ok((obj, obj_item_n as u8))
     }
@@ -400,7 +403,6 @@ impl<'b> AddValidatorTx<'b> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lexical_core::Number;
 
     const DATA: &[u8] = &[
         0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

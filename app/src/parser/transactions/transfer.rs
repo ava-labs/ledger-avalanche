@@ -43,7 +43,6 @@ impl<'b> Transfer<'b> {
         let (obj, idx) = self
             .base
             .base_output_with_item(item_n)
-            .map(|(t, i)| (*t, i)) // get the Output itself
             .map_err(|_| ViewError::NoData)?;
 
         // this is a secp_transfer so it contain
@@ -65,10 +64,11 @@ impl<'b> Transfer<'b> {
                 res
             }
 
-            x if x < num_inner_items => {
+            x @ 1.. if x < num_inner_items => {
                 let addr_idx = x - 1;
-                // Transfer only support secp_transfer output
-                let obj = obj.secp_transfer().ok_or(ViewError::NoData)?;
+                // Transfer only supports secp_transfer outputs
+                // Unwrap is safe as we check outputs while parsing
+                let obj = obj.secp_transfer().unwrap();
 
                 let address = obj
                     .get_address_at(addr_idx as usize)
@@ -162,7 +162,7 @@ impl<'b> DisplayableItem for Transfer<'b> {
 
         match item_n {
             // render outputs
-            x if x < outputs_items => self.render_outputs(item_n, title, message, page),
+            x @ 0.. if x < outputs_items => self.render_outputs(x, title, message, page),
 
             x if x == outputs_items => {
                 let t = pic_str!(b"Fee(AVAX)");
