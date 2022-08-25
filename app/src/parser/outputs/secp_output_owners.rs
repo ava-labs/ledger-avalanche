@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -103,7 +103,7 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
@@ -112,7 +112,8 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
             0 if self.locktime > 0 => {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.locktime, &mut buffer);
+                let buffer =
+                    u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(buffer, message, page)
             }
