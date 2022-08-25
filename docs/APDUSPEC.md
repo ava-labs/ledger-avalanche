@@ -72,7 +72,7 @@ If the ChainIDLen is 0, then the default ChainID of 32 zero bytes (P-Chain's)
 
 | Field      | Type              | Content                   | Expected        |
 |------------|-------------------|---------------------------|-----------------|
-| CLA        | byte (1)          | Application Identifier    | 0x80            |
+| CLA        | byte (1)          | Application Identifier    | 0x80 / 0xE0     |
 | INS        | byte (1)          | Instruction ID            | 0x01            |
 | P1         | byte (1)          | Request User confirmation | No = 0          |
 | P2         | byte (1)          | Curve identifier          | 0 = Secp256K1   |
@@ -83,7 +83,7 @@ If the ChainIDLen is 0, then the default ChainID of 32 zero bytes (P-Chain's)
 | ChainID    | byte (ChainIDLen) | ChainID                   | ?               |
 | PathN      | byte (1)          | Number of path components | ? (typically 4) |
 | Path[0]    | byte (4)          | Derivation Path Data      | 0x8000002c      |
-| Path[1]    | byte (4)          | Derivation Path Data      | 0x80002328      |
+| Path[1]    | byte (4)          | Derivation Path Data      | 0x80002328 / 0x8000003c    |
 | Path[2]    | byte (4)          | Derivation Path Data      | ?               |
 | Path[3]    | byte (4)          | Derivation Path Data      | ?               |
 | Path[4]    | byte (4)          | Derivation Path Data      | ?               |
@@ -103,7 +103,7 @@ If the ChainIDLen is 0, then the default ChainID of 32 zero bytes (P-Chain's)
 
 | Field | Type     | Content                | Expected          |
 |-------|----------|------------------------|-------------------|
-| CLA   | byte (1) | Application Identifier | 0x80              |
+| CLA   | byte (1) | Application Identifier | 0x80 / 0xE0       |
 | INS   | byte (1) | Instruction ID         | 0x02              |
 | P1    | byte (1) | Payload desc           | 0 = init          |
 |       |          |                        | 1 = add           |
@@ -121,7 +121,7 @@ _First Packet_
 |---------|----------|---------------------------|-----------------|
 | PathN   | byte (1) | Number of path components | ? (typically 4) |
 | Path[0] | byte (4) | Derivation Path Data      | 0x8000002c      |
-| Path[1] | byte (4) | Derivation Path Data      | 00x80002328     |
+| Path[1] | byte (4) | Derivation Path Data      | 0x80002328 / 0x8000003c     |
 | Path[2] | byte (4) | Derivation Path Data      | ?               |
 | Path[3] | byte (4) | Derivation Path Data      | ?               |
 | Path[4] | byte (4) | Derivation Path Data      | ?               |
