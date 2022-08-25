@@ -48,29 +48,40 @@ impl<'b> FromBytes<'b> for AvmOutput<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        let variant_type = Self::parse_output_type(input)?;
-        let out = out.as_mut_ptr();
-        //valid pointer
-        let data = unsafe { &mut *addr_of_mut!((*out).0).cast() };
-        let rem = Output::from_bytes(input, variant_type, data)?;
+        crate::sys::zemu_log_stack("AvmOutput::from_bytes_into\x00");
+
+        let output = out.as_mut_ptr();
+        let data = unsafe { &mut *addr_of_mut!((*output).0).cast() };
+
+        let rem = Self::parse_output_type(input, data)?;
         Ok(rem)
     }
 }
 
 impl<'b> AvmOutput<'b> {
-    fn parse_output_type(input: &[u8]) -> Result<OutputType, nom::Err<ParserError>> {
+    fn parse_output_type(
+        input: &'b [u8],
+        output: &mut MaybeUninit<Output<'b>>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
         let (_, variant_type) = be_u32(input)?;
 
-        let v = match variant_type {
-            SECPTransferOutput::TYPE_ID => OutputType::SECPTransfer,
-            SECPMintOutput::TYPE_ID => OutputType::SECPMint,
+        let rem = match variant_type {
+            SECPTransferOutput::TYPE_ID => {
+                Output::from_bytes(input, OutputType::SECPTransfer, output)?
+            }
 
-            NFTTransferOutput::TYPE_ID => OutputType::NFTTransfer,
-            NFTMintOutput::TYPE_ID => OutputType::NFTMint,
-            _ => return Err(ParserError::InvalidTypeId.into()),
+            SECPMintOutput::TYPE_ID => Output::from_bytes(input, OutputType::SECPMint, output)?,
+            NFTTransferOutput::TYPE_ID => {
+                Output::from_bytes(input, OutputType::NFTTransfer, output)?
+            }
+            NFTMintOutput::TYPE_ID => Output::from_bytes(input, OutputType::NFTMint, output)?,
+            _ => {
+                crate::sys::zemu_log_stack("invalid_output_type\x00");
+                return Err(ParserError::InvalidTypeId.into());
+            }
         };
 
-        Ok(v)
+        Ok(rem)
     }
 }
 
