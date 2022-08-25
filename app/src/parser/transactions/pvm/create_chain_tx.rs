@@ -23,8 +23,8 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        cb58_output_len, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError, PvmOutput,
-        SubnetAuth, SubnetId, CB58_CHECKSUM_LEN, PVM_CREATE_CHAIN,
+        cb58_output_len, nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header,
+        ParserError, PvmOutput, SubnetAuth, SubnetId, CB58_CHECKSUM_LEN, PVM_CREATE_CHAIN,
     },
     utils::{bs58_encode, hex_encode, ApduPanic},
 };
@@ -44,6 +44,19 @@ pub struct CreateChainTx<'b> {
     pub fx_id: &'b [[u8; FX_ID_LEN]],
     pub genesis_data: &'b [u8],
     pub subnet_auth: SubnetAuth<'b>,
+}
+
+impl<'b> CreateChainTx<'b> {
+    fn fee(&'b self) -> Result<u64, ParserError> {
+        let sum_inputs = self.base_tx.sum_inputs_amount()?;
+
+        let base_outputs = self.base_tx.sum_outputs_amount()?;
+
+        let fee = sum_inputs
+            .checked_sub(base_outputs)
+            .ok_or(ParserError::OperationOverflows)?;
+        Ok(fee)
+    }
 }
 
 impl<'b> FromBytes<'b> for CreateChainTx<'b> {
@@ -112,7 +125,8 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
     fn num_items(&self) -> usize {
         // we need to show:
         // tx description, SubnetID, ChainName, VMID, GenesisDataHash
-        1 + 4
+        // and fee
+        1 + 4 + 1
     }
 
     fn render_item(
@@ -126,6 +140,7 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
             hash::{Hasher, Sha256},
             pic_str, PIC,
         };
+        use lexical_core::Number;
 
         let mut hex_buf = [0; Sha256::DIGEST_LEN * 2];
         match item_n {
@@ -159,11 +174,22 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
                 handle_ui_message(&encoded[..len], message, page)
             }
             4 => {
-                let label = pic_str!(b"GenesisDataHash");
+                let label = pic_str!(b"GenesisData");
                 title[..label.len()].copy_from_slice(label);
                 let sha = Sha256::digest(self.genesis_data).map_err(|_| ViewError::Unknown)?;
                 hex_encode(&sha[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(&hex_buf, message, page)
+            }
+            5 => {
+                let label = pic_str!(b"Fee(AVAX)");
+                title[..label.len()].copy_from_slice(label);
+
+                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                let fee_buff =
+                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(fee_buff, message, page)
             }
 
             _ => Err(ViewError::NoData),
