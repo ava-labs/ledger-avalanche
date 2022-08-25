@@ -54,8 +54,7 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
 
         await sim.waitScreenChange();
 
-        const navigation = m.name == 'nanos' ? 3 : 4;
-        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-xpub-${curve}`, navigation);
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-xpub-${curve}`);
 
         const resp = await respReq;
         console.log(resp, m.name)
