@@ -19,7 +19,7 @@ use crate::constants::chain_alias_lookup;
 use crate::parser::constants::*;
 use crate::parser::ParserError;
 
-pub use crate::parser::{BaseTx, BLOCKCHAIN_ID_LEN};
+pub use crate::parser::{FromBytes, BLOCKCHAIN_ID_LEN};
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
@@ -28,6 +28,18 @@ pub enum NetworkId {
     Mainnet,
     Fuji,
     Local,
+}
+
+impl NetworkId {
+    pub fn hrp(&self) -> &'static str {
+        use bolos::PIC;
+
+        match self {
+            Self::Mainnet => PIC::new(HRP_MAINNET).into_inner(),
+            Self::Fuji => PIC::new(HRP_TESTNET).into_inner(),
+            Self::Local => PIC::new(HRP_LOCAL).into_inner(),
+        }
+    }
 }
 
 impl TryFrom<u32> for NetworkId {
@@ -60,12 +72,13 @@ impl TryFrom<&[u8; BLOCKCHAIN_ID_LEN]> for ChainId {
     type Error = ParserError;
 
     fn try_from(value: &[u8; BLOCKCHAIN_ID_LEN]) -> Result<Self, Self::Error> {
-        let id = chain_alias_lookup(value);
-        match id {
-            Ok("P") => Ok(Self::PChain),
-            Ok("C") => Ok(Self::CChain),
-            Ok("X") => Ok(Self::XChain),
-            _ => Err(ParserError::InvalidNetworkId),
+        use bolos::{pic_str, PIC};
+
+        match chain_alias_lookup(value).map(|a| a.as_bytes()) {
+            Ok(b"X") => Ok(Self::XChain),
+            Ok(b"P") => Ok(Self::PChain),
+            Ok(b"C") => Ok(Self::CChain),
+            _ => Err(ParserError::InvalidChainId),
         }
     }
 }

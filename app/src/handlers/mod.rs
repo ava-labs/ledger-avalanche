@@ -13,8 +13,8 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+pub mod avax;
 pub mod public_key;
-pub mod signing;
 pub mod version;
 pub mod wallet_id;
 
@@ -46,8 +46,14 @@ pub mod resources {
         Debug,
     }
 
-    impl From<super::signing::BlindSign> for BUFFERAccessors {
-        fn from(_: super::signing::BlindSign) -> Self {
+    impl From<super::avax::blind_signing::BlindSign> for BUFFERAccessors {
+        fn from(_: super::avax::blind_signing::BlindSign) -> Self {
+            Self::Sign
+        }
+    }
+
+    impl From<super::avax::signing::Sign> for BUFFERAccessors {
+        fn from(_: super::avax::signing::Sign) -> Self {
             Self::Sign
         }
     }
@@ -75,8 +81,14 @@ pub mod resources {
         EthSign,
     }
 
-    impl From<super::signing::BlindSign> for PATHAccessors {
-        fn from(_: super::signing::BlindSign) -> Self {
+    impl From<super::avax::blind_signing::BlindSign> for PATHAccessors {
+        fn from(_: super::avax::blind_signing::BlindSign) -> Self {
+            Self::Sign
+        }
+    }
+
+    impl From<super::avax::signing::Sign> for PATHAccessors {
+        fn from(_: super::avax::signing::Sign) -> Self {
             Self::Sign
         }
     }

@@ -14,16 +14,17 @@
 *  limitations under the License.
 ********************************************************************************/
 
+use arrayref::array_mut_ref;
+
 use crate::{
     constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto,
     handlers::handle_ui_message,
     sys::{
         crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
-        hash::{Hasher, Keccak},
         ViewError, Viewable, PIC,
     },
-    utils::hex_encode,
+    utils::{hex_encode, KHasher, Keccak},
 };
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
@@ -60,13 +61,13 @@ impl<'ui> AddrUIInitializer<'ui> {
     }
 
     /// Produce the closure to initialize a key
-    pub fn key_initializer<'p, const B: usize>(
-        path: &'p BIP32Path<B>,
+    pub fn key_initializer<const B: usize>(
+        path: &BIP32Path<B>,
     ) -> impl FnOnce(
         &mut MaybeUninit<crypto::PublicKey>,
         Option<&mut [u8; CHAIN_CODE_LEN]>,
     ) -> Result<(), AddrUIInitError>
-           + 'p {
+           + '_ {
         move |key, cc| {
             GetPublicKey::new_key_into(path, key, cc).map_err(|_| AddrUIInitError::KeyInitError)
         }
@@ -78,8 +79,10 @@ impl<'ui> AddrUIInitializer<'ui> {
         &mut [u8; Keccak::<32>::DIGEST_LEN],
     ) -> Result<(), AddrUIInitError> {
         |key, hash| {
-            Keccak::<32>::digest_into(key.as_ref(), hash)
-                .map_err(|_| AddrUIInitError::HashInitError)
+            let mut k = Keccak::<32>::new();
+            k.update(key.as_ref());
+            k.finalize(&mut hash[..]);
+            Ok(())
         }
     }
 
@@ -136,6 +139,19 @@ impl AddrUI {
             .map_err(|_| Error::ExecutionError)
             .map(|_| out)
     }
+
+    /// Compute the address
+    ///
+    /// The ethereum address is the hex encoded string
+    /// of the last 20 bytes
+    /// of the Keccak256 hash of the public key
+    pub fn address(&self, key: &crypto::PublicKey, out: &mut [u8; 20 * 2]) -> Result<(), Error> {
+        let hash = self.hash(key)?;
+
+        hex_encode(&hash[hash.len() - 20..], out).map_err(|_| Error::ExecutionError)?;
+
+        Ok(())
+    }
 }
 
 impl Viewable for AddrUI {
@@ -151,25 +167,20 @@ impl Viewable for AddrUI {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::pic_str;
-
         if let 0 = item_n {
             let title_content = pic_str!(b"Address");
             title[..title_content.len()].copy_from_slice(title_content);
 
-            let mut mex = [0; 2 + Keccak::<32>::DIGEST_LEN * 2];
+            let mut mex = [0; 2 + 40];
             mex[0] = b'0';
             mex[1] = b'x';
 
             let mut len = 2;
-
-            let hash = self
-                .pkey(None)
-                .and_then(|pkey| self.hash(&pkey))
+            self.pkey(None)
+                .and_then(|pkey| self.address(&pkey, array_mut_ref![mex, len, 40]))
                 .map_err(|_| ViewError::Unknown)?;
 
-            len += hex_encode(hash, &mut mex[len..]).map_err(|_| ViewError::Unknown)?;
-
-            handle_ui_message(&mex[..len], message, page)
+            handle_ui_message(&mex[..], message, page)
         } else {
             Err(ViewError::NoData)
         }
@@ -189,11 +200,12 @@ impl Viewable for AddrUI {
         out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
         tx += pkey_bytes.len();
 
-        match self.hash(&pkey) {
-            Ok(hash) => {
-                out[tx..][..hash.len()].copy_from_slice(&hash[..]);
-                tx += hash.len();
-            }
+        //etereum address is 40 bytes
+        out[tx] = 40;
+        tx += 1;
+
+        match self.address(&pkey, array_mut_ref![out, tx, 40]) {
+            Ok(_) => tx += 40,
             Err(e) => return (0, e as _),
         }
 
@@ -247,7 +259,11 @@ mod tests {
         //construct the expected message
         let mut expected_message = std::string::String::new();
         expected_message.push_str("0x");
-        expected_message.push_str(&hex::encode(ui.hash(&ui.pkey(None).unwrap()).unwrap()));
+        {
+            let mut addr = [0; 40];
+            ui.address(&ui.pkey(None).unwrap(), &mut addr).unwrap();
+            expected_message.push_str(std::str::from_utf8(&addr).unwrap());
+        }
 
         let mut driver = MockDriver::<_, 18, 4096>::new(ui);
         driver.with_print(true);

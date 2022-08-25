@@ -15,7 +15,7 @@
  *  limitations under the License.
  ******************************************************************************* */
 import Transport from '@ledgerhq/hw-transport'
-import { serializePath, serializeHrp, serializeChainID, } from './helper'
+import { serializePath, serializeHrp, serializeChainID, pathCoinType } from './helper'
 import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId, ResponseXPub } from './types'
 import {
   CHUNK_SIZE,
@@ -169,29 +169,23 @@ export default class AvalancheApp {
       }, processErrorResponse)
   }
 
-  async sign(path: string, curve: Curve, message: Buffer): Promise<ResponseSign> {
-    return this.signGetChunks(path, message).then(chunks => {
-      return this.signSendChunk(1, chunks.length, chunks[0], curve, INS.SIGN).then(async response => {
-        let result = {
-          returnCode: response.returnCode,
-          errorMessage: response.errorMessage,
-          signature: null as null | Buffer,
-        }
-        for (let i = 1; i < chunks.length; i += 1) {
-          // eslint-disable-next-line no-await-in-loop
-          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], curve, INS.SIGN)
-          if (result.returnCode !== LedgerError.NoErrors) {
-            break
-          }
-        }
-        return result
-      }, processErrorResponse)
-    }, processErrorResponse)
-  }
+  async sign(path: string, message: Buffer): Promise<ResponseSign> {
+    const coinType = pathCoinType(path);
 
-  async signETH(path: string, message: Buffer): Promise<ResponseSign> {
+    let is_eth: boolean;
+    switch (coinType) {
+      case "9000\'":
+        is_eth = false
+        break;
+      case "60\'":
+        is_eth = true
+        break;
+      default:
+        throw "Path's cointype should be either 60\' or 9000\'"
+    }
+
     return this.signGetChunks(path, message).then(chunks => {
-      return this.signSendChunk(1, chunks.length, chunks[0], Curve.Secp256K1, INS.SIGN, true).then(async response => {
+      return this.signSendChunk(1, chunks.length, chunks[0], Curve.Secp256K1, INS.SIGN, is_eth).then(async response => {
         let result = {
           returnCode: response.returnCode,
           errorMessage: response.errorMessage,
@@ -199,7 +193,7 @@ export default class AvalancheApp {
         }
         for (let i = 1; i < chunks.length; i += 1) {
           // eslint-disable-next-line no-await-in-loop
-          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], Curve.Secp256K1, INS.SIGN, true)
+          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], Curve.Secp256K1, INS.SIGN, is_eth)
           if (result.returnCode !== LedgerError.NoErrors) {
             break
           }
@@ -275,24 +269,22 @@ export default class AvalancheApp {
       .then(processGetAddrResponse, processErrorResponse)
   }
 
-  async getAddressAndPubKey(path: string, curve: Curve) {
-    //doesn't make sense to have HRP and ChainID as they are not shown
-    // and they are also not returned by this operation
-    return this._pubkey(path, curve, false)
-  }
+  async getAddressAndPubKey(path: string, show: boolean, hrp?: string, chainid?: string) {
+    const coinType = pathCoinType(path);
 
-  async showAddressAndPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
-    return this._pubkey(path, curve, true, false, hrp, chainid)
-  }
+    let is_eth: boolean;
+    switch (coinType) {
+      case "9000\'":
+        is_eth = false
+        break;
+      case "60\'":
+        is_eth = true
+        break;
+      default:
+        throw "Path's cointype should be either 60\' or 9000\'"
+    }
 
-  async getETHAddressAndPubKey(path: string, curve: Curve) {
-    //doesn't make sense to have HRP and ChainID as they are not shown
-    // and they are also not returned by this operation
-    return this._pubkey(path, curve, false, true)
-  }
-
-  async showETHAddressAndPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
-    return this._pubkey(path, curve, true, true, hrp, chainid)
+    return this._pubkey(path, Curve.Secp256K1, show, is_eth, hrp, chainid)
   }
 
   private async _xpub(path: string, curve: Curve, show: boolean, evm = false, hrp?: string, chainid?: string): Promise<ResponseXPub> {
@@ -308,24 +300,22 @@ export default class AvalancheApp {
       .then(processGetXPubResponse, processErrorResponse)
   }
 
-  async getExtendedPubKey(path: string, curve: Curve) {
-    //doesn't make sense to have HRP and ChainID as they are not shown
-    // and they are also not returned by this operation
-    return this._xpub(path, curve, false)
-  }
+  async getExtendedPubKey(path: string, show: boolean, hrp?: string, chainid?: string) {
+    const coinType = pathCoinType(path);
 
-  async showExtendedPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
-    return this._xpub(path, curve, true, false, hrp, chainid)
-  }
+    let is_eth: boolean;
+    switch (coinType) {
+      case "9000\'":
+        is_eth = false
+        break;
+      case "60\'":
+        is_eth = true
+        break;
+      default:
+        throw "Path's cointype should be either 60\' or 9000\'"
+    }
 
-  async getExtendedETHPubKey(path: string, curve: Curve) {
-    //doesn't make sense to have HRP and ChainID as they are not shown
-    // and they are also not returned by this operation
-    return this._xpub(path, curve, false, true)
-  }
-
-  async showExtendedETHPubKey(path: string, curve: Curve, hrp?: string, chainid?: string) {
-    return this._xpub(path, curve, true, true, hrp, chainid)
+    return this._xpub(path, Curve.Secp256K1, show, is_eth, hrp, chainid)
   }
 
   private async _walletId(show: boolean, curve: Curve): Promise<ResponseWalletId> {

@@ -19,10 +19,17 @@ pub const NETWORK_ID_MAINNET: u32 = 1;
 pub const NETWORK_ID_FUJI: u32 = 5;
 pub const NETWORK_ID_LOCAL: u32 = 12345;
 
+// hrp
+pub const HRP_MAINNET: &str = "avax";
+pub const HRP_TESTNET: &str = "fuji";
+pub const HRP_LOCAL: &str = "local";
+
+pub const TRANSFER_TX: u32 = 0;
+
 // pvm transaction types
 pub const PVM_CREATE_SUBNET: u32 = 0x00000010;
-pub const PVM_EXPORT_TX: u32 = 0x00000011;
-pub const PVM_IMPORT_TX: u32 = 0x00000012;
+pub const PVM_EXPORT_TX: u32 = 0x00000012;
+pub const PVM_IMPORT_TX: u32 = 0x00000011;
 pub const PVM_ADD_VALIDATOR: u32 = 0x0000000c;
 pub const PVM_ADD_SUBNET_VALIDATOR: u32 = 0x0000000d;
 pub const PVM_ADD_DELEGATOR: u32 = 0x0000000e;
@@ -42,3 +49,13 @@ pub const EVM_EXPORT_TX: u32 = 0x00000001;
 pub const NANO_AVAX_DECIMAL_DIGITS: usize = 9;
 pub const WEI_NAVAX_DIGITS: usize = 9;
 pub const WEI_AVAX_DIGITS: usize = 18;
+pub const DELEGATION_FEE_DIGITS: usize = 4;
+
+// data formatting constants
+
+// the lenght required to format a date like:
+// yyyy-mm-dd hh:mm:ss UTC
+pub const FORMATTED_STR_DATE_LEN: usize = 23;
+
+// other constants
+pub const CB58_CHECKSUM_LEN: usize = 4;

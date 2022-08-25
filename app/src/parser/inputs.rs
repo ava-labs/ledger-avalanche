@@ -18,7 +18,11 @@ mod secp_transfer_input;
 pub use secp_transfer_input::SECPTransferInput;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::take, number::complete::be_u32, sequence::tuple};
+use nom::{
+    bytes::complete::{tag, take},
+    number::complete::{be_u32, be_u64},
+    sequence::tuple,
+};
 use zemu_sys::ViewError;
 
 use crate::{
@@ -36,12 +40,29 @@ pub struct TransferableInput<'b> {
     tx_id: &'b [u8; TX_ID_LEN],
     utxo_index: u32,
     asset_id: AssetId<'b>,
+    // it is set if this TransferableInput
+    // contains a stakeable_locked input.
+    // althought this apply only to p-chain transactions,
+    // in order to reduce code, and because it is the only defined input,
+    // we put this here. later can use the output approach of making wrappers,
+    // and this type generic over the wrapper in used
+    locktime: Option<u64>,
     input: Input<'b>,
 }
 
 impl<'b> TransferableInput<'b> {
+    pub const LOCKED_INPUT_TAG: u32 = 0x00000015;
+
     pub fn amount(&self) -> Option<u64> {
         self.input.amount()
+    }
+
+    pub fn is_locked(&self) -> bool {
+        self.locktime.is_some()
+    }
+
+    pub fn locktime(&self) -> Option<u64> {
+        self.locktime
     }
 }
 
@@ -49,7 +70,7 @@ impl<'b> FromBytes<'b> for TransferableInput<'b> {
     #[inline(never)]
     fn from_bytes_into(
         bytes: &'b [u8],
-        inp: &mut MaybeUninit<Self>,
+        input: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("TransferableInput::from_bytes_into\x00");
 
@@ -57,10 +78,18 @@ impl<'b> FromBytes<'b> for TransferableInput<'b> {
         let tx_id = arrayref::array_ref!(tx_id, 0, TX_ID_LEN);
 
         // asset_id
-        let input = inp.as_mut_ptr() as *mut TransferableInput;
+        let input = input.as_mut_ptr() as *mut TransferableInput;
         let asset = unsafe { &mut *addr_of_mut!((*input).asset_id).cast() };
-        let rem = AssetId::from_bytes_into(rem, asset)?;
+        let mut rem = AssetId::from_bytes_into(rem, asset)?;
 
+        let mut locktime = None;
+
+        // Check if this is a locked input
+        if let Ok((r, _)) = tag::<_, _, ParserError>(Self::LOCKED_INPUT_TAG.to_be_bytes())(rem) {
+            let (r, raw_locktime) = be_u64(r)?;
+            locktime = Some(raw_locktime);
+            rem = r;
+        }
         // input
         let data = unsafe { &mut *addr_of_mut!((*input).input).cast() };
         let rem = Input::from_bytes_into(rem, data)?;
@@ -69,6 +98,7 @@ impl<'b> FromBytes<'b> for TransferableInput<'b> {
         unsafe {
             addr_of_mut!((*input).tx_id).write(tx_id);
             addr_of_mut!((*input).utxo_index).write(utxo_id);
+            addr_of_mut!((*input).locktime).write(locktime);
         }
         Ok(rem)
     }
@@ -92,7 +122,7 @@ impl<'b> DisplayableItem for TransferableInput<'b> {
         };
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
 
         match item_n {
             0 => {
@@ -180,14 +210,15 @@ impl<'b> FromBytes<'b> for Input<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("Input::from_bytes_into\x00");
 
-        let (rem, variant_type) = InputType::from_bytes(input)?;
+        let (_, variant_type) = InputType::from_bytes(input)?;
+
         let rem = match variant_type {
             InputType::SECPTransfer => {
                 let out = out.as_mut_ptr() as *mut SECPTransferVariant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = SECPTransferInput::from_bytes_into(rem, data)?;
+                let rem = SECPTransferInput::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
@@ -238,11 +269,28 @@ mod tests {
         0, 125, 0, 0, 1, 122,
     ];
 
+    const LOCKED_DATA: &[u8] = &[
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 0, 0, 0, 2, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0,
+        0, 186, 0, 0, 0, 10, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 58, 0, 0, 0, 1, 0, 0, 0, 79, 0, 0, 0,
+        65, 0, 0, 0, 87, 0, 0, 0, 94, 0, 0, 0, 125, 0, 0, 1, 122,
+    ];
+
     #[test]
     fn parse_transferable_input() {
         let t = TransferableInput::from_bytes(DATA).unwrap().1;
         assert_eq!(t.tx_id, &[7; TX_ID_LEN]);
         assert_eq!(t.utxo_index, 2);
         assert!(matches!(t.input, Input::SECPTransfer(..)));
+    }
+
+    #[test]
+    fn parse_transferable_locked_input() {
+        let t = TransferableInput::from_bytes(LOCKED_DATA).unwrap().1;
+        assert_eq!(t.tx_id, &[7; TX_ID_LEN]);
+        assert_eq!(t.utxo_index, 2);
+        assert!(matches!(t.input, Input::SECPTransfer(..)));
+        assert_eq!(t.locktime.unwrap(), 8);
     }
 }

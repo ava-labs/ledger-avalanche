@@ -27,7 +27,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getAddressAndPubKey(APP_DERIVATION, curve)
+        const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
 
         console.log(resp, m.name)
 
@@ -48,12 +48,11 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showAddressAndPubKey(APP_DERIVATION, curve)
+        const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
 
         await sim.waitScreenChange();
 
-        const navigation = m.name == 'nanos' ? 2 : 3;
-        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-addr-${curve}`, navigation);
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr-${curve}`);
 
         const resp = await respReq;
         console.log(resp, m.name)
@@ -75,63 +74,12 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showAddressAndPubKey(APP_DERIVATION, curve,
+        const respReq = app.getAddressAndPubKey(APP_DERIVATION, true,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))
 
         await sim.waitScreenChange();
 
-        const navigation = m.name == 'nanos' ? 3 : 3;
-        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-zemu-addr-${curve}`, navigation);
-
-        const resp = await respReq;
-        console.log(resp, m.name)
-
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('hash')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
-})
-
-describe.each(models)('Ethereum [%s] - pubkey', function (m) {
-  test.each(curves)(
-    'get pubkey and addr %s',
-    async function (curve) {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getETHAddressAndPubKey(ETH_DERIVATION, curve)
-
-        console.log(resp, m.name)
-
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('hash')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
-
-  test.each(curves)(
-    'show addr %s',
-    async function (curve) {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start({ ...defaultOptions, model: m.name })
-        const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showETHAddressAndPubKey(ETH_DERIVATION, curve)
-
-        await sim.waitScreenChange();
-
-        const navigation = m.name == 'nanos' ? 2 : 3;
-        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-eth-addr-${curve}`, navigation);
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr-${curve}`);
 
         const resp = await respReq;
         console.log(resp, m.name)

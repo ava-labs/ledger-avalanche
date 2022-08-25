@@ -2,6 +2,22 @@ import { decode as bs58_decode } from 'bs58'
 
 const HARDENED = 0x80000000
 
+export function pathCoinType(path: String): String {
+  if (!path.startsWith('m')) {
+    throw new Error('Path should start with "m" (e.g "m/44\'/5757\'/5\'/0/3")')
+  }
+
+  //skip the first element (m)
+  const pathArray = path.split('/').slice(1);
+
+  const maybe44 = Number(pathArray[0].slice(0, -1));
+  if (maybe44 != 44) {
+    throw new Error(`Path\'s first element should be "44", got ${maybe44} (e.g "m/44\'/5757\'/5\'/0/3")`)
+  }
+
+  return pathArray[1]
+}
+
 export function serializePath(path: string): Buffer {
   if (!path.startsWith('m')) {
     throw new Error('Path should start with "m" (e.g "m/44\'/5757\'/5\'/0/3")')
@@ -9,7 +25,7 @@ export function serializePath(path: string): Buffer {
 
   const pathArray = path.split('/')
 
-  if (pathArray.length !== 5) {
+  if (pathArray.length !== 5 && pathArray.length !== 4) {
     throw new Error("Invalid path. (e.g \"m/44'/5757'/5'/0/3\")")
   }
 

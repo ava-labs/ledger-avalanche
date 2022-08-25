@@ -15,7 +15,7 @@
  ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::take,
+    bytes::complete::{tag, take},
     number::complete::{be_u32, be_u64},
     sequence::tuple,
 };
@@ -42,6 +42,15 @@ pub struct NFTTransferOutput<'b> {
 
 impl<'b> NFTTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
+
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+        let data = self.addresses.get(idx as usize)?;
+        let mut addr = MaybeUninit::uninit();
+        Address::from_bytes_into(data, &mut addr)
+            .map_err(|_| ViewError::Unknown)
+            .ok()?;
+        Some(unsafe { addr.assume_init() })
+    }
 }
 
 impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
@@ -51,8 +60,10 @@ impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("NFTTransfOutput::from_bytes_into\x00");
+        // double check the type
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
-        let (rem, (group_id, payload_len)) = tuple((be_u32, be_u32))(input)?;
+        let (rem, (group_id, payload_len)) = tuple((be_u32, be_u32))(rem)?;
 
         if payload_len as usize > MAX_PAYLOAD_LEN {
             return Err(ParserError::ValueOutOfRange.into());
@@ -112,7 +123,7 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
         };
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
         let render_payload = !self.payload.is_empty() && is_app_mode_expert();
         let render_locktime = self.locktime > 0;
@@ -186,7 +197,7 @@ mod tests {
     use super::*;
 
     const DATA: &[u8] = &[
-        0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 20, 110, 102, 116, 95, 116, 114, 97, 110, 115, 102, 101,
+        0, 0, 0, 11, 0, 0, 0, 10, 0, 0, 0, 20, 110, 102, 116, 95, 116, 114, 97, 110, 115, 102, 101,
         114, 95, 112, 97, 121, 108, 111, 97, 100, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 1,
         22, 54, 119, 75, 103, 131, 141, 236, 22, 225, 106, 182, 207, 172, 178, 27, 136, 195, 168,
         97,
@@ -194,7 +205,7 @@ mod tests {
 
     #[test]
     fn parse_nft_transf_output() {
-        let out = NFTTransferOutput::from_bytes(&DATA[4..]).unwrap().1;
+        let out = NFTTransferOutput::from_bytes(DATA).unwrap().1;
         assert_eq!(out.locktime, 56);
         assert_eq!(out.group_id, 10);
         assert_eq!(out.addresses.len(), 1);

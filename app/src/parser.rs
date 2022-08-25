@@ -19,27 +19,41 @@ use zemu_sys::ViewError;
 
 mod address;
 mod asset_id;
+mod avm_output;
 mod constants;
+mod coreth;
 mod error;
 mod inputs;
 mod network_info;
 mod object_list;
+mod operations;
 mod outputs;
+mod pvm_output;
 mod subnet_auth;
+mod subnet_id;
 mod transactions;
 mod utils;
+mod validator;
 
-pub use address::{Address, ADDRESS_LEN};
+pub use address::*;
 pub use asset_id::AssetId;
+pub use avm_output::AvmOutput;
 pub use constants::*;
+pub use coreth::{export_tx::ExportTx, import_tx::ImportTx};
 pub use error::ParserError;
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use network_info::*;
 pub use object_list::ObjectList;
-pub use outputs::{Output, SECPOutputOwners, SECPTransferOutput, TransferableOutput};
+pub use outputs::{
+    NFTMintOutput, NFTTransferOutput, Output, OutputType, SECPMintOutput, SECPOutputOwners,
+    SECPTransferOutput, TransferableOutput,
+};
+pub use pvm_output::PvmOutput;
 pub use subnet_auth::SubnetAuth;
+pub use subnet_id::*;
 pub use transactions::*;
 pub use utils::*;
+pub use validator::*;
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI

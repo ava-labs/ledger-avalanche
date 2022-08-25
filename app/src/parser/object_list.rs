@@ -126,6 +126,68 @@ where
         }
     }
 
+    /// Looks for the first object in the list that meets
+    /// the condition defined by the closure `f`.
+    ///
+    /// it is like iter().filter(), but memory efficient.
+    /// `None` is returned if no object meets that condition
+    ///
+    /// This function does not change the internal state.
+    pub fn get_obj_if<F>(&self, mut f: F) -> Option<Obj>
+    where
+        F: FnMut(&Obj) -> bool,
+    {
+        let mut out = MaybeUninit::uninit();
+        // lets clone and start from the begining
+        let mut this = *self;
+        unsafe {
+            this.set_data_index(0);
+        }
+        while let Some(()) = this.parse_next(&mut out) {
+            let obj_ptr = out.as_mut_ptr();
+            // valid read as memory was initialized
+            if f(unsafe { &*obj_ptr }) {
+                return Some(unsafe { out.assume_init() });
+            }
+            // drop the object, this is safe
+            // as user does not longer hold a reference
+            // to this object.
+            unsafe {
+                obj_ptr.drop_in_place();
+            }
+        }
+        None
+    }
+
+    /// Iterates and calls `f` passing each object
+    /// in the list. This is intended to reduce stack by reusing the same
+    /// memory. The closure F gives the user the option to compute
+    /// any require data from each item.
+    ///
+    /// This function does not change the internal state.
+    pub fn iterate_with<F>(&self, mut f: F)
+    where
+        F: FnMut(&Obj),
+    {
+        let mut out = MaybeUninit::uninit();
+        // lets clone and start from the begining
+        let mut this = *self;
+        unsafe {
+            this.set_data_index(0);
+        }
+        while let Some(()) = this.parse_next(&mut out) {
+            let obj_ptr = out.as_mut_ptr();
+            unsafe {
+                // valid read as memory was initialized
+                f(&*obj_ptr);
+                // drop the object, this is safe
+                // as user does not longer hold a reference
+                // to obj.
+                obj_ptr.drop_in_place();
+            }
+        }
+    }
+
     /// Parses an object into the given location, without moving forward the internal cursor.
     ///
     /// See also [`ObjList::parse_next`].
@@ -207,7 +269,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{DisplayableItem, TransferableOutput};
+    use crate::parser::{AvmOutput, DisplayableItem, TransferableOutput};
     use core::mem::MaybeUninit;
     const DATA: &[u8] = &[
         0, 0, 0, 10, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -255,15 +317,15 @@ mod tests {
 
     #[test]
     fn parse_object_list() {
-        let (list, _) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
+        let (list, _) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
         assert!(list.is_empty());
     }
 
     #[test]
     fn object_list_parse_next() {
-        let (rem, mut list) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
+        let (rem, mut list) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
         assert!(rem.is_empty());
-        let mut output: MaybeUninit<TransferableOutput> = MaybeUninit::uninit();
+        let mut output: MaybeUninit<_> = MaybeUninit::uninit();
         let mut count = 0;
         while let Some(_) = list.parse_next(&mut output) {
             count += 1;
@@ -275,7 +337,7 @@ mod tests {
 
     #[test]
     fn object_list_iterator() {
-        let (_, list) = ObjectList::<TransferableOutput>::new(DATA).unwrap();
+        let (_, list) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
         let num_items: usize = list.iter().map(|output| output.num_items()).sum();
         // the iterator does not change the state of the
         // main list object, as we return just a copy

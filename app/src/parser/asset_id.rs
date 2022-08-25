@@ -31,6 +31,12 @@ pub const ASSET_ID_LEN: usize = 32;
 pub struct AssetId<'b>(&'b [u8; ASSET_ID_LEN]);
 
 impl<'b> AssetId<'b> {
+    pub fn id(&self) -> &[u8; ASSET_ID_LEN] {
+        &self.0
+    }
+}
+
+impl<'b> AssetId<'b> {
     #[cfg(test)]
     pub fn from_bytes(input: &'b [u8]) -> IResult<&[u8], Self, ParserError> {
         let mut out = MaybeUninit::uninit();

@@ -33,6 +33,8 @@ use crate::{
     utils::{ApduBufferRead, ApduPanic},
 };
 
+use super::utils::parse_bip32_eth;
+
 pub struct GetPublicKey;
 
 impl GetPublicKey {
@@ -48,10 +50,8 @@ impl GetPublicKey {
             .to_secret(path)
             .into_public_into(chaincode, out)?;
 
-        //this is safe because it's initialized
-        // also unwrapping is fine because the ptr is valid
-        let pkey = unsafe { out.as_mut_ptr().as_mut().apdu_unwrap() };
-        pkey.compress()
+        //we don't compress the public key for ethereum
+        Ok(())
     }
 
     /// Handles the request according to the parameters given
@@ -81,11 +81,9 @@ impl ApduHandler for GetPublicKey {
         *tx = 0;
 
         let req_confirmation = buffer.p1() >= 1;
-
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
-        let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
-            .map_err(|_| Error::DataInvalid)?;
+        let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
         Self::initialize_ui(bip32_path, &mut ui)?;

@@ -50,8 +50,7 @@ describe.each(models)('Standard [%s] - wallet id', function (m) {
 
         await sim.waitScreenChange();
 
-        const navigation = m.name == 'nanos' ? 1 : 2;
-        await sim.compareSnapshotsAndAccept('.', `${m.prefix.toLowerCase()}-wallet-id-${curve}`, navigation);
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-wallet-id-${curve}`)
 
         const resp = await respReq;
         console.log(resp, m.name)

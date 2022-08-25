@@ -15,9 +15,13 @@
 ********************************************************************************/
 
 // taken from: https://github.com/Zondax/ledger-tezos/blob/main/rust/app/src/handlers/utils.rs
-use core::convert::TryFrom;
+//
+mod time;
+pub use self::time::{timestamp_to_str_date, TimeError};
 
-use crate::sys::{ViewError, PIC};
+use crate::parser::{ParserError, CB58_CHECKSUM_LEN, NANO_AVAX_DECIMAL_DIGITS};
+use crate::sys::PIC;
+use lexical_core::Number;
 
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum IntStrToFpStrError {
@@ -31,6 +35,67 @@ pub enum IntStrToFpStrError {
 fn strlen(bytes: &[u8]) -> usize {
     bytes.split(|&n| n == 0).next().unwrap_or(bytes).len()
 }
+
+/// Returns the length of a slice
+/// to be use to write the encoding
+/// for an input with length I
+pub const fn cb58_output_len<const I: usize>() -> usize {
+    // I * log(2, 256) / log(2, 58) =  1.36 ~= 1.4 ~= 14/10 = factor + 2(just to round-up approximation)
+    (I * 14) / 10 + CB58_CHECKSUM_LEN + 2
+}
+
+pub fn nano_avax_to_fp_str(value: u64, out_str: &mut [u8]) -> Result<&mut [u8], ParserError> {
+    // the number plus '0.'
+    if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
+        return Err(ParserError::UnexpectedBufferEnd);
+    }
+
+    u64_to_str(value, &mut out_str[..])?;
+
+    intstr_to_fpstr_inplace(out_str, NANO_AVAX_DECIMAL_DIGITS)
+        .map_err(|_| ParserError::UnexpectedError)
+}
+
+macro_rules! num_to_str {
+    // we can use a procedural macro to "attach " the type name to the function name
+    // but lets do it later.
+    ($int_type:ty, $_name: ident) => {
+        pub fn $_name(number: $int_type, output: &mut [u8]) -> Result<&mut [u8], ParserError> {
+            if output.len() < <$int_type>::FORMATTED_SIZE_DECIMAL {
+                return Err(ParserError::UnexpectedBufferEnd);
+            }
+
+            if number == 0 {
+                output[0] = b'0';
+                return Ok(&mut output[..1]);
+            }
+
+            let mut offset = 0;
+            let mut number = number;
+            while number != 0 {
+                let rem = number % 10;
+                output[offset] = b'0' + rem as u8;
+                offset += 1;
+                number /= 10;
+            }
+
+            // swap values
+            let len = offset;
+            let mut idx = 0;
+            while idx < offset {
+                offset -= 1;
+                output.swap(idx, offset);
+                idx += 1;
+            }
+
+            Ok(&mut output[..len])
+        }
+    };
+}
+
+num_to_str!(u64, u64_to_str);
+num_to_str!(u32, u32_to_str);
+num_to_str!(u8, u8_to_str);
 
 #[inline(never)]
 /// Converts an integer number string
@@ -132,18 +197,46 @@ pub fn intstr_to_fpstr_inplace(
 
     num_chars = strlen(s);
 
-    Ok(&mut s[..num_chars])
+    // skip the trailing zeroes
+    // for example 0.00500, so the last two
+    // zeroes are completely irrelevant,
+    // the same for 2000.00, the fixed point and the zero
+    // are not important
+    let mut len = num_chars;
+    // skip characters before the decimal point
+    for x in s[point_position..num_chars].iter().rev() {
+        if *x == b'0' {
+            len -= 1;
+        } else if *x == b'.' {
+            // this means everything after
+            // the decimal point is zero
+            // so remove the decimal point as well
+            len -= 1;
+            break;
+        } else {
+            break;
+        }
+    }
+
+    // recalculate the new len after the filtering above
+    let len = num_chars - (num_chars - len);
+
+    Ok(&mut s[..len])
 }
 
 #[cfg(test)]
 mod tests {
-    use super::intstr_to_fpstr_inplace;
+    use super::{intstr_to_fpstr_inplace, u64_to_str};
+    use lexical_core::Number;
+    use rand::Rng;
+    use std::{format, string::String, vec::Vec};
 
     const SUITE: &[(&[u8], usize, &str)] = &[
         //NORMAL
         (b"1", 0, "1"),
         (b"123", 0, "123"),
         (b"123", 5, "0.00123"),
+        (b"100000", 9, "0.0001"),
         (b"1234", 5, "0.01234"),
         (b"12345", 5, "0.12345"),
         (b"123456", 5, "1.23456"),
@@ -162,13 +255,39 @@ mod tests {
         (b"00001", 0, "1"),
         (b"000011", 0, "11"),
         (b"10000", 0, "10000"),
+        (b"2000000000000", 9, "2000"),
         //EMPTY
         (b"", 0, "0"),
-        (b"", 1, "0.0"),
-        (b"", 2, "0.00"),
-        (b"", 5, "0.00000"),
-        (b"", 10, "0.0000000000"),
+        (b"", 1, "0"),
+        (b"", 2, "0"),
+        (b"", 5, "0"),
+        (b"", 10, "0"),
     ];
+
+    fn create_number_table() -> std::vec::Vec<(u64, String)> {
+        let mut rng = rand::thread_rng();
+        (0..200)
+            .map(|_| {
+                let num = rng.gen_range(0..u64::MAX);
+                let string = format!("{}", num);
+                (num, string)
+            })
+            .collect::<Vec<(u64, String)>>()
+    }
+
+    #[test]
+    fn int_to_str() {
+        let mut output = [0; u64::FORMATTED_SIZE_DECIMAL];
+        let test = create_number_table();
+        for (number, dat) in test {
+            let res = {
+                let res = u64_to_str(number as _, &mut output[..]).unwrap();
+                core::str::from_utf8(res).unwrap()
+            };
+            assert_eq!(dat, res);
+            output.iter_mut().for_each(|v| *v = 0);
+        }
+    }
 
     #[test]
     fn intstr_to_fpstr_inplace_test() {
@@ -176,7 +295,7 @@ mod tests {
             std::dbg!(
                 "SUITE:",
                 (
-                    core::str::from_utf8(&input).unwrap(),
+                    core::str::from_utf8(input).unwrap(),
                     decimals,
                     expected_output
                 )

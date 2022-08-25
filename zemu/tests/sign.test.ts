@@ -29,7 +29,7 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
   },
 ])
 
-describe.each(models)('Standard [%s]; sign', function (m) {
+describe.skip.each(models)('Standard [%s]; sign', function (m) {
   test.each(SIGN_TEST_DATA)('sign operation', async function (curve, data) {
     const sim = new Zemu(m.path)
     try {
@@ -41,7 +41,7 @@ describe.each(models)('Standard [%s]; sign', function (m) {
       await enableBlindSigning(sim, testcase)
 
       const currentScreen = sim.snapshot();
-      const respReq = app.sign(APP_DERIVATION, curve, msg)
+      const respReq = app.sign(APP_DERIVATION, msg)
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
 
@@ -57,7 +57,7 @@ describe.each(models)('Standard [%s]; sign', function (m) {
       expect(resp).toHaveProperty('hash')
       expect(resp).toHaveProperty('signature')
 
-      const resp_addr = await app.getAddressAndPubKey(APP_DERIVATION, curve)
+      const resp_addr = await app.getAddressAndPubKey(APP_DERIVATION, false)
       const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)
 
       let signatureOK = true
@@ -77,7 +77,7 @@ describe.each(models)('Standard [%s]; sign', function (m) {
   })
 })
 
-describe.each(models)('Ethereum [%s]; sign', function (m) {
+describe.skip.each(models)('Ethereum [%s]; sign', function (m) {
   test.each(SIGN_TEST_DATA)('sign operation', async function (curve, data) {
     const sim = new Zemu(m.path)
     try {
@@ -89,7 +89,7 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       await enableBlindSigning(sim, testcase)
 
       const currentScreen = sim.snapshot();
-      const respReq = app.signETH(ETH_DERIVATION, msg)
+      const respReq = app.sign(ETH_DERIVATION, msg)
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
 
@@ -105,7 +105,7 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       expect(resp).toHaveProperty('hash')
       expect(resp).toHaveProperty('signature')
 
-      const resp_addr = await app.getETHAddressAndPubKey(ETH_DERIVATION, curve)
+      const resp_addr = await app.getAddressAndPubKey(ETH_DERIVATION, false)
       const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)
 
       let signatureOK = true

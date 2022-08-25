@@ -15,7 +15,7 @@
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::take,
+    bytes::complete::{tag, take},
     number::complete::{be_u32, be_u64},
     sequence::tuple,
 };
@@ -23,11 +23,10 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{
-        intstr_to_fpstr_inplace, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
-        NANO_AVAX_DECIMAL_DIGITS,
-    },
+    parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
+
+const AVAX_TO_LEN: usize = 9; //b" AVAX to "
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -41,7 +40,17 @@ pub struct SECPTransferOutput<'b> {
 
 impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
+
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+        let data = self.addresses.get(idx as usize)?;
+        let mut addr = MaybeUninit::uninit();
+        Address::from_bytes_into(data, &mut addr)
+            .map_err(|_| ViewError::Unknown)
+            .ok()?;
+        Some(unsafe { addr.assume_init() })
+    }
 }
+
 impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
     #[inline(never)]
     fn from_bytes_into(
@@ -49,9 +58,11 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("SECPTransferOutput::from_bytes_into\x00");
+        // get owners type and check
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
         let (rem, (amount, locktime, threshold, addr_len)) =
-            tuple((be_u64, be_u64, be_u32, be_u32))(input)?;
+            tuple((be_u64, be_u64, be_u32, be_u32))(rem)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
 
@@ -94,32 +105,32 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
-        let mut buffer = [0; usize::FORMATTED_SIZE + 2];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO_LEN];
         let addr_item_n = self.num_items() - self.addresses.len();
 
         match item_n as usize {
             0 => {
-                let title_content = pic_str!(b"Amount(AVAX)");
+                let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
-                itoa(self.amount, &mut buffer);
-                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], NANO_AVAX_DECIMAL_DIGITS)
-                    .map_err(|_| ViewError::Unknown)?;
 
-                handle_ui_message(buffer, message, page)
+                let avax_to = pic_str!(b" AVAX to ");
+
+                // write the amount
+                let len = nano_avax_to_fp_str(self.amount, &mut buffer[..])
+                    .map_err(|_| ViewError::Unknown)?
+                    .len();
+
+                // write avax
+                buffer[len..(len + avax_to.len())].copy_from_slice(avax_to);
+                handle_ui_message(&buffer[..(len + avax_to.len())], message, page)
             }
 
             x @ 1.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
-                if let Some(data) = self.addresses.get(idx as usize) {
-                    let mut addr = MaybeUninit::uninit();
-                    Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
-                    let addr = unsafe { addr.assume_init() };
-                    addr.render_item(0, title, message, page)
-                } else {
-                    Err(ViewError::NoData)
-                }
+                let addr = self.get_address_at(idx as usize).ok_or(ViewError::NoData)?;
+                addr.render_item(0, title, message, page)
             }
             _ => Err(ViewError::NoData),
         }
@@ -149,7 +160,7 @@ mod tests {
         ];
 
         // output SECP256K1TransferOutput { type_id: 7, amount: 98000000, locktime: 0, threshhold: 1, addresses: [Address { address_bytes: [107, 106, 1, 167, 20, 122, 95, 155, 189, 52, 132, 21, 94, 230, 26, 133, 92, 231, 53, 186], serialized_address: None }] }
-        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap().1;
+        let output = SECPTransferOutput::from_bytes(&raw_output[..]).unwrap().1;
 
         assert_eq!(output.amount, 98000000);
         assert_eq!(output.locktime, 0);
@@ -175,7 +186,7 @@ mod tests {
             28, 203, 145, 255, 8, 0,
         ];
 
-        let output = SECPTransferOutput::from_bytes(&raw_output[4..]).unwrap_err();
+        let output = SECPTransferOutput::from_bytes(&raw_output).unwrap_err();
         assert_eq!(output, ParserError::InvalidThreshold.into());
     }
 }

@@ -1,3 +1,4 @@
+use arrayvec::CapacityError;
 use nom::error::ErrorKind;
 
 #[repr(u32)]
@@ -17,10 +18,13 @@ pub enum ParserError {
     InvalidAddressVersion,
     InvalidAddressLength,
     InvalidTypeId,
+    InvalidCodec,
     InvalidThreshold,
     InvalidNetworkId,
     InvalidChainId,
     InvalidAsciiValue,
+    InvalidTimestamp,
+    InvalidStakingAmount,
     UnexpectedType,
     InvalidTransactionType,
     OperationOverflows,
@@ -58,5 +62,21 @@ impl<I> nom::error::ParseError<I> for ParserError {
 impl From<ParserError> for nom::Err<ParserError> {
     fn from(error: ParserError) -> Self {
         nom::Err::Error(error)
+    }
+}
+
+impl From<CapacityError> for ParserError {
+    fn from(error: CapacityError) -> Self {
+        ParserError::UnexpectedBufferEnd
+    }
+}
+
+impl From<nom::Err<Self>> for ParserError {
+    fn from(e: nom::Err<Self>) -> Self {
+        match e {
+            nom::Err::Error(e) => e,
+            nom::Err::Failure(e) => e,
+            nom::Err::Incomplete(_) => Self::UnexpectedBufferEnd,
+        }
     }
 }

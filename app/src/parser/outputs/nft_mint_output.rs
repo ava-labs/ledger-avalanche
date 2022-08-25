@@ -15,7 +15,7 @@
  ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::take,
+    bytes::complete::{tag, take},
     number::complete::{be_u32, be_u64},
     sequence::tuple,
 };
@@ -38,6 +38,15 @@ pub struct NFTMintOutput<'b> {
 
 impl<'b> NFTMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x0000000a;
+
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+        let data = self.addresses.get(idx as usize)?;
+        let mut addr = MaybeUninit::uninit();
+        Address::from_bytes_into(data, &mut addr)
+            .map_err(|_| ViewError::Unknown)
+            .ok()?;
+        Some(unsafe { addr.assume_init() })
+    }
 }
 
 impl<'b> FromBytes<'b> for NFTMintOutput<'b> {
@@ -47,9 +56,11 @@ impl<'b> FromBytes<'b> for NFTMintOutput<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("NFTMintOutput::from_bytes_into\x00");
+        // double check the type
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
 
         let (rem, (group_id, locktime, threshold, addr_len)) =
-            tuple((be_u32, be_u64, be_u32, be_u32))(input)?;
+            tuple((be_u32, be_u64, be_u32, be_u32))(rem)?;
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
 
@@ -93,7 +104,7 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
         use bolos::{pic_str, PIC};
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; usize::FORMATTED_SIZE];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
         let render_locktime = self.locktime > 0;
         // Gets the page at which this field is displayed, by summing the boolean
@@ -151,13 +162,13 @@ mod tests {
     use super::*;
 
     const DATA: &[u8] = &[
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 1, 22, 54, 119, 75,
+        0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 1, 22, 54, 119, 75,
         103, 131, 141, 236, 22, 225, 106, 182, 207, 172, 178, 27, 136, 195, 168, 97,
     ];
 
     #[test]
     fn parse_nft_mint_output() {
-        let out = NFTMintOutput::from_bytes(&DATA[4..]).unwrap().1;
+        let out = NFTMintOutput::from_bytes(DATA).unwrap().1;
         assert_eq!(out.locktime, 56);
         assert_eq!(out.group_id, 0);
         assert_eq!(out.addresses.len(), 1);

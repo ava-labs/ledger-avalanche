@@ -23,7 +23,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -37,6 +37,15 @@ pub struct SECPOutputOwners<'b> {
 
 impl<'b> SECPOutputOwners<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
+
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+        let data = self.addresses.get(idx as usize)?;
+        let mut addr = MaybeUninit::uninit();
+        Address::from_bytes_into(data, &mut addr)
+            .map_err(|_| ViewError::Unknown)
+            .ok()?;
+        Some(unsafe { addr.assume_init() })
+    }
 }
 impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
     #[inline(never)]
@@ -94,16 +103,17 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
-        let mut buffer = [0; usize::FORMATTED_SIZE + 2];
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
 
         match item_n as usize {
             0 if self.locktime > 0 => {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.locktime, &mut buffer);
+                let buffer =
+                    u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(buffer, message, page)
             }

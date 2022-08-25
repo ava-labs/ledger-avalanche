@@ -13,7 +13,7 @@ crate-type = ["staticlib", "rlib"]
 [features]
 dev = []
 derive-debug = []
-blind-sign = []
+blind-sign= []
 blind-sign-toggle = ["blind-sign"]
 default = ["derive-debug", "blind-sign-toggle"]
 
@@ -32,6 +32,7 @@ nom = { version = "7.1.1", default-features = false}
 bytemuck = { version = "1" }
 lexical-core = { version = "0.7", features = ["libm"], default-features = false }
 educe = "0.4.19"
+crunchy = "0.2.2"
 
 [target.thumbv6m-none-eabi.dev-dependencies]
 panic-halt = "0.2.0"
@@ -44,3 +45,6 @@ zuit = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
 bolos = { git = "https://github.com/Zondax/ledger-rust", branch = "dev", features = ["derive-debug"] }
 hex = "0.4.3"
 arrayvec = { version = "0.7"}
+time = { version = "0.3.11", features = ["formatting"]}
+k256 = { version = "0.9.6", features = ["ecdsa", "keccak256"] }
+rand = "0.8.5"
