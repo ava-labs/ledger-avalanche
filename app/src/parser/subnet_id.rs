@@ -72,10 +72,13 @@ impl<'b> DisplayableItem for SubnetId<'b> {
         let label = pic_str!(b"SubnetID");
         title[..label.len()].copy_from_slice(label);
 
-        let checksum = Sha256::digest(self.0).map_err(|_| ViewError::Unknown)?;
-        // prepare the data to be encoded by appending last 4-byte
         let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
+
         data[..SUBNET_ID_LEN].copy_from_slice(&self.0[..]);
+
+        let checksum = Sha256::digest(&data[..SUBNET_ID_LEN]).map_err(|_| ViewError::Unknown)?;
+
+        // prepare the data to be encoded by appending last 4-byte
         data[SUBNET_ID_LEN..]
             .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
 

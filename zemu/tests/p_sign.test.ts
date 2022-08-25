@@ -18,7 +18,7 @@ import Zemu from '@zondax/zemu'
 import { APP_DERIVATION, ETH_DERIVATION, cartesianProduct, curves, defaultOptions, models, enableBlindSigning } from './common'
 import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
-import {ADD_VALIDATOR_DATA, ADD_DELEGATOR_DATA, ADD_SUBNET_VALIDATOR_DATA, P_IMPORT_FROM_X, P_EXPORT_TO_X} from './p_chain_vectors'
+import {ADD_VALIDATOR_DATA, ADD_DELEGATOR_DATA, ADD_SUBNET_VALIDATOR_DATA, P_IMPORT_FROM_X, P_EXPORT_TO_X, CREATE_SUBNET, CREATE_CHAIN} from './p_chain_vectors'
 
 const secp256k1 = new ec('secp256k1');
 
@@ -42,6 +42,14 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
   {
     name: 'add_subnet_validator',
     op: ADD_SUBNET_VALIDATOR_DATA ,
+  },
+  {
+    name: 'create_subnet',
+    op: CREATE_SUBNET,
+  },
+  {
+    name: 'create_chain',
+    op: CREATE_CHAIN,
   },
 ])
 

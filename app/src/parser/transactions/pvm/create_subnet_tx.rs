@@ -20,8 +20,8 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        BaseTxFields, DisplayableItem, FromBytes, Header, ParserError, PvmOutput, SECPOutputOwners,
-        PVM_CREATE_SUBNET,
+        nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
+        PvmOutput, SECPOutputOwners, PVM_CREATE_SUBNET,
     },
 };
 
@@ -32,6 +32,19 @@ pub struct CreateSubnetTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     owners: SECPOutputOwners<'b>,
+}
+
+impl<'b> CreateSubnetTx<'b> {
+    fn fee(&'b self) -> Result<u64, ParserError> {
+        let sum_inputs = self.base_tx.sum_inputs_amount()?;
+
+        let base_outputs = self.base_tx.sum_outputs_amount()?;
+
+        let fee = sum_inputs
+            .checked_sub(base_outputs)
+            .ok_or(ParserError::OperationOverflows)?;
+        Ok(fee)
+    }
 }
 
 impl<'b> FromBytes<'b> for CreateSubnetTx<'b> {
@@ -63,7 +76,7 @@ impl<'b> FromBytes<'b> for CreateSubnetTx<'b> {
 
 impl<'b> DisplayableItem for CreateSubnetTx<'b> {
     fn num_items(&self) -> usize {
-        1 + self.owners.num_items()
+        1 + self.owners.num_items() + 1 //fee
     }
 
     fn render_item(
@@ -74,20 +87,31 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
+        use lexical_core::Number;
 
         let owners_items = self.owners.num_items() as u8;
 
-        match item_n {
-            0 => {
-                let label = pic_str!(b"CreateSubnet");
-                title[..label.len()].copy_from_slice(label);
-                let content = pic_str!(b"transaction");
-                handle_ui_message(content, message, page)
-            }
+        if item_n == 0 {
+            let label = pic_str!(b"CreateSubnet");
+            title[..label.len()].copy_from_slice(label);
+            let content = pic_str!(b"transaction");
+            return handle_ui_message(content, message, page);
+        }
 
-            x @ 1.. if x < owners_items + 1 => {
-                let idx = x - 1;
-                self.owners.render_item(idx, title, message, page)
+        let item_n = item_n - 1;
+
+        match item_n {
+            x @ 0.. if x < owners_items => self.owners.render_item(item_n, title, message, page),
+            x if x == owners_items => {
+                let label = pic_str!(b"Fee(AVAX)");
+                title[..label.len()].copy_from_slice(label);
+
+                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                let fee_buff =
+                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(fee_buff, message, page)
             }
             _ => Err(ViewError::NoData),
         }
