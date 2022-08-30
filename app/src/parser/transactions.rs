@@ -183,6 +183,21 @@ impl<'b> Transaction<'b> {
         Ok(unsafe { variant.assume_init() })
     }
 
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        match self {
+            Self::XImport(tx) => tx.disable_output_if(address),
+            Self::XExport(tx) => tx.disable_output_if(address),
+            Self::PImport(tx) => tx.disable_output_if(address),
+            Self::PExport(tx) => tx.disable_output_if(address),
+            Self::Transfer(tx) => tx.disable_output_if(address),
+            Self::CImport(tx) => tx.disable_output_if(address),
+            Self::CExport(tx) => tx.disable_output_if(address),
+            Self::Validator(tx) => tx.disable_output_if(address),
+            Self::Delegator(tx) => tx.disable_output_if(address),
+            _ => {}
+        }
+    }
+
     fn parse(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,

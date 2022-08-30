@@ -16,7 +16,10 @@
 
 use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
-use nom::bytes::complete::{tag, take};
+use nom::{
+    bytes::complete::{tag, take},
+    number::complete::be_u32,
+};
 use zemu_sys::ViewError;
 
 use crate::{
@@ -24,8 +27,8 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         coreth::outputs::EVMOutput, nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes,
-        Header, ObjectList, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN, EVM_IMPORT_TX,
-        MAX_ADDRESS_ENCODED_LEN,
+        Header, ObjectList, OutputIdx, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN,
+        EVM_IMPORT_TX, MAX_ADDRESS_ENCODED_LEN,
     },
 };
 
@@ -40,6 +43,10 @@ pub struct ImportTx<'b> {
     pub source_chain: &'b [u8; SOURCE_CHAIN_LEN],
     pub inputs: ObjectList<'b, TransferableInput<'b>>,
     pub outputs: ObjectList<'b, EVMOutput<'b>>,
+    // a bit-wise idx that tells what outputs could be displayed
+    // in the ui stage.
+    // this is set during the parsing stage.
+    renderable_out: OutputIdx,
 }
 
 impl<'b> FromBytes<'b> for ImportTx<'b> {
@@ -72,12 +79,21 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
         let inputs = unsafe { &mut *addr_of_mut!((*this).inputs).cast() };
         let rem = ObjectList::<TransferableInput>::new_into(rem, inputs)?;
 
+        // check for the number of outputs before parsing then as now
+        // it has to be checked for the outputIdx capacity which is used
+        // to tell is an output should be rendered or not.
+        let (_, num_outputs) = be_u32(rem)?;
+        if num_outputs > OutputIdx::BITS {
+            return Err(ParserError::TooManyOutputs.into());
+        }
         let outs = unsafe { &mut *addr_of_mut!((*this).outputs).cast() };
         let rem = ObjectList::<EVMOutput>::new_into(rem, outs)?;
 
         //good ptr and no uninit reads
         unsafe {
             addr_of_mut!((*this).source_chain).write(source_chain);
+            // by default all outputs are renderable
+            addr_of_mut!((*this).renderable_out).write(OutputIdx::MAX);
         }
 
         Ok(rem)
@@ -86,6 +102,20 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
 
 impl<'b> ImportTx<'b> {
     pub const TYPE_ID: u32 = EVM_IMPORT_TX;
+
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        let num_outs = self.outputs.iter().count();
+        // skip filtering out outputs if there is only one
+        if num_outs <= 1 {
+            return;
+        }
+
+        self.outputs.iter().enumerate().for_each(|(idx, o)| {
+            if o.address().raw_address() == address {
+                self.renderable_out ^= 1 << idx;
+            }
+        });
+    }
 
     fn fee(&self) -> Result<u64, ParserError> {
         let inputs = self.sum_inputs_amount()?;
@@ -130,8 +160,13 @@ impl<'b> ImportTx<'b> {
 
     fn num_output_items(&self) -> usize {
         let mut items = 0;
+        let mut idx = 0;
         self.outputs.iterate_with(|o| {
-            items += o.num_items();
+            let render = self.renderable_out & (1 << idx);
+            if render > 1 {
+                items += o.num_items();
+            }
+            idx += 1;
         });
         items
     }
@@ -147,9 +182,16 @@ impl<'b> ImportTx<'b> {
     ) -> Result<u8, zemu_sys::ViewError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
+        let mut idx = 0;
         // gets the outputs that contains item_n
         // and its corresponding index
         let filter = |o: &EVMOutput| -> bool {
+            let render = self.renderable_out & (1 << idx) > 0;
+            idx += 1;
+            if !render {
+                return false;
+            }
+
             let n = o.num_items();
             for index in 0..n {
                 count += 1;

@@ -22,9 +22,9 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
-        DisplayableItem, FromBytes, Header, ObjectList, ParserError, PvmOutput, SECPOutputOwners,
-        TransferableOutput, Validator, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
-        PVM_ADD_VALIDATOR,
+        DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput,
+        SECPOutputOwners, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
+        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_VALIDATOR,
     },
 };
 
@@ -35,6 +35,10 @@ pub struct AddValidatorTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     pub validator: Validator<'b>,
+    // a bit-wise idx that tells what stake outputs could be displayed
+    // in the ui stage.
+    // this is set during the parsing stage
+    renderable_out: OutputIdx,
     pub stake: ObjectList<'b, TransferableOutput<'b, PvmOutput<'b>>>,
     pub rewards_owner: SECPOutputOwners<'b>,
     pub shares: u32,
@@ -65,6 +69,13 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         let rem = Validator::from_bytes_into(rem, validator)?;
 
         // stake
+        // check for the number of stake-outputs before parsing then as now
+        // it has to be checked for the outputIdx capacity which is used
+        // to tell if an output should be rendered or not.
+        let (_, num_outputs) = be_u32(rem)?;
+        if num_outputs > OutputIdx::BITS {
+            return Err(ParserError::TooManyOutputs.into());
+        }
         let stake = unsafe { &mut *addr_of_mut!((*out).stake).cast() };
         let rem = ObjectList::<TransferableOutput<PvmOutput>>::new_into(rem, stake)?;
 
@@ -91,6 +102,8 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         //good ptr and no uninit reads
         unsafe {
             addr_of_mut!((*out).shares).write(shares);
+            // by default all outputs are renderable
+            addr_of_mut!((*out).renderable_out).write(OutputIdx::MAX);
         }
 
         Ok(rem)
@@ -164,6 +177,24 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
 }
 
 impl<'b> AddValidatorTx<'b> {
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.base_tx.disable_output_if(address);
+
+        // omit if there is only one stake output
+        let num_outs = self.stake.iter().count();
+        if num_outs <= 1 {
+            return;
+        }
+
+        // The 99.99% of the outputs contain only one address(best case),
+        // In the worse case we just show every output.
+        self.stake.iter().enumerate().for_each(|(idx, o)| {
+            if o.num_addresses() == 1 && o.contain_address(address) {
+                self.renderable_out ^= 1 << idx;
+            }
+        });
+    }
+
     fn fee(&'b self) -> Result<u64, ParserError> {
         let sum_inputs = self.base_tx.sum_inputs_amount()?;
 
@@ -182,8 +213,13 @@ impl<'b> AddValidatorTx<'b> {
 
     fn num_stake_items(&self) -> usize {
         let mut items = 0;
+        let mut idx = 0;
         self.stake.iterate_with(|o| {
-            items += o.num_items();
+            let render = self.renderable_out & (1 << idx);
+            if render > 0 {
+                items += o.num_items();
+            }
+            idx += 1;
         });
         items
     }
@@ -378,9 +414,16 @@ impl<'b> AddValidatorTx<'b> {
     ) -> Result<(TransferableOutput<PvmOutput>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
+        let mut idx = 0;
         // gets the output that contains item_n
         // and its corresponding index
         let filter = |o: &TransferableOutput<'b, PvmOutput>| -> bool {
+            let render = self.renderable_out & (1 << idx) > 0;
+            idx += 1;
+            if !render {
+                return false;
+            }
+
             let n = o.num_items();
             for index in 0..n {
                 count += 1;
