@@ -47,6 +47,10 @@ impl<'a> Address<'a> {
 
         Ok(len)
     }
+
+    pub fn raw_address(&self) -> &[u8; ADDRESS_LEN] {
+        self.0
+    }
 }
 
 impl<'b> FromBytes<'b> for Address<'b> {
