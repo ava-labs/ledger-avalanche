@@ -17,15 +17,16 @@ use core::ops::Deref;
 
 use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
-use nom::bytes::complete::take;
+use nom::{bytes::complete::take, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, ParserError,
-        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN, MAX_ADDRESS_ENCODED_LEN,
+        BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, OutputIdx,
+        ParserError, TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN,
+        MAX_ADDRESS_ENCODED_LEN,
     },
 };
 
@@ -97,6 +98,10 @@ impl<'b, O> BaseImport<'b, O>
 where
     O: FromBytes<'b> + DisplayableItem + Deref<Target = Output<'b>> + 'b,
 {
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.base_tx.disable_output_if(address);
+    }
+
     // Use the info contained in the transaction header
     // to get the corresponding hrp, useful to encode addresses
     pub fn chain_hrp(&self) -> Result<&'static str, ParserError> {

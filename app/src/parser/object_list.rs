@@ -52,8 +52,51 @@ where
         Ok((rem, list))
     }
 
+    ///
     #[inline(never)]
-    /// Attempt to parse the provided input as an [`ObjectList`] of the given `Obj` type
+    /// Attempt to parse the provided input as an [`ObjectList`] of the given `Obj` type.
+    /// The number of elements in the list should be provided. This is useful in cases
+    /// where the number of elements has an arbitrary type or is not part of the input
+    /// buffer.
+    ///
+    /// Will fail if the input bytes are not properly encoded for the list or if any of the objects inside fail to parse.
+    /// This also means accessing any inner objects shouldn't fail to parse
+    pub fn new_into_with_len(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+        num_objs: usize,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        let mut len = input.len();
+        let mut bytes_left = input;
+        let mut object = MaybeUninit::uninit();
+
+        // we are not saving parsed data but ensuring everything
+        // parsed correctly.
+        for _ in 0..num_objs {
+            bytes_left = Obj::from_bytes_into(bytes_left, &mut object)?;
+        }
+
+        // this calculates the length in bytes of the list of objects
+        // using the amount of bytes left after iterating over each parsed element.
+        // This does not include the bytes
+        // used to read the number of such objects as we already skip them
+        len -= bytes_left.len();
+
+        let (rem, data) = take(len)(input)?;
+
+        //good ptr and no uninit reads
+        let out = out.as_mut_ptr();
+        unsafe {
+            addr_of_mut!((*out).read).write(0);
+            addr_of_mut!((*out).data).write(data);
+        }
+
+        Ok(rem)
+    }
+
+    #[inline(never)]
+    /// Attempt to parse the provided input as an [`ObjectList`] of the given `Obj` type.
+    /// This method would read the number of objects as a u32 from the input buffer.
     ///
     /// Will fail if the input bytes are not properly encoded for the list or if any of the objects inside fail to parse.
     /// This also means accessing any inner objects shouldn't fail to parse
@@ -66,32 +109,8 @@ where
         }
 
         let (rem, num_objects) = be_u32(input)?;
-        let mut len = rem.len();
-        let mut bytes_left = rem;
-        let mut object = MaybeUninit::uninit();
 
-        // we are not saving parsed data but ensuring everything
-        // parsed correctly.
-        for _ in 0..num_objects {
-            bytes_left = Obj::from_bytes_into(bytes_left, &mut object)?;
-        }
-
-        // this calculates the length in bytes of the list of objects
-        // using the amount of bytes left after iterating over each parsed element.
-        // This does not include the bytes
-        // used to read the number of such objects as we already skip them
-        len -= bytes_left.len();
-
-        let (rem, data) = take(len)(rem)?;
-
-        //good ptr and no uninit reads
-        let out = out.as_mut_ptr();
-        unsafe {
-            addr_of_mut!((*out).read).write(0);
-            addr_of_mut!((*out).data).write(data);
-        }
-
-        Ok(rem)
+        Self::new_into_with_len(rem, out, num_objects as _)
     }
 
     #[inline(never)]
@@ -220,7 +239,7 @@ where
     Obj: FromBytes<'b> + 'b,
 {
     /// Creates an [`ObjectListIterator`] for object out of the given object list
-    pub fn iter(&'b self) -> impl Iterator<Item = Obj> + 'b {
+    pub fn iter(&self) -> impl Iterator<Item = Obj> + 'b {
         ObjectListIterator::new(self)
     }
 }

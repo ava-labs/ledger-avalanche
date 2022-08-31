@@ -23,10 +23,8 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{DisplayableItem, FromBytes, ParserError},
+    parser::{DisplayableItem, FromBytes, ParserError, U32_SIZE},
 };
-
-const U32_SIZE: usize = std::mem::size_of::<u32>();
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]

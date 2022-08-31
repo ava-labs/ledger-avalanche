@@ -49,6 +49,10 @@ impl<'b> SECPTransferOutput<'b> {
             .ok()?;
         Some(unsafe { addr.assume_init() })
     }
+
+    pub fn num_addresses(&self) -> usize {
+        self.addresses.len()
+    }
 }
 
 impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {

@@ -59,3 +59,7 @@ pub const FORMATTED_STR_DATE_LEN: usize = 23;
 
 // other constants
 pub const CB58_CHECKSUM_LEN: usize = 4;
+pub const U32_SIZE: usize = std::mem::size_of::<u32>();
+
+// types
+pub type OutputIdx = u32;

@@ -33,6 +33,8 @@ pub enum ParserError {
     UnexpectedField,
     ValueOutOfRange,
     InvalidAddress,
+    InvalidPath,
+    TooManyOutputs,
 }
 
 impl From<ErrorKind> for ParserError {

@@ -58,6 +58,46 @@ export function serializePath(path: string): Buffer {
   return buf
 }
 
+export function serializePathSuffix(path: string): Buffer {
+  if (path.startsWith('m')) {
+    throw new Error('Path suffix do not start with "m" (e.g "0/3")')
+  }
+
+  const pathArray = path.split('/')
+
+  if (pathArray.length !== 2) {
+    throw new Error("Invalid path suffix. (e.g \"0/3\")")
+  }
+
+  const buf = Buffer.alloc(1 + pathArray.length * 4)
+  buf.writeUInt8(pathArray.length) //first byte is the path length
+
+  for (let i = 0; i < pathArray.length; i += 1) {
+    let value = 0
+    let child = pathArray[i]
+
+    if (child.endsWith("'")) {
+      throw new Error("Invalid hardened path suffix. (e.g \"0/3\")")
+    }
+
+    const childNumber = Number(child)
+
+    if (Number.isNaN(childNumber)) {
+      throw new Error(`Invalid path : ${child} is not a number. (e.g "0/3")`)
+    }
+
+    if (childNumber >= HARDENED) {
+      throw new Error('Incorrect child value (bigger or equal to 0x80000000)')
+    }
+
+    value += childNumber
+
+    buf.writeUInt32BE(value, 1 + 4 * i)
+  }
+
+  return buf
+}
+
 export function serializeHrp(hrp?: string): Buffer {
   if (hrp) {
     const bufHrp = Buffer.from(hrp, 'ascii');

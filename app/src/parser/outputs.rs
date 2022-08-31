@@ -15,8 +15,9 @@
 ********************************************************************************/
 use core::ops::Deref;
 
-use crate::parser::{AssetId, DisplayableItem, FromBytes, ParserError};
+use crate::parser::{Address, AssetId, DisplayableItem, FromBytes, ParserError};
 use crate::sys::ViewError;
+use crate::utils::ApduPanic;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
 mod nft_mint_output;
@@ -66,6 +67,46 @@ where
 
     pub fn output(&self) -> &Output<'b> {
         &*self.output
+    }
+
+    pub fn num_addresses(&self) -> usize {
+        self.output().num_addresses()
+    }
+
+    // Any output whose address match any of the
+    // paths in the change_path list should not be
+    // rendered, unless the output contains more
+    // than one address, in that case the output
+    // would be rendered along with each of its addresses.
+    pub fn contain_address(&self, change_address: &[u8]) -> bool {
+        let num_address = self.output().num_addresses();
+        //let mut out = [0; u8::FORMATTED_SIZE_DECIMAL];
+
+        //crate::sys::zemu_log_stack("printing_change_address******\x00");
+        //for byte in change_address.iter().copied() {
+        //if let Ok(u) = u8_to_str(byte, &mut out) {
+        //let s = core::str::from_utf8(u).unwrap();
+        //crate::sys::zemu_log_stack(s);
+        //}
+        //out.iter_mut().for_each(|v| *v = 0);
+        //}
+        //crate::sys::zemu_log_stack("printing_done*****\x00");
+        for idx in 0..num_address {
+            let address = self.output().get_address(idx).apdu_unwrap();
+            if address.raw_address() == change_address {
+                return true;
+                //crate::sys::zemu_log_stack("printing_output_address******\x00");
+                //for byte in address.raw_address().iter().copied() {
+                //if let Ok(u) = u8_to_str(byte, &mut out) {
+                //let s = core::str::from_utf8(u).unwrap();
+                //crate::sys::zemu_log_stack(s);
+                //}
+                //out.iter_mut().for_each(|v| *v = 0);
+                //}
+                //crate::sys::zemu_log_stack("printing_done*****\x00");
+            }
+        }
+        false
     }
 }
 
@@ -158,6 +199,26 @@ pub enum Output<'b> {
 }
 
 impl<'b> Output<'b> {
+    pub fn num_addresses(&self) -> usize {
+        match self {
+            Self::SECPTransfer(t) => t.num_addresses(),
+            Self::SECPMint(m) => m.num_addresses(),
+            Self::NFTTransfer(t) => t.num_addresses(),
+            Self::NFTMint(m) => m.num_addresses(),
+            Self::SECPOwners(o) => o.num_addresses(),
+        }
+    }
+
+    pub fn get_address(&'b self, idx: usize) -> Option<Address<'b>> {
+        match self {
+            Self::SECPTransfer(t) => t.get_address_at(idx),
+            Self::SECPMint(m) => m.get_address_at(idx),
+            Self::NFTTransfer(t) => t.get_address_at(idx),
+            Self::NFTMint(m) => m.get_address_at(idx),
+            Self::SECPOwners(o) => o.get_address_at(idx),
+        }
+    }
+
     pub fn secp_transfer(&self) -> Option<&SECPTransferOutput> {
         if let Self::SECPTransfer(ref secp) = self {
             Some(secp)

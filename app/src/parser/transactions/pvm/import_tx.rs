@@ -21,8 +21,8 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        nano_avax_to_fp_str, BaseImport, DisplayableItem, FromBytes, ObjectList, ParserError,
-        PvmOutput, TransferableInput, PVM_IMPORT_TX,
+        nano_avax_to_fp_str, BaseImport, DisplayableItem, FromBytes, ParserError, PvmOutput,
+        PVM_IMPORT_TX,
     },
 };
 
@@ -58,8 +58,8 @@ impl<'b> PvmImportTx<'b> {
         self.0.fee()
     }
 
-    pub fn base_imputs(&self) -> &ObjectList<TransferableInput> {
-        &self.0.base_tx.inputs
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.0.disable_output_if(address);
     }
 }
 

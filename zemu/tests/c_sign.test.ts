@@ -43,7 +43,8 @@ describe.each(models)('Standard [%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
 
-      const respReq = app.sign(APP_DERIVATION, msg)
+      const signers = ["0/1", "5/8"];
+      const respReq = app.sign(APP_DERIVATION, signers, msg);
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
@@ -55,23 +56,9 @@ describe.each(models)('Standard [%s]; sign', function (m) {
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
-      expect(resp).toHaveProperty('hash')
-      expect(resp).toHaveProperty('signature')
+      expect(resp).toHaveProperty('signatures')
+      expect(resp.signatures?.size).toEqual(signers.length)
 
-      //const resp_addr = await app.getAddressAndPubKey(APP_DERIVATION, false)
-      //const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)
-
-      //let signatureOK = true
-      //switch (curve) {
-        //case Curve.Secp256K1:
-          ////signature without r or s error thrown?
-          //// signatureOK = pkey.verify(resp.hash, resp.signature)
-          //break
-
-        //default:
-          //throw Error('not a valid curve type')
-      //}
-      //expect(signatureOK).toEqual(true)
     } finally {
       await sim.close()
     }

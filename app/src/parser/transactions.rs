@@ -171,16 +171,37 @@ impl<'b> Transaction<'b> {
         Ok((raw_tx_id, network_info))
     }
 
+    #[cfg(test)]
     pub fn new(input: &'b [u8]) -> Result<Self, ParserError> {
+        let mut variant = MaybeUninit::uninit();
+        Self::new_into(input, &mut variant)?;
+        // Safe as parsing initializes it
+        Ok(unsafe { variant.assume_init() })
+    }
+
+    pub fn new_into(input: &'b [u8], this: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
         let (rem, codec) = be_u16(input)?;
         if codec != 0 {
             return Err(ParserError::InvalidCodec);
         }
+        Self::parse(rem, this)?;
 
-        let mut variant = MaybeUninit::uninit();
-        Self::parse(rem, &mut variant)?;
-        // Safe as parsing initializes it
-        Ok(unsafe { variant.assume_init() })
+        Ok(())
+    }
+
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        match self {
+            Self::XImport(tx) => tx.disable_output_if(address),
+            Self::XExport(tx) => tx.disable_output_if(address),
+            Self::PImport(tx) => tx.disable_output_if(address),
+            Self::PExport(tx) => tx.disable_output_if(address),
+            Self::Transfer(tx) => tx.disable_output_if(address),
+            Self::CImport(tx) => tx.disable_output_if(address),
+            Self::CExport(tx) => tx.disable_output_if(address),
+            Self::Validator(tx) => tx.disable_output_if(address),
+            Self::Delegator(tx) => tx.disable_output_if(address),
+            _ => {}
+        }
     }
 
     fn parse(
