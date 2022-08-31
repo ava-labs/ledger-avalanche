@@ -57,7 +57,6 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("EVMExportTx::from_bytes_into\x00");
-
         let this = out.as_mut_ptr();
 
         let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
@@ -87,9 +86,11 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
         // it has to be checked for the outputIdx capacity which is used
         // to tell is an output should be rendered or not.
         let (_, num_outputs) = be_u32(rem)?;
+
         if num_outputs > OutputIdx::BITS {
             return Err(ParserError::TooManyOutputs.into());
         }
+
         let outputs = unsafe { &mut *addr_of_mut!((*this).outputs).cast() };
         let rem = ObjectList::<TransferableOutput<EOutput>>::new_into(rem, outputs)?;
 
@@ -166,7 +167,7 @@ impl<'b> ExportTx<'b> {
         let mut idx = 0;
         self.outputs.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
-            if render > 1 {
+            if render > 0 {
                 items += o.num_items();
             }
             idx += 1;
