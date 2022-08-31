@@ -27,8 +27,8 @@ all: bin/app.elf
 	@echo "APPNAME=\"${APPNAME}\"" >> $(OUTPUT_INSTALLER)
 	@echo "APPVERSION=\"${APPVERSION}\"" >> $(OUTPUT_INSTALLER)
 	@echo "APPPATH=\""${APPPATH}"\"" >> $(OUTPUT_INSTALLER)
-	@echo "LOAD_PARAMS=\"${COMMON_LOAD_PARAMS}\"" >> $(OUTPUT_INSTALLER)
-	@echo "DELETE_PARAMS=\"${COMMON_DELETE_PARAMS}\"" >> $(OUTPUT_INSTALLER)
+	@echo "LOAD_PARAMS=($$(echo "${APP_LOAD_PARAMS}" | sed -e "s|"${APPNAME}"|\""${APPNAME}"\"|"))" >> $(OUTPUT_INSTALLER)
+	@echo "DELETE_PARAMS=($$(echo "${COMMON_DELETE_PARAMS}" | sed -e "s|"${APPNAME}"|\""${APPNAME}"\"|"))" >> $(OUTPUT_INSTALLER)
 	@echo "APPHEX=\"" >> $(OUTPUT_INSTALLER)
 	@cat $(CURDIR)/bin/app.hex >> $(OUTPUT_INSTALLER)
 	@echo "\"" >> $(OUTPUT_INSTALLER)
@@ -61,7 +61,7 @@ ifeq ($(COIN),AVAX)
 # Main app configuration
 DEFINES += APP_STANDARD
 APPNAME = "Avalanche"
-APPPATH = "44'/9000'"
+APPPATH = "44'/9000'" --path "44'/60'"
 else
 define error_message
 COIN value not supported: [$(COIN)]
@@ -69,7 +69,7 @@ endef
 $(error "$(error_message)")
 endif
 
-APP_LOAD_PARAMS = --delete $(COMMON_LOAD_PARAMS) --path ${APPPATH} --path "44'/1'"
+APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --path $(APPPATH)
 
 ARTIFACT_OUTPUT_PATH := $(CURDIR)/../build
 
@@ -79,7 +79,7 @@ ICONNAME:=$(CURDIR)/../nanos_icon.gif
 OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_s.elf
 OUTPUT_INSTALLER := $(ARTIFACT_OUTPUT_PATH)/pkg/installer_s.sh
 RUST_TARGET:=thumbv6m-none-eabi
-APP_LOAD_PARAMS += --appFlags 0x200
+APP_LOAD_PARAMS += --appFlags 0x000
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
