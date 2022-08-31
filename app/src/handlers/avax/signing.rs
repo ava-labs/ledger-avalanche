@@ -23,7 +23,9 @@ use bolos::{
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH, BIP32_PATH_PREFIX_DEPTH},
+    constants::{
+        ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
+    },
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::resources::{HASH, PATH},
@@ -44,23 +46,6 @@ impl Sign {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
         }
-    }
-
-    //(actual_size, [u8; MAX_SIGNATURE_SIZE])
-    #[inline(never)]
-    pub fn sign<const LEN: usize>(
-        curve: Curve,
-        path: &BIP32Path<LEN>,
-        data: &[u8],
-    ) -> Result<(usize, [u8; 100]), Error> {
-        let sk = curve.to_secret(path);
-
-        let mut out = [0; 100];
-        let sz = sk
-            .sign(data, &mut out[..])
-            .map_err(|_| Error::ExecutionError)?;
-
-        Ok((sz, out))
     }
 
     #[inline(never)]
@@ -91,7 +76,7 @@ impl Sign {
     }
 
     fn disable_outputs(
-        path_list: &mut ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>,
+        list: &mut ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>,
         tx: &mut Transaction,
     ) -> Result<(), Error> {
         // get root path and curve
@@ -102,7 +87,6 @@ impl Sign {
             return Err(Error::WrongLength);
         }
 
-        let mut list = *path_list;
         let mut path_wrapper: MaybeUninit<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>> =
             MaybeUninit::uninit();
 
