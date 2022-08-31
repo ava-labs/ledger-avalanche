@@ -34,8 +34,7 @@ export interface ResponseAppInfo extends ResponseBase {
 }
 
 export interface ResponseSign extends ResponseBase {
-  // avax expect a map path -> signature whereas eth
-  // expects a simple signature buffer
+  // avax expect a map path -> signature
   hash: null | Buffer
   signatures: null | Map<string, Buffer>
 }

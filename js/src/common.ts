@@ -6,6 +6,7 @@ export const CHUNK_SIZE = 250
 export const APP_KEY = 'AVAX'
 export const FIRST_MESSAGE = 0x01;
 export const LAST_MESSAGE = 0x02;
+export const NEXT_MESSAGE = 0x03;
 export const HASH_LEN = 32;
 
 export const INS = {

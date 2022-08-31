@@ -30,6 +30,7 @@ import {
   PAYLOAD_TYPE,
   processErrorResponse,
   FIRST_MESSAGE,
+  NEXT_MESSAGE,
   LAST_MESSAGE,
   HASH_LEN,
 } from './common'
@@ -144,7 +145,7 @@ export default class AvalancheApp {
 
   }
 
-  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, param?: Curve, ins: number = INS.SIGN, evm = false): Promise<ResponseSign> {
+  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, param?: number, ins: number = INS.SIGN, evm = false): Promise<ResponseSign> {
     let payloadType = PAYLOAD_TYPE.ADD
     let p2 = 0
     if (chunkIdx === 1) {
@@ -196,30 +197,6 @@ export default class AvalancheApp {
       }, processErrorResponse)
   }
 
-  // The preamble consist of the root path which is set before sending
-  // the remaining data to be show/signed
-  async send_preamble(path: string, curve: Curve, evm = false): Promise<ResponseSign> {
-    const serializedPath = serializePath(path);
-    return this.transport
-      .send(CLA, INS.PREAMBLE, 0, curve, Buffer.concat([serializedPath]), [LedgerError.NoErrors])
-      .then((response: Buffer) => {
-        const errorCodeData = response.slice(-2)
-        const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-        let errorMessage = errorCodeToString(returnCode)
-
-        if (
-          returnCode === LedgerError.BadKeyHandle ||
-          returnCode === LedgerError.DataIsInvalid
-        ) {
-          errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
-        }
-        return {
-          returnCode: returnCode,
-          errorMessage: errorMessage,
-        }
-      }, processErrorResponse)
-  }
-
    async signHash(path_prefix: string, signing_paths: Array<string>, hash: Buffer, is_eth = false): Promise<ResponseSign> {
 
      if (hash.length !== HASH_LEN) {
@@ -227,16 +204,11 @@ export default class AvalancheApp {
      }
 
     const cla = is_eth ? CLA_ETH : CLA;
+    const msg = Buffer.concat([hash]);
 
-    // Set root path and curve
-    let response = await this.send_preamble(path_prefix, Curve.Secp256K1, is_eth);
-    if (response.returnCode !== LedgerError.NoErrors) {
-      return response;
-    }
-
-    // send hash
+     //send hash and path
     const first_response = await this.transport
-      .send(cla, INS.SIGN_HASH, FIRST_MESSAGE, 0x00, Buffer.concat([hash]), [LedgerError.NoErrors])
+      .send(cla, INS.SIGN_HASH, FIRST_MESSAGE, 0x00, Buffer.concat([serializePath(path_prefix), hash]), [LedgerError.NoErrors])
       .then((response: Buffer) => {
         const errorCodeData = response.slice(-2)
         const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
@@ -277,10 +249,10 @@ export default class AvalancheApp {
       const suffix = signing_paths[idx];
       const path_buf = serializePathSuffix(suffix);
 
-      const p1 = idx >= signing_paths.length - 1 ? LAST_MESSAGE : 0x80;
+      const p1 = idx >= signing_paths.length - 1 ? LAST_MESSAGE : NEXT_MESSAGE;
 
       // send path to sign hash that should be in device's ram memory
-      await this.transport.send(CLA, INS.SIGN_HASH, p1, 0x00, path_buf, [
+      await this.transport.send(CLA, INS.SIGN_HASH, p1, 0x00,  path_buf, [
         LedgerError.NoErrors,
         LedgerError.DataIsInvalid,
         LedgerError.BadKeyHandle,
@@ -331,27 +303,21 @@ export default class AvalancheApp {
       default:
         throw "Path's cointype should be either 60\' or 9000\'"
     }
-    let curve = Curve.Secp256K1;
-
-    // Set the root path and the curve
-    let res_preamble = await this.send_preamble(path_prefix, curve, is_eth)
-    if (res_preamble.returnCode !== LedgerError.NoErrors) {
-      return res_preamble;
-    }
 
     // Do not show outputs that go to the signers
     let paths = signing_paths;
     if (change_paths !== undefined ) {
-      paths = paths.concat(change_paths);
-    }
+      // remove duplication just is case
+      paths = [...new Set([...paths ,...change_paths])];
+     }
 
     // Prepend change_paths to the message as the device do set which outputs should be
     // shown at parsing
     const msg = this.concatMessageAndChangePath(message, paths);
 
     // Send transaction for review
-    let response = await this.signGetChunks(msg).then(chunks => {
-      return this.signSendChunk(1, chunks.length, chunks[0], curve, INS.SIGN, is_eth).then(async response => {
+    let response = await this.signGetChunks(msg, path_prefix).then(chunks => {
+      return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN, is_eth).then(async response => {
         // initialize response
         let result = {
           returnCode: response.returnCode,
@@ -362,7 +328,7 @@ export default class AvalancheApp {
         // send chunks
         for (let i = 1; i < chunks.length; i += 1) {
           // eslint-disable-next-line no-await-in-loop
-          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], Curve.Secp256K1, INS.SIGN, is_eth)
+          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], NEXT_MESSAGE, INS.SIGN, is_eth)
           if (result.returnCode !== LedgerError.NoErrors) {
             break
           }
