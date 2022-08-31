@@ -13,20 +13,21 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::convert::TryFrom;
+use core::mem::MaybeUninit;
+use nom::number::complete::be_u8;
 
 use bolos::{
     crypto::bip32::BIP32Path,
-    hash::{Hasher, Sha256},
+    hash::{Hasher, Ripemd160, Sha256},
 };
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
+    constants::{ApduError as Error, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH, BIP32_PATH_PREFIX_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::resources::PATH,
-    parser::{DisplayableItem, Transaction},
+    handlers::resources::{HASH, PATH},
+    parser::{DisplayableItem, ObjectList, ParserError, PathWrapper, Transaction},
     sys,
     utils::{ApduBufferRead, Uploader},
 };
@@ -68,23 +69,81 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn start_sign(
-        send_hash: bool,
-        p2: u8,
-        init_data: &[u8],
-        data: &'static [u8],
-        flags: &mut u32,
-    ) -> Result<u32, Error> {
-        let curve = Curve::try_from(p2).map_err(|_| Error::InvalidP1P2)?;
-        let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
+    pub fn compute_keyhash(
+        path: &BIP32Path<MAX_BIP32_PATH_DEPTH>,
+        curve: Curve,
+        out_hash: &mut [u8; Ripemd160::DIGEST_LEN],
+    ) -> Result<(), Error> {
+        use crate::handlers::public_key::GetPublicKey;
 
-        unsafe {
-            PATH.lock(Self)?.replace((path, curve));
+        let mut out = MaybeUninit::uninit();
+        GetPublicKey::new_key_into(curve, path, &mut out, None)
+            .map_err(|_| Error::ExecutionError)?;
+
+        let pkey = unsafe { out.assume_init() };
+
+        let mut tmp = [0; Sha256::DIGEST_LEN];
+
+        Sha256::digest_into(pkey.as_ref(), &mut tmp)
+            .and_then(|_| Ripemd160::digest_into(&tmp, out_hash))
+            .map_err(|_| Error::DataInvalid)?;
+        Ok(())
+    }
+
+    fn disable_outputs(
+        path_list: &mut ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>,
+        tx: &mut Transaction,
+    ) -> Result<(), Error> {
+        // get root path and curve
+        let (path_root, curve) = Self::get_derivation_info()?;
+
+        //We expect a path prefix of the form x'/x'/x'
+        if path_root.components().len() > BIP32_PATH_PREFIX_DEPTH {
+            return Err(Error::WrongLength);
         }
 
-        let unsigned_hash = Self::sha256_digest(data)?;
+        let mut list = *path_list;
+        let mut path_wrapper: MaybeUninit<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>> =
+            MaybeUninit::uninit();
 
-        let transaction = Transaction::new(data).map_err(|_| Error::DataInvalid)?;
+        let mut address = [0; Ripemd160::DIGEST_LEN];
+        while let Some(()) = list.parse_next(&mut path_wrapper) {
+            let path_ptr = path_wrapper.as_mut_ptr();
+            let suffix = unsafe { &(*path_ptr).path() };
+            let path_iter = path_root
+                .components()
+                .iter()
+                .chain(suffix.components())
+                .copied();
+            let full_path: BIP32Path<MAX_BIP32_PATH_DEPTH> =
+                BIP32Path::new(path_iter).map_err(|_| Error::DataInvalid)?;
+            Self::compute_keyhash(&full_path, *curve, &mut address)?;
+            tx.disable_output_if(&address[..]);
+            unsafe {
+                path_ptr.drop_in_place();
+            }
+        }
+        Ok(())
+    }
+
+    #[inline(never)]
+    pub fn start_sign(send_hash: bool, data: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
+        // then, get the change_path list.
+        let mut path_list: MaybeUninit<ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>> =
+            MaybeUninit::uninit();
+        let (rem, num_paths) = be_u8::<_, ParserError>(data).map_err(|_| Error::ExecutionError)?;
+        let rem = ObjectList::new_into_with_len(rem, &mut path_list, num_paths as _)
+            .map_err(|_| Error::DataInvalid)?;
+        let mut path_list = unsafe { path_list.assume_init() };
+
+        let unsigned_hash = Self::sha256_digest(rem)?;
+
+        // parse transaction
+        let mut tx = MaybeUninit::uninit();
+        Transaction::new_into(rem, &mut tx).map_err(|_| Error::DataInvalid)?;
+        let mut transaction = unsafe { tx.assume_init() };
+
+        Self::disable_outputs(&mut path_list, &mut transaction)?;
 
         let ui = SignUI {
             hash: unsigned_hash,
@@ -108,9 +167,9 @@ impl ApduHandler for Sign {
         *tx = 0;
 
         if let Some(upload) = Uploader::new(Self).upload(&buffer)? {
-            // Do not return the unsigned hash. It can be compute by the caller
-            // giving us more space to wrtie the signature in the output buffer
-            *tx = Self::start_sign(false, upload.p2, upload.first, upload.data, flags)?;
+            // Do not return the unsigned hash. It is stored for the multi_signers
+            // step
+            *tx = Self::start_sign(false, upload.data, flags)?;
         }
 
         Ok(())
@@ -140,38 +199,23 @@ impl Viewable for SignUI {
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let (path, curve) = match Sign::get_derivation_info() {
-            Err(e) => return (0, e as _),
-            Ok(k) => k,
-        };
-
-        let (sig_size, sig) = match Sign::sign(*curve, path, &self.hash[..]) {
-            Err(e) => return (0, e as _),
-            Ok(k) => k,
-        };
-
         let mut tx = 0;
-
-        //reset globals to avoid skipping `Init`
-        if let Err(e) = cleanup_globals() {
-            return (0, e as _);
-        }
 
         //write unsigned_hash to buffer
         if self.send_hash {
             out[tx..tx + Sign::SIGN_HASH_SIZE].copy_from_slice(&self.hash[..]);
             tx += Sign::SIGN_HASH_SIZE;
         }
-
-        // check that output buffer size is big enough
-        if out.len() < (tx + sig_size) {
-            sys::zemu_log_stack("AvaxSign::output_buffer_too_small\x00");
-            return (0, Error::OutputBufferTooSmall as u16);
+        // In this step the transaction has not been signed
+        // so store the hash for the next steps
+        unsafe {
+            match HASH.lock(Sign) {
+                Ok(hash) => {
+                    hash.replace(self.hash);
+                }
+                Err(_) => return (0, Error::ExecutionError as _),
+            }
         }
-
-        //wrte signature to buffer
-        out[tx..tx + sig_size].copy_from_slice(&sig[..sig_size]);
-        tx += sig_size;
 
         (tx, Error::Success as _)
     }
