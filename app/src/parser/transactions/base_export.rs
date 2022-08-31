@@ -114,11 +114,17 @@ where
             return;
         }
 
-        self.outputs.iter().enumerate().for_each(|(idx, o)| {
+        let mut idx = 0;
+        let mut render = self.renderable_out;
+        self.outputs.iterate_with(|o| {
+            // The 99.99% of the outputs contain only one address(best case),
+            // In the worse case we just show every output.
             if o.num_addresses() == 1 && o.contain_address(address) {
-                self.renderable_out ^= 1 << idx;
+                render ^= 1 << idx;
             }
+            idx += 1;
         });
+        self.renderable_out = render;
     }
 
     // Use the info contained in the transaction header
