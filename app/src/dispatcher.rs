@@ -35,9 +35,7 @@ use crate::handlers::{
     avax::blind_signing::BlindSign as AvaxBlindSign, eth::signing::BlindSign as EthBlindSign,
 };
 
-use crate::handlers::avax::{
-    preamble::Preamble, sign_hash::Sign as SignHash, signing::Sign as AvaxSign,
-};
+use crate::handlers::avax::{sign_hash::Sign as SignHash, signing::Sign as AvaxSign};
 
 #[cfg(feature = "dev")]
 use crate::handlers::dev::*;
@@ -79,7 +77,6 @@ pub fn apdu_dispatch<'apdu>(
         (CLA, INS_GET_WALLET_ID) => WalletId::handle(flags, tx, apdu_buffer),
         (CLA, INS_SIGN) => AvaxSign::handle(flags, tx, apdu_buffer),
         (CLA, INS_SIGN_HASH) => SignHash::handle(flags, tx, apdu_buffer),
-        (CLA, INS_PROCESS_PREAMBLE) => Preamble::handle(flags, tx, apdu_buffer),
 
         (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_PROVIDE_ERC20) => ProvideERC20::handle(flags, tx, apdu_buffer),

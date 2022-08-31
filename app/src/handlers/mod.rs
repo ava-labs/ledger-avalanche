@@ -59,6 +59,12 @@ pub mod resources {
         }
     }
 
+    impl From<super::avax::sign_hash::Sign> for BUFFERAccessors {
+        fn from(_: super::avax::sign_hash::Sign) -> Self {
+            Self::Sign
+        }
+    }
+
     impl From<super::eth::signing::BlindSign> for BUFFERAccessors {
         fn from(_: super::eth::signing::BlindSign) -> Self {
             Self::EthSign
@@ -88,7 +94,6 @@ pub mod resources {
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum HASHAccessors {
         Sign,
-        EthSign,
     }
 
     impl From<super::avax::blind_signing::BlindSign> for PATHAccessors {
@@ -123,12 +128,6 @@ pub mod resources {
 
     impl From<super::avax::sign_hash::Sign> for HASHAccessors {
         fn from(_: super::avax::sign_hash::Sign) -> Self {
-            Self::Sign
-        }
-    }
-
-    impl From<super::avax::preamble::Preamble> for PATHAccessors {
-        fn from(_: super::avax::preamble::Preamble) -> Self {
             Self::Sign
         }
     }
