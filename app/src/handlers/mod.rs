@@ -31,7 +31,8 @@ pub mod resources {
 
     use super::lock::Lock;
     use bolos::{
-        crypto::bip32::BIP32Path, lazy_static, new_swapping_buffer, pic::PIC, SwappingBuffer,
+        crypto::bip32::BIP32Path, hash::Sha256, lazy_static, new_swapping_buffer, pic::PIC,
+        SwappingBuffer,
     };
 
     #[lazy_static]
@@ -81,6 +82,15 @@ pub mod resources {
         EthSign,
     }
 
+    #[lazy_static]
+    pub static mut HASH: Lock<Option<[u8; Sha256::DIGEST_LEN]>, HASHAccessors> = Lock::new(None);
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum HASHAccessors {
+        Sign,
+        EthSign,
+    }
+
     impl From<super::avax::blind_signing::BlindSign> for PATHAccessors {
         fn from(_: super::avax::blind_signing::BlindSign) -> Self {
             Self::Sign
@@ -96,6 +106,30 @@ pub mod resources {
     impl From<super::eth::signing::BlindSign> for PATHAccessors {
         fn from(_: super::eth::signing::BlindSign) -> Self {
             Self::EthSign
+        }
+    }
+
+    impl From<super::avax::sign_hash::Sign> for PATHAccessors {
+        fn from(_: super::avax::sign_hash::Sign) -> Self {
+            Self::Sign
+        }
+    }
+
+    impl From<super::avax::signing::Sign> for HASHAccessors {
+        fn from(_: super::avax::signing::Sign) -> Self {
+            Self::Sign
+        }
+    }
+
+    impl From<super::avax::sign_hash::Sign> for HASHAccessors {
+        fn from(_: super::avax::sign_hash::Sign) -> Self {
+            Self::Sign
+        }
+    }
+
+    impl From<super::avax::preamble::Preamble> for PATHAccessors {
+        fn from(_: super::avax::preamble::Preamble) -> Self {
+            Self::Sign
         }
     }
 }
