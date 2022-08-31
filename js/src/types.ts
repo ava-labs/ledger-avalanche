@@ -37,7 +37,7 @@ export interface ResponseSign extends ResponseBase {
   // avax expect a map path -> signature whereas eth
   // expects a simple signature buffer
   hash: null | Buffer
-  signatures: null | Map<string, Buffer> | Buffer
+  signatures: null | Map<string, Buffer>
 }
 
 export interface ResponseWalletId extends ResponseBase {

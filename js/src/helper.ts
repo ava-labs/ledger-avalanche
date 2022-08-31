@@ -54,7 +54,6 @@ export function serializePath(path: string): Buffer {
 
     buf.writeUInt32BE(value, 1 + 4 * (i - 1))
   }
-  console.log("serialized base_path ", buf);
 
   return buf
 }

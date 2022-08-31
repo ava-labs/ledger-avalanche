@@ -267,7 +267,7 @@ export default class AvalancheApp {
       returnCode: LedgerError.NoErrors,
       errorMessage:"",
       hash: null,
-      signatures: null as null | Buffer | Map<string, Buffer>,
+      signatures: null as null | Map<string, Buffer>,
     };
 
     // where each pair path_suffix, signature are stored
@@ -356,7 +356,7 @@ export default class AvalancheApp {
         let result = {
           returnCode: response.returnCode,
           errorMessage: response.errorMessage,
-          signatures: null as null | Buffer | Map<string, Buffer>,
+          signatures: null as null | Map<string, Buffer>,
         }
 
         // send chunks
