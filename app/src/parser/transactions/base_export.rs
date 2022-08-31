@@ -17,15 +17,16 @@ use core::ops::Deref;
 
 use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
-use nom::bytes::complete::take;
+use nom::{bytes::complete::take, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, ParserError,
-        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN, MAX_ADDRESS_ENCODED_LEN,
+        BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, OutputIdx,
+        ParserError, TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN,
+        MAX_ADDRESS_ENCODED_LEN,
     },
 };
 
@@ -42,6 +43,10 @@ where
     pub base_tx: BaseTxFields<'b, O>,
     pub destination_chain: &'b [u8; 32],
     pub outputs: ObjectList<'b, TransferableOutput<'b, O>>,
+    // a bit-wise idx that tells what outputs could be displayed
+    // in the ui stage.
+    // this is set during the parsing stage
+    renderable_out: OutputIdx,
 }
 
 impl<'b, O> FromBytes<'b> for BaseExport<'b, O>
@@ -75,12 +80,21 @@ where
             return Err(ParserError::InvalidTransactionType.into());
         }
 
+        // check for the number of outputs before parsing then as now
+        // it has to be checked for the outputIdx capacity which is used
+        // to tell if an output should be rendered or not.
+        let (_, num_outputs) = be_u32(rem)?;
+        if num_outputs > OutputIdx::BITS {
+            return Err(ParserError::TooManyOutputs.into());
+        }
         let outputs = unsafe { &mut *addr_of_mut!((*out).outputs).cast() };
         let rem = ObjectList::<TransferableOutput<O>>::new_into(rem, outputs)?;
 
         //good ptr and no uninit reads
         unsafe {
             addr_of_mut!((*out).destination_chain).write(destination_chain);
+            // by default all outputs are renderable
+            addr_of_mut!((*out).renderable_out).write(OutputIdx::MAX);
         }
 
         Ok(rem)
@@ -91,6 +105,28 @@ impl<'b, O> BaseExport<'b, O>
 where
     O: FromBytes<'b> + DisplayableItem + Deref<Target = Output<'b>> + 'b,
 {
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.base_tx.disable_output_if(address);
+
+        let num_outs = self.outputs.iter().count();
+        // skip filtering out outputs if there is only one
+        if num_outs <= 1 {
+            return;
+        }
+
+        let mut idx = 0;
+        let mut render = self.renderable_out;
+        self.outputs.iterate_with(|o| {
+            // The 99.99% of the outputs contain only one address(best case),
+            // In the worse case we just show every output.
+            if o.num_addresses() == 1 && o.contain_address(address) {
+                render ^= 1 << idx;
+            }
+            idx += 1;
+        });
+        self.renderable_out = render;
+    }
+
     // Use the info contained in the transaction header
     // to get the corresponding hrp, useful to encode addresses
     pub fn chain_hrp(&self) -> Result<&'static str, ParserError> {
@@ -106,7 +142,7 @@ where
     }
 
     pub fn export_outputs(&'b self) -> &ObjectList<TransferableOutput<O>> {
-        &self.base_tx.outputs
+        &self.outputs
     }
 
     pub fn fee(&'b self) -> Result<u64, ParserError> {
@@ -137,8 +173,14 @@ where
     // out.
     pub fn num_outputs_items(&'b self) -> usize {
         let mut items = 0;
+        let mut idx = 0;
         self.outputs.iterate_with(|o| {
-            items += o.num_items();
+            // check first if the output is listed as renderable
+            let render = self.renderable_out & (1 << idx);
+            if render > 0 {
+                items += o.num_items();
+            }
+            idx += 1;
         });
         items
     }
@@ -151,9 +193,18 @@ where
     ) -> Result<(TransferableOutput<O>, u8), ViewError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
+        let mut idx = 0;
         // gets the output that contains item_n
         // and its corresponding index
         let filter = |o: &TransferableOutput<'b, O>| -> bool {
+            // check first if the output is listed as renderable
+            let render = self.renderable_out & (1 << idx) > 0;
+            idx += 1;
+
+            if !render {
+                return false;
+            }
+
             let n = o.num_items();
             for index in 0..n {
                 count += 1;
@@ -239,8 +290,8 @@ where
             ChainId::PChain => export_str.push(b'P'),
             ChainId::XChain => export_str.push(b'X'),
             ChainId::CChain => export_str.push(b'C'),
-            _ => return Err(ViewError::Unknown),
         }
+
         let to_alias = chain_alias_lookup(self.destination_chain)
             .map(|a| a.as_bytes())
             .map_err(|_| ViewError::Unknown)?;

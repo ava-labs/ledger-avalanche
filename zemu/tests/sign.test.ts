@@ -41,7 +41,8 @@ describe.skip.each(models)('Standard [%s]; sign', function (m) {
       await enableBlindSigning(sim, testcase)
 
       const currentScreen = sim.snapshot();
-      const respReq = app.sign(APP_DERIVATION, msg)
+      const signers = ["0/1", "5/8"];
+      const respReq = app.sign(APP_DERIVATION, signers, msg);
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
 
@@ -54,8 +55,7 @@ describe.skip.each(models)('Standard [%s]; sign', function (m) {
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
-      expect(resp).toHaveProperty('hash')
-      expect(resp).toHaveProperty('signature')
+      expect(resp).toHaveProperty('signatures')
 
       const resp_addr = await app.getAddressAndPubKey(APP_DERIVATION, false)
       const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)
@@ -89,7 +89,8 @@ describe.skip.each(models)('Ethereum [%s]; sign', function (m) {
       await enableBlindSigning(sim, testcase)
 
       const currentScreen = sim.snapshot();
-      const respReq = app.sign(ETH_DERIVATION, msg)
+      const signers = ["0/1", "5/8"];
+      const respReq = app.sign(APP_DERIVATION, signers, msg);
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
 
@@ -102,8 +103,7 @@ describe.skip.each(models)('Ethereum [%s]; sign', function (m) {
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
-      expect(resp).toHaveProperty('hash')
-      expect(resp).toHaveProperty('signature')
+      expect(resp).toHaveProperty('signatures')
 
       const resp_addr = await app.getAddressAndPubKey(ETH_DERIVATION, false)
       const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)

@@ -4,13 +4,19 @@ export const CLA = 0x80
 export const CLA_ETH = 0xE0
 export const CHUNK_SIZE = 250
 export const APP_KEY = 'AVAX'
+export const FIRST_MESSAGE = 0x01;
+export const LAST_MESSAGE = 0x02;
+export const NEXT_MESSAGE = 0x03;
+export const HASH_LEN = 32;
 
 export const INS = {
   GET_VERSION: 0x00,
-  GET_ADDR: 0x01,
-  GET_EXTENDED_PUBLIC_KEY: 0x04,
-  SIGN: 0x02,
-  WALLET_ID: 0x03,
+  WALLET_ID: 0x01,
+  GET_ADDR: 0x02,
+  GET_EXTENDED_PUBLIC_KEY: 0x03,
+  SIGN_HASH: 0x04,
+  SIGN: 0x05,
+  PREAMBLE: 0x06,
 }
 
 export const PAYLOAD_TYPE = {

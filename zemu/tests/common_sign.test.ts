@@ -21,15 +21,22 @@ import { ec } from 'elliptic'
 import { SIMPLE_TRANSFER_DATA } from './common_sign_vectors'
 
 const secp256k1 = new ec('secp256k1');
+const sha256 = require('js-sha256').sha256
 
 const SIGN_TEST_DATA = cartesianProduct(curves, [
   {
     name: 'simple_transfer',
     op: SIMPLE_TRANSFER_DATA ,
+    filter: false,
+  },
+  {
+    name: 'simple_transfer_hide_output',
+    op: SIMPLE_TRANSFER_DATA ,
+    filter: true,
   },
 ])
 
-describe.skip.each(models)('Transfer [%s]; sign', function (m) {
+describe.each(models)('Transfer [%s]; sign', function (m) {
   test.each(SIGN_TEST_DATA)('sign basic transactions', async function (curve, data) {
     const sim = new Zemu(m.path)
     try {
@@ -40,7 +47,12 @@ describe.skip.each(models)('Transfer [%s]; sign', function (m) {
       const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
 
       const currentScreen = sim.snapshot();
-      const respReq = app.sign(APP_DERIVATION, msg)
+      const signers = ["0/0", "5/8"];
+      let change_path = undefined
+      if (data.filter === true) {
+        change_path = ["0/1", "1/100" ];
+      }
+      const respReq = app.sign(APP_DERIVATION, signers, msg, change_path);
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
 
@@ -52,8 +64,8 @@ describe.skip.each(models)('Transfer [%s]; sign', function (m) {
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
-      expect(resp).toHaveProperty('hash')
-      expect(resp).toHaveProperty('signature')
+      expect(resp).toHaveProperty('signatures')
+      expect(resp.signatures?.size).toEqual(signers.length)
 
       const resp_addr = await app.getAddressAndPubKey(APP_DERIVATION, false)
       const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)
@@ -69,6 +81,35 @@ describe.skip.each(models)('Transfer [%s]; sign', function (m) {
           throw Error('not a valid curve type')
       }
       expect(signatureOK).toEqual(true)
+    } finally {
+      await sim.close()
+    }
+  })
+})
+
+describe.each(models)('Common [%s]; signHash', function (m) {
+  test.each(curves)('sign hash', async function (curve) {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new AvalancheApp(sim.getTransport())
+      const message = "AvalancheApp"
+      const msg = Buffer.from(sha256(message), "hex");
+
+      const testcase = `${m.prefix.toLowerCase()}-sign-hash-${curve}`
+
+      let signing_list = ["0/0", "4/8"];
+      const respReq = app.signHash(APP_DERIVATION, signing_list, msg);
+
+      const resp = await respReq
+
+      console.log(resp, m.name, "signHash", curve)
+
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('signatures')
+      expect(resp.signatures?.size).toEqual(signing_list.length)
+
     } finally {
       await sim.close()
     }

@@ -113,6 +113,10 @@ impl<'b> PvmExportTx<'b> {
     pub fn fee(&'b self) -> Result<u64, ParserError> {
         self.0.fee()
     }
+
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.0.disable_output_if(address);
+    }
 }
 
 #[cfg(test)]
