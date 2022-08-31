@@ -16,8 +16,10 @@
 
 // taken from: https://github.com/Zondax/ledger-tezos/blob/main/rust/app/src/handlers/utils.rs
 //
+mod path_wrapper;
 mod time;
 pub use self::time::{timestamp_to_str_date, TimeError};
+pub use path_wrapper::PathWrapper;
 
 use crate::parser::{ParserError, CB58_CHECKSUM_LEN, NANO_AVAX_DECIMAL_DIGITS};
 use crate::sys::PIC;
