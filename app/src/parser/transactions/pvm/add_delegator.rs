@@ -177,13 +177,17 @@ impl<'b> AddDelegatorTx<'b> {
         if num_outs <= 1 {
             return;
         }
-        self.stake.iter().enumerate().for_each(|(idx, o)| {
+        let mut idx = 0;
+        let mut render = self.renderable_out;
+        self.stake.iterate_with(|o| {
             // The 99.99% of the outputs contain only one address(best case),
             // In the worse case we just show every output.
             if o.num_addresses() == 1 && o.contain_address(address) {
-                self.renderable_out ^= 1 << idx;
+                render ^= 1 << idx;
             }
+            idx += 1;
         });
+        self.renderable_out = render;
     }
 
     fn fee(&'b self) -> Result<u64, ParserError> {
