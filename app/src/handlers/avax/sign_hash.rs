@@ -14,6 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 use bolos::{crypto::bip32::BIP32Path, hash::Sha256};
+use core::mem::MaybeUninit;
 
 use crate::{
     constants::{
@@ -23,6 +24,7 @@ use crate::{
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::resources::{HASH, PATH},
+    parser::{FromBytes, PathWrapper},
     sys,
     utils::ApduBufferRead,
 };
@@ -50,9 +52,9 @@ impl Sign {
 
     //(actual_size, [u8; MAX_SIGNATURE_SIZE])
     #[inline(never)]
-    pub fn sign<const LEN: usize>(
+    pub fn sign(
+        path: &BIP32Path<MAX_BIP32_PATH_DEPTH>,
         curve: Curve,
-        path: &BIP32Path<LEN>,
         data: &[u8],
     ) -> Result<(usize, [u8; 100]), Error> {
         let sk = curve.to_secret(path);
@@ -66,11 +68,35 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn start_sign(data: &[u8], flags: &mut u32) -> Result<(usize, [u8; 100]), Error> {
-        let (path_prefix, curve) = Self::get_derivation_info()?;
-        let hash = Self::get_hash()?;
+    pub fn start_sign(data: &[u8]) -> Result<(), Error> {
+        // the data contains path_sufix + 32-byte hash
+        let mut path = MaybeUninit::uninit();
+        let rem = PathWrapper::from_bytes_into(data, &mut path).map_err(|_| Error::Unknown)?;
+        let path = unsafe { path.assume_init().path() };
 
+        let curve = Curve::Secp256K1;
+
+        unsafe {
+            PATH.lock(Self)?.replace((path, curve));
+        }
+
+        if rem.len() != Self::SIGN_HASH_SIZE {
+            return Err(Error::WrongLength);
+        }
+
+        let mut unsigned_hash = [0; Self::SIGN_HASH_SIZE];
+        unsigned_hash.copy_from_slice(rem);
+
+        unsafe {
+            HASH.lock(Self)?.replace(unsigned_hash);
+        }
+
+        Ok(())
+    }
+
+    fn get_signing_info(data: &[u8]) -> Result<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
         //We expect a path prefix of the form x'/x'/x'
+        let (path_prefix, curve) = Self::get_derivation_info()?;
         if path_prefix.components().len() > 4 {
             return Err(Error::WrongLength);
         }
@@ -86,41 +112,33 @@ impl Sign {
 
         let full_path: BIP32Path<MAX_BIP32_PATH_DEPTH> =
             BIP32Path::new(path_iter).map_err(|_| Error::DataInvalid)?;
-
-        Self::sign(*curve, &full_path, hash)
+        Ok((full_path, *curve))
     }
 }
 
 impl ApduHandler for Sign {
     #[inline(never)]
     fn handle<'apdu>(
-        flags: &mut u32,
+        _flags: &mut u32,
         tx: &mut u32,
         buffer: ApduBufferRead<'apdu>,
     ) -> Result<(), Error> {
         sys::zemu_log_stack("SignHash::handle\x00");
 
         *tx = 0;
-        let p1 = buffer.p1();
 
+        let p1 = buffer.p1();
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
-        //
         if p1 == FIRST_MESSAGE {
-            if cdata.len() != Self::SIGN_HASH_SIZE {
-                return Err(Error::WrongLength);
-            }
-
-            let mut unsigned_hash = [0; Self::SIGN_HASH_SIZE];
-            unsigned_hash.copy_from_slice(cdata);
-
-            unsafe {
-                HASH.lock(Self)?.replace(unsigned_hash);
-            }
-            return Ok(());
+            return Self::start_sign(cdata);
         }
 
-        let (sz, sig) = Sign::start_sign(cdata, flags)?;
+        // retrieve signing info
+        let (path_prefix, curve) = Sign::get_signing_info(cdata)?;
+        let hash = Self::get_hash()?;
+
+        let (sz, sig) = Sign::sign(&path_prefix, curve, hash)?;
         buffer.write()[..sz].copy_from_slice(&sig[..sz]);
 
         if p1 == LAST_MESSAGE {

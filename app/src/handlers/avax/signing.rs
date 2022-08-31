@@ -103,15 +103,23 @@ impl Sign {
                 BIP32Path::new(path_iter).map_err(|_| Error::DataInvalid)?;
             Self::compute_keyhash(&full_path, *curve, &mut address)?;
             tx.disable_output_if(&address[..]);
-            unsafe {
-                path_ptr.drop_in_place();
-            }
         }
         Ok(())
     }
 
     #[inline(never)]
-    pub fn start_sign(send_hash: bool, data: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
+    pub fn start_sign(
+        init_data: &[u8],
+        data: &'static [u8],
+        flags: &mut u32,
+    ) -> Result<u32, Error> {
+        let curve = Curve::Secp256K1;
+        let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
+
+        unsafe {
+            PATH.lock(Self)?.replace((path, curve));
+        }
+
         // then, get the change_path list.
         let mut path_list: MaybeUninit<ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>> =
             MaybeUninit::uninit();
@@ -131,7 +139,6 @@ impl Sign {
 
         let ui = SignUI {
             hash: unsigned_hash,
-            send_hash,
             transaction,
         };
 
@@ -151,9 +158,7 @@ impl ApduHandler for Sign {
         *tx = 0;
 
         if let Some(upload) = Uploader::new(Self).upload(&buffer)? {
-            // Do not return the unsigned hash. It is stored for the multi_signers
-            // step
-            *tx = Self::start_sign(false, upload.data, flags)?;
+            *tx = Self::start_sign(upload.first, upload.data, flags)?;
         }
 
         Ok(())
@@ -162,7 +167,6 @@ impl ApduHandler for Sign {
 
 pub(crate) struct SignUI {
     hash: [u8; Sign::SIGN_HASH_SIZE],
-    send_hash: bool,
     transaction: Transaction<'static>,
 }
 
@@ -182,14 +186,9 @@ impl Viewable for SignUI {
         self.transaction.render_item(item_n, title, message, page)
     }
 
-    fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let mut tx = 0;
+    fn accept(&mut self, _out: &mut [u8]) -> (usize, u16) {
+        let tx = 0;
 
-        //write unsigned_hash to buffer
-        if self.send_hash {
-            out[tx..tx + Sign::SIGN_HASH_SIZE].copy_from_slice(&self.hash[..]);
-            tx += Sign::SIGN_HASH_SIZE;
-        }
         // In this step the transaction has not been signed
         // so store the hash for the next steps
         unsafe {
