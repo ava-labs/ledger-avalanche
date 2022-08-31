@@ -104,17 +104,21 @@ pub const DEFAULT_CHAIN_ID: &[u8; CHAIN_ID_LEN] = &[0; CHAIN_ID_LEN];
 pub const ASCII_HRP_MAX_SIZE: usize = 24;
 pub const WALLET_ID_LEN: usize = 6;
 pub const WALLET_ID_HMAC_KEY: &str = "wallet-id";
+pub const FIRST_MESSAGE: u8 = 0x01;
+pub const LAST_MESSAGE: u8 = 0x02;
 
 pub(crate) mod instructions {
     pub const CLA: u8 = 0x80;
 
     pub const INS_GET_VERSION: u8 = 0x00;
-    pub const INS_GET_PUBLIC_KEY: u8 = 0x01;
-    pub const INS_GET_EXTENDED_PUBLIC_KEY: u8 = 0x04;
+    pub const INS_GET_WALLET_ID: u8 = 0x01;
+    pub const INS_GET_PUBLIC_KEY: u8 = 0x02;
+    pub const INS_GET_EXTENDED_PUBLIC_KEY: u8 = 0x03;
+    pub const INS_SIGN_HASH: u8 = 0x04;
+    pub const INS_SIGN: u8 = 0x05;
+    pub const INS_PROCESS_PREAMBLE: u8 = 0x06;
     #[cfg(feature = "blind-sign")]
     pub const INS_BLIND_SIGN: u8 = 0xF0;
-    pub const INS_GET_WALLET_ID: u8 = 0x03;
-    pub const INS_SIGN: u8 = 0x02;
 }
 
 pub(crate) mod evm_instructions {
@@ -130,6 +134,13 @@ pub(crate) mod evm_instructions {
 pub const BIP32_PATH_ROOT_0: u32 = 0x8000_0000 + 44;
 pub const BIP32_PATH_ROOT_1: u32 = 0x8000_0000 + 9000;
 pub const MAX_BIP32_PATH_DEPTH: usize = 6;
+// path prefix for signer_list and change_path lists
+// It is the same for both and has 3 components m/44'/9000'/0'/
+pub const BIP32_PATH_PREFIX_DEPTH: usize = 4;
+// path suffix components which contain the change/address
+// This should be concatenated with the path_prefix to get a full
+// signer/owner path.
+pub const BIP32_PATH_SUFFIX_DEPTH: usize = 2;
 
 pub use evm_instructions::*;
 pub use instructions::*;
