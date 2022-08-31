@@ -15,4 +15,5 @@
 ********************************************************************************/
 
 pub mod blind_signing;
+pub mod sign_hash;
 pub mod signing;

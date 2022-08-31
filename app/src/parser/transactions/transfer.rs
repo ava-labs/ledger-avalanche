@@ -31,6 +31,10 @@ pub struct Transfer<'b> {
 }
 
 impl<'b> Transfer<'b> {
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.base.disable_output_if(address);
+    }
+
     fn render_outputs(
         &self,
         item_n: u8,

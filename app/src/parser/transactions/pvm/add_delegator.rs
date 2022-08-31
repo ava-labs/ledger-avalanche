@@ -16,13 +16,14 @@
 use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
+use nom::number::complete::be_u32;
 use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
-        ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator,
+        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator,
         MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR,
     },
 };
@@ -35,6 +36,10 @@ pub struct AddDelegatorTx<'b> {
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     pub validator: Validator<'b>,
     pub stake: ObjectList<'b, TransferableOutput<'b, PvmOutput<'b>>>,
+    // a bit-wise idx that tells what stake outputs could be displayed
+    // in the ui stage.
+    // this is set during the parsing stage
+    renderable_out: OutputIdx,
     pub rewards_owner: SECPOutputOwners<'b>,
 }
 
@@ -63,6 +68,13 @@ impl<'b> FromBytes<'b> for AddDelegatorTx<'b> {
         let rem = Validator::from_bytes_into(rem, validator)?;
 
         // stake
+        // check for the number of stake-outputs before parsing then as now
+        // it has to be checked for the outputIdx capacity which is used
+        // to tell if an output should be rendered or not.
+        let (_, num_outputs) = be_u32(rem)?;
+        if num_outputs > OutputIdx::BITS {
+            return Err(ParserError::TooManyOutputs.into());
+        }
         let stake = unsafe { &mut *addr_of_mut!((*out).stake).cast() };
         let rem = ObjectList::<TransferableOutput<PvmOutput>>::new_into(rem, stake)?;
 
@@ -82,6 +94,10 @@ impl<'b> FromBytes<'b> for AddDelegatorTx<'b> {
         // rewards_owner
         let rewards_owner = unsafe { &mut *addr_of_mut!((*out).rewards_owner).cast() };
         let rem = SECPOutputOwners::from_bytes_into(rem, rewards_owner)?;
+        unsafe {
+            // by default all outputs are renderable
+            addr_of_mut!((*out).renderable_out).write(OutputIdx::MAX);
+        }
 
         Ok(rem)
     }
@@ -153,6 +169,27 @@ impl<'b> DisplayableItem for AddDelegatorTx<'b> {
 }
 
 impl<'b> AddDelegatorTx<'b> {
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.base_tx.disable_output_if(address);
+
+        // omit if there is only one stake output
+        let num_outs = self.stake.iter().count();
+        if num_outs <= 1 {
+            return;
+        }
+        let mut idx = 0;
+        let mut render = self.renderable_out;
+        self.stake.iterate_with(|o| {
+            // The 99.99% of the outputs contain only one address(best case),
+            // In the worse case we just show every output.
+            if o.num_addresses() == 1 && o.contain_address(address) {
+                render ^= 1 << idx;
+            }
+            idx += 1;
+        });
+        self.renderable_out = render;
+    }
+
     fn fee(&'b self) -> Result<u64, ParserError> {
         let sum_inputs = self.base_tx.sum_inputs_amount()?;
 
@@ -171,8 +208,13 @@ impl<'b> AddDelegatorTx<'b> {
 
     fn num_stake_items(&self) -> usize {
         let mut items = 0;
+        let mut idx = 0;
         self.stake.iterate_with(|o| {
-            items += o.num_items();
+            let render = self.renderable_out & (1 << idx);
+            if render > 0 {
+                items += o.num_items();
+            }
+            idx += 1;
         });
         items
     }
@@ -357,9 +399,20 @@ impl<'b> AddDelegatorTx<'b> {
     ) -> Result<(TransferableOutput<PvmOutput>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
+        // index to check for renderable outputs.
+        // we can omit this and be "fancy" with iterators but
+        // they consume a lot of stack.
+        // causing stack overflows in nanos
+        let mut idx = 0;
         // gets the output that contains item_n
         // and its corresponding index
         let filter = |o: &TransferableOutput<'b, PvmOutput>| -> bool {
+            let render = self.renderable_out & (1 << idx) > 0;
+            idx += 1;
+            if !render {
+                return false;
+            }
+
             let n = o.num_items();
             for index in 0..n {
                 count += 1;

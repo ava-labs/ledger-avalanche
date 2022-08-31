@@ -19,7 +19,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32};
 
 use crate::parser::{
-    DisplayableItem, FromBytes, ObjectList, Output, ParserError, TransferableInput,
+    DisplayableItem, FromBytes, ObjectList, Output, OutputIdx, ParserError, TransferableInput,
     TransferableOutput,
 };
 
@@ -33,6 +33,10 @@ where
 {
     // lazy parsing of inputs/outpus
     pub outputs: ObjectList<'b, TransferableOutput<'b, O>>,
+    // a bit-wise idx that tells what outputs could be displayed
+    // in the ui stage.
+    // this is set during the parsing stage.
+    renderable_out: OutputIdx,
     // inputs can be generic as well.
     // but so far, there is only one input
     // across all chains and their transactions.
@@ -46,6 +50,25 @@ impl<'b, O> BaseTxFields<'b, O>
 where
     O: FromBytes<'b> + DisplayableItem + Deref<Target = Output<'b>> + 'b,
 {
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        let num_outs = self.outputs.iter().count();
+        // skip filtering out outputs if there is only one
+        if num_outs <= 1 {
+            return;
+        }
+        let mut idx = 0;
+        let mut render = self.renderable_out;
+        self.outputs.iterate_with(|o| {
+            // The 99.99% of the outputs contain only one address(best case),
+            // In the worse case we just show every output.
+            if o.num_addresses() == 1 && o.contain_address(address) {
+                render ^= 1 << idx;
+            }
+            idx += 1;
+        });
+        self.renderable_out = render;
+    }
+
     pub fn sum_inputs_amount(&self) -> Result<u64, ParserError> {
         self.inputs
             .iter()
@@ -74,8 +97,13 @@ where
 
     pub fn base_outputs_num_items(&'b self) -> usize {
         let mut items = 0;
+        let mut idx = 0;
         self.outputs.iterate_with(|o| {
-            items += o.num_items();
+            let render = self.renderable_out & (1 << idx);
+            if render > 0 {
+                items += o.num_items();
+            }
+            idx += 1;
         });
         items
     }
@@ -88,9 +116,22 @@ where
     ) -> Result<(TransferableOutput<O>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
+        // index to check for renderable outputs.
+        // we can omit this and be "fancy" with iterators but
+        // they consume a lot of stack.
+        // causing stack overflows in nanos
+        let mut idx = 0;
         // gets the output that contains item_n
         // and its corresponding index
         let filter = |o: &TransferableOutput<'b, O>| -> bool {
+            // filter out
+            let render = self.renderable_out & (1 << idx) > 0;
+            idx += 1;
+
+            if !render {
+                return false;
+            }
+
             let n = o.num_items();
             for index in 0..n {
                 obj_item_n = index;
@@ -123,6 +164,13 @@ where
         crate::sys::zemu_log_stack("BaseTxFields::from_bytes_into\x00");
 
         let out = out.as_mut_ptr();
+        // check for the number of outputs before parsing then as now
+        // it has to be checked for the outputIdx capacity which is used
+        // to tell if an output should be rendered or not.
+        let (_, num_outputs) = be_u32(input)?;
+        if num_outputs > OutputIdx::BITS {
+            return Err(ParserError::TooManyOutputs.into());
+        }
         // get outputs
         let outputs = unsafe { &mut *addr_of_mut!((*out).outputs).cast() };
         let rem = ObjectList::<TransferableOutput<O>>::new_into(input, outputs)?;
@@ -143,6 +191,8 @@ where
         //good ptr and no uninit reads
         unsafe {
             addr_of_mut!((*out).memo).write(memo);
+            // by default all outputs are renderable
+            addr_of_mut!((*out).renderable_out).write(OutputIdx::MAX);
         }
 
         Ok(rem)

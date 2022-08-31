@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::tag, number::complete::be_u32};
+use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
 use crate::{
