@@ -96,4 +96,22 @@ describe.each(models)('Ethereum [%s] - pubkey', function (m) {
       await sim.close()
     }
   })
+
+  test('get xpub and addr %s', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new Eth(sim.getTransport())
+      const resp = await app.getAddress(ETH_DERIVATION, false, true)
+
+      console.log(resp, m.name)
+
+      expect(resp).toHaveProperty('address')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('chainCode')
+      expect(resp.chainCode).not.toBeUndefined();
+    } finally {
+      await sim.close()
+    }
+  })
 })

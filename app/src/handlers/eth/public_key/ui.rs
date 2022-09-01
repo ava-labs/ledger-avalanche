@@ -36,6 +36,7 @@ use super::GetPublicKey;
 pub struct AddrUIInitializer<'ui> {
     ui: &'ui mut MaybeUninit<AddrUI>,
     path_init: bool,
+    cc: bool,
 }
 
 #[cfg_attr(test, derive(Debug))]
@@ -57,6 +58,7 @@ impl<'ui> AddrUIInitializer<'ui> {
         Self {
             ui,
             path_init: false,
+            cc: false,
         }
     }
 
@@ -101,11 +103,29 @@ impl<'ui> AddrUIInitializer<'ui> {
         self
     }
 
+    /// Write the `with_chaincode` field of the UI
+    fn write_cc(&mut self) {
+        let ui = self.ui.as_mut_ptr();
+
+        unsafe {
+            let ui_cc = addr_of_mut!((*ui).with_chaincode);
+            ui_cc.write(self.cc);
+        }
+    }
+
+    /// Set the chain code requirement to the given one
+    pub fn with_chaincode(&mut self, with: bool) -> &mut Self {
+        self.cc = with;
+
+        self
+    }
+
     /// Finalize the initialization, performing any necessary checks to ensure everything is initialized
-    pub fn finalize(self) -> Result<(), (Self, AddrUIInitError)> {
+    pub fn finalize(mut self) -> Result<(), (Self, AddrUIInitError)> {
         if !self.path_init {
             Err((self, AddrUIInitError::PathNotInitialized))
         } else {
+            self.write_cc();
             Ok(())
         }
     }
@@ -113,6 +133,7 @@ impl<'ui> AddrUIInitializer<'ui> {
 
 pub struct AddrUI {
     path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
+    with_chaincode: bool,
 }
 
 impl AddrUI {
@@ -168,14 +189,18 @@ impl Viewable for AddrUI {
     ) -> Result<u8, ViewError> {
         use bolos::pic_str;
         if let 0 = item_n {
-            let title_content = pic_str!(b"Address");
+            let title_content = if self.with_chaincode {
+                pic_str!(b"Ext Address").as_slice()
+            } else {
+                pic_str!(b"Address").as_slice()
+            };
             title[..title_content.len()].copy_from_slice(title_content);
 
             let mut mex = [0; 2 + 40];
             mex[0] = b'0';
             mex[1] = b'x';
 
-            let mut len = 2;
+            let len = 2;
             self.pkey(None)
                 .and_then(|pkey| self.address(&pkey, array_mut_ref![mex, len, 40]))
                 .map_err(|_| ViewError::Unknown)?;
@@ -187,7 +212,9 @@ impl Viewable for AddrUI {
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let pkey = match self.pkey(None) {
+        let mut cc = [0; CHAIN_CODE_LEN];
+
+        let pkey = match self.pkey(Some(&mut cc)) {
             Ok(pkey) => pkey,
             Err(e) => return (0, e as _),
         };
@@ -207,6 +234,11 @@ impl Viewable for AddrUI {
         match self.address(&pkey, array_mut_ref![out, tx, 40]) {
             Ok(_) => tx += 40,
             Err(e) => return (0, e as _),
+        }
+
+        if self.with_chaincode {
+            out[tx..][..CHAIN_CODE_LEN].copy_from_slice(&cc);
+            tx += CHAIN_CODE_LEN;
         }
 
         (tx, Error::Success as _)

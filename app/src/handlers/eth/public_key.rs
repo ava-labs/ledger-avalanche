@@ -19,9 +19,6 @@ use std::convert::TryFrom;
 use bolos::crypto::bip32::BIP32Path;
 use zemu_sys::{Show, Viewable};
 
-mod xpub;
-pub use xpub::GetExtendedPublicKey;
-
 mod ui;
 pub use ui::{AddrUI, AddrUIInitError, AddrUIInitializer};
 
@@ -57,11 +54,12 @@ impl GetPublicKey {
     /// Handles the request according to the parameters given
     pub fn initialize_ui(
         path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
+        with_cc: bool,
         ui: &mut MaybeUninit<AddrUI>,
     ) -> Result<(), Error> {
         let mut ui_initializer = AddrUIInitializer::new(ui);
 
-        ui_initializer.with_path(path);
+        ui_initializer.with_path(path).with_chaincode(with_cc);
 
         ui_initializer.finalize().map_err(|(_, err)| err)?;
 
@@ -81,12 +79,13 @@ impl ApduHandler for GetPublicKey {
         *tx = 0;
 
         let req_confirmation = buffer.p1() >= 1;
+        let req_chaincode = buffer.p2() >= 1;
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
         let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
-        Self::initialize_ui(bip32_path, &mut ui)?;
+        Self::initialize_ui(bip32_path, req_chaincode, &mut ui)?;
 
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };
