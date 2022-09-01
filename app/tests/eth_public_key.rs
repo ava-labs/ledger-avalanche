@@ -28,6 +28,7 @@ fn eth_public_key() {
 
     buffer[..3].copy_from_slice(&[CLA_ETH, INS, 0]);
     prepare_buffer::<4>(&mut buffer, &[44, 60, 0, 0], Curve::Secp256K1, None, None);
+    buffer[3] = 0;
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
