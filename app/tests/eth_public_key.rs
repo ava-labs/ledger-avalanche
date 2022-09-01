@@ -35,7 +35,7 @@ fn eth_public_key() {
 
     let pk_len = out[0] as usize;
     let pk = &out[1..][..pk_len];
-    let pk_hash = Keccak::<32>::digest(pk).expect("unable to hash pk");
+    let pk_hash = Keccak::<32>::digest(&pk[1..]).expect("unable to hash pk");
 
     let addr_len = out[1 + pk_len] as usize;
     assert_eq!(addr_len, 40);
