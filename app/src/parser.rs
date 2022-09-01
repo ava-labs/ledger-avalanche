@@ -24,6 +24,7 @@ mod constants;
 mod coreth;
 mod error;
 mod inputs;
+mod message;
 mod network_info;
 mod object_list;
 mod operations;
@@ -42,6 +43,7 @@ pub use constants::*;
 pub use coreth::{export_tx::ExportTx, import_tx::ImportTx};
 pub use error::ParserError;
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
+pub use message::AvaxMessage;
 pub use network_info::*;
 pub use object_list::ObjectList;
 pub use outputs::{

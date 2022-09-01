@@ -35,6 +35,8 @@ pub enum ParserError {
     InvalidAddress,
     InvalidPath,
     TooManyOutputs,
+    InvalidAvaxMessage,
+    InvalidEthMessage,
 }
 
 impl From<ErrorKind> for ParserError {
