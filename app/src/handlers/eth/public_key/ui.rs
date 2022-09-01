@@ -82,7 +82,17 @@ impl<'ui> AddrUIInitializer<'ui> {
     ) -> Result<(), AddrUIInitError> {
         |key, hash| {
             let mut k = Keccak::<32>::new();
-            k.update(key.as_ref());
+
+            //for eth the hash of the pkey
+            // is the hash of the uncompressed pbkey (64 bytes)
+            // so with ledger we need to skip the first byte
+            //
+            // the key was never compressed so it's uncompressed
+            let key = key
+                .as_ref()
+                .get(1..)
+                .ok_or(AddrUIInitError::HashInitError)?;
+            k.update(&key);
             k.finalize(&mut hash[..]);
             Ok(())
         }

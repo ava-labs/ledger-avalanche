@@ -27,7 +27,7 @@ use crate::{
     crypto,
     dispatcher::ApduHandler,
     sys::{self, Error as SysError},
-    utils::{ApduBufferRead, ApduPanic},
+    utils::ApduBufferRead,
 };
 
 use super::utils::parse_bip32_eth;
