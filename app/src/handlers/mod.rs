@@ -59,6 +59,12 @@ pub mod resources {
         }
     }
 
+    impl From<super::avax::message::Sign> for BUFFERAccessors {
+        fn from(_: super::avax::message::Sign) -> Self {
+            Self::Sign
+        }
+    }
+
     impl From<super::avax::sign_hash::Sign> for BUFFERAccessors {
         fn from(_: super::avax::sign_hash::Sign) -> Self {
             Self::Sign
@@ -108,6 +114,12 @@ pub mod resources {
         }
     }
 
+    impl From<super::avax::message::Sign> for PATHAccessors {
+        fn from(_: super::avax::message::Sign) -> Self {
+            Self::Sign
+        }
+    }
+
     impl From<super::eth::signing::BlindSign> for PATHAccessors {
         fn from(_: super::eth::signing::BlindSign) -> Self {
             Self::EthSign
@@ -122,6 +134,12 @@ pub mod resources {
 
     impl From<super::avax::signing::Sign> for HASHAccessors {
         fn from(_: super::avax::signing::Sign) -> Self {
+            Self::Sign
+        }
+    }
+
+    impl From<super::avax::message::Sign> for HASHAccessors {
+        fn from(_: super::avax::message::Sign) -> Self {
             Self::Sign
         }
     }
