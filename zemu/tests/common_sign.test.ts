@@ -114,5 +114,35 @@ describe.each(models)('Common [%s]; signHash', function (m) {
       await sim.close()
     }
   })
+
+  test.each(curves)('sign msg', async function (curve) {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new AvalancheApp(sim.getTransport())
+      const message = "Welcome to OpenSea!\n\nClick to sign in and accept the OpenSea Terms of Service: https://opensea.io/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n0x9858effd232b4033e47d90003d41ec34ecaeda94\n\nNonce:\n2b02c8a0-f74f-4554-9821-a28054dc9121";
+
+      const testcase = `${m.prefix.toLowerCase()}-sign-msg-${curve}`
+
+      let signing_list = ["0/0", "4/8"];
+      const respReq = app.signMsg(APP_DERIVATION, signing_list, message);
+
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+
+      await sim.compareSnapshotsAndApprove('.', testcase)
+
+      const resp = await respReq
+
+      console.log(resp, m.name, "signMsg", curve)
+
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('signatures')
+      expect(resp.signatures?.size).toEqual(signing_list.length)
+
+    } finally {
+      await sim.close()
+    }
+  })
 })
 

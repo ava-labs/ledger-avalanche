@@ -28,7 +28,10 @@ use crate::{
     },
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::resources::{HASH, PATH},
+    handlers::{
+        avax::sign_hash::Sign as SignHash,
+        resources::{HASH, PATH},
+    },
     parser::{DisplayableItem, ObjectList, ParserError, PathWrapper, Transaction},
     sys,
     utils::{ApduBufferRead, Uploader},
@@ -198,6 +201,11 @@ impl Viewable for SignUI {
                 }
                 Err(_) => return (0, Error::ExecutionError as _),
             }
+
+            // next step requires SignHash handler to have
+            // access to the path and hash resources that this handler just updated
+            let _ = PATH.lock(SignHash);
+            let _ = HASH.lock(SignHash);
         }
 
         (tx, Error::Success as _)

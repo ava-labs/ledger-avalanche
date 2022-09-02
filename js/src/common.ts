@@ -16,7 +16,7 @@ export const INS = {
   GET_EXTENDED_PUBLIC_KEY: 0x03,
   SIGN_HASH: 0x04,
   SIGN: 0x05,
-  PREAMBLE: 0x06,
+  SIGN_MSG: 0x06,
 }
 
 export const PAYLOAD_TYPE = {
