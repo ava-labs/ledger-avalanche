@@ -359,15 +359,14 @@ export default class AvalancheApp {
       throw new Error("Only avax path is supported")
     }
 
-    const header = "\x1AAvalanche Signed Message:\n";
+    const header = Buffer.from("\x1AAvalanche Signed Message:\n", 'utf8');
 
-    let content = Buffer.from(message)
-    let avax_msg = Buffer.from(header);
+    let content = Buffer.from(message, 'utf8')
 
-    let len = Buffer.alloc(4);
-    len.writeUInt32BE(message.length);
+    let msgSize = Buffer.alloc(4)
+    msgSize.writeUInt32BE(content.length, 0)
 
-    avax_msg = Buffer.concat([avax_msg, len, content])
+    let avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
 
     // Send msg for review
     let response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
