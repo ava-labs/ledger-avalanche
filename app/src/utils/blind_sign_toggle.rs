@@ -45,7 +45,7 @@ pub fn blind_sign_enabled() -> bool {
     cfg_if! {
         if #[cfg(feature = "blind-sign-toggle")] {
             //safe: guaranteed no data races
-            unsafe { impls::blind_sign.toggle }
+            unsafe { bolos::PIC::new(&impls::blind_sign).into_inner().toggle }
         } else {
             false
         }

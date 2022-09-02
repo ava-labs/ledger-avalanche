@@ -281,9 +281,11 @@ impl Viewable for SignUI {
             0 => {
                 let title_content = pic_str!(b"Ethereum Sign");
                 title[..title_content.len()].copy_from_slice(title_content);
+
                 let mut hex_buf = [0; BlindSign::SIGN_HASH_SIZE * 2];
                 //this is impossible that will error since the sizes are all checked
                 let len = hex_encode(&self.hash[..], &mut hex_buf).apdu_unwrap();
+
                 handle_ui_message(&hex_buf[..len], message, page)
             }
             _ => Err(ViewError::NoData),
