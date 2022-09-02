@@ -39,12 +39,36 @@ pub mod resources {
     pub static mut BUFFER: Lock<SwappingBuffer<'static, 'static, 0xFF, 0x1FFF>, BUFFERAccessors> =
         Lock::new(new_swapping_buffer!(0xFF, 0x1FFF));
 
+    #[lazy_static]
+    pub static mut PATH: Lock<Option<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve)>, PATHAccessors> =
+        Lock::new(None);
+
+    #[lazy_static]
+    pub static mut HASH: Lock<Option<[u8; Sha256::DIGEST_LEN]>, HASHAccessors> = Lock::new(None);
+
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum BUFFERAccessors {
         Sign,
         EthSign,
+        SignHash,
+        SignMsg,
         #[cfg(feature = "dev")]
         Debug,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum PATHAccessors {
+        Sign,
+        SignHash,
+        SignMsg,
+        EthSign,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum HASHAccessors {
+        Sign,
+        SignHash,
+        SignMsg,
     }
 
     impl From<super::avax::blind_signing::BlindSign> for BUFFERAccessors {
@@ -59,9 +83,15 @@ pub mod resources {
         }
     }
 
+    impl From<super::avax::message::Sign> for BUFFERAccessors {
+        fn from(_: super::avax::message::Sign) -> Self {
+            Self::SignMsg
+        }
+    }
+
     impl From<super::avax::sign_hash::Sign> for BUFFERAccessors {
         fn from(_: super::avax::sign_hash::Sign) -> Self {
-            Self::Sign
+            Self::SignHash
         }
     }
 
@@ -78,24 +108,6 @@ pub mod resources {
         }
     }
 
-    #[lazy_static]
-    pub static mut PATH: Lock<Option<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve)>, PATHAccessors> =
-        Lock::new(None);
-
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    pub enum PATHAccessors {
-        Sign,
-        EthSign,
-    }
-
-    #[lazy_static]
-    pub static mut HASH: Lock<Option<[u8; Sha256::DIGEST_LEN]>, HASHAccessors> = Lock::new(None);
-
-    #[derive(Clone, Copy, PartialEq, Eq)]
-    pub enum HASHAccessors {
-        Sign,
-    }
-
     impl From<super::avax::blind_signing::BlindSign> for PATHAccessors {
         fn from(_: super::avax::blind_signing::BlindSign) -> Self {
             Self::Sign
@@ -108,6 +120,12 @@ pub mod resources {
         }
     }
 
+    impl From<super::avax::message::Sign> for PATHAccessors {
+        fn from(_: super::avax::message::Sign) -> Self {
+            Self::SignMsg
+        }
+    }
+
     impl From<super::eth::signing::BlindSign> for PATHAccessors {
         fn from(_: super::eth::signing::BlindSign) -> Self {
             Self::EthSign
@@ -116,7 +134,7 @@ pub mod resources {
 
     impl From<super::avax::sign_hash::Sign> for PATHAccessors {
         fn from(_: super::avax::sign_hash::Sign) -> Self {
-            Self::Sign
+            Self::SignHash
         }
     }
 
@@ -126,9 +144,15 @@ pub mod resources {
         }
     }
 
+    impl From<super::avax::message::Sign> for HASHAccessors {
+        fn from(_: super::avax::message::Sign) -> Self {
+            Self::SignMsg
+        }
+    }
+
     impl From<super::avax::sign_hash::Sign> for HASHAccessors {
         fn from(_: super::avax::sign_hash::Sign) -> Self {
-            Self::Sign
+            Self::SignHash
         }
     }
 }

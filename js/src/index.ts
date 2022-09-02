@@ -346,6 +346,59 @@ export default class AvalancheApp {
     return this._signAndCollect(signing_paths);
   }
 
+  // Sign an arbitrary message.
+  // This function takes in an avax path prefix like: m/44'/9000'/0'/0'
+  // signing_paths: ["0/1", "5/8"]
+  // message: The message to be signed
+  async signMsg(path_prefix: string, signing_paths: Array<string>, message: string): Promise<ResponseSign> {
+    const coinType = pathCoinType(path_prefix);
+
+    let is_eth = false;
+
+    if (coinType !== "9000\'") {
+      throw new Error("Only avax path is supported")
+    }
+
+    const header = Buffer.from("\x1AAvalanche Signed Message:\n", 'utf8');
+
+    let content = Buffer.from(message, 'utf8')
+
+    let msgSize = Buffer.alloc(4)
+    msgSize.writeUInt32BE(content.length, 0)
+
+    let avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
+
+    // Send msg for review
+    let response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
+      return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN_MSG, is_eth).then(async response => {
+        // initialize response
+        let result = {
+          returnCode: response.returnCode,
+          errorMessage: response.errorMessage,
+          signatures: null as null | Map<string, Buffer>,
+        }
+
+        // send chunks
+        for (let i = 1; i < chunks.length; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], NEXT_MESSAGE, INS.SIGN_MSG, is_eth)
+          if (result.returnCode !== LedgerError.NoErrors) {
+            break
+          }
+        }
+        return result
+      }, processErrorResponse)
+    }, processErrorResponse)
+
+    if (response.returnCode !== LedgerError.NoErrors) {
+      return response;
+    }
+
+    // Message was approved so start iterating over signing_paths to sign
+    // and collect each signature
+    return this._signAndCollect(signing_paths);
+  }
+
   async getVersion(): Promise<ResponseVersion> {
     return getVersion(this.transport).catch(err => processErrorResponse(err))
   }

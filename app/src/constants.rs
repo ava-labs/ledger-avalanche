@@ -117,6 +117,7 @@ pub(crate) mod instructions {
     pub const INS_GET_EXTENDED_PUBLIC_KEY: u8 = 0x03;
     pub const INS_SIGN_HASH: u8 = 0x04;
     pub const INS_SIGN: u8 = 0x05;
+    pub const INS_SIGN_MSG: u8 = 0x06;
     #[cfg(feature = "blind-sign")]
     pub const INS_BLIND_SIGN: u8 = 0xF0;
 }
@@ -125,7 +126,6 @@ pub(crate) mod evm_instructions {
     pub const CLA_ETH: u8 = 0xE0;
 
     pub const INS_ETH_GET_PUBLIC_KEY: u8 = 0x02;
-    pub const INS_ETH_GET_EXTENDED_PUBLIC_KEY: u8 = 0x12;
     #[cfg(feature = "blind-sign")]
     pub const INS_ETH_BLIND_SIGN: u8 = 0x04;
     pub const INS_ETH_PROVIDE_ERC20: u8 = 0x0A;

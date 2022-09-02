@@ -28,13 +28,14 @@ fn eth_public_key() {
 
     buffer[..3].copy_from_slice(&[CLA_ETH, INS, 0]);
     prepare_buffer::<4>(&mut buffer, &[44, 60, 0, 0], Curve::Secp256K1, None, None);
+    buffer[3] = 0;
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
 
     let pk_len = out[0] as usize;
     let pk = &out[1..][..pk_len];
-    let pk_hash = Keccak::<32>::digest(pk).expect("unable to hash pk");
+    let pk_hash = Keccak::<32>::digest(&pk[1..]).expect("unable to hash pk");
 
     let addr_len = out[1 + pk_len] as usize;
     assert_eq!(addr_len, 40);

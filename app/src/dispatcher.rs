@@ -19,12 +19,7 @@ use core::hint::unreachable_unchecked;
 use crate::constants::{evm_instructions::*, instructions::*, ApduError};
 
 use crate::handlers::{
-    eth::{
-        provide_erc20::ProvideERC20,
-        public_key::{
-            GetExtendedPublicKey as GetExtendedEthPublicKey, GetPublicKey as GetEthPublicKey,
-        },
-    },
+    eth::{provide_erc20::ProvideERC20, public_key::GetPublicKey as GetEthPublicKey},
     public_key::{GetExtendedPublicKey, GetPublicKey},
     version::GetVersion,
     wallet_id::WalletId,
@@ -35,7 +30,9 @@ use crate::handlers::{
     avax::blind_signing::BlindSign as AvaxBlindSign, eth::signing::BlindSign as EthBlindSign,
 };
 
-use crate::handlers::avax::{sign_hash::Sign as SignHash, signing::Sign as AvaxSign};
+use crate::handlers::avax::{
+    message::Sign as AvaxSignMsg, sign_hash::Sign as SignHash, signing::Sign as AvaxSign,
+};
 
 #[cfg(feature = "dev")]
 use crate::handlers::dev::*;
@@ -77,14 +74,12 @@ pub fn apdu_dispatch<'apdu>(
         (CLA, INS_GET_WALLET_ID) => WalletId::handle(flags, tx, apdu_buffer),
         (CLA, INS_SIGN) => AvaxSign::handle(flags, tx, apdu_buffer),
         (CLA, INS_SIGN_HASH) => SignHash::handle(flags, tx, apdu_buffer),
+        (CLA, INS_SIGN_MSG) => AvaxSignMsg::handle(flags, tx, apdu_buffer),
 
         (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_PROVIDE_ERC20) => ProvideERC20::handle(flags, tx, apdu_buffer),
         #[cfg(feature = "blind-sign")]
         (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
-        (CLA_ETH, INS_ETH_GET_EXTENDED_PUBLIC_KEY) => {
-            GetExtendedEthPublicKey::handle(flags, tx, apdu_buffer)
-        }
 
         #[cfg(feature = "dev")]
         _ => Debug::handle(flags, tx, apdu_buffer),
