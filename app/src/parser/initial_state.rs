@@ -16,7 +16,6 @@
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::number::complete::be_u32;
 
-
 use crate::{
     handlers::handle_ui_message,
     parser::{AvmOutput, DisplayableItem, FromBytes, ObjectList, ParserError},
@@ -29,7 +28,7 @@ use zemu_sys::ViewError;
 #[repr(C)]
 pub enum FxId {
     SECP256KAsset,
-    NftAsse,
+    NftAsset,
 }
 
 impl TryFrom<u32> for FxId {
