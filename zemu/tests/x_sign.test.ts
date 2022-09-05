@@ -18,7 +18,7 @@ import Zemu from '@zondax/zemu'
 import { APP_DERIVATION, cartesianProduct, curves, defaultOptions, models } from './common'
 import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
-import { X_IMPORT_FROM_P, X_EXPORT_TO_C} from './x_chain_vectors'
+import { X_IMPORT_FROM_P, X_EXPORT_TO_C, X_CREATE_ASSET} from './x_chain_vectors'
 
 const secp256k1 = new ec('secp256k1');
 
@@ -31,9 +31,13 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
     name: 'x_export_to_c',
     op: X_EXPORT_TO_C,
   },
+  {
+    name: 'x_create_asset',
+    op: X_CREATE_ASSET,
+  },
 ])
 
-describe.each(models)('Standard [%s]; sign', function (m) {
+describe.each(models)('X_Sign[%s]; sign', function (m) {
   test.each(SIGN_TEST_DATA)('sign x-chain transactions', async function (curve, data) {
     const sim = new Zemu(m.path)
     try {
