@@ -55,19 +55,12 @@ impl<'b> NFTTransferOutput<'b> {
     pub fn num_addresses(&self) -> usize {
         self.addresses.len()
     }
-}
 
-impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
-    #[inline(never)]
-    fn from_bytes_into(
+    pub fn into_without_type(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("NFTTransfOutput::from_bytes_into\x00");
-        // double check the type
-        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
-
-        let (rem, (group_id, payload_len)) = tuple((be_u32, be_u32))(rem)?;
+        let (rem, (group_id, payload_len)) = tuple((be_u32, be_u32))(input)?;
 
         if payload_len as usize > MAX_PAYLOAD_LEN {
             return Err(ParserError::ValueOutOfRange.into());
@@ -97,6 +90,20 @@ impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
         }
 
         Ok(rem)
+    }
+}
+
+impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
+    #[inline(never)]
+    fn from_bytes_into(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        crate::sys::zemu_log_stack("NFTTransfOutput::from_bytes_into\x00");
+        // double check the type
+        let (rem, _) = tag(Self::TYPE_ID.to_be_bytes())(input)?;
+
+        Self::into_without_type(rem, out)
     }
 }
 
