@@ -15,7 +15,7 @@
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::{tag, take};
-use nom::number::complete::{be_u16, be_u32, be_u8};
+use nom::number::complete::{be_u16, be_u8};
 use zemu_sys::ViewError;
 
 use crate::parser::{nano_avax_to_fp_str, ChainId};
@@ -107,7 +107,6 @@ impl<'b> FromBytes<'b> for CreateAssetTx<'b> {
         let rem = ObjectList::<InitialState>::new_into(rem, states)?;
 
         unsafe {
-            // by default all outputs are renderable
             addr_of_mut!((*out).name).write(name);
             addr_of_mut!((*out).sym).write(sym);
             addr_of_mut!((*out).denomination).write(denomination);

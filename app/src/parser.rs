@@ -49,6 +49,7 @@ pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use message::AvaxMessage;
 pub use network_info::*;
 pub use object_list::ObjectList;
+pub use operations::{Operation, TransferableOp};
 pub use outputs::{
     NFTMintOutput, NFTTransferOutput, Output, OutputType, SECPMintOutput, SECPOutputOwners,
     SECPTransferOutput, TransferableOutput,

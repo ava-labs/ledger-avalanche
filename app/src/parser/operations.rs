@@ -20,13 +20,20 @@ mod secp_mint_operation;
 
 pub use nft_mint_operation::NFTMintOperation;
 pub use nft_transfer_operation::NFTTransferOperation;
-use nom::number::complete::be_u32;
+use nom::{
+    bytes::complete::take,
+    number::complete::{be_u32, be_u64},
+    sequence::tuple,
+};
 pub use secp_mint_operation::SECPMintOperation;
 
 use core::convert::TryFrom;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
-use crate::parser::{AssetId, DisplayableItem, FromBytes, UtxoId};
+use crate::{
+    parser::{AssetId, DisplayableItem, FromBytes, ObjectList, UtxoId, ADDRESS_LEN},
+    utils::ApduPanic,
+};
 
 use super::ParserError;
 
@@ -35,7 +42,7 @@ use super::ParserError;
 #[cfg_attr(test, derive(Debug))]
 pub struct TransferableOp<'b> {
     asset_id: AssetId<'b>,
-    utx_id: UtxoId<'b>,
+    utx_id: ObjectList<'b, UtxoId<'b>>,
     operation: Operation<'b>,
 }
 
@@ -51,7 +58,7 @@ impl<'b> FromBytes<'b> for TransferableOp<'b> {
         let rem = AssetId::from_bytes_into(input, asset)?;
 
         let utx_id = unsafe { &mut *addr_of_mut!((*output).utx_id).cast() };
-        let rem = UtxoId::from_bytes_into(rem, utx_id)?;
+        let rem = ObjectList::<UtxoId>::new_into(rem, utx_id)?;
 
         let op = unsafe { &mut *addr_of_mut!((*output).operation).cast() };
         let rem = Operation::from_bytes_into(rem, op)?;
@@ -114,7 +121,7 @@ impl<'b> FromBytes<'b> for Operation<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("Operation::from_bytes\x00");
 
-        let (rem, id) = be_u32(input)?;
+        let (_, id) = be_u32(input)?;
         let op_type = OpType::try_from(id)?;
 
         let rem = match op_type {
@@ -123,7 +130,7 @@ impl<'b> FromBytes<'b> for Operation<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = SECPMintOperation::from_bytes_into(rem, data)?;
+                let rem = SECPMintOperation::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
@@ -137,7 +144,7 @@ impl<'b> FromBytes<'b> for Operation<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = NFTMintOperation::from_bytes_into(rem, data)?;
+                let rem = NFTMintOperation::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
@@ -151,7 +158,7 @@ impl<'b> FromBytes<'b> for Operation<'b> {
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-                let rem = NFTTransferOperation::from_bytes_into(rem, data)?;
+                let rem = NFTTransferOperation::from_bytes_into(input, data)?;
 
                 //pointer is valid
                 unsafe {
@@ -162,5 +169,42 @@ impl<'b> FromBytes<'b> for Operation<'b> {
             }
         };
         Ok(rem)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DATA: &[u8] = &[
+        // assetID:
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+        0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d,
+        0x1e, 0x1f, // number of utxoIDs:
+        0x00, 0x00, 0x00, 0x01, // txID:
+        0xf1, 0xe1, 0xd1, 0xc1, 0xb1, 0xa1, 0x91, 0x81, 0x71, 0x61, 0x51, 0x41, 0x31, 0x21, 0x11,
+        0x01, 0xf0, 0xe0, 0xd0, 0xc0, 0xb0, 0xa0, 0x90, 0x80, 0x70, 0x60, 0x50, 0x40, 0x30, 0x20,
+        0x10, 0x00, // utxoIndex:
+        0x00, 0x00, 0x00, 0x05, // op:
+        0x00, 0x00, 0x00, 0x0d, // number of address indices:
+        0x00, 0x00, 0x00, 0x02, // address index 0:
+        0x00, 0x00, 0x00, 0x07, // address index 1:
+        0x00, 0x00, 0x00, 0x03, // groupID:
+        0x00, 0x00, 0x30, 0x39, // length of payload:
+        0x00, 0x00, 0x00, 0x03, // payload:
+        0x43, 0x11, 0x00, // locktime:
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd4, 0x31, // threshold:
+        0x00, 0x00, 0x00, 0x01, // number of addresses:
+        0x00, 0x00, 0x00, 0x02, // addrs[0]:
+        0x51, 0x02, 0x5c, 0x61, 0xfb, 0xcf, 0xc0, 0x78, 0xf6, 0x93, 0x34, 0xf8, 0x34, 0xbe, 0x6d,
+        0xd2, 0x6d, 0x55, 0xa9, 0x55, // addrs[1]:
+        0xc3, 0x34, 0x41, 0x28, 0xe0, 0x60, 0x12, 0x8e, 0xde, 0x35, 0x23, 0xa2, 0x4a, 0x46, 0x1c,
+        0x89, 0x43, 0xab, 0x08, 0x59,
+    ];
+
+    #[test]
+    fn parse_transferable_operation() {
+        let op = TransferableOp::from_bytes(DATA).unwrap().1;
+        assert!(matches!(op.operation, Operation::NFTTransfer(..)));
     }
 }
