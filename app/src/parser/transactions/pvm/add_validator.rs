@@ -180,12 +180,6 @@ impl<'b> AddValidatorTx<'b> {
     pub fn disable_output_if(&mut self, address: &[u8]) {
         self.base_tx.disable_output_if(address);
 
-        // omit if there is only one stake output
-        let num_outs = self.stake.iter().count();
-        if num_outs <= 1 {
-            return;
-        }
-
         let mut idx = 0;
         let mut render = self.renderable_out;
 
