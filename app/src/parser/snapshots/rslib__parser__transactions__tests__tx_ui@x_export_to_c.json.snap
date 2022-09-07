@@ -1,0 +1,11 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/x_export_to_c.json
+---
+[
+    "Export Tx": "X to C Chain",
+    "Amount": "0.000012345 AVAX to ",
+    "Address": "fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx",
+    "Fee(AVAX)": "0.123432099",
+]
