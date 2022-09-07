@@ -1,0 +1,10 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/create_subnet.json
+---
+[
+    "CreateSubnet": "transaction",
+    "Owner address": "1mg47uqd7stkvqrp57ds7m28txra45u2un5p6pc",
+    "Fee(AVAX)": "2000.001",
+]

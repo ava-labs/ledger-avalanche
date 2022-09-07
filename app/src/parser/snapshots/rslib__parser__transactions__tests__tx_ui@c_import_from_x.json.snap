@@ -1,0 +1,12 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/c_import_from_x.json
+---
+[
+    "ImportTx": "Importing in C-Chain",
+    "Amount": "0.268435456",
+    "Address": "local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag",
+    "From ": "X Chain",
+    "Fee": "0",
+]

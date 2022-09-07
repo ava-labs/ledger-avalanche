@@ -1,12 +1,12 @@
-export MIRIFLAGS := "-Zmiri-symbolic-alignment-check -Zmiri-check-number-validity"
+export MIRIFLAGS := "-Zmiri-symbolic-alignment-check"
 
 # Show this menu
 @help:
     just --list --unsorted
 
 # Run tests with miri
-miri:
-    cargo +nightly miri test
+miri *args='':
+    cargo +nightly miri test {{args}}
 
 # Run rust tests first and zemu_test afterwards
 tests: build-elfs
@@ -32,3 +32,10 @@ lint:
 # Build all the elfs of the app
 build-elfs:
     make
+
+alias m := make
+make *cmd='':
+    make {{cmd}}
+
+try:
+    cd zemu && yarn try
