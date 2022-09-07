@@ -80,30 +80,10 @@ where
     // would be rendered along with each of its addresses.
     pub fn contain_address(&self, change_address: &[u8]) -> bool {
         let num_address = self.output().num_addresses();
-        //let mut out = [0; u8::FORMATTED_SIZE_DECIMAL];
-
-        //crate::sys::zemu_log_stack("printing_change_address******\x00");
-        //for byte in change_address.iter().copied() {
-        //if let Ok(u) = u8_to_str(byte, &mut out) {
-        //let s = core::str::from_utf8(u).unwrap();
-        //crate::sys::zemu_log_stack(s);
-        //}
-        //out.iter_mut().for_each(|v| *v = 0);
-        //}
-        //crate::sys::zemu_log_stack("printing_done*****\x00");
         for idx in 0..num_address {
             let address = self.output().get_address(idx).apdu_unwrap();
             if address.raw_address() == change_address {
                 return true;
-                //crate::sys::zemu_log_stack("printing_output_address******\x00");
-                //for byte in address.raw_address().iter().copied() {
-                //if let Ok(u) = u8_to_str(byte, &mut out) {
-                //let s = core::str::from_utf8(u).unwrap();
-                //crate::sys::zemu_log_stack(s);
-                //}
-                //out.iter_mut().for_each(|v| *v = 0);
-                //}
-                //crate::sys::zemu_log_stack("printing_done*****\x00");
             }
         }
         false
