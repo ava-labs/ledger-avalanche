@@ -1,5 +1,5 @@
 /*******************************************************************************
-*  (c) 2019 Zondax GmbH
+*  (c) 2022 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ extern "C" {
 #endif
 
     #define MENU_MAIN_APP_LINE1             "Avalanche"
-    #define MENU_MAIN_APP_LINE2             "DO NOT USE"
-    #define APPVERSION_LINE1                "DO NOT USE"
+    #define MENU_MAIN_APP_LINE2             "Ready"
+    #define APPVERSION_LINE1                "Ready"
     #define APPVERSION_LINE2                ("v" APPVERSION)
 
 #ifdef __cplusplus

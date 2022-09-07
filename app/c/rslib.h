@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "coin.h"
 
 void check_canary();
 
