@@ -1,0 +1,13 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/create_chain.json
+---
+[
+    "CreateChain": "transaction",
+    "SubnetID": "24tZhrm8j8GCJRE9PomW8FaeqbgGS4UAQjJnqqn8pq5NwYSYV1",
+    "ChainName": "EPIC AVM",
+    "VMID": "jvYyfQTxGMJLuGWa55kdP2p2zSUYsQ5Raupu4TW34ZAUBAbtq",
+    "GenesisData": "e13a291075fd019f2b78239120adb3bd9386f863fffb4dcdefa1ea3f810ec546",
+    "Fee(AVAX)": "2000.001",
+]

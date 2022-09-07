@@ -1,0 +1,12 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/p_import_from_c.json
+---
+[
+    "ImportTx": "Importing in C-Chain",
+    "Amount": "27473249",
+    "Address": "local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9",
+    "From ": "P Chain",
+    "Fee": "2526750",
+]

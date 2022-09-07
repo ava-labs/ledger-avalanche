@@ -13,33 +13,67 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-
-use crate::parser::TransferableOutput;
-
 use crate::{
-    parser::{AvmOutput, FromBytes, ParserError},
+    parser::{FromBytes, ParserError, ADDRESS_LEN, U32_SIZE},
     utils::ApduPanic,
 };
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
-    number::complete::be_u32,
+    number::complete::{be_u32, be_u64},
     sequence::tuple,
 };
 
-const U32_SIZE: usize = std::mem::size_of::<u32>();
 const MAX_PAYLOAD_LEN: usize = 1024;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
+#[repr(C)]
+struct Output<'b> {
+    locktime: u64,
+    threshold: u32,
+    // list of addresses allowed to use this output
+    pub addresses: &'b [[u8; ADDRESS_LEN]],
+}
+
+impl<'b> FromBytes<'b> for Output<'b> {
+    fn from_bytes_into(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        let (rem, (locktime, threshold, addr_len)) = tuple((be_u64, be_u32, be_u32))(input)?;
+
+        let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
+
+        // this will not fail as we already take the right amount of bytes above
+        let addresses = bytemuck::try_cast_slice(addresses).apdu_unwrap();
+
+        if (threshold as usize > addresses.len()) || (addresses.is_empty() && threshold != 0) {
+            return Err(ParserError::InvalidThreshold.into());
+        }
+
+        //good ptr and no uninit reads
+        let out = out.as_mut_ptr();
+
+        unsafe {
+            addr_of_mut!((*out).locktime).write(locktime);
+            addr_of_mut!((*out).threshold).write(threshold);
+            addr_of_mut!((*out).addresses).write(addresses);
+        }
+
+        Ok(rem)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
+#[repr(C)]
 pub struct NFTMintOperation<'b> {
     pub address_indices: &'b [[u8; U32_SIZE]],
     pub group_id: u32,
     pub payload: &'b [u8],
-    // NFTMintOperation is a x-chain type, so we use
-    // the corresponding output for it
-    pub output: TransferableOutput<'b, AvmOutput<'b>>,
+    output: Output<'b>,
 }
 
 impl<'b> NFTMintOperation<'b> {
@@ -70,7 +104,7 @@ impl<'b> FromBytes<'b> for NFTMintOperation<'b> {
 
         let out = out.as_mut_ptr();
         let output = unsafe { &mut *addr_of_mut!((*out).output).cast() };
-        let rem = TransferableOutput::<AvmOutput>::from_bytes_into(rem, output)?;
+        let rem = Output::from_bytes_into(rem, output)?;
 
         //good ptr and no uninit reads
         unsafe {
@@ -98,10 +132,8 @@ mod tests {
             0x00, 0x00, 0x30, 0x39, // length of payload:
             0x00, 0x00, 0x00, 0x03, // payload:
             0x43, 0x11, 0x00, // transferable output:
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 1, 22,
-            54, 119, 75, 103, 131, 141, 236, 22, 225, 106, 182, 207, 172, 178, 27, 136, 195, 168,
-            97,
+            0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 1, 22, 54, 119, 75, 103, 131, 141, 236,
+            22, 225, 106, 182, 207, 172, 178, 27, 136, 195, 168, 97,
         ];
 
         let nft_mint_operation = NFTMintOperation::from_bytes(&raw_input).unwrap().1;

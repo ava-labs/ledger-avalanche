@@ -1,0 +1,21 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/add_validator.json
+---
+[
+    "AddValidator": "Transaction",
+    "Transfer": "0.5 AVAX to ",
+    "Address": "fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn",
+    "Funds locked": "0.5 AVAX until 2021-05-31 21:28:00 UTC",
+    "Validator": "NodeId-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
+    "Start time": "2021-03-15 20:05:27 UTC",
+    "End time": "2022-03-15 19:55:27 UTC",
+    "Total stake(AVAX)": "1",
+    "Stake": "1 AVAX to ",
+    "Address": "fuji1asxdpfsmah8wqr6m8ymfwse5e4pa9fwnvudmpn",
+    "Funds locked": "1 AVAX until 2021-05-31 21:28:00 UTC",
+    "Rewards to": "fuji1kekq6vfg56qj5vxfhlwzmgyejfxsczqld3kdup",
+    "Delegate fee(%)": "2",
+    "Fee(AVAX)": "0",
+]

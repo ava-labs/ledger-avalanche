@@ -18,7 +18,7 @@ use crate::parser::NFTTransferOutput;
 
 use crate::{
     parser::{FromBytes, ParserError},
-    utils::{hex_encode, ApduPanic},
+    utils::ApduPanic,
 };
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
@@ -31,8 +31,15 @@ const U32_SIZE: usize = std::mem::size_of::<u32>();
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
+#[repr(C)]
 pub struct NFTTransferOperation<'b> {
     pub address_indices: &'b [[u8; U32_SIZE]],
+    // The documentation states
+    // This output doesn’t have the TypeId,
+    // because the type is known by the context of being in this operation
+    // so we need to bypass the type_id when parsing it.
+    // The simplest way is adding a helper method to
+    // nft_transfer_output that omits this check.
     pub nft_transfer_output: NFTTransferOutput<'b>,
 }
 
@@ -57,7 +64,8 @@ impl<'b> FromBytes<'b> for NFTTransferOperation<'b> {
 
         let out = out.as_mut_ptr();
         let nft_transfer_output = unsafe { &mut *addr_of_mut!((*out).nft_transfer_output).cast() };
-        let rem = NFTTransferOutput::from_bytes_into(rem, nft_transfer_output)?;
+        // parse without type checking
+        let rem = NFTTransferOutput::into_without_type(rem, nft_transfer_output)?;
 
         //good ptr and no uninit reads
         unsafe {
@@ -80,7 +88,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x02, // address index 0:
             0x00, 0x00, 0x00, 0x07, // address index 1:
             0x00, 0x00, 0x00, 0x03, // assetID:
-            0x00, 0x00, 0x00, 0x0b, // groupID:
+            // groupID:
             0x00, 0x00, 0x30, 0x39, // length of payload:
             0x00, 0x00, 0x00, 0x03, // payload:
             0x43, 0x11, 0x00, // locktime:
