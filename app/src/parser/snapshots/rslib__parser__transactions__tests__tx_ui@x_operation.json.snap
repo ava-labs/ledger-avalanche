@@ -1,0 +1,15 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/x_operation.json
+---
+[
+    "Operation": "Transaction",
+    "Transfer": "0.000012345 AVAX to ",
+    "Address": "fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3",
+    "Op. Type:": "NFTTransferOperation",
+    "GroupID: ": "12345",
+    "Payload: ": "0xe8bf99e698afe4bb80e4b988e4b88defbc8ce982a3e4b88de6...",
+    "Owner: ": "1cv6yz28qvqfgah34yw3y53su39p6kzzend8lmd",
+    "Fee(AVAX)": "0.123444444",
+]

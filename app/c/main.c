@@ -117,7 +117,7 @@ int main(void) {
             {
                 if (!app_init_done) {
                     io_app_init();
-                    view_idle_show(0, NULL);
+                    view_idle_show(0, MENU_MAIN_APP_LINE2);
                     app_init_done = 1;
                     check_canary();
                 }
