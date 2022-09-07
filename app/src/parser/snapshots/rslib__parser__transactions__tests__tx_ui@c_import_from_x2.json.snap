@@ -1,0 +1,12 @@
+---
+source: app/src/parser/transactions.rs
+expression: reduced
+input_file: app/src/parser/testvectors/c_import_from_x2.json
+---
+[
+    "ImportTx": "Sending",
+    "Amount": "0.000012345 AVAX to ",
+    "Address": "fuji1cv6yz28qvqfgah34yw3y53su39p6kzzehw5pj3",
+    "From ": "C Chain",
+    "Fee(AVAX)": "0.246901233",
+]
