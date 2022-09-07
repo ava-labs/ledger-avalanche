@@ -40,16 +40,16 @@ use crate::parser::{
     DisplayableItem, ExportTx as EvmExport, ImportTx as EvmImport, EVM_IMPORT_TX, PVM_EXPORT_TX,
     PVM_IMPORT_TX,
 };
-pub use avm::{AvmExportTx, AvmImportTx};
+pub use avm::{AvmExportTx, AvmImportTx, CreateAssetTx};
 pub use pvm::{
     AddDelegatorTx, AddSubnetValidatorTx, AddValidatorTx, CreateChainTx, CreateSubnetTx,
     PvmExportTx, PvmImportTx,
 };
 
 use super::{
-    ChainId, FromBytes, NetworkInfo, ParserError, AVM_EXPORT_TX, AVM_IMPORT_TX, EVM_EXPORT_TX,
-    PVM_ADD_DELEGATOR, PVM_ADD_SUBNET_VALIDATOR, PVM_ADD_VALIDATOR, PVM_CREATE_CHAIN,
-    PVM_CREATE_SUBNET, TRANSFER_TX,
+    ChainId, FromBytes, NetworkInfo, ParserError, AVM_CREATE_ASSET_TX, AVM_EXPORT_TX,
+    AVM_IMPORT_TX, EVM_EXPORT_TX, PVM_ADD_DELEGATOR, PVM_ADD_SUBNET_VALIDATOR, PVM_ADD_VALIDATOR,
+    PVM_CREATE_CHAIN, PVM_CREATE_SUBNET, TRANSFER_TX,
 };
 
 // Important: do not change the repr attribute,
@@ -61,6 +61,7 @@ use super::{
 pub enum TransactionType {
     XImport,
     XExport,
+    XAsset,
     PImport,
     PExport,
     CImport,
@@ -83,6 +84,10 @@ impl TryFrom<(u32, NetworkInfo)> for TransactionType {
             PVM_IMPORT_TX => TransactionType::PImport,
             AVM_EXPORT_TX => TransactionType::XExport,
             AVM_IMPORT_TX => TransactionType::XImport,
+            // avoid collition with evm_export tx in C-chain
+            AVM_CREATE_ASSET_TX if matches!(value.1.chain_id, ChainId::XChain) => {
+                TransactionType::XAsset
+            }
             PVM_CREATE_CHAIN => TransactionType::CreateChain,
             // avoid collition with createAsset tx in X-chain
             EVM_EXPORT_TX if matches!(value.1.chain_id, ChainId::CChain) => {
@@ -109,6 +114,9 @@ struct XImportVariant<'b>(TransactionType, AvmImportTx<'b>);
 
 #[repr(C)]
 struct XExportVariant<'b>(TransactionType, AvmExportTx<'b>);
+
+#[repr(C)]
+struct XCreateAssetVariant<'b>(TransactionType, CreateAssetTx<'b>);
 
 #[repr(C)]
 struct PImportVariant<'b>(TransactionType, PvmImportTx<'b>);
@@ -149,6 +157,7 @@ struct TransferVariant<'b>(TransactionType, Transfer<'b>);
 pub enum Transaction<'b> {
     XImport(AvmImportTx<'b>),
     XExport(AvmExportTx<'b>),
+    XAsset(CreateAssetTx<'b>),
     PImport(PvmImportTx<'b>),
     PExport(PvmExportTx<'b>),
     CImport(EvmImport<'b>),
@@ -181,6 +190,7 @@ impl<'b> Transaction<'b> {
 
     pub fn new_into(input: &'b [u8], this: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
         let (rem, codec) = be_u16(input)?;
+
         if codec != 0 {
             return Err(ParserError::InvalidCodec);
         }
@@ -264,6 +274,20 @@ impl<'b> Transaction<'b> {
                 //pointer is valid
                 unsafe {
                     addr_of_mut!((*out).0).write(TransactionType::XExport);
+                }
+
+                rem
+            }
+            TransactionType::XAsset => {
+                let out = out.as_mut_ptr() as *mut XCreateAssetVariant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = CreateAssetTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(TransactionType::XAsset);
                 }
 
                 rem
@@ -397,6 +421,7 @@ impl<'b> DisplayableItem for Transaction<'b> {
         match self {
             Self::XImport(tx) => tx.num_items(),
             Self::XExport(tx) => tx.num_items(),
+            Self::XAsset(tx) => tx.num_items(),
             Self::PImport(tx) => tx.num_items(),
             Self::PExport(tx) => tx.num_items(),
             Self::CImport(tx) => tx.num_items(),
@@ -420,6 +445,7 @@ impl<'b> DisplayableItem for Transaction<'b> {
         match self {
             Self::XImport(tx) => tx.render_item(item_n, title, message, page),
             Self::XExport(tx) => tx.render_item(item_n, title, message, page),
+            Self::XAsset(tx) => tx.render_item(item_n, title, message, page),
             Self::PImport(tx) => tx.render_item(item_n, title, message, page),
             Self::PExport(tx) => tx.render_item(item_n, title, message, page),
             Self::CImport(tx) => tx.render_item(item_n, title, message, page),

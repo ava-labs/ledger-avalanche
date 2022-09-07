@@ -23,6 +23,7 @@ mod avm_output;
 mod constants;
 mod coreth;
 mod error;
+mod initial_state;
 mod inputs;
 mod message;
 mod network_info;
@@ -34,6 +35,7 @@ mod subnet_auth;
 mod subnet_id;
 mod transactions;
 mod utils;
+mod utxo_id;
 mod validator;
 
 pub use address::*;
@@ -42,10 +44,12 @@ pub use avm_output::AvmOutput;
 pub use constants::*;
 pub use coreth::{export_tx::ExportTx, import_tx::ImportTx};
 pub use error::ParserError;
+pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use message::AvaxMessage;
 pub use network_info::*;
 pub use object_list::ObjectList;
+pub use operations::{Operation, TransferableOp};
 pub use outputs::{
     NFTMintOutput, NFTTransferOutput, Output, OutputType, SECPMintOutput, SECPOutputOwners,
     SECPTransferOutput, TransferableOutput,
@@ -55,6 +59,7 @@ pub use subnet_auth::SubnetAuth;
 pub use subnet_id::*;
 pub use transactions::*;
 pub use utils::*;
+pub use utxo_id::UtxoId;
 pub use validator::*;
 
 ///This trait defines the interface useful in the UI context
