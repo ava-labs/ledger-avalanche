@@ -602,6 +602,14 @@ mod tests {
     }
 
     #[test]
+    //isolation is enabled by defalt in miri
+    // and this prevents opening files, amonst other things
+    // we could either disable isolation or have miri
+    // return errors on open & co.
+    //
+    // considering we aren't doing anything special in this test
+    // we can just avoid having it run in miri directly
+    #[cfg_attr(miri, ignore)]
     fn tx_ui() {
         insta::glob!("testvectors/*.json", |path| {
             let file = std::fs::File::open(path)
@@ -612,14 +620,15 @@ mod tests {
             let test = |data| {
                 let tx = Transaction::new(data).expect("parse tx from data");
 
-                let mut driver = MockDriver::<_, 18, 4096>::new(tx);
+                let mut driver = MockDriver::<_, 18, 1024>::new(tx);
                 driver.drive();
 
                 let ui = driver.out_ui();
 
                 let reduced = ui
                     .iter()
-                    .map(|item| item.iter().map(ReducedPage::from).collect::<Vec<_>>())
+                    .map(|item| item.iter().map(ReducedPage::from))
+                    .flatten()
                     .collect::<Vec<_>>();
 
                 insta::assert_debug_snapshot!(reduced);
