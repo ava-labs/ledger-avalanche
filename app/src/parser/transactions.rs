@@ -615,7 +615,7 @@ mod tests {
                 let mut driver = MockDriver::<_, 18, 4096>::new(tx);
                 driver.drive();
 
-                let ui = driver.into_out_ui();
+                let ui = driver.out_ui();
 
                 let reduced = ui
                     .iter()
