@@ -23,11 +23,18 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
-    utils::{hex_encode, is_app_mode_expert},
+    parser::{u32_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    utils::hex_encode,
 };
 
 const MAX_PAYLOAD_LEN: usize = 1024;
+
+// avax-team requested to display at least X
+// characters that correspond to the payload.
+// lets set that limit to 50 characters,
+// as the payload can be either an ascii string
+// or raw bytes.
+const SHOW_PAYLOAD_LEN: usize = 50;
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -109,15 +116,8 @@ impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
 
 impl<'a> DisplayableItem for NFTTransferOutput<'a> {
     fn num_items(&self) -> usize {
-        // output-type, group_id, threshold and addresses
-        let mut items = 1 + 1 + 1 + self.addresses.len();
-        // do not show locktime if it is 0
-        items += (self.locktime > 0) as usize;
-
-        if !self.payload.is_empty() && is_app_mode_expert() {
-            items += 1;
-        }
-        items
+        // group_id, payload and addresses
+        1 + 1 + self.num_addresses()
     }
 
     #[inline(never)]
@@ -128,72 +128,64 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        use bolos::{
-            hash::{Hasher, Sha256},
-            pic_str, PIC,
-        };
-        use lexical_core::{write as itoa, Number};
+        use bolos::{pic_str, PIC};
+        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-        let addr_item_n = self.num_items() - self.addresses.len();
-        let render_payload = !self.payload.is_empty() && is_app_mode_expert();
-        let render_locktime = self.locktime > 0;
-        // Gets the page at which this field is displayed, by summing the boolean
-        // directly since it offsets the pages by 1 if present
-        let render_locktime_at = 2 + render_payload as usize;
-        // Gets the page at which this field is displayed, by summing the booleans
-        // directly since they offset the pages by 1 or 2 if present
-        let render_threshold_at = 2 + render_payload as usize + render_locktime as usize;
+        let mut buffer = [0; u32::FORMATTED_SIZE_DECIMAL + 2];
 
         match item_n as usize {
             0 => {
-                let title_content = pic_str!(b"Output");
+                let title_content = pic_str!(b"GroupID: ");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                handle_ui_message(pic_str!(b"NFTTransfer"), message, page)
+                let group_id =
+                    u32_to_str(self.group_id, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(group_id, message, page)
             }
             1 => {
-                let title_content = pic_str!(b"GroupID");
+                let title_content = pic_str!(b"Payload: ");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.group_id, &mut buffer);
 
-                handle_ui_message(buffer, message, page)
-            }
-            2 if render_payload => {
+                let suffix = pic_str!(b"...");
+                let mut show_suffix = false;
+                let mut buf = [0; SHOW_PAYLOAD_LEN + 4];
+                let mut len = self.payload.len();
+
                 if self.payload.is_ascii() {
-                    handle_ui_message(self.payload, message, page)
+                    if len > SHOW_PAYLOAD_LEN {
+                        show_suffix = true;
+                        len = SHOW_PAYLOAD_LEN;
+                    }
+                    buf[..len].copy_from_slice(&self.payload[..len]);
                 } else {
-                    let sha = Sha256::digest(self.payload).map_err(|_| ViewError::Unknown)?;
-                    let mut hex_buf = [0; Sha256::DIGEST_LEN * 2];
-                    hex_encode(&sha[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
-                    handle_ui_message(&hex_buf, message, page)
+                    // hex string for non ascii payloads.
+                    if len * 2 > SHOW_PAYLOAD_LEN {
+                        show_suffix = true;
+                        len = SHOW_PAYLOAD_LEN / 2;
+                    }
+
+                    len = hex_encode(&self.payload[..len], &mut buf)
+                        .map_err(|_| ViewError::Unknown)?;
                 }
+
+                // add suffix indicating the payload being shown is just
+                // a fraction of the total.
+                if show_suffix {
+                    buf[len..len + suffix.len()].copy_from_slice(&suffix[..]);
+                    len += suffix.len();
+                }
+                handle_ui_message(&buf[..len], message, page)
             }
-
-            x @ 2.. if x == render_locktime_at => {
-                let title_content = pic_str!(b"Locktime");
-                title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.locktime, &mut buffer);
-
-                handle_ui_message(buffer, message, page)
-            }
-
-            x @ 2.. if x == render_threshold_at => {
-                let title_content = pic_str!(b"Threshold");
-                title[..title_content.len()].copy_from_slice(title_content);
-
-                let buffer = itoa(self.threshold, &mut buffer);
-
-                handle_ui_message(buffer, message, page)
-            }
-
-            x @ 3.. if x >= addr_item_n => {
-                let idx = x - addr_item_n;
-                if let Some(data) = self.addresses.get(idx as usize) {
-                    let mut addr = MaybeUninit::uninit();
-                    Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
-                    let addr = unsafe { addr.assume_init() };
-                    addr.render_item(0, title, message, page)
+            x @ 2.. if x < self.num_addresses() + 2 => {
+                let idx = x - 2;
+                if let Some(addr) = self.get_address_at(idx as usize) {
+                    let res = addr.render_item(0, title, message, page);
+                    // render Owner instead of Address
+                    title.iter_mut().for_each(|v| *v = 0);
+                    let title_content = pic_str!(b"Owner: ");
+                    title[..title_content.len()].copy_from_slice(title_content);
+                    res
                 } else {
                     Err(ViewError::NoData)
                 }
