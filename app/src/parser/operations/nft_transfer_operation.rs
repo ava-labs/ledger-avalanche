@@ -17,7 +17,7 @@
 use crate::parser::NFTTransferOutput;
 
 use crate::{
-    parser::{FromBytes, ParserError},
+    parser::{DisplayableItem, FromBytes, ParserError, U32_SIZE},
     utils::ApduPanic,
 };
 
@@ -26,8 +26,6 @@ use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
 };
-
-const U32_SIZE: usize = std::mem::size_of::<u32>();
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -76,6 +74,23 @@ impl<'b> FromBytes<'b> for NFTTransferOperation<'b> {
     }
 }
 
+impl<'b> DisplayableItem for NFTTransferOperation<'b> {
+    fn num_items(&self) -> usize {
+        self.nft_transfer_output.num_items()
+    }
+
+    fn render_item(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        self.nft_transfer_output
+            .render_item(item_n, title, message, page)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -87,8 +102,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x0d, // number of address indices:
             0x00, 0x00, 0x00, 0x02, // address index 0:
             0x00, 0x00, 0x00, 0x07, // address index 1:
-            0x00, 0x00, 0x00, 0x03, // assetID:
-            // groupID:
+            0x00, 0x00, 0x00, 0x03, // groupID:
             0x00, 0x00, 0x30, 0x39, // length of payload:
             0x00, 0x00, 0x00, 0x03, // payload:
             0x43, 0x11, 0x00, // locktime:
