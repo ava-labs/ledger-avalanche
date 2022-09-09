@@ -14,66 +14,32 @@
 *  limitations under the License.
 ********************************************************************************/
 use crate::{
-    parser::{FromBytes, ParserError, ADDRESS_LEN, U32_SIZE},
+    handlers::handle_ui_message,
+    parser::{DisplayableItem, FromBytes, NFTTransferOutput, ParserError, U32_SIZE},
     utils::ApduPanic,
 };
+
+use zemu_sys::ViewError;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
-    number::complete::{be_u32, be_u64},
-    sequence::tuple,
+    number::complete::be_u32,
 };
-
-const MAX_PAYLOAD_LEN: usize = 1024;
-
-#[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(test, derive(Debug))]
-#[repr(C)]
-struct Output<'b> {
-    locktime: u64,
-    threshold: u32,
-    // list of addresses allowed to use this output
-    pub addresses: &'b [[u8; ADDRESS_LEN]],
-}
-
-impl<'b> FromBytes<'b> for Output<'b> {
-    fn from_bytes_into(
-        input: &'b [u8],
-        out: &mut MaybeUninit<Self>,
-    ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        let (rem, (locktime, threshold, addr_len)) = tuple((be_u64, be_u32, be_u32))(input)?;
-
-        let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
-
-        // this will not fail as we already take the right amount of bytes above
-        let addresses = bytemuck::try_cast_slice(addresses).apdu_unwrap();
-
-        if (threshold as usize > addresses.len()) || (addresses.is_empty() && threshold != 0) {
-            return Err(ParserError::InvalidThreshold.into());
-        }
-
-        //good ptr and no uninit reads
-        let out = out.as_mut_ptr();
-
-        unsafe {
-            addr_of_mut!((*out).locktime).write(locktime);
-            addr_of_mut!((*out).threshold).write(threshold);
-            addr_of_mut!((*out).addresses).write(addresses);
-        }
-
-        Ok(rem)
-    }
-}
 
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(C)]
 pub struct NFTMintOperation<'b> {
     pub address_indices: &'b [[u8; U32_SIZE]],
-    pub group_id: u32,
-    pub payload: &'b [u8],
-    output: Output<'b>,
+    // It turns out that the fields this operation contains
+    // are the same as the ones in the NFTTransferOutput
+    // type, which makes sense considering the notion
+    // of inheritance the avax design follows.
+    // This makes this, type very similar to the NFTTransferOperation, for
+    // which the documentations says that it "extends" an untyped
+    // nft_transfer_output.
+    nft_output: NFTTransferOutput<'b>,
 }
 
 impl<'b> NFTMintOperation<'b> {
@@ -95,25 +61,35 @@ impl<'b> FromBytes<'b> for NFTMintOperation<'b> {
         let (rem, indices) = take(num_indices as usize * U32_SIZE)(rem)?;
         let indices = bytemuck::try_cast_slice(indices).apdu_unwrap();
 
-        let (rem, (group_id, payload_len)) = tuple((be_u32, be_u32))(rem)?;
-        if payload_len as usize > MAX_PAYLOAD_LEN {
-            return Err(ParserError::ValueOutOfRange.into());
-        }
-
-        let (rem, payload) = take(payload_len as usize)(rem)?;
-
         let out = out.as_mut_ptr();
-        let output = unsafe { &mut *addr_of_mut!((*out).output).cast() };
-        let rem = Output::from_bytes_into(rem, output)?;
+
+        let output = unsafe { &mut *addr_of_mut!((*out).nft_output).cast() };
+        // parse without type checking
+        let rem = NFTTransferOutput::into_without_type(rem, output)?;
 
         //good ptr and no uninit reads
         unsafe {
             addr_of_mut!((*out).address_indices).write(indices);
-            addr_of_mut!((*out).group_id).write(group_id);
-            addr_of_mut!((*out).payload).write(payload);
         }
 
         Ok(rem)
+    }
+}
+
+impl<'a> DisplayableItem for NFTMintOperation<'a> {
+    fn num_items(&self) -> usize {
+        self.nft_output.num_items()
+    }
+
+    #[inline(never)]
+    fn render_item(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        self.nft_output.render_item(item_n, title, message, page)
     }
 }
 
