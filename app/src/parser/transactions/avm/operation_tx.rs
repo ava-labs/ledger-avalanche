@@ -55,29 +55,9 @@ impl<'b> OperationTx<'b> {
         num_items
     }
 
-    fn render_description(
-        &self,
-        item_n: u8,
-        title: &mut [u8],
-        message: &mut [u8],
-        page: u8,
-    ) -> Result<u8, zemu_sys::ViewError> {
-        use bolos::{pic_str, PIC};
-
-        if item_n != 0 {
-            return Err(zemu_sys::ViewError::NoData);
-        }
-
-        let label = pic_str!(b"Operation");
-        title[..label.len()].copy_from_slice(label);
-        let content = pic_str!(b"Transaction");
-        handle_ui_message(content, message, page)
-    }
-
     pub fn op_with_item(&'b self, item_n: u8) -> Result<(TransferableOp, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
-        let mut idx = 0;
         // gets the operation that contains item_n
         // and its corresponding index
         let filter = |o: &TransferableOp<'b>| -> bool {
