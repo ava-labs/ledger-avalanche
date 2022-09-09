@@ -20,20 +20,14 @@ mod secp_mint_operation;
 
 pub use nft_mint_operation::NFTMintOperation;
 pub use nft_transfer_operation::NFTTransferOperation;
-use nom::{
-    bytes::complete::take,
-    number::complete::{be_u32, be_u64},
-    sequence::tuple,
-};
+use nom::number::complete::be_u32;
 pub use secp_mint_operation::SECPMintOperation;
 
 use core::convert::TryFrom;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
-use crate::{
-    parser::{AssetId, DisplayableItem, FromBytes, ObjectList, UtxoId, ADDRESS_LEN},
-    utils::ApduPanic,
-};
+use crate::handlers::handle_ui_message;
+use crate::parser::{AssetId, DisplayableItem, FromBytes, ObjectList, UtxoId};
 
 use super::ParserError;
 
@@ -64,6 +58,22 @@ impl<'b> FromBytes<'b> for TransferableOp<'b> {
         let rem = Operation::from_bytes_into(rem, op)?;
 
         Ok(rem)
+    }
+}
+
+impl<'b> DisplayableItem for TransferableOp<'b> {
+    fn num_items(&self) -> usize {
+        self.operation.num_items()
+    }
+
+    fn render_item(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        self.operation.render_item(item_n, title, message, page)
     }
 }
 
@@ -112,6 +122,18 @@ pub enum Operation<'b> {
     SECPMint(SECPMintOperation<'b>),
     NFTTransfer(NFTTransferOperation<'b>),
     NFTMint(NFTMintOperation<'b>),
+}
+
+impl<'b> Operation<'b> {
+    pub fn operation_name(&self) -> &'static str {
+        use bolos::{pic_str, PIC};
+
+        match self {
+            Operation::SECPMint(_) => pic_str!("SECPMintOperation"),
+            Operation::NFTTransfer(_) => pic_str!("NFTTransferOperation"),
+            Operation::NFTMint(_) => pic_str!("NFTMintOperation"),
+        }
+    }
 }
 
 impl<'b> FromBytes<'b> for Operation<'b> {
@@ -169,6 +191,45 @@ impl<'b> FromBytes<'b> for Operation<'b> {
             }
         };
         Ok(rem)
+    }
+}
+
+impl<'b> DisplayableItem for Operation<'b> {
+    fn num_items(&self) -> usize {
+        // operation description
+        // + operation items
+        1 + match self {
+            Operation::NFTMint(op) => op.num_items(),
+            Operation::NFTTransfer(op) => op.num_items(),
+            Operation::SECPMint(op) => op.num_items(),
+        }
+    }
+
+    fn render_item(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        use bolos::{pic_str, PIC};
+
+        if item_n == 0 {
+            let title_content = pic_str!(b"Op. Type:");
+            title[..title_content.len()].copy_from_slice(title_content);
+
+            let op_type = self.operation_name();
+
+            return handle_ui_message(op_type.as_bytes(), message, page);
+        }
+
+        let item_n = item_n - 1;
+
+        match self {
+            Operation::NFTMint(op) => op.render_item(item_n, title, message, page),
+            Operation::NFTTransfer(op) => op.render_item(item_n, title, message, page),
+            Operation::SECPMint(op) => op.render_item(item_n, title, message, page),
+        }
     }
 }
 
