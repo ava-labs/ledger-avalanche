@@ -148,8 +148,9 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
                 title[..title_content.len()].copy_from_slice(title_content);
 
                 let suffix = pic_str!(b"...");
+                let prefix = pic_str!(b"0x"!);
                 let mut show_suffix = false;
-                let mut buf = [0; SHOW_PAYLOAD_LEN + 4];
+                let mut buf = [0; SHOW_PAYLOAD_LEN + 4 + 2]; // suffix and preffix
                 let mut len = self.payload.len();
 
                 if self.payload.is_ascii() {
@@ -165,8 +166,12 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
                         len = SHOW_PAYLOAD_LEN / 2;
                     }
 
-                    len = hex_encode(&self.payload[..len], &mut buf)
-                        .map_err(|_| ViewError::Unknown)?;
+                    let prefix_len = prefix.len();
+                    buf[..prefix_len].copy_from_slice(&prefix[..]);
+
+                    len = hex_encode(&self.payload[..len], &mut buf[prefix_len..])
+                        .map_err(|_| ViewError::Unknown)?
+                        + prefix_len;
                 }
 
                 // add suffix indicating the payload being shown is just
