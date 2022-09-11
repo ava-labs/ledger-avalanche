@@ -33,7 +33,7 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
   },
 ])
 
-describe.each(models)('Standard [%s]; sign', function (m) {
+describe.each(models)('C_Sign[%s]; sign', function (m) {
   test.each(SIGN_TEST_DATA)('sign c-chain transactions', async function (curve, data) {
     const sim = new Zemu(m.path)
     try {
