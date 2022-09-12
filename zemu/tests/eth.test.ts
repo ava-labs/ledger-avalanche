@@ -54,6 +54,22 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       expect(resp).toHaveProperty('s')
       expect(resp).toHaveProperty('r')
       expect(resp).toHaveProperty('v')
+
+      //Verify signature
+      const resp_addr = await app.getAddress(ETH_DERIVATION, false)
+
+      const EC = new ec("secp256k1");
+      const sha3 = require('js-sha3');
+      const msgHash = sha3.keccak256(msg);
+
+      const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
+      const signature_obj = {
+        r: Buffer.from(resp.r, 'hex'),
+        s: Buffer.from(resp.s, 'hex'),
+      }
+
+      const signatureOK = EC.verify(msgHash, signature_obj, pubKey, 'hex')
+      expect(signatureOK).toEqual(true)
     } finally {
       await sim.close()
     }
