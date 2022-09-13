@@ -33,7 +33,8 @@ use crate::{
     utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic, Uploader},
 };
 
-use super::utils::{convert_der_to_rs, parse_bip32_eth};
+use super::utils::parse_bip32_eth;
+use crate::utils::convert_der_to_rs;
 
 pub struct BlindSign;
 

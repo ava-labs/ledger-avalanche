@@ -26,7 +26,7 @@ use crate::{
     handlers::resources::{HASH, PATH},
     parser::{FromBytes, PathWrapper},
     sys,
-    utils::ApduBufferRead,
+    utils::{convert_der_to_rs, ApduBufferRead, ConvertError},
 };
 
 pub struct Sign;
@@ -126,6 +126,7 @@ impl ApduHandler for Sign {
         sys::zemu_log_stack("SignHash::handle\x00");
 
         *tx = 0;
+        let mut offset = 0;
 
         let p1 = buffer.p1();
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
@@ -138,14 +139,44 @@ impl ApduHandler for Sign {
         let (path_prefix, curve) = Sign::get_signing_info(cdata)?;
         let hash = Self::get_hash()?;
 
-        let (sz, sig) = Sign::sign(&path_prefix, curve, hash)?;
-        buffer.write()[..sz].copy_from_slice(&sig[..sz]);
+        let (sig_size, mut sig) = Sign::sign(&path_prefix, curve, hash)?;
+        let out = buffer.write();
+
+        //write signature as VRS
+        //write V, which is the LSB of the firsts byte
+        out[offset] = sig[0] & 0x01;
+        offset += 1;
+
+        //reset to 0x30 for the conversion
+        sig[0] = 0x30;
+        {
+            let mut r = [0; 33];
+            let mut s = [0; 33];
+
+            //write as R S (V written earlier)
+            // this will write directly to buffer
+            match convert_der_to_rs(&sig[..sig_size], &mut r, &mut s) {
+                Ok((written_r, written_s)) => {
+                    //format R and S by only having 32 bytes each,
+                    // skipping the first byte if necessary
+                    let r = if written_r == 33 { &r[1..] } else { &r[..32] };
+                    let s = if written_s == 33 { &s[1..] } else { &s[..32] };
+
+                    out[offset..][..32].copy_from_slice(r);
+                    offset += 32;
+
+                    out[offset..][..32].copy_from_slice(s);
+                    offset += 32;
+                }
+                Err(_) => return Err(Error::ExecutionError as _),
+            }
+        }
 
         if p1 == LAST_MESSAGE {
             let _ = cleanup_globals();
         }
 
-        *tx = sz as _;
+        *tx = offset as _;
         Ok(())
     }
 }
