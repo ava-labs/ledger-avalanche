@@ -20,7 +20,7 @@ use bolos::{
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::ApduError as Error,
+    constants::{ApduError as Error, BIP32_PATH_PREFIX_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::{
@@ -51,10 +51,14 @@ impl Sign {
         flags: &mut u32,
     ) -> Result<u32, Error> {
         let curve = Curve::Secp256K1;
-        let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
+        let root_path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
+        // this path should be a root path of the form x/x/x
+        if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
+            return Err(Error::WrongLength);
+        }
 
         unsafe {
-            PATH.lock(Self)?.replace((path, curve));
+            PATH.lock(Self)?.replace((root_path, curve));
         }
 
         let digest = Self::sha256_digest(data)?;

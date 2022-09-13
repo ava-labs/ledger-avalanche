@@ -18,15 +18,15 @@ use core::mem::MaybeUninit;
 
 use crate::{
     constants::{
-        ApduError as Error, BIP32_PATH_SUFFIX_DEPTH, FIRST_MESSAGE, LAST_MESSAGE,
-        MAX_BIP32_PATH_DEPTH,
+        ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, FIRST_MESSAGE,
+        LAST_MESSAGE, MAX_BIP32_PATH_DEPTH,
     },
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::resources::{HASH, PATH},
     parser::{FromBytes, PathWrapper},
     sys,
-    utils::{convert_der_to_rs, ApduBufferRead, ConvertError},
+    utils::{convert_der_to_rs, ApduBufferRead},
 };
 
 pub struct Sign;
@@ -69,15 +69,19 @@ impl Sign {
 
     #[inline(never)]
     pub fn start_sign(data: &[u8]) -> Result<(), Error> {
-        // the data contains path_sufix + 32-byte hash
+        // the data contains root_path + 32-byte hash
         let mut path = MaybeUninit::uninit();
         let rem = PathWrapper::from_bytes_into(data, &mut path).map_err(|_| Error::Unknown)?;
-        let path = unsafe { path.assume_init().path() };
+        let root_path = unsafe { path.assume_init().path() };
+        // this path should be a root path of the form x/x/x
+        if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
+            return Err(Error::WrongLength);
+        }
 
         let curve = Curve::Secp256K1;
 
         unsafe {
-            PATH.lock(Self)?.replace((path, curve));
+            PATH.lock(Self)?.replace((root_path, curve));
         }
 
         if rem.len() != Self::SIGN_HASH_SIZE {
@@ -97,12 +101,17 @@ impl Sign {
     fn get_signing_info(data: &[u8]) -> Result<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
         //We expect a path prefix of the form x'/x'/x'
         let (path_prefix, curve) = Self::get_derivation_info()?;
-        if path_prefix.components().len() > 4 {
+        if path_prefix.components().len() != BIP32_PATH_PREFIX_DEPTH {
             return Err(Error::WrongLength);
         }
 
         let suffix: BIP32Path<BIP32_PATH_SUFFIX_DEPTH> =
             BIP32Path::read(data).map_err(|_| Error::DataInvalid)?;
+
+        //We expect a path suffix of the form x/x
+        if suffix.components().len() != BIP32_PATH_SUFFIX_DEPTH {
+            return Err(Error::WrongLength);
+        }
 
         let path_iter = path_prefix
             .components()

@@ -86,7 +86,7 @@ impl Sign {
         let (path_root, curve) = Self::get_derivation_info()?;
 
         //We expect a path prefix of the form x'/x'/x'
-        if path_root.components().len() > BIP32_PATH_PREFIX_DEPTH {
+        if path_root.components().len() != BIP32_PATH_PREFIX_DEPTH {
             return Err(Error::WrongLength);
         }
 
@@ -97,6 +97,12 @@ impl Sign {
         while let Some(()) = list.parse_next(&mut path_wrapper) {
             let path_ptr = path_wrapper.as_mut_ptr();
             let suffix = unsafe { &(*path_ptr).path() };
+
+            //We expect a path suffix of the form x/x
+            if suffix.components().len() != BIP32_PATH_SUFFIX_DEPTH {
+                return Err(Error::WrongLength);
+            }
+
             let path_iter = path_root
                 .components()
                 .iter()
@@ -117,10 +123,17 @@ impl Sign {
         flags: &mut u32,
     ) -> Result<u32, Error> {
         let curve = Curve::Secp256K1;
-        let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
+        // read root path and store it in ram as during the
+        // signing process and diseabling outputs we use it
+        // to get a full path: root_path + path_suffix
+        let root_path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
+        //We expect a path prefix of the form x'/x'/x'
+        if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
+            return Err(Error::WrongLength);
+        }
 
         unsafe {
-            PATH.lock(Self)?.replace((path, curve));
+            PATH.lock(Self)?.replace((root_path, curve));
         }
 
         // then, get the change_path list.

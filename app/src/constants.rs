@@ -136,7 +136,7 @@ pub const BIP32_PATH_ROOT_1: u32 = 0x8000_0000 + 9000;
 pub const MAX_BIP32_PATH_DEPTH: usize = 6;
 // path prefix for signer_list and change_path lists
 // It is the same for both and has 3 components m/44'/9000'/0'/
-pub const BIP32_PATH_PREFIX_DEPTH: usize = 4;
+pub const BIP32_PATH_PREFIX_DEPTH: usize = 3;
 // path suffix components which contain the change/address
 // This should be concatenated with the path_prefix to get a full
 // signer/owner path.
