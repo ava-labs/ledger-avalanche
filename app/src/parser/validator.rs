@@ -100,7 +100,7 @@ impl<'b> DisplayableItem for Validator<'b> {
 
                 let checksum = Sha256::digest(&self.node_id[..]).map_err(|_| ViewError::Unknown)?;
                 // format the node_id
-                let prefix = pic_str!(b"NodeId-"!);
+                let prefix = pic_str!(b"NodeID-"!);
 
                 // prepare the data to be encoded by appending last 4-byte
                 data[NODE_ID_LEN..]
