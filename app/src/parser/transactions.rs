@@ -546,7 +546,7 @@ mod tests {
 
         // ensure the number of items has changed
         // as there is now one output that is disable
-        assert_ne!(num_items, num_items_hide);
+        assert!(num_items > num_items_hide);
 
         assert!(matches!(tx, Transaction::Transfer(..)));
     }
