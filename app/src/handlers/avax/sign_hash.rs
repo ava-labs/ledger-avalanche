@@ -180,9 +180,6 @@ impl ApduHandler for Sign {
             }
         }
         // write V at the end
-        if offset >= out.len() {
-            return Err(Error::OutputBufferTooSmall);
-        }
         out[offset] = v;
         offset += 1;
 
