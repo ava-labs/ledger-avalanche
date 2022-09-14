@@ -90,7 +90,7 @@ describe.each(models)('P_Sign[%s]; sign', function (m) {
             const path = `${ROOT_PATH}/${signer}`
             const resp_addr = await app.getAddressAndPubKey(path, false)
             const pk = Uint8Array.from(resp_addr.publicKey)
-            const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(1)
+            const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(0, -1)
 
             const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
             expect(signatureOk).toEqual(true)
