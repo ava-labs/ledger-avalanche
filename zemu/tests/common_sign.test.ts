@@ -15,13 +15,16 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, ETH_DERIVATION, cartesianProduct, curves, defaultOptions, models, enableBlindSigning } from './common'
+import { ROOT_PATH, cartesianProduct, curves, defaultOptions, models } from './common'
 import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
-import { ec } from 'elliptic'
 import { SIMPLE_TRANSFER_DATA } from './common_sign_vectors'
 
-const secp256k1 = new ec('secp256k1');
 const sha256 = require('js-sha256').sha256
+
+// @ts-ignore
+import secp256k1 from 'secp256k1/elliptic'
+// @ts-ignore
+import crypto from 'crypto'
 
 const SIGN_TEST_DATA = cartesianProduct(curves, [
   {
@@ -29,11 +32,11 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
     op: SIMPLE_TRANSFER_DATA ,
     filter: false,
   },
-  {
-    name: 'simple_transfer_hide_output',
-    op: SIMPLE_TRANSFER_DATA ,
-    filter: true,
-  },
+  // {
+  //   name: 'simple_transfer_hide_output',
+  //   op: SIMPLE_TRANSFER_DATA ,
+  //   filter: true,
+  // },
 ])
 
 describe.each(models)('Transfer [%s]; sign', function (m) {
@@ -52,7 +55,7 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
       if (data.filter === true) {
         change_path = ["0/1", "1/100" ];
       }
-      const respReq = app.sign(APP_DERIVATION, signers, msg, change_path);
+      const respReq = app.sign(ROOT_PATH, signers, msg, change_path);
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
 
@@ -67,20 +70,25 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
       expect(resp).toHaveProperty('signatures')
       expect(resp.signatures?.size).toEqual(signers.length)
 
-      const resp_addr = await app.getAddressAndPubKey(APP_DERIVATION, false)
-      const pkey = secp256k1.keyFromPublic(resp_addr.publicKey)
-
-      let signatureOK = true
       switch (curve) {
         case Curve.Secp256K1:
-          //signature without r or s error thrown?
-          // signatureOK = pkey.verify(resp.hash, resp.signature)
+          const hash = crypto.createHash('sha256')
+          const msgHash = Uint8Array.from(hash.update(msg).digest())
+
+          for (const signer of signers) {
+            const path = `${ROOT_PATH}/${signer}`
+            const resp_addr = await app.getAddressAndPubKey(path, false)
+            const pk = Uint8Array.from(resp_addr.publicKey)
+            const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(1)
+
+            const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
+            expect(signatureOk).toEqual(true)
+          }
           break
 
         default:
           throw Error('not a valid curve type')
       }
-      expect(signatureOK).toEqual(true)
     } finally {
       await sim.close()
     }
@@ -98,8 +106,8 @@ describe.each(models)('Common [%s]; signHash', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-hash-${curve}`
 
-      let signing_list = ["0/0", "4/8"];
-      const respReq = app.signHash(APP_DERIVATION, signing_list, msg);
+      const signing_list = ["0/0", "4/8"];
+      const respReq = app.signHash(ROOT_PATH, signing_list, msg);
 
       const resp = await respReq
 
@@ -109,6 +117,16 @@ describe.each(models)('Common [%s]; signHash', function (m) {
       expect(resp.errorMessage).toEqual('No errors')
       expect(resp).toHaveProperty('signatures')
       expect(resp.signatures?.size).toEqual(signing_list.length)
+
+      for (const signer of signing_list) {
+        const path = `${ROOT_PATH}/${signer}`
+        const resp_addr = await app.getAddressAndPubKey(path, false)
+        const pk = Uint8Array.from(resp_addr.publicKey)
+        const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(1)
+
+        const signatureOk = secp256k1.ecdsaVerify(signatureRS, msg, pk)
+        expect(signatureOk).toEqual(true)
+      }
 
     } finally {
       await sim.close()
@@ -124,8 +142,8 @@ describe.each(models)('Common [%s]; signHash', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-msg-${curve}`
 
-      let signing_list = ["0/0", "4/8"];
-      const respReq = app.signMsg(APP_DERIVATION, signing_list, message);
+      const signing_list = ["0/0", "4/8"];
+      const respReq = app.signMsg(ROOT_PATH, signing_list, message);
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
@@ -139,6 +157,24 @@ describe.each(models)('Common [%s]; signHash', function (m) {
       expect(resp.errorMessage).toEqual('No errors')
       expect(resp).toHaveProperty('signatures')
       expect(resp.signatures?.size).toEqual(signing_list.length)
+
+      const hash = crypto.createHash('sha256')
+      const header = Buffer.from("\x1AAvalanche Signed Message:\n", 'utf8');
+      const content = Buffer.from(message, 'utf8')
+      let msgSize = Buffer.alloc(4)
+      msgSize.writeUInt32BE(content.length, 0)
+      const avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
+      const msgHash = Uint8Array.from(hash.update(avax_msg).digest())
+
+      for (const signer of signing_list) {
+        const path = `${ROOT_PATH}/${signer}`
+        const resp_addr = await app.getAddressAndPubKey(path, false)
+        const pk = Uint8Array.from(resp_addr.publicKey)
+        const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(1)
+
+        const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
+        expect(signatureOk).toEqual(true)
+      }
 
     } finally {
       await sim.close()

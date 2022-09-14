@@ -82,6 +82,7 @@ macro_rules! add_padding {
     };
 }
 
+#[derive(Debug)]
 pub struct Date {
     day: u8,
     month: u8,
@@ -98,7 +99,7 @@ pub fn timestamp_to_date(timestamp: i64) -> Result<Date, TimeError> {
     let year_lookup = PIC::new(YEAR_LOOKUP).into_inner();
 
     let mut t = timestamp;
-    let mut tm_day: u8;
+    let mut tm_day: u16;
 
     let tm_sec = (t % 60) as u8;
     t -= tm_sec as i64;
@@ -115,16 +116,16 @@ pub fn timestamp_to_date(timestamp: i64) -> Result<Date, TimeError> {
     // Look up tm_year
     let mut tm_year = 0;
 
-    while tm_year < YEAR_LOOKUP.len() && year_lookup[tm_year] <= t as _ {
+    while tm_year < year_lookup.len() && year_lookup[tm_year] <= t as _ {
         tm_year += 1;
     }
 
-    if tm_year == 0 || tm_year == YEAR_LOOKUP.len() {
+    if tm_year == 0 || tm_year == year_lookup.len() {
         return Err(TimeError::InvalidTimestamp);
     }
     tm_year -= 1;
 
-    tm_day = (t as u32 - year_lookup[tm_year] + 1) as u8;
+    tm_day = (t as u32 - year_lookup[tm_year] + 1) as u16;
     tm_year += 1970;
 
     // Get day/month
@@ -136,15 +137,15 @@ pub fn timestamp_to_date(timestamp: i64) -> Result<Date, TimeError> {
         let mut tmp = month_days[tm_mon];
         tmp += if tm_mon == 1 { leap } else { 0 };
 
-        if tm_day <= tmp {
+        if tm_day <= tmp as _ {
             break;
         }
-        tm_day -= tmp;
+        tm_day -= tmp as u16;
     }
     tm_mon += 1;
 
     Ok(Date {
-        day: tm_day,
+        day: tm_day as u8,
         month: tm_mon as _,
         year: tm_year as _,
         hour: tm_hour,
@@ -221,7 +222,7 @@ mod tests {
         use time::format_description;
         use time::OffsetDateTime;
 
-        let timestamp = [1657089945, 55471502];
+        let timestamp = [1657089945, 55471502, 1663087639];
 
         for t in timestamp {
             let date = OffsetDateTime::from_unix_timestamp(t).unwrap();
@@ -229,14 +230,12 @@ mod tests {
                 format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second] UTC")
                     .unwrap();
 
-            let _date_str = date.format(&format).unwrap();
+            let date_str = date.format(&format).unwrap();
 
             let test_date = timestamp_to_str_date(t).unwrap();
-            let _test_date = std::str::from_utf8(test_date.as_slice()).unwrap();
+            let test_date = std::str::from_utf8(test_date.as_slice()).unwrap();
 
-            // TODO: enable this as currently the time crate is more accurate than our timestamp
-            // conversion
-            //assert_eq!(&date_str, test_date);
+            assert_eq!(&date_str, test_date);
         }
     }
 }

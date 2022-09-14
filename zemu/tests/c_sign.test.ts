@@ -15,12 +15,14 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, ETH_DERIVATION, cartesianProduct, curves, defaultOptions, models, enableBlindSigning } from './common'
-import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
-import { ec } from 'elliptic'
+import { ROOT_PATH, cartesianProduct, curves, defaultOptions, models } from './common'
+import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { C_IMPORT_FROM_X, C_EXPORT_TO_X} from './c_chain_vectors'
 
-const secp256k1 = new ec('secp256k1');
+// @ts-ignore
+import secp256k1 from 'secp256k1/elliptic'
+// @ts-ignore
+import crypto from 'crypto'
 
 const SIGN_TEST_DATA = cartesianProduct(curves, [
   {
@@ -33,7 +35,7 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
   },
 ])
 
-describe.each(models)('Standard [%s]; sign', function (m) {
+describe.each(models)('C_Sign[%s]; sign', function (m) {
   test.each(SIGN_TEST_DATA)('sign c-chain transactions', async function (curve, data) {
     const sim = new Zemu(m.path)
     try {
@@ -44,7 +46,7 @@ describe.each(models)('Standard [%s]; sign', function (m) {
       const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
 
       const signers = ["0/1", "5/8"];
-      const respReq = app.sign(APP_DERIVATION, signers, msg);
+      const respReq = app.sign(ROOT_PATH, signers, msg);
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
@@ -59,6 +61,18 @@ describe.each(models)('Standard [%s]; sign', function (m) {
       expect(resp).toHaveProperty('signatures')
       expect(resp.signatures?.size).toEqual(signers.length)
 
+      const hash = crypto.createHash('sha256')
+      const msgHash = Uint8Array.from(hash.update(msg).digest())
+
+      for (const signer of signers) {
+        const path = `${ROOT_PATH}/${signer}`
+        const resp_addr = await app.getAddressAndPubKey(path, false)
+        const pk = Uint8Array.from(resp_addr.publicKey)
+        const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(1)
+
+        const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
+        expect(signatureOk).toEqual(true)
+      }
     } finally {
       await sim.close()
     }

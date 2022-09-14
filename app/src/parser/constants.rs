@@ -62,4 +62,4 @@ pub const CB58_CHECKSUM_LEN: usize = 4;
 pub const U32_SIZE: usize = std::mem::size_of::<u32>();
 
 // types
-pub type OutputIdx = u32;
+pub type OutputIdx = u64;

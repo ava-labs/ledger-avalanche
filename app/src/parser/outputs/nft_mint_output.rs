@@ -23,7 +23,9 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{
+        u32_to_str, u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
+    },
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -106,7 +108,7 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let addr_item_n = self.num_items() - self.addresses.len();
@@ -125,14 +127,16 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
             1 => {
                 let title_content = pic_str!(b"GroupID");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.group_id, &mut buffer);
+                let buffer =
+                    u32_to_str(self.group_id, &mut buffer).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(buffer, message, page)
             }
             2 if render_locktime => {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.locktime, &mut buffer);
+                let buffer =
+                    u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(buffer, message, page)
             }
@@ -140,7 +144,8 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
                 let title_content = pic_str!(b"Threshold");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let buffer = itoa(self.threshold, &mut buffer);
+                let buffer =
+                    u32_to_str(self.threshold, &mut buffer).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(buffer, message, page)
             }

@@ -25,7 +25,7 @@ export function serializePath(path: string): Buffer {
 
   const pathArray = path.split('/')
 
-  if (pathArray.length !== 5 && pathArray.length !== 4) {
+  if (pathArray.length !== 6 && pathArray.length !== 5 && pathArray.length !== 4) {
     throw new Error("Invalid path. (e.g \"m/44'/5757'/5'/0/3\")")
   }
 

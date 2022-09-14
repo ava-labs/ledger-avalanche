@@ -14,18 +14,19 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use crate::parser::{SECPMintOutput, SECPTransferOutput};
+use crate::parser::{DisplayableItem, SECPMintOutput, SECPTransferOutput};
 
 use crate::{
+    handlers::handle_ui_message,
     parser::{FromBytes, ParserError},
-    utils::{hex_encode, ApduPanic},
+    utils::ApduPanic,
 };
+use zemu_sys::ViewError;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
-    sequence::tuple,
 };
 
 const U32_SIZE: usize = std::mem::size_of::<u32>();
@@ -70,6 +71,49 @@ impl<'b> FromBytes<'b> for SECPMintOperation<'b> {
         }
 
         Ok(rem)
+    }
+}
+
+impl<'b> DisplayableItem for SECPMintOperation<'b> {
+    fn num_items(&self) -> usize {
+        // operation description
+        // and the transfer to the new mint-output owners
+        1 + self.transfer_output.num_items()
+    }
+
+    fn render_item(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        use bolos::{pic_str, PIC};
+
+        if item_n == 0 {
+            let title_content = pic_str!(b"SECPMint");
+            title[..title_content.len()].copy_from_slice(title_content);
+
+            return handle_ui_message(pic_str!(b"Operation"), message, page);
+        }
+
+        let item_n = item_n as usize - 1;
+
+        match item_n as usize {
+            0 => {
+                let res = self.transfer_output.render_item(0, title, message, page);
+                title.iter_mut().for_each(|v| *v = 0);
+                // this operation consumes mint and transfer new ones to
+                // list of owners so change this title.
+                let title_content = pic_str!(b"Transfer: ");
+                title[..title_content.len()].copy_from_slice(title_content);
+                res
+            }
+            x @ 1.. if x < self.transfer_output.num_addresses() + 1 => self
+                .transfer_output
+                .render_item(x as _, title, message, page),
+            _ => Err(ViewError::NoData),
+        }
     }
 }
 

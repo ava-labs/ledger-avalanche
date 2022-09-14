@@ -29,6 +29,8 @@ pub use apdu_wrapper::*;
 
 mod keccak;
 pub(crate) use keccak::{Hasher as KHasher, Keccak};
+pub mod convert_to_rs;
+pub use convert_to_rs::{convert_der_to_rs, ConvertError};
 
 mod buffer_upload;
 pub use buffer_upload::*;

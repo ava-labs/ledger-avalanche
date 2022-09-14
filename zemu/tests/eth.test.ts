@@ -45,7 +45,7 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       const respReq = app.signTransaction(ETH_DERIVATION, msg.toString('hex'))
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
-      await sim.navigateAndCompareUntilText('.', testcase, 'APPROVE')
+      await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
 
@@ -54,6 +54,22 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       expect(resp).toHaveProperty('s')
       expect(resp).toHaveProperty('r')
       expect(resp).toHaveProperty('v')
+
+      //Verify signature
+      const resp_addr = await app.getAddress(ETH_DERIVATION, false)
+
+      const EC = new ec("secp256k1");
+      const sha3 = require('js-sha3');
+      const msgHash = sha3.keccak256(msg);
+
+      const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
+      const signature_obj = {
+        r: Buffer.from(resp.r, 'hex'),
+        s: Buffer.from(resp.s, 'hex'),
+      }
+
+      const signatureOK = EC.verify(msgHash, signature_obj, pubKey, 'hex')
+      expect(signatureOK).toEqual(true)
     } finally {
       await sim.close()
     }
@@ -85,7 +101,7 @@ describe.each(models)('Ethereum [%s] - pubkey', function (m) {
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
       await sim.waitScreenChange()
-      await sim.navigateAndCompareUntilText('.', `${m.prefix.toLowerCase()}-eth-addr`, 'APPROVE')
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-eth-addr`)
 
       const resp = await respReq
       console.log(resp, m.name)

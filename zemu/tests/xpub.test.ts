@@ -15,11 +15,8 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { curves, defaultOptions, models } from './common'
+import { curves, defaultOptions, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
-
-const APP_DERIVATION = "m/44'/9000'/0'"
-const ETH_DERIVATION = "m/44'/60'/0'"
 
 describe.each(models)('Standard [%s] - extended pubkey', function (m) {
   test.each(curves)(
@@ -29,7 +26,7 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getExtendedPubKey(APP_DERIVATION, false)
+        const resp = await app.getExtendedPubKey(ROOT_PATH, false)
 
         console.log(resp, m.name)
 
@@ -50,7 +47,7 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.getExtendedPubKey(APP_DERIVATION, true)
+        const respReq = app.getExtendedPubKey(ROOT_PATH, true)
 
         await sim.waitScreenChange();
 
