@@ -32,11 +32,11 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
     op: SIMPLE_TRANSFER_DATA ,
     filter: false,
   },
-  {
-    name: 'simple_transfer_hide_output',
-    op: SIMPLE_TRANSFER_DATA ,
-    filter: true,
-  },
+  // {
+  //   name: 'simple_transfer_hide_output',
+  //   op: SIMPLE_TRANSFER_DATA ,
+  //   filter: true,
+  // },
 ])
 
 describe.each(models)('Transfer [%s]; sign', function (m) {
@@ -106,7 +106,7 @@ describe.each(models)('Common [%s]; signHash', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-hash-${curve}`
 
-      let signing_list = ["0/0", "4/8"];
+      const signing_list = ["0/0", "4/8"];
       const respReq = app.signHash(ROOT_PATH, signing_list, msg);
 
       const resp = await respReq
@@ -118,16 +118,13 @@ describe.each(models)('Common [%s]; signHash', function (m) {
       expect(resp).toHaveProperty('signatures')
       expect(resp.signatures?.size).toEqual(signing_list.length)
 
-      const hash = crypto.createHash('sha256')
-      const msgHash = Uint8Array.from(hash.update(msg).digest())
-
       for (const signer of signing_list) {
         const path = `${ROOT_PATH}/${signer}`
         const resp_addr = await app.getAddressAndPubKey(path, false)
         const pk = Uint8Array.from(resp_addr.publicKey)
         const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(1)
 
-        const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
+        const signatureOk = secp256k1.ecdsaVerify(signatureRS, msg, pk)
         expect(signatureOk).toEqual(true)
       }
 
@@ -145,7 +142,7 @@ describe.each(models)('Common [%s]; signHash', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-msg-${curve}`
 
-      let signing_list = ["0/0", "4/8"];
+      const signing_list = ["0/0", "4/8"];
       const respReq = app.signMsg(ROOT_PATH, signing_list, message);
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
@@ -162,7 +159,12 @@ describe.each(models)('Common [%s]; signHash', function (m) {
       expect(resp.signatures?.size).toEqual(signing_list.length)
 
       const hash = crypto.createHash('sha256')
-      const msgHash = Uint8Array.from(hash.update(message).digest())
+      const header = Buffer.from("\x1AAvalanche Signed Message:\n", 'utf8');
+      const content = Buffer.from(message, 'utf8')
+      let msgSize = Buffer.alloc(4)
+      msgSize.writeUInt32BE(content.length, 0)
+      const avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
+      const msgHash = Uint8Array.from(hash.update(avax_msg).digest())
 
       for (const signer of signing_list) {
         const path = `${ROOT_PATH}/${signer}`

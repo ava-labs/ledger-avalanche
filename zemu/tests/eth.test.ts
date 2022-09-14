@@ -45,7 +45,7 @@ describe.each(models)('Ethereum [%s]; sign', function (m) {
       const respReq = app.signTransaction(ETH_DERIVATION, msg.toString('hex'))
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
-      await sim.navigateAndCompareUntilText('.', testcase, 'APPROVE')
+      await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
 
@@ -101,7 +101,7 @@ describe.each(models)('Ethereum [%s] - pubkey', function (m) {
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
       await sim.waitScreenChange()
-      await sim.navigateAndCompareUntilText('.', `${m.prefix.toLowerCase()}-eth-addr`, 'APPROVE')
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-eth-addr`)
 
       const resp = await respReq
       console.log(resp, m.name)

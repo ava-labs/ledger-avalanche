@@ -65,7 +65,7 @@ describe.each(models)('P_Sign[%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
 
-      const signers = ["0/1", "5/8"];
+      const signers = ["0/0", "0/1", "1/100"];
       const respReq = app.sign(ROOT_PATH, signers, msg);
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
