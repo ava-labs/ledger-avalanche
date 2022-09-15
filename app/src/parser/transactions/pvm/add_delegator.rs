@@ -170,7 +170,11 @@ impl<'b> DisplayableItem for AddDelegatorTx<'b> {
 
 impl<'b> AddDelegatorTx<'b> {
     pub fn disable_output_if(&mut self, address: &[u8]) {
-        self.base_tx.disable_output_if(address);
+        // for this stake transaction, transfer information
+        // is not important so even if there is only one
+        // output, just hide it from the UI as long as
+        // the change address match
+        self.base_tx.force_disable_output(address);
 
         let mut idx = 0;
         let mut render = self.renderable_out;

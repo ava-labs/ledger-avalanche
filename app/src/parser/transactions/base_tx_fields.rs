@@ -51,11 +51,18 @@ where
     O: FromBytes<'b> + DisplayableItem + Deref<Target = Output<'b>> + 'b,
 {
     pub fn disable_output_if(&mut self, address: &[u8]) {
-        let num_outs = self.outputs.iter().count();
         // skip filtering out outputs if there is only one
+        let num_outs = self.outputs.iter().count();
         if num_outs <= 1 {
             return;
         }
+
+        self.force_disable_output(address);
+    }
+
+    // Omits the check if there is only one output, as there are
+    // exceptions to this rule.
+    pub fn force_disable_output(&mut self, address: &[u8]) {
         let mut idx = 0;
         let mut render = self.renderable_out;
         self.outputs.iterate_with(|o| {
