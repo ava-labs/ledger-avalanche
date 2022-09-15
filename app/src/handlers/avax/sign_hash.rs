@@ -165,11 +165,14 @@ impl ApduHandler for Sign {
             //write as R S (V written earlier)
             // this will write directly to buffer
             match convert_der_to_rs(&sig[..sig_size], &mut r, &mut s) {
-                Ok((written_r, written_s)) => {
+                Ok((_, _)) => {
                     //format R and S by only having 32 bytes each,
                     // skipping the first byte if necessary
-                    let r = if written_r == 33 { &r[1..] } else { &r[..32] };
-                    let s = if written_s == 33 { &s[1..] } else { &s[..32] };
+                    // if we have less than 32 bytes we just have 0s at the start
+                    // this is consistent with the fact that in `convert_der_to_rs`
+                    // we put the bytes at the end of the buffer first
+                    let r = &r[1..];
+                    let s = &s[1..];
 
                     out[offset..][..32].copy_from_slice(r);
                     offset += 32;

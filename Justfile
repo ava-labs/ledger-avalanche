@@ -39,3 +39,7 @@ make *cmd='':
 
 try:
     cd zemu && yarn try
+
+alias c := cargo
+cargo *cmd='':
+    cargo {{cmd}}
