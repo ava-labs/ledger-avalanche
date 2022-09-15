@@ -15,6 +15,7 @@
 ********************************************************************************/
 use bolos::{crypto::bip32::BIP32Path, hash::Sha256};
 use core::mem::MaybeUninit;
+use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{
@@ -23,7 +24,10 @@ use crate::{
     },
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::resources::{HASH, PATH},
+    handlers::{
+        handle_ui_message,
+        resources::{HASH, PATH},
+    },
     parser::{FromBytes, PathWrapper},
     sys,
     utils::{convert_der_to_rs, ApduBufferRead},
@@ -68,7 +72,7 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn start_sign(data: &[u8]) -> Result<(), Error> {
+    pub fn start_sign(data: &[u8], flags: &mut u32) -> Result<usize, Error> {
         // the data contains root_path + 32-byte hash
         let mut path = MaybeUninit::uninit();
         let rem = PathWrapper::from_bytes_into(data, &mut path).map_err(|_| Error::Unknown)?;
@@ -91,11 +95,11 @@ impl Sign {
         let mut unsigned_hash = [0; Self::SIGN_HASH_SIZE];
         unsigned_hash.copy_from_slice(rem);
 
-        unsafe {
-            HASH.lock(Self)?.replace(unsigned_hash);
-        }
+        let ui = SignUI {
+            hash: unsigned_hash,
+        };
 
-        Ok(())
+        crate::show_ui!(ui.show(flags))
     }
 
     fn get_signing_info(data: &[u8]) -> Result<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
@@ -125,10 +129,66 @@ impl Sign {
     }
 }
 
+pub(crate) struct SignUI {
+    hash: [u8; Sign::SIGN_HASH_SIZE],
+}
+
+impl Viewable for SignUI {
+    fn num_items(&mut self) -> Result<u8, ViewError> {
+        Ok(1)
+    }
+
+    #[inline(never)]
+    fn render_item(
+        &mut self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        use crate::utils::hex_encode;
+        use bolos::{pic_str, PIC};
+
+        if item_n != 0 {
+            return Err(ViewError::NoData);
+        }
+        let title_content = pic_str!(b"Hash: ");
+        title[..title_content.len()].copy_from_slice(title_content);
+
+        let mut hex = [0; Sign::SIGN_HASH_SIZE * 2];
+
+        let size = hex_encode(self.hash, &mut hex[..]).map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&hex[..size], message, page)
+    }
+
+    fn accept(&mut self, _out: &mut [u8]) -> (usize, u16) {
+        let tx = 0;
+
+        // In this step the msg has not been signed
+        // so store the hash for the next steps
+        unsafe {
+            match HASH.lock(Sign) {
+                Ok(hash) => {
+                    hash.replace(self.hash);
+                }
+                Err(_) => return (0, Error::ExecutionError as _),
+            }
+        }
+
+        (tx, Error::Success as _)
+    }
+
+    fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
+        let _ = cleanup_globals();
+        (0, Error::CommandNotAllowed as _)
+    }
+}
+
 impl ApduHandler for Sign {
     #[inline(never)]
     fn handle<'apdu>(
-        _flags: &mut u32,
+        flags: &mut u32,
         tx: &mut u32,
         buffer: ApduBufferRead<'apdu>,
     ) -> Result<(), Error> {
@@ -140,8 +200,12 @@ impl ApduHandler for Sign {
         let p1 = buffer.p1();
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
+        // this first message contain the hash which must be reviewed
+        // following messages are part of the signing process, and is used
+        // either for signing transactions, messages or a hash all of them,
+        // previously reviewed.
         if p1 == FIRST_MESSAGE {
-            return Self::start_sign(cdata);
+            return Self::start_sign(cdata, flags).map(|_| ());
         }
 
         // retrieve signing info

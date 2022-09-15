@@ -95,7 +95,7 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
   })
 })
 
-describe.each(models)('Common [%s]; signHash', function (m) {
+describe.each(models)('signHash [%s]', function (m) {
   test.each(curves)('sign hash', async function (curve) {
     const sim = new Zemu(m.path)
     try {
@@ -108,6 +108,11 @@ describe.each(models)('Common [%s]; signHash', function (m) {
 
       const signing_list = ["0/0", "4/8"];
       const respReq = app.signHash(ROOT_PATH, signing_list, msg);
+
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+
+      await sim.compareSnapshotsAndApprove('.', testcase)
+
 
       const resp = await respReq
 
@@ -133,7 +138,7 @@ describe.each(models)('Common [%s]; signHash', function (m) {
     }
   })
 
-  test.each(curves)('sign msg', async function (curve) {
+  test.each(curves)('signMsg', async function (curve) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
