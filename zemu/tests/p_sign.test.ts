@@ -24,13 +24,14 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
+const SIGN_TEST_DATA = [
   {
     name: 'p_import_from_x',
-    op: P_IMPORT_FROM_X ,
+    op: P_IMPORT_FROM_X,
   },
   {
     name: 'p_export_to_x',
-    op: P_EXPORT_TO_X ,
+    op: P_EXPORT_TO_X,
   },
   {
     name: 'add_validator',
@@ -42,13 +43,12 @@ import crypto from 'crypto'
   },
   {
     name: 'add_subnet_validator',
-    op: ADD_SUBNET_VALIDATOR_DATA ,
+    op: ADD_SUBNET_VALIDATOR_DATA,
   },
   {
     name: 'create_subnet',
     op: CREATE_SUBNET,
   },
-const SIGN_TEST_DATA = [
   {
     name: 'create_chain',
     op: CREATE_CHAIN,
@@ -89,7 +89,7 @@ describe.each(models)('P_Sign[$name]; sign', function (m) {
         const path = `${ROOT_PATH}/${signer}`
         const resp_addr = await app.getAddressAndPubKey(path, false)
         const pk = Uint8Array.from(resp_addr.publicKey)
-        const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(1)
+        const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(0, -1)
 
         const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
         signatureOks[signer] = signatureOk;

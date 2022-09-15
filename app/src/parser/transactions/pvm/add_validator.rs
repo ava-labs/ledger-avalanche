@@ -76,6 +76,7 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         if num_outputs > OutputIdx::BITS {
             return Err(ParserError::TooManyOutputs.into());
         }
+
         let stake = unsafe { &mut *addr_of_mut!((*out).stake).cast() };
         let rem = ObjectList::<TransferableOutput<PvmOutput>>::new_into(rem, stake)?;
 
@@ -178,7 +179,11 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
 
 impl<'b> AddValidatorTx<'b> {
     pub fn disable_output_if(&mut self, address: &[u8]) {
-        self.base_tx.disable_output_if(address);
+        // for this stake transaction, transfer information
+        // is not important so even if there is only one
+        // output, just hide it from the UI as long as
+        // the change address match
+        self.base_tx.force_disable_output(address);
 
         let mut idx = 0;
         let mut render = self.renderable_out;

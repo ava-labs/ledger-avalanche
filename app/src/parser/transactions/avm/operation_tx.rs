@@ -33,7 +33,11 @@ pub struct OperationTx<'b> {
 
 impl<'b> OperationTx<'b> {
     pub fn disable_output_if(&mut self, address: &[u8]) {
-        self.base_tx.disable_output_if(address);
+        // for this operation transaction, transfer information
+        // is not important so even if there is only one
+        // output, just hide it from the UI as long as
+        // the change address match
+        self.base_tx.force_disable_output(address);
     }
 
     fn fee(&'b self) -> Result<u64, ParserError> {

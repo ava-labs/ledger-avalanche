@@ -151,10 +151,9 @@ impl ApduHandler for Sign {
         let (sig_size, mut sig) = Sign::sign(&path_prefix, curve, hash)?;
         let out = buffer.write();
 
-        //write signature as VRS
+        //write signature as RSV
         //write V, which is the LSB of the firsts byte
-        out[offset] = sig[0] & 0x01;
-        offset += 1;
+        let v = sig[0] & 0x01;
 
         //reset to 0x30 for the conversion
         sig[0] = 0x30;
@@ -183,6 +182,9 @@ impl ApduHandler for Sign {
                 Err(_) => return Err(Error::ExecutionError as _),
             }
         }
+        // write V at the end
+        out[offset] = v;
+        offset += 1;
 
         if p1 == LAST_MESSAGE {
             let _ = cleanup_globals();
