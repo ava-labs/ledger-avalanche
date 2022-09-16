@@ -1920,6 +1920,12 @@ mod tests {
         assert_eq!(expected.as_bytes(), &*value.to_lexical(&mut buffer))
     }
 
+    #[test]
+    fn formatting_max() {
+        formatting_impl(u256::MAX);
+    }
+
+    #[cfg(not(miri))]
     proptest! {
         #[test]
         fn formatting(a: u64, b: u64, c: u64, d: u64) {
