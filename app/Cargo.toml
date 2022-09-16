@@ -33,6 +33,7 @@ bytemuck = { version = "1" }
 lexical-core = { version = "0.7", features = ["libm"], default-features = false }
 educe = "0.4.19"
 crunchy = "0.2.2"
+byteorder = { version = "1.4.3", default-features = false }
 
 [target.thumbv6m-none-eabi.dev-dependencies]
 panic-halt = "0.2.0"
@@ -52,3 +53,4 @@ rand = "0.8.5"
 insta = { version = "1", features = ["glob"] }
 serde_json = "1.0.85"
 itertools = "0.10.4"
+proptest = "1"
