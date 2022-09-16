@@ -651,7 +651,6 @@ impl u256 {
     pub fn overflowing_mul(self, other: u256) -> (u256, bool) {
         {
             let ret: [u64; 4 * 2] = {
-                #![allow(unused_assignments)]
                 let u256(ref me) = self;
                 let u256(ref you) = other;
                 let mut ret = [0u64; 4 * 2];
