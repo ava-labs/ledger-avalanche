@@ -37,7 +37,7 @@ impl<'b> Header<'b> {
     }
 
     pub fn network_id(&self) -> Result<NetworkId, ParserError> {
-        Ok(NetworkId::try_from(self.network_id)?)
+        NetworkId::try_from(self.network_id)
     }
 
     pub fn hrp(&self) -> Result<&'static str, ParserError> {
@@ -54,8 +54,7 @@ impl<'b> FromBytes<'b> for Header<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("Header::from_bytes_into\x00");
 
-        let (mut rem, (network_id, blockchain_id)) =
-            tuple((be_u32, take(BLOCKCHAIN_ID_LEN)))(input)?;
+        let (rem, (network_id, blockchain_id)) = tuple((be_u32, take(BLOCKCHAIN_ID_LEN)))(input)?;
         let blockchain_id = arrayref::array_ref!(blockchain_id, 0, BLOCKCHAIN_ID_LEN);
 
         //good ptr and no uninit reads

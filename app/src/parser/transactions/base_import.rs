@@ -17,16 +17,15 @@ use core::ops::Deref;
 
 use bolos::{pic_str, PIC};
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::take, number::complete::be_u32};
+use nom::bytes::complete::take;
 use zemu_sys::ViewError;
 
 use crate::{
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
-        BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, OutputIdx,
-        ParserError, TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN,
-        MAX_ADDRESS_ENCODED_LEN,
+        BaseTxFields, ChainId, DisplayableItem, FromBytes, Header, ObjectList, Output, ParserError,
+        TransferableInput, TransferableOutput, BLOCKCHAIN_ID_LEN, MAX_ADDRESS_ENCODED_LEN,
     },
 };
 

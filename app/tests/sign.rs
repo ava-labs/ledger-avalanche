@@ -14,15 +14,15 @@
 *  limitations under the License.
 ********************************************************************************/
 mod prelude;
-use std::{collections::HashMap, convert::TryFrom};
+use std::collections::HashMap;
 
 use arrayref::{array_ref, array_refs};
 use itertools::Itertools;
 use prelude::*;
 
 use k256::{
-    ecdsa::{recoverable, signature::Verifier, DerSignature, Signature, VerifyingKey},
-    elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint},
+    ecdsa::{signature::Verifier, Signature, VerifyingKey},
+    elliptic_curve::sec1::FromEncodedPoint,
     EncodedPoint, PublicKey,
 };
 
@@ -131,7 +131,7 @@ fn p_create_chain_inner(signers: &[[u32; 2]]) -> HashMap<String, bool> {
         verifications.entry(path.to_string()).or_insert(verified);
     }
 
-    return verifications;
+    verifications
 }
 
 const P_CREATE_CHAIN: &[u8] = &[
@@ -181,11 +181,11 @@ impl AvaxSign {
     pub fn new(prefix: [u32; 3], signers: &[[u32; 2]], msg: &[u8], change: &[[u32; 2]]) -> Self {
         let prefix = BIP32Path::new(prefix).unwrap();
         let signers = signers
-            .into_iter()
+            .iter()
             .map(|signer| BIP32Path::new(signer.iter().cloned()).unwrap())
             .collect();
         let change = change
-            .into_iter()
+            .iter()
             .map(|change| BIP32Path::new(change.iter().cloned()).unwrap())
             .collect();
 
@@ -206,7 +206,7 @@ impl AvaxSign {
         // number of change paths and then the change paths with the usual serialization
         out.push(change_nums as u8);
 
-        let serialized_change = self.change.iter().map(|path| path.serialize()).flatten();
+        let serialized_change = self.change.iter().flat_map(|path| path.serialize());
         out.extend(serialized_change);
 
         //change_paths are prefixed to the message (for purposes of sending the payload)

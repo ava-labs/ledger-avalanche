@@ -35,7 +35,7 @@ mod utils {
         let (rem, components) = take(len as usize * 4)(rem)?;
         let components: &[[u8; 4]] = bytemuck::try_cast_slice(components).apdu_unwrap();
 
-        let path = BIP32Path::new(components.into_iter().map(|n| u32::from_be_bytes(*n)))
+        let path = BIP32Path::new(components.iter().map(|n| u32::from_be_bytes(*n)))
             .map_err(|_| ParserError::ValueOutOfRange)?;
 
         Ok((rem, path))

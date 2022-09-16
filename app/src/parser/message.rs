@@ -15,21 +15,14 @@
 ********************************************************************************/
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{
-    bytes::complete::{tag, take},
-    number::complete::be_u32,
-};
+use nom::{bytes::complete::tag, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{error::ParserError, AssetId, DisplayableItem, FromBytes},
-    utils::hex_encode,
+    parser::{error::ParserError, DisplayableItem, FromBytes},
 };
-use bolos::{
-    hash::{Hasher, Sha256},
-    pic_str, PIC,
-};
+use bolos::{pic_str, PIC};
 
 // eth app truncates an ascii
 // message to around this size.

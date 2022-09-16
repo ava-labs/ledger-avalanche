@@ -92,7 +92,7 @@ impl<'ui> AddrUIInitializer<'ui> {
                 .as_ref()
                 .get(1..)
                 .ok_or(AddrUIInitError::HashInitError)?;
-            k.update(&key);
+            k.update(key);
             k.finalize(&mut hash[..]);
             Ok(())
         }

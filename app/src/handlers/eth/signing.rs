@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use arrayref::array_mut_ref;
+
 use bolos::{
     crypto::bip32::BIP32Path,
     hash::{Hasher, Keccak},
@@ -30,7 +30,7 @@ use crate::{
         resources::{BUFFER, PATH},
     },
     sys,
-    utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic, Uploader},
+    utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic},
 };
 
 use super::utils::parse_bip32_eth;

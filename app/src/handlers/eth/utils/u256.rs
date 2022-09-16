@@ -17,7 +17,7 @@
 //! and afterwards has been refactored to remove unwanted functionality
 //! and provide alternative implementations for some items
 
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, non_upper_case_globals, unused_comparisons)]
 
 use core::cmp::{Ord, Ordering};
 use core::iter::{Product, Sum};
@@ -126,7 +126,7 @@ impl u256 {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     /// Return the least number of bits needed to represent the number
@@ -197,7 +197,7 @@ impl u256 {
     #[inline]
     pub fn to_big_endian(&self, bytes: &mut [u8]) {
         use byteorder::{BigEndian, ByteOrder};
-        if !(4 * 8 == bytes.len()) {
+        if 4 * 8 != bytes.len() {
             panic!("assertion failed: 4 * 8 == bytes.len()")
         }
 
@@ -210,7 +210,7 @@ impl u256 {
     #[inline]
     pub fn to_little_endian(&self, bytes: &mut [u8]) {
         use byteorder::{ByteOrder, LittleEndian};
-        if !(4 * 8 == bytes.len()) {
+        if 4 * 8 != bytes.len() {
             panic!("assertion failed: 4 * 8 == bytes.len()")
         }
         for i in 0..4 {
@@ -250,7 +250,7 @@ impl u256 {
     }
 
     fn full_shl(self, shift: u32) -> [u64; 4 + 1] {
-        if !(shift < Self::WORD_BITS as u32) {
+        if shift >= Self::WORD_BITS as u32 {
             panic!("assertion failed: shift < Self::WORD_BITS as u32")
         }
         let mut u = [0u64; 4 + 1];
@@ -262,7 +262,7 @@ impl u256 {
     }
 
     fn full_shr(u: [u64; 4 + 1], shift: u32) -> Self {
-        if !(shift < Self::WORD_BITS as u32) {
+        if shift >= Self::WORD_BITS as u32 {
             panic!("assertion failed: shift < Self::WORD_BITS as u32")
         };
         let mut res = Self::zero();
@@ -299,7 +299,7 @@ impl u256 {
         if !(self.bits() >= v.bits() && !v.fits_word()) {
             panic!("assertion failed: self.bits() >= v.bits() && !v.fits_word()",)
         }
-        if !(n + m <= 4) {
+        if n + m > 4 {
             panic!("assertion failed: n + m <= 4")
         };
         let shift = v.0[n - 1].leading_zeros();
@@ -342,11 +342,6 @@ impl u256 {
     }
 
     fn words(bits: usize) -> usize {
-        if true {
-            if !(bits > 0) {
-                panic!("assertion failed: bits > 0")
-            };
-        };
         1 + (bits - 1) / Self::WORD_BITS
     }
 
@@ -358,7 +353,7 @@ impl u256 {
     pub fn div_mod(self, other: Self) -> (Self, Self) {
         let my_bits = self.bits();
         let your_bits = other.bits();
-        if !(your_bits != 0) {
+        if your_bits == 0 {
             panic!("division by zero")
         };
         if my_bits < your_bits {
@@ -413,12 +408,12 @@ impl u256 {
         while n > u_one {
             if is_even(&n) {
                 x = x * x;
-                n = n >> 1usize;
+                n >>= 1usize;
             } else {
                 y = x * y;
                 x = x * x;
-                n.0[4 - 1] = n.0[4 - 1] & ((!0u64) >> 1);
-                n = n >> 1usize;
+                n.0[4 - 1] &= (!0u64) >> 1;
+                n >>= 1usize;
             }
         }
         x * y
@@ -442,7 +437,7 @@ impl u256 {
                     overflow |= overflow_overflow;
                     overflow_x
                 };
-                n = n >> 1usize;
+                n >>= 1usize;
             } else {
                 y = {
                     let (overflow_x, overflow_overflow) = x.overflowing_mul(y);
@@ -482,84 +477,67 @@ impl u256 {
             let mut ret = [0u64; 4];
             let ret_ptr = &mut ret as *mut [u64; 4] as *mut u64;
             let mut carry = 0u64;
-            #[allow(unknown_lints, eq_op)]
+            #[allow(unknown_lints, clippy::eq_op)]
             const _: [(); 0 - !{
                 const ASSERT: bool = core::isize::MAX as usize / core::mem::size_of::<u64>() > 4;
                 ASSERT
             } as usize] = [];
 
-            #[allow(non_upper_case_globals)]
-            #[allow(unused_comparisons)]
             {
+                const i: usize = 0;
                 {
-                    const i: usize = 0;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
+                    if carry != 0 {
+                        let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
+                        let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
+                        unsafe { *ret_ptr.add(i) = res2 }
+                        carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                    } else {
+                        let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
+                        unsafe { *ret_ptr.add(i) = res }
+                        carry = overflow as u64;
                     }
                 }
-                {
-                    const i: usize = 0 + 1;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
-                    }
-                }
-                {
-                    const i: usize = 0 + 2;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
-                    }
-                }
-                {
-                    const i: usize = 0 + 3;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
-                    }
-                };
             }
+            {
+                const i: usize = 1;
+                if carry != 0 {
+                    let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
+                    let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
+                    unsafe { *ret_ptr.add(i) = res2 }
+                    carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                } else {
+                    let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
+                    unsafe { *ret_ptr.add(i) = res }
+                    carry = overflow as u64;
+                }
+            }
+            {
+                const i: usize = 2;
+                if carry != 0 {
+                    let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
+                    let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
+                    unsafe { *ret_ptr.add(i) = res2 }
+                    carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                } else {
+                    let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
+                    unsafe { *ret_ptr.add(i) = res }
+                    carry = overflow as u64;
+                }
+            }
+            {
+                const i: usize = 3;
+                if carry != 0 {
+                    let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
+                    let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
+                    unsafe { *ret_ptr.add(i) = res2 }
+                    carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                } else {
+                    let (res, overflow) = (u64::overflowing_add)(me[i], you[i]);
+                    unsafe { *ret_ptr.add(i) = res }
+                    carry = overflow as u64;
+                }
+            }
+
             (u256(ret), carry > 0)
         }
     }
@@ -589,84 +567,65 @@ impl u256 {
             let mut ret = [0u64; 4];
             let ret_ptr = &mut ret as *mut [u64; 4] as *mut u64;
             let mut carry = 0u64;
-            #[allow(unknown_lints, eq_op)]
+            #[allow(unknown_lints, clippy::eq_op)]
             const _: [(); 0 - !{
                 const ASSERT: bool = core::isize::MAX as usize / core::mem::size_of::<u64>() > 4;
                 ASSERT
             } as usize] = [];
 
-            #[allow(non_upper_case_globals)]
-            #[allow(unused_comparisons)]
             {
-                {
-                    const i: usize = 0;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
-                    }
+                const i: usize = 0;
+                if carry != 0 {
+                    let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
+                    let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
+                    unsafe { *ret_ptr.add(i) = res2 }
+                    carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                } else {
+                    let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
+                    unsafe { *ret_ptr.add(i) = res }
+                    carry = overflow as u64;
                 }
-                {
-                    const i: usize = 0 + 1;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
-                    }
-                }
-                {
-                    const i: usize = 0 + 2;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
-                    }
-                }
-                {
-                    const i: usize = 0 + 3;
-                    {
-                        if i >= 0 {
-                            if carry != 0 {
-                                let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
-                                let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
-                                unsafe { *ret_ptr.offset(i as _) = res2 }
-                                carry = (overflow1 as u8 + overflow2 as u8) as u64;
-                            } else {
-                                let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
-                                unsafe { *ret_ptr.offset(i as _) = res }
-                                carry = overflow as u64;
-                            }
-                        }
-                    }
-                };
             }
+            {
+                const i: usize = 1;
+                if carry != 0 {
+                    let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
+                    let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
+                    unsafe { *ret_ptr.add(i) = res2 }
+                    carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                } else {
+                    let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
+                    unsafe { *ret_ptr.add(i) = res }
+                    carry = overflow as u64;
+                }
+            }
+            {
+                const i: usize = 2;
+                if carry != 0 {
+                    let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
+                    let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
+                    unsafe { *ret_ptr.add(i) = res2 }
+                    carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                } else {
+                    let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
+                    unsafe { *ret_ptr.add(i) = res }
+                    carry = overflow as u64;
+                }
+            }
+            {
+                const i: usize = 3;
+                if carry != 0 {
+                    let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
+                    let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
+                    unsafe { *ret_ptr.add(i) = res2 }
+                    carry = (overflow1 as u8 + overflow2 as u8) as u64;
+                } else {
+                    let (res, overflow) = (u64::overflowing_sub)(me[i], you[i]);
+                    unsafe { *ret_ptr.add(i) = res }
+                    carry = overflow as u64;
+                }
+            }
+
             (u256(ret), carry > 0)
         }
     }
@@ -698,582 +657,372 @@ impl u256 {
                     let u256(ref you) = other;
                     let mut ret = [0u64; 4 * 2];
 
-                    #[allow(non_upper_case_globals)]
-                    #[allow(unused_comparisons)]
-                    {
-                        {
-                            const i: usize = 0;
-                            {
-                                if i >= 0 {
-                                    let mut carry = 0u64;
-                                    let b = you[i];
-
-                                    #[allow(non_upper_case_globals)]
-                                    #[allow(unused_comparisons)]
-                                    {
-                                        {
-                                            const j: usize = 0;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 1;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 2;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 3;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        };
-                                    }
-                                }
-                            }
-                        }
-                        {
-                            const i: usize = 0 + 1;
-                            {
-                                if i >= 0 {
-                                    let mut carry = 0u64;
-                                    let b = you[i];
-
-                                    #[allow(non_upper_case_globals)]
-                                    #[allow(unused_comparisons)]
-                                    {
-                                        {
-                                            const j: usize = 0;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 1;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 2;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 3;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        };
-                                    }
-                                }
-                            }
-                        }
-                        {
-                            const i: usize = 0 + 2;
-                            {
-                                if i >= 0 {
-                                    let mut carry = 0u64;
-                                    let b = you[i];
-
-                                    #[allow(non_upper_case_globals)]
-                                    #[allow(unused_comparisons)]
-                                    {
-                                        {
-                                            const j: usize = 0;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 1;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 2;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 3;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        };
-                                    }
-                                }
-                            }
-                        }
-                        {
-                            const i: usize = 0 + 3;
-                            {
-                                if i >= 0 {
-                                    let mut carry = 0u64;
-                                    let b = you[i];
-
-                                    #[allow(non_upper_case_globals)]
-                                    #[allow(unused_comparisons)]
-                                    {
-                                        {
-                                            const j: usize = 0;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 1;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 2;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        {
-                                            const j: usize = 0 + 3;
-                                            {
-                                                if j >= 0 {
-                                                    if (|_, _| true)(me[j], carry) {
-                                                        let a = me[j];
-                                                        let (hi, low) =
-                                                            Self::split_u128(a as u128 * b as u128);
-                                                        let overflow = {
-                                                            let existing_low = &mut ret[i + j];
-                                                            let (low, o) =
-                                                                low.overflowing_add(*existing_low);
-                                                            *existing_low = low;
-                                                            o
-                                                        };
-                                                        carry = {
-                                                            let existing_hi = &mut ret[i + j + 1];
-                                                            let hi = hi + overflow as u64;
-                                                            let (hi, o0) =
-                                                                hi.overflowing_add(carry);
-                                                            let (hi, o1) =
-                                                                hi.overflowing_add(*existing_hi);
-                                                            *existing_hi = hi;
-                                                            (o0 | o1) as u64
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        };
-                                    }
-                                }
-                            }
-                        };
-                    }
-                    ret
-                }
-            };
-            let ret: [[u64; 4]; 2] = unsafe { core::mem::transmute(ret) };
-            #[inline(always)]
-            fn any_nonzero(arr: &[u64; 4]) -> bool {
-                #[allow(non_upper_case_globals)]
-                #[allow(unused_comparisons)]
-                {
                     {
                         const i: usize = 0;
+
+                        let mut carry = 0u64;
+                        let b = you[i];
+
                         {
-                            if i >= 0 {
-                                if arr[i] != 0 {
-                                    return true;
+                            const j: usize = 0;
+
+                            let a = me[j];
+                            let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                            let overflow = {
+                                let existing_low = &mut ret[i + j];
+                                let (low, o) = low.overflowing_add(*existing_low);
+                                *existing_low = low;
+                                o
+                            };
+                            carry = {
+                                let existing_hi = &mut ret[i + j + 1];
+                                let hi = hi + overflow as u64;
+                                let (hi, o0) = hi.overflowing_add(carry);
+                                let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                *existing_hi = hi;
+                                (o0 | o1) as u64
+                            }
+                        }
+                        {
+                            const j: usize = 1;
+
+                            let a = me[j];
+                            let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                            let overflow = {
+                                let existing_low = &mut ret[i + j];
+                                let (low, o) = low.overflowing_add(*existing_low);
+                                *existing_low = low;
+                                o
+                            };
+                            carry = {
+                                let existing_hi = &mut ret[i + j + 1];
+                                let hi = hi + overflow as u64;
+                                let (hi, o0) = hi.overflowing_add(carry);
+                                let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                *existing_hi = hi;
+                                (o0 | o1) as u64
+                            }
+                        }
+                        {
+                            const j: usize = 2;
+
+                            let a = me[j];
+                            let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                            let overflow = {
+                                let existing_low = &mut ret[i + j];
+                                let (low, o) = low.overflowing_add(*existing_low);
+                                *existing_low = low;
+                                o
+                            };
+                            carry = {
+                                let existing_hi = &mut ret[i + j + 1];
+                                let hi = hi + overflow as u64;
+                                let (hi, o0) = hi.overflowing_add(carry);
+                                let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                *existing_hi = hi;
+                                (o0 | o1) as u64
+                            }
+                        }
+                        {
+                            const j: usize = 3;
+
+                            let a = me[j];
+                            let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                            let overflow = {
+                                let existing_low = &mut ret[i + j];
+                                let (low, o) = low.overflowing_add(*existing_low);
+                                *existing_low = low;
+                                o
+                            };
+                            carry = {
+                                let existing_hi = &mut ret[i + j + 1];
+                                let hi = hi + overflow as u64;
+                                let (hi, o0) = hi.overflowing_add(carry);
+                                let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                *existing_hi = hi;
+                                (o0 | o1) as u64
+                            }
+                        }
+                    }
+                    {
+                        const i: usize = 1;
+
+                        let mut carry = 0u64;
+                        let b = you[i];
+
+                        {
+                            {
+                                const j: usize = 0;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 1;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 2;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 3;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
                                 }
                             }
                         }
                     }
                     {
-                        const i: usize = 0 + 1;
+                        const i: usize = 2;
+
+                        let mut carry = 0u64;
+                        let b = you[i];
+
                         {
-                            if i >= 0 {
-                                if arr[i] != 0 {
-                                    return true;
+                            {
+                                const j: usize = 0;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 1;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 2;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 3;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
                                 }
                             }
                         }
                     }
                     {
-                        const i: usize = 0 + 2;
+                        const i: usize = 3;
+
+                        let mut carry = 0u64;
+                        let b = you[i];
+
                         {
-                            if i >= 0 {
-                                if arr[i] != 0 {
-                                    return true;
+                            {
+                                const j: usize = 0;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
                                 }
                             }
-                        }
-                    }
-                    {
-                        const i: usize = 0 + 3;
-                        {
-                            if i >= 0 {
-                                if arr[i] != 0 {
-                                    return true;
+                            {
+                                const j: usize = 1;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 2;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
+                                }
+                            }
+                            {
+                                const j: usize = 3;
+
+                                let a = me[j];
+                                let (hi, low) = Self::split_u128(a as u128 * b as u128);
+                                let overflow = {
+                                    let existing_low = &mut ret[i + j];
+                                    let (low, o) = low.overflowing_add(*existing_low);
+                                    *existing_low = low;
+                                    o
+                                };
+                                carry = {
+                                    let existing_hi = &mut ret[i + j + 1];
+                                    let hi = hi + overflow as u64;
+                                    let (hi, o0) = hi.overflowing_add(carry);
+                                    let (hi, o1) = hi.overflowing_add(*existing_hi);
+                                    *existing_hi = hi;
+                                    (o0 | o1) as u64
                                 }
                             }
                         }
                     };
+
+                    ret
                 }
-                false
+            };
+
+            let ret: [[u64; 4]; 2] = unsafe { core::mem::transmute(ret) };
+
+            #[inline(always)]
+            fn any_nonzero(arr: &[u64; 4]) -> bool {
+                arr.iter().any(|n| n != &0)
             }
+
             (u256(ret[0]), any_nonzero(&ret[1]))
         }
     }
@@ -1331,7 +1080,7 @@ impl u256 {
 
     #[inline(always)]
     fn div_mod_word(hi: u64, lo: u64, y: u64) -> (u64, u64) {
-        if !(hi < y) {
+        if hi >= y {
             panic!("assertion failed: hi < y")
         }
         let x = (u128::from(hi) << 64) + u128::from(lo);
@@ -1402,11 +1151,11 @@ impl u256 {
     /// Converts from big endian representation bytes in memory.
     pub fn from_big_endian(slice: &[u8]) -> Self {
         use byteorder::{BigEndian, ByteOrder};
-        if !(4 * 8 >= slice.len()) {
+        if 4 * 8 < slice.len() {
             panic!("assertion failed: 4 * 8 >= slice.len()")
         };
         let mut padded = [0u8; 4 * 8];
-        padded[4 * 8 - slice.len()..4 * 8].copy_from_slice(&slice);
+        padded[4 * 8 - slice.len()..4 * 8].copy_from_slice(slice);
         let mut ret = [0; 4];
         for i in 0..4 {
             ret[4 - i - 1] = BigEndian::read_u64(&padded[8 * i..]);
@@ -1417,11 +1166,11 @@ impl u256 {
     /// Converts from little endian representation bytes in memory.
     pub fn from_little_endian(slice: &[u8]) -> Self {
         use byteorder::{ByteOrder, LittleEndian};
-        if !(4 * 8 >= slice.len()) {
+        if 4 * 8 < slice.len() {
             panic!("assertion failed: 4 * 8 >= slice.len()")
         };
         let mut padded = [0u8; 4 * 8];
-        padded[0..slice.len()].copy_from_slice(&slice);
+        padded[0..slice.len()].copy_from_slice(slice);
         let mut ret = [0; 4];
         for i in 0..4 {
             ret[i] = LittleEndian::read_u64(&padded[8 * i..]);
@@ -1797,10 +1546,7 @@ impl core::fmt::LowerHex for u256 {
 impl u256 {
     fn fmt_dec(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         if self.is_zero() {
-            return {
-                let result = f.write_str("0");
-                result
-            };
+            return f.write_str("0");
         }
         let mut buf = [0_u8; 4 * 20];
         let mut i = buf.len() - 1;
@@ -1809,7 +1555,7 @@ impl u256 {
         loop {
             let digit = (current % ten).low_u64() as u8;
             buf[i] = digit + b'0';
-            current = current / ten;
+            current /= ten;
             if current.is_zero() {
                 break;
             }
