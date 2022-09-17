@@ -15,14 +15,14 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, ETH_DERIVATION, curves, defaultOptions, models } from './common'
+import { APP_DERIVATION, ETH_DERIVATION, defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { encode as bs58_encode } from 'bs58'
 
 describe.each(models)('Standard [%s] - pubkey', function (m) {
-  test.each(curves)(
-    'get pubkey and addr %s',
-    async function (curve) {
+  test(
+    'get pubkey and addr',
+    async function () {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
@@ -41,9 +41,9 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
     },
   );
 
-  test.each(curves)(
-    'show addr %s',
-    async function (curve) {
+  test(
+    'show addr',
+    async function () {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
@@ -52,7 +52,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
 
         await sim.waitScreenChange();
 
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr-${curve}`);
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr`);
 
         const resp = await respReq;
         console.log(resp, m.name)
@@ -67,9 +67,9 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
     },
   );
 
-  test.each(curves)(
-    'show custom hrp & chainID addr %s',
-    async function (curve) {
+  test(
+    'show custom hrp & chainID addr',
+    async function () {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
@@ -79,7 +79,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
 
         await sim.waitScreenChange();
 
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr-${curve}`);
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`);
 
         const resp = await respReq;
         console.log(resp, m.name)

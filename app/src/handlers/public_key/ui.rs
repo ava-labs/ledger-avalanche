@@ -75,7 +75,6 @@ impl<'ui> AddrUIInitializer<'ui> {
 
     /// Produce the closure to initialize a key
     pub fn key_initializer<'p, const B: usize>(
-        curve: crypto::Curve,
         path: &'p BIP32Path<B>,
     ) -> impl FnOnce(
         &mut MaybeUninit<crypto::PublicKey>,
@@ -83,8 +82,7 @@ impl<'ui> AddrUIInitializer<'ui> {
     ) -> Result<(), AddrUIInitError>
            + 'p {
         move |key, cc| {
-            GetPublicKey::new_key_into(curve, path, key, cc)
-                .map_err(|_| AddrUIInitError::KeyInitError)
+            GetPublicKey::new_key_into(path, key, cc).map_err(|_| AddrUIInitError::KeyInitError)
         }
     }
 
@@ -102,19 +100,9 @@ impl<'ui> AddrUIInitializer<'ui> {
     }
 
     /// Initialie the path with the given one
-    pub fn with_path(
-        &mut self,
-        curve: crypto::Curve,
-        path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
-    ) -> &mut Self {
+    pub fn with_path(&mut self, path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> &mut Self {
         //get ui *mut
         let ui = self.ui.as_mut_ptr();
-
-        //SAFETY: pointers are all valid since they are coming from rust
-        unsafe {
-            let ui_curve = addr_of_mut!((*ui).curve);
-            ui_curve.write(curve);
-        }
 
         //SAFETY: pointers are all valid since they are coming from rust
         unsafe {
@@ -202,7 +190,6 @@ impl<'ui> AddrUIInitializer<'ui> {
 
 pub struct AddrUI {
     path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
-    curve: crypto::Curve,
     //includes checksum
     chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
@@ -246,7 +233,7 @@ impl AddrUI {
     ) -> Result<crypto::PublicKey, Error> {
         let mut out = MaybeUninit::uninit();
 
-        AddrUIInitializer::key_initializer(self.curve, &self.path)(&mut out, chain_code)
+        AddrUIInitializer::key_initializer(&self.path)(&mut out, chain_code)
             .map_err(|_| Error::ExecutionError)?;
 
         //SAFETY: out has been initialized by the call above
@@ -356,7 +343,7 @@ mod tests {
 
             let mut builder = AddrUIInitializer::new(&mut loc);
             let _ = builder
-                .with_path(crypto::Curve::Secp256K1, path)
+                .with_path(path)
                 .with_chain(chain_code)
                 .unwrap()
                 .with_hrp(hrp);

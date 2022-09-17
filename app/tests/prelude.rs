@@ -20,8 +20,7 @@ use rslib::constants::{
 };
 pub use rslib::{
     constants::{self, ApduError, CLA, CLA_ETH},
-    crypto::{self, Curve},
-    rs_handle_apdu, PacketType,
+    crypto, rs_handle_apdu, PacketType,
 };
 
 pub use std::convert::TryInto;
@@ -80,16 +79,14 @@ pub fn chunk(ins: u8, p2: u8, init_data: &[u8], msg: &[u8]) -> Vec<[u8; 260]> {
 pub fn prepare_buffer<const LEN: usize>(
     buffer: &mut [u8; 260],
     path: &[u32],
-    curve: Curve,
     hrp: Option<&[u8]>,
     chainid: Option<&[u8]>,
 ) -> usize {
-    let crv: u8 = curve.into();
     let path = BIP32Path::<LEN>::new(path.iter().map(|n| 0x8000_0000 + n))
         .unwrap()
         .serialize();
 
-    buffer[3] = crv;
+    buffer[3] = 0;
     buffer[4] = 0;
 
     let mut tx = 5;

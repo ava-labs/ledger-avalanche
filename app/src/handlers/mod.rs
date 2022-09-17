@@ -27,7 +27,7 @@ mod utils;
 pub use utils::*;
 
 pub mod resources {
-    use crate::{constants::MAX_BIP32_PATH_DEPTH, crypto::Curve};
+    use crate::constants::MAX_BIP32_PATH_DEPTH;
 
     use super::lock::Lock;
     use bolos::{
@@ -40,7 +40,7 @@ pub mod resources {
         Lock::new(new_swapping_buffer!(0xFF, 0x1FFF));
 
     #[lazy_static]
-    pub static mut PATH: Lock<Option<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve)>, PATHAccessors> =
+    pub static mut PATH: Lock<Option<BIP32Path<MAX_BIP32_PATH_DEPTH>>, PATHAccessors> =
         Lock::new(None);
 
     #[lazy_static]

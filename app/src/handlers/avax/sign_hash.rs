@@ -40,7 +40,7 @@ impl Sign {
     // sha256 is used
     pub const SIGN_HASH_SIZE: usize = Sha256::DIGEST_LEN;
 
-    fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+    fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         match unsafe { PATH.acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
@@ -58,10 +58,9 @@ impl Sign {
     #[inline(never)]
     pub fn sign(
         path: &BIP32Path<MAX_BIP32_PATH_DEPTH>,
-        curve: Curve,
         data: &[u8],
     ) -> Result<(usize, [u8; 100]), Error> {
-        let sk = curve.to_secret(path);
+        let sk = Curve.to_secret(path);
 
         let mut out = [0; 100];
         let sz = sk
@@ -82,10 +81,8 @@ impl Sign {
             return Err(Error::WrongLength);
         }
 
-        let curve = Curve::Secp256K1;
-
         unsafe {
-            PATH.lock(Self)?.replace((root_path, curve));
+            PATH.lock(Self)?.replace(root_path);
         }
 
         if rem.len() != Self::SIGN_HASH_SIZE {
@@ -102,9 +99,9 @@ impl Sign {
         crate::show_ui!(ui.show(flags))
     }
 
-    fn get_signing_info(data: &[u8]) -> Result<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+    fn get_signing_info(data: &[u8]) -> Result<BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         //We expect a path prefix of the form x'/x'/x'
-        let (path_prefix, curve) = Self::get_derivation_info()?;
+        let path_prefix = Self::get_derivation_info()?;
         if path_prefix.components().len() != BIP32_PATH_PREFIX_DEPTH {
             return Err(Error::WrongLength);
         }
@@ -125,7 +122,8 @@ impl Sign {
 
         let full_path: BIP32Path<MAX_BIP32_PATH_DEPTH> =
             BIP32Path::new(path_iter).map_err(|_| Error::DataInvalid)?;
-        Ok((full_path, *curve))
+
+        Ok(full_path)
     }
 }
 
@@ -209,10 +207,10 @@ impl ApduHandler for Sign {
         }
 
         // retrieve signing info
-        let (path_prefix, curve) = Sign::get_signing_info(cdata)?;
+        let path_prefix = Sign::get_signing_info(cdata)?;
         let hash = Self::get_hash()?;
 
-        let (sig_size, mut sig) = Sign::sign(&path_prefix, curve, hash)?;
+        let (sig_size, mut sig) = Sign::sign(&path_prefix, hash)?;
         let out = buffer.write();
 
         //write signature as RSV

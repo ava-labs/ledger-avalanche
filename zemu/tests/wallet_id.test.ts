@@ -15,18 +15,18 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { curves, defaultOptions, models } from './common'
+import { defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 describe.each(models)('Standard [%s] - wallet id', function (m) {
-  test.each(curves)(
-    'get wallet id %s',
-    async function (curve) {
+  test(
+    'get wallet id',
+    async function () {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getWalletId(curve)
+        const resp = await app.getWalletId()
 
         console.log(resp, m.name)
 
@@ -39,18 +39,18 @@ describe.each(models)('Standard [%s] - wallet id', function (m) {
     },
   );
 
-  test.each(curves)(
-    'show wallet id %s',
-    async function (curve) {
+  test(
+    'show wallet id',
+    async function () {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showWalletId(curve)
+        const respReq = app.showWalletId()
 
         await sim.waitScreenChange();
 
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-wallet-id-${curve}`)
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-wallet-id`)
 
         const resp = await respReq;
         console.log(resp, m.name)

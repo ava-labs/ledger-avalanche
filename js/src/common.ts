@@ -30,14 +30,6 @@ export const P1_VALUES = {
   SHOW_ADDRESS_IN_DEVICE: 0x01,
 }
 
-export const P2_CURVE = {
-  SECP256K1: 0,
-}
-
-export enum Curve {
-  Secp256K1 = P2_CURVE.SECP256K1,
-}
-
 export enum LedgerError {
   U2FUnknown = 1,
   U2FBadRequest = 2,

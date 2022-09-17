@@ -26,13 +26,7 @@ fn public_key() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(
-        &mut buffer,
-        &[44, 9000, 0, 0],
-        Curve::Secp256K1,
-        Some(&[]),
-        Some(&[]),
-    );
+    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&[]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -50,13 +44,7 @@ fn public_key_with_hrp() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(
-        &mut buffer,
-        &[44, 9000, 0, 0],
-        Curve::Secp256K1,
-        Some(b"address"),
-        Some(&[]),
-    );
+    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(b"address"), Some(&[]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -78,7 +66,6 @@ fn public_key_with_too_long_hrp() {
     prepare_buffer::<4>(
         &mut buffer,
         &[44, 9000, 0, 0],
-        Curve::Secp256K1,
         Some(b"averylonghrpmaybetoolongeven"),
         Some(&[]),
     );
@@ -102,7 +89,6 @@ fn public_key_with_long_hrp() {
     prepare_buffer::<4>(
         &mut buffer,
         &[44, 9000, 0, 0],
-        Curve::Secp256K1,
         Some(b"exactly24charactherlong!"),
         Some(&[]),
     );
@@ -123,13 +109,7 @@ fn public_key_with_chainid() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(
-        &mut buffer,
-        &[44, 9000, 0, 0],
-        Curve::Secp256K1,
-        Some(&[]),
-        Some(&[42; 32]),
-    );
+    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&[42; 32]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -148,13 +128,7 @@ fn public_key_with_bad_chainid() {
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(
-        &mut buffer,
-        &[44, 9000, 0, 0],
-        Curve::Secp256K1,
-        Some(&[]),
-        Some(&[42; 10]),
-    );
+    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&[42; 10]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
