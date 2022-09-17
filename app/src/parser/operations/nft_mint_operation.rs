@@ -14,7 +14,6 @@
 *  limitations under the License.
 ********************************************************************************/
 use crate::{
-    handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, NFTTransferOutput, ParserError, U32_SIZE},
     utils::ApduPanic,
 };

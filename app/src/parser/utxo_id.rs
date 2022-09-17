@@ -13,14 +13,12 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::handlers::handle_ui_message;
-use crate::sys::ViewError;
+
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::take;
 use nom::number::complete::be_u32;
 
-use crate::parser::{cb58_output_len, DisplayableItem, FromBytes, ParserError, CB58_CHECKSUM_LEN};
-use crate::utils::bs58_encode;
+use crate::parser::{FromBytes, ParserError};
 
 pub const TX_ID_LEN: usize = 32;
 

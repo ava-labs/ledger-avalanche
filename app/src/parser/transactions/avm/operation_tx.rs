@@ -283,6 +283,6 @@ mod tests {
 
     #[test]
     fn parse_operation_tx() {
-        let (_, tx) = OperationTx::from_bytes(DATA).unwrap();
+        let (_, _tx) = OperationTx::from_bytes(DATA).unwrap();
     }
 }

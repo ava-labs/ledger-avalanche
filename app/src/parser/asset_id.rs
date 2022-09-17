@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::take, IResult};
+use nom::bytes::complete::take;
 
 use crate::{
     handlers::handle_ui_message,
@@ -32,13 +32,13 @@ pub struct AssetId<'b>(&'b [u8; ASSET_ID_LEN]);
 
 impl<'b> AssetId<'b> {
     pub fn id(&self) -> &[u8; ASSET_ID_LEN] {
-        &self.0
+        self.0
     }
 }
 
 impl<'b> AssetId<'b> {
     #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> IResult<&[u8], Self, ParserError> {
+    pub fn from_bytes(input: &'b [u8]) -> nom::IResult<&[u8], Self, ParserError> {
         let mut out = MaybeUninit::uninit();
         let rem = Self::from_bytes_into(input, &mut out)?;
         unsafe { Ok((rem, out.assume_init())) }

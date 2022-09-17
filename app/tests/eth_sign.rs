@@ -16,16 +16,10 @@
 mod prelude;
 use std::convert::TryFrom;
 
-use k256::{
-    ecdsa::{self, recoverable, signature::Verifier},
-    elliptic_curve::generic_array::GenericArray,
-};
+use k256::ecdsa::{self, recoverable, signature::Verifier};
 use prelude::*;
 
-use bolos::{
-    crypto::bip32::BIP32Path,
-    hash::{Hasher, Keccak},
-};
+use bolos::crypto::bip32::BIP32Path;
 #[cfg(feature = "blind-sign")]
 use constants::INS_ETH_BLIND_SIGN as INS;
 

@@ -643,8 +643,7 @@ mod tests {
 
                 let reduced = ui
                     .iter()
-                    .map(|item| item.iter().map(ReducedPage::from))
-                    .flatten()
+                    .flat_map(|item| item.iter().map(ReducedPage::from))
                     .collect::<Vec<_>>();
 
                 insta::assert_debug_snapshot!(reduced);

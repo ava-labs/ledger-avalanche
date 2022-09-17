@@ -70,7 +70,7 @@ impl From<ParserError> for nom::Err<ParserError> {
 }
 
 impl From<CapacityError> for ParserError {
-    fn from(error: CapacityError) -> Self {
+    fn from(_error: CapacityError) -> Self {
         ParserError::UnexpectedBufferEnd
     }
 }
