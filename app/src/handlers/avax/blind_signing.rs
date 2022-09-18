@@ -14,7 +14,6 @@
 *  limitations under the License.
 ********************************************************************************/
 
-
 use bolos::{
     crypto::bip32::BIP32Path,
     hash::{Hasher, Sha256},
