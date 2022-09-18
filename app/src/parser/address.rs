@@ -20,7 +20,9 @@ use crate::{
     constants::ASCII_HRP_MAX_SIZE,
     handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, ParserError},
+    utils::hex_encode,
 };
+use bolos::{pic_str, PIC};
 
 use bech32::Variant;
 
@@ -50,6 +52,21 @@ impl<'a> Address<'a> {
 
     pub fn raw_address(&self) -> &[u8; ADDRESS_LEN] {
         self.0
+    }
+
+    pub fn render_eth_address(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
+        let prefix = pic_str!(b"0x"!);
+        // prefix
+        let mut out = [0; ADDRESS_LEN * 2 + 2];
+        let mut sz = prefix.len();
+        out[..prefix.len()].copy_from_slice(&prefix[..]);
+
+        // address was previously check
+        let address = self.raw_address();
+
+        sz += hex_encode(address, &mut out[prefix.len()..]).map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&out[..sz], message, page)
     }
 }
 
@@ -85,8 +102,6 @@ impl<'a> DisplayableItem for Address<'a> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        use bolos::{pic_str, PIC};
-
         if item_n != 0 {
             return Err(ViewError::NoData);
         }

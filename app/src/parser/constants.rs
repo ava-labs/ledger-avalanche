@@ -47,6 +47,7 @@ pub const EVM_EXPORT_TX: u32 = 0x00000001;
 pub const EIP1559_TX: u8 = 0x02;
 pub const EIP2930_TX: u8 = 0x01;
 pub const ETH_SELECTOR_LEN: usize = 4;
+pub const ETH_ARG_LEN: usize = 32;
 // The number of bytes to be shown
 // when rendering the contract data
 // It is cropped as this data can be
