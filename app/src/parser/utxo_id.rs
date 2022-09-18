@@ -22,7 +22,7 @@ use crate::parser::{FromBytes, ParserError};
 
 pub const TX_ID_LEN: usize = 32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct UtxoId<'b> {
     tx_id: &'b [u8; TX_ID_LEN],

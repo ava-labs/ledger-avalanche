@@ -30,7 +30,7 @@ use crate::{
 
 use super::render_u256;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct BaseLegacy<'b> {
     // lets represent nonce and gas as a u64
@@ -97,7 +97,7 @@ impl<'b> BaseLegacy<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let render_funding = self.value.len() > 0;
+        let render_funding = !self.value.is_empty();
         match item_n {
             0 => {
                 let label = pic_str!(b"Contract");
@@ -229,18 +229,17 @@ impl<'b> FromBytes<'b> for BaseLegacy<'b> {
         let (rem, gas_limit) = parse_rlp_item(rem)?;
 
         // to
-        let address;
         let (rem, raw_address) = parse_rlp_item(rem)?;
 
-        match raw_address.len() {
-            0 => address = None,
+        let address = match raw_address.len() {
+            0 => None,
             x if x == ADDRESS_LEN => {
                 let mut addr = MaybeUninit::uninit();
                 _ = Address::from_bytes_into(raw_address, &mut addr)?;
-                address = Some(unsafe { addr.assume_init() });
+                Some(unsafe { addr.assume_init() })
             }
             _ => return Err(ParserError::InvalidAddress.into()),
-        }
+        };
 
         // value
         let (rem, value_bytes) = parse_rlp_item(rem)?;
@@ -251,10 +250,8 @@ impl<'b> FromBytes<'b> for BaseLegacy<'b> {
         // If this is an asset call transaction, checks that there is not
         // value being sent, which would be definately loss
         let eth_data = unsafe { &*data_out.as_ptr() };
-        if matches!(eth_data, EthData::AssetCall(..)) {
-            if value_bytes.iter().any(|v| *v != 0) {
-                return Err(ParserError::InvalidAssetCall.into());
-            }
+        if matches!(eth_data, EthData::AssetCall(..)) && value_bytes.iter().any(|v| *v != 0) {
+            return Err(ParserError::InvalidAssetCall.into());
         }
 
         unsafe {
@@ -275,7 +272,7 @@ impl<'b> DisplayableItem for BaseLegacy<'b> {
         // info is displayed.
         match self.data {
             // description, gas limit, funding contract(if value != zero), maximun fee and data.items
-            EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + (self.value.len() > 0) as usize,
+            EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + !self.value.is_empty() as usize,
             // render a simple Transfer, to, fee
             EthData::None => 1 + 1 + 1,
             // asset items + fee

@@ -76,18 +76,17 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         let (rem, gas_limit) = parse_rlp_item(rem)?;
 
         // to
-        let address;
         let (rem, raw_address) = parse_rlp_item(rem)?;
 
-        match raw_address.len() {
-            0 => address = None,
+        let address = match raw_address.len() {
+            0 => None,
             x if x == ADDRESS_LEN => {
                 let mut addr = MaybeUninit::uninit();
                 _ = Address::from_bytes_into(raw_address, &mut addr)?;
-                address = Some(unsafe { addr.assume_init() });
+                Some(unsafe { addr.assume_init() })
             }
             _ => return Err(ParserError::InvalidAddress.into()),
-        }
+        };
 
         // value
         let (rem, value_bytes) = parse_rlp_item(rem)?;
@@ -99,10 +98,8 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         // If this is an asset call transaction, checks that there is not
         // value being sent, which would be definately loss
         let eth_data = unsafe { &*data_out.as_ptr() };
-        if matches!(eth_data, EthData::AssetCall(..)) {
-            if value_bytes.iter().any(|v| *v != 0) {
-                return Err(ParserError::InvalidAssetCall.into());
-            }
+        if matches!(eth_data, EthData::AssetCall(..)) && value_bytes.iter().any(|v| *v != 0) {
+            return Err(ParserError::InvalidAssetCall.into());
         }
 
         // access list
@@ -183,7 +180,7 @@ impl<'b> Eip1559<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let render_funding = self.value.len() > 0;
+        let render_funding = !self.value.is_empty();
         match item_n {
             0 => {
                 let label = pic_str!(b"Contract");
@@ -299,7 +296,7 @@ impl<'b> DisplayableItem for Eip1559<'b> {
         match self.data {
             EthData::None => 0,
             // description, gas limit, funding contract(if value != zero), maximun fee and data.items
-            EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + (self.value.len() > 0) as usize,
+            EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + !self.value.is_empty() as usize,
             // asset items + fee
             EthData::AssetCall(d) => d.num_items() + 1,
             // amount, address, fee and contract_data

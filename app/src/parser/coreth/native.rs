@@ -70,7 +70,7 @@ pub fn render_u256(
 pub fn parse_rlp_item(data: &[u8]) -> Result<(&[u8], &[u8]), nom::Err<ParserError>> {
     let read = 0;
 
-    let marker = *data.get(0).ok_or(ParserError::UnexpectedBufferEnd)?;
+    let marker = *data.first().ok_or(ParserError::UnexpectedBufferEnd)?;
 
     let (read, to_read) = match marker {
         _num @ 0..=0x7F => return Ok((&data[1..], &data[0..1])),

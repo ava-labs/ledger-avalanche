@@ -14,24 +14,21 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
+use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
 use nom::{bytes::complete::take, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{
-        DisplayableItem, FromBytes, ParserError, DEPLOY_DATA_PREVIEW_LEN, ETH_ARG_LEN,
-        ETH_SELECTOR_LEN, U32_SIZE,
-    },
-    utils::{hex_encode, ApduPanic},
+    parser::{DisplayableItem, ParserError, DEPLOY_DATA_PREVIEW_LEN, ETH_ARG_LEN},
+    utils::hex_encode,
 };
 
 /// General type that encompases different possibles
 /// contract call. There are contract calls that we need to support
 /// as ERC20, ERC721.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct ContractCall<'b>(&'b [u8]);
 

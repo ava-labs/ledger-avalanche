@@ -21,10 +21,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::{eth::u256, handle_ui_message},
-    parser::{
-        Address, AssetId, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN, ETH_SELECTOR_LEN,
-    },
-    utils::hex_encode,
+    parser::{Address, AssetId, DisplayableItem, FromBytes, ParserError, ETH_SELECTOR_LEN},
 };
 use bolos::PIC;
 
@@ -35,7 +32,7 @@ const AMOUNT_SIZE: usize = core::mem::size_of::<u256>();
 
 /// An asset call according to the documentation
 /// in https://docs.avax.network/specs/coreth-arc20s
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct AssetCall<'b> {
     pub address: Address<'b>,
@@ -89,7 +86,7 @@ impl<'b> AssetCall<'b> {
             return Err(ParserError::UnexpectedData.into());
         }
 
-        if !rem.is_empty() && &rem[..] != &selector[..] {
+        if !rem.is_empty() && rem != &selector[..] {
             return Err(ParserError::InvalidEthSelector.into());
         }
 

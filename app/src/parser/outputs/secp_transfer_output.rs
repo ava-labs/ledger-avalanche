@@ -28,7 +28,7 @@ use crate::{
 
 const AVAX_TO_LEN: usize = 9; //b" AVAX to "
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPTransferOutput<'b> {
     pub amount: u64,

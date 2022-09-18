@@ -27,7 +27,7 @@ use crate::{
 // this is a simple contract deployment
 // the UI only shows it and a section of the
 // data as an hex string.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Deploy<'b>(&'b [u8]);
 

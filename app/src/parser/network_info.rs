@@ -21,7 +21,7 @@ use crate::parser::ParserError;
 
 pub use crate::parser::{FromBytes, BLOCKCHAIN_ID_LEN};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
 pub enum NetworkId {
@@ -59,7 +59,7 @@ impl TryFrom<u32> for NetworkId {
 // chains, although in the protocol there is room for
 // local networks, the current avalanche wallet does
 // not support transactios from/to it
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
 pub enum ChainId {
@@ -81,7 +81,7 @@ impl TryFrom<&[u8; BLOCKCHAIN_ID_LEN]> for ChainId {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct NetworkInfo {
     pub network_id: NetworkId,

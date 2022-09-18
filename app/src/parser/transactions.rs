@@ -55,7 +55,7 @@ use super::{
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the Transaction enum which has the same representation
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(u8)]
 pub enum TransactionType {
@@ -153,7 +153,7 @@ struct DelegatorVariant<'b>(TransactionType, AddDelegatorTx<'b>);
 #[repr(C)]
 struct TransferVariant<'b>(TransactionType, Transfer<'b>);
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag

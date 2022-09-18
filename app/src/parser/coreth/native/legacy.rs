@@ -22,7 +22,7 @@ use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
 use super::BaseLegacy;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Legacy<'b> {
     pub base: BaseLegacy<'b>,

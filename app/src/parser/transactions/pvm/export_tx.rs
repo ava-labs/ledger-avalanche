@@ -26,7 +26,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PvmExportTx<'b>(BaseExport<'b, PvmOutput<'b>>);
 

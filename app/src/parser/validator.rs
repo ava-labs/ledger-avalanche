@@ -33,7 +33,7 @@ use nom::{
 pub const NODE_ID_LEN: usize = 20;
 const NODE_ID_PREFIX_LEN: usize = 7;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Validator<'b> {

@@ -33,7 +33,7 @@ pub const ADDRESS_LEN: usize = Ripemd160::DIGEST_LEN;
 pub const MAX_ADDRESS_ENCODED_LEN: usize = bech32::estimate_size(ASCII_HRP_MAX_SIZE, ADDRESS_LEN);
 
 // ripemd160(sha256(compress(secp256k1.publicKey()))
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Address<'b>(&'b [u8; ADDRESS_LEN]);
 

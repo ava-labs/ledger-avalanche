@@ -26,7 +26,7 @@ use zemu_sys::ViewError;
 
 pub const ASSET_ID_LEN: usize = 32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct AssetId<'b>(&'b [u8; ASSET_ID_LEN]);
 

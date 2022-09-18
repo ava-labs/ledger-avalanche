@@ -32,7 +32,7 @@ use crate::{
 pub const VM_ID_LEN: usize = 32;
 pub const FX_ID_LEN: usize = 32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct CreateChainTx<'b> {

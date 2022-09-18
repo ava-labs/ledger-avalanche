@@ -32,7 +32,7 @@ pub use deploy::Deploy;
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the EthData enum which has the same representation
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(u8)]
 pub enum EthDataType {
@@ -55,7 +55,7 @@ struct AssetCallVariant<'b>(EthDataType, AssetCall<'b>);
 #[repr(C)]
 struct ContractCallVariant<'b>(EthDataType, ContractCall<'b>);
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the EthDataType tag

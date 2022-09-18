@@ -21,7 +21,7 @@ use super::parse_rlp_item;
 use super::BaseLegacy;
 use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip2930<'b> {
     // it is not clear if chainID

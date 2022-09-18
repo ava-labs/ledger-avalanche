@@ -25,7 +25,7 @@ use crate::parser::{
 
 const MAX_MEMO_LEN: usize = 256;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct BaseTxFields<'b, O>
 where

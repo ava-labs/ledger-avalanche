@@ -2,7 +2,7 @@ use arrayvec::CapacityError;
 use nom::error::ErrorKind;
 
 #[repr(u32)]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub enum ParserError {
     // Generic errors

@@ -18,7 +18,7 @@ use nom::number::complete::be_u32;
 
 use crate::parser::{AvmOutput, FromBytes, ObjectList, ParserError};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(C)]
 pub enum FxId {
@@ -37,7 +37,7 @@ impl TryFrom<u32> for FxId {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(C)]
 pub struct InitialState<'b> {
