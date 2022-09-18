@@ -25,7 +25,7 @@ use crate::{
 };
 use bolos::PIC;
 
-const DEPOSIT_SELECTOR: [u8; ETH_SELECTOR_LEN] = [0xd0, 0xe3, 0x0d, 0xb0];
+const DEPOSIT_SELECTOR: &[u8] = &[0xd0, 0xe3, 0x0d, 0xb0];
 const ASSETCALL_FIXED_DATA_WIDTH: usize = 20 + 32 + 32;
 
 const AMOUNT_SIZE: usize = core::mem::size_of::<u256>();
