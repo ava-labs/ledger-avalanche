@@ -95,8 +95,14 @@ pub mod resources {
         }
     }
 
-    impl From<super::eth::signing::BlindSign> for BUFFERAccessors {
-        fn from(_: super::eth::signing::BlindSign) -> Self {
+    impl From<super::eth::blind_signing::BlindSign> for BUFFERAccessors {
+        fn from(_: super::eth::blind_signing::BlindSign) -> Self {
+            Self::EthSign
+        }
+    }
+
+    impl From<super::eth::signing::Sign> for BUFFERAccessors {
+        fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
         }
     }
@@ -126,8 +132,14 @@ pub mod resources {
         }
     }
 
-    impl From<super::eth::signing::BlindSign> for PATHAccessors {
-        fn from(_: super::eth::signing::BlindSign) -> Self {
+    impl From<super::eth::blind_signing::BlindSign> for PATHAccessors {
+        fn from(_: super::eth::blind_signing::BlindSign) -> Self {
+            Self::EthSign
+        }
+    }
+
+    impl From<super::eth::signing::Sign> for PATHAccessors {
+        fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
         }
     }
