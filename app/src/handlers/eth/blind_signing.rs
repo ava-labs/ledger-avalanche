@@ -13,11 +13,11 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use core::mem::MaybeUninit;
 
 use bolos::{
     crypto::bip32::BIP32Path,
     hash::{Hasher, Keccak},
+    pic_str, PIC,
 };
 use zemu_sys::{Show, ViewError, Viewable};
 
@@ -25,19 +25,21 @@ use crate::{
     constants::{ApduError as Error, APDU_MIN_LENGTH, MAX_BIP32_PATH_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::resources::{BUFFER, PATH},
-    parser::{DisplayableItem, EthTransaction},
+    handlers::{
+        handle_ui_message,
+        resources::{BUFFER, PATH},
+    },
     sys,
-    utils::ApduBufferRead,
+    utils::{blind_sign_toggle, hex_encode, ApduBufferRead, ApduPanic},
 };
 
 use super::utils::get_tx_rlp_len;
 use super::utils::parse_bip32_eth;
 use crate::utils::convert_der_to_rs;
 
-pub struct Sign;
+pub struct BlindSign;
 
-impl Sign {
+impl BlindSign {
     pub const SIGN_HASH_SIZE: usize = Keccak::<32>::DIGEST_LEN;
 
     fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
@@ -71,20 +73,16 @@ impl Sign {
     #[inline(never)]
     pub fn start_sign(txdata: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
         let unsigned_hash = Self::digest(txdata)?;
-        let mut tx = MaybeUninit::uninit();
-        EthTransaction::new_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
-        let tx = unsafe { tx.assume_init() };
 
         let ui = SignUI {
             hash: unsigned_hash,
-            tx,
         };
 
         crate::show_ui!(ui.show(flags))
     }
 }
 
-impl ApduHandler for Sign {
+impl ApduHandler for BlindSign {
     #[inline(never)]
     fn handle<'apdu>(
         flags: &mut u32,
@@ -94,6 +92,11 @@ impl ApduHandler for Sign {
         sys::zemu_log_stack("EthSign::handle\x00");
 
         *tx = 0;
+
+        //blind signing not enabled
+        if !blind_sign_toggle::blind_sign_enabled() {
+            return Err(Error::ApduCodeConditionsNotSatisfied);
+        }
 
         // hw-app-eth encodes the packet type in p1
         // with 0x00 being init and 0x80 being next
@@ -190,13 +193,12 @@ impl ApduHandler for Sign {
 }
 
 pub(crate) struct SignUI {
-    hash: [u8; Sign::SIGN_HASH_SIZE],
-    tx: EthTransaction<'static>,
+    hash: [u8; BlindSign::SIGN_HASH_SIZE],
 }
 
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
-        Ok(self.tx.num_items() as _)
+        Ok(1)
     }
 
     #[inline(never)]
@@ -207,16 +209,28 @@ impl Viewable for SignUI {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        self.tx.render_item(item_n, title, message, page)
+        match item_n {
+            0 => {
+                let title_content = pic_str!(b"Ethereum Sign");
+                title[..title_content.len()].copy_from_slice(title_content);
+
+                let mut hex_buf = [0; BlindSign::SIGN_HASH_SIZE * 2];
+                //this is impossible that will error since the sizes are all checked
+                let len = hex_encode(&self.hash[..], &mut hex_buf).apdu_unwrap();
+
+                handle_ui_message(&hex_buf[..len], message, page)
+            }
+            _ => Err(ViewError::NoData),
+        }
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let path = match Sign::get_derivation_info() {
+        let path = match BlindSign::get_derivation_info() {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
 
-        let (sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
+        let (sig_size, mut sig) = match BlindSign::sign(path, &self.hash[..]) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
@@ -272,18 +286,18 @@ impl Viewable for SignUI {
 
 fn cleanup_globals() -> Result<(), Error> {
     unsafe {
-        if let Ok(path) = PATH.acquire(Sign) {
+        if let Ok(path) = PATH.acquire(BlindSign) {
             path.take();
 
             //let's release the lock for the future
-            let _ = PATH.release(Sign);
+            let _ = PATH.release(BlindSign);
         }
 
-        if let Ok(buffer) = BUFFER.acquire(Sign) {
+        if let Ok(buffer) = BUFFER.acquire(BlindSign) {
             buffer.reset();
 
             //let's release the lock for the future
-            let _ = BUFFER.release(Sign);
+            let _ = BUFFER.release(BlindSign);
         }
     }
 
