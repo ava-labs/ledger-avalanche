@@ -220,6 +220,11 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
                 // the transaction would be rejected, and for this reason
                 // It is shown on the screen(partially) for the user to review.
                 _ = Legacy::from_bytes_into(tx_bytes, legacy)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(EthTxType::Legacy);
+                }
             }
             EthTxType::EIP1559 => {
                 let out = out.as_mut_ptr() as *mut Eip1559Variant;
@@ -231,6 +236,11 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
                 // the transaction would be rejected, and for this reason
                 // It is shown on the screen(partially) for the user to review.
                 _ = Eip1559::from_bytes_into(tx_bytes, eip)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(EthTxType::EIP1559);
+                }
             }
             EthTxType::EIP2930 => {
                 let out = out.as_mut_ptr() as *mut Eip2930Variant;
@@ -242,6 +252,11 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
                 // the transaction would be rejected, and for this reason
                 // It is shown on the screen(partially) for the user to review.
                 _ = Eip2930::from_bytes_into(tx_bytes, eip)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(EthTxType::EIP2930);
+                }
             }
         }
         Ok(rem)
