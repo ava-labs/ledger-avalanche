@@ -14,11 +14,15 @@
 *  limitations under the License.
 ********************************************************************************/
 
+pub mod blind_signing;
 pub mod provide_erc20;
 pub mod public_key;
 pub mod signing;
 
 mod utils {
+    pub mod u256;
+
+    use crate::constants::ApduError as Error;
     use crate::{constants::MAX_BIP32_PATH_DEPTH, parser::ParserError, utils::ApduPanic};
     use bolos::crypto::bip32::BIP32Path;
     use nom::{bytes::complete::take, number::complete::le_u8};
@@ -41,6 +45,56 @@ mod utils {
         Ok((rem, path))
     }
 
-    pub mod u256;
+    /// Return the number of bytes of the ethereum tx
+    ///
+    /// Note: This function expects a transaction version plus
+    /// a rlp-encoded list. other types are not supported
+    /// as it means that the received data is not a conformant
+    /// Ethereum transaction type
+    ///
+    /// Returns the number of bytes read and the number of bytes to read
+    pub fn get_tx_rlp_len(mut data: &[u8]) -> Result<(usize, u64), Error> {
+        const U64_SIZE: usize = core::mem::size_of::<u64>();
+
+        let mut read = 0;
+
+        //skip version if present/recognized
+        // otherwise tx is probably legacy so no version, just rlp data
+        let version = *data.first().ok_or(Error::DataInvalid)?;
+        match version {
+            0x01 | 0x02 => {
+                data = data.get(1..).ok_or(Error::DataInvalid)?;
+                read += 1;
+            }
+            _ => {}
+        }
+
+        let marker = *data.get(0).ok_or(Error::DataInvalid)?;
+
+        match marker {
+            slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xBF)),
+            list @ 0xF8.. => {
+                // For lists longer than 55 bytes the length is encoded
+                // differently.
+                // The number of bytes that compose the length is encoded
+                // in the marker
+                // And then the length is just the number BE encoded
+
+                let num_bytes = list as usize - 0xF7;
+                let num = data
+                    .get(1..)
+                    .ok_or(Error::DataInvalid)?
+                    .get(..num_bytes)
+                    .ok_or(Error::DataInvalid)?;
+
+                let mut array = [0; U64_SIZE];
+                array[U64_SIZE - num_bytes..].copy_from_slice(num);
+
+                let num = u64::from_be_bytes(array);
+                Ok((read + 1 + num_bytes, num))
+            }
+            _ => Err(Error::DataInvalid),
+        }
+    }
 }
 pub use utils::u256::u256;
