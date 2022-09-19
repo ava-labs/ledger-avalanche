@@ -18,7 +18,7 @@ use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
-use super::{parse_rlp_item, to_u64};
+use super::parse_rlp_item;
 use crate::{
     handlers::{eth::u256, handle_ui_message},
     parser::{
@@ -33,8 +33,7 @@ use super::render_u256;
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct BaseLegacy<'b> {
-    // lets represent nonce and gas as a u64
-    pub nonce: u64,
+    pub nonce: &'b [u8],
     pub gas_price: &'b [u8],
     pub gas_limit: &'b [u8],
     pub to: Option<Address<'b>>,
@@ -219,8 +218,7 @@ impl<'b> FromBytes<'b> for BaseLegacy<'b> {
         let out = out.as_mut_ptr();
 
         // nonce
-        let (rem, nonce_bytes) = parse_rlp_item(input)?;
-        let nonce = to_u64(nonce_bytes)?;
+        let (rem, nonce) = parse_rlp_item(input)?;
 
         // gas price"
         let (rem, gas_price) = parse_rlp_item(rem)?;

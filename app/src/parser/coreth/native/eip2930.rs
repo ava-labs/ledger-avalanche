@@ -116,7 +116,7 @@ mod tests {
         let tx = Eip2930::from_bytes(bytes).unwrap().1;
 
         assert_eq!(tx.base.value[0], 1u8);
-        assert_eq!(tx.base.nonce, 0xe0);
+        assert_eq!(tx.base.nonce[0], 0xe0);
 
         assert!(matches!(tx.base.data, EthData::ContractCall(..)));
         assert_eq!(&tx.base.to.unwrap().raw_address()[..], &address);

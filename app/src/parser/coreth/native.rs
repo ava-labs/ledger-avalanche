@@ -32,18 +32,6 @@ pub use eip1559::Eip1559;
 mod eip2930;
 pub use eip2930::Eip2930;
 
-// Converts an slice of bytes in big-endian
-// to an u64 integer
-pub fn to_u64(input: &[u8]) -> Result<u64, ParserError> {
-    let mut raw = [0; U64_SIZE];
-
-    if input.len() <= U64_SIZE {
-        raw[U64_SIZE - input.len()..].copy_from_slice(input);
-        return Ok(u64::from_be_bytes(raw));
-    }
-    Err(ParserError::ValueOutOfRange)
-}
-
 /// Renders an u256 in bytes.
 /// `input`: The big-indian bytes of the number to
 /// be rendered
@@ -81,7 +69,6 @@ pub fn parse_rlp_item(data: &[u8]) -> Result<(&[u8], &[u8]), nom::Err<ParserErro
             // The number of bytes that compose the length is encoded
             // in the marker
             // And then the length is just the number BE encoded
-            //let num_bytes = string as usize - 0xB8; // should not it be 0xB8?
             let num_bytes = string as usize - 0xB7;
             let num = data
                 .get(1..)
@@ -103,7 +90,6 @@ pub fn parse_rlp_item(data: &[u8]) -> Result<(&[u8], &[u8]), nom::Err<ParserErro
             // in the marker
             // And then the length is just the number BE encoded
 
-            //let num_bytes = list as usize - 0xF7;
             let num_bytes = list as usize - 0xF7;
             let num = data
                 .get(1..)

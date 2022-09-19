@@ -18,23 +18,21 @@ use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
-use super::{parse_rlp_item, render_u256, to_u64};
+use super::{parse_rlp_item, render_u256};
 use crate::{
     handlers::{eth::u256, handle_ui_message},
     parser::{
         intstr_to_fpstr_inplace, Address, DisplayableItem, EthData, FromBytes, ParserError,
         ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
     },
-    utils::{hex_encode, ApduPanic},
+    utils::ApduPanic,
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip1559<'b> {
     pub chain_id: &'b [u8],
-    // lets represent nonce and gas as a u64
-    pub nonce: u64,
-    // lets represent gas with an u64
+    pub nonce: &'b [u8],
     pub priority_fee: &'b [u8],
     pub max_fee: &'b [u8],
     pub gas_limit: &'b [u8],
@@ -64,7 +62,6 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 
         // nonce
         let (rem, nonce) = parse_rlp_item(rem)?;
-        let nonce = to_u64(nonce)?;
 
         // max_priority_fee
         let (rem, priority_fee) = parse_rlp_item(rem)?;
@@ -338,7 +335,7 @@ mod tests {
 
         assert!(tx.to.is_none());
 
-        assert_eq!(0, tx.nonce);
+        assert!(tx.nonce.is_empty());
         assert_eq!(
             &1500000u64.to_be_bytes()[8 - tx.gas_limit.len()..],
             tx.gas_limit
@@ -352,6 +349,6 @@ mod tests {
             tx.priority_fee
         );
 
-        assert_eq!(0, to_u64(tx.value).unwrap());
+        assert_eq!(0, tx.value.len());
     }
 }
