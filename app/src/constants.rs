@@ -127,7 +127,8 @@ pub(crate) mod evm_instructions {
 
     pub const INS_ETH_GET_PUBLIC_KEY: u8 = 0x02;
     #[cfg(feature = "blind-sign")]
-    pub const INS_ETH_BLIND_SIGN: u8 = 0x04;
+    pub const INS_ETH_BLIND_SIGN: u8 = 0xF1;
+    pub const INS_ETH_SIGN: u8 = 0x04;
     pub const INS_ETH_PROVIDE_ERC20: u8 = 0x0A;
 }
 
