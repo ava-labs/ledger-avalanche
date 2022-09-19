@@ -13,7 +13,6 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::convert::TryFrom;
 
 use bolos::{
     crypto::bip32::BIP32Path,
@@ -36,7 +35,7 @@ pub struct BlindSign;
 impl BlindSign {
     pub const SIGN_HASH_SIZE: usize = 32;
 
-    fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+    fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         match unsafe { PATH.acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
@@ -46,11 +45,10 @@ impl BlindSign {
     //(actual_size, [u8; MAX_SIGNATURE_SIZE])
     #[inline(never)]
     pub fn sign<const LEN: usize>(
-        curve: Curve,
         path: &BIP32Path<LEN>,
         data: &[u8],
     ) -> Result<(usize, [u8; 100]), Error> {
-        let sk = curve.to_secret(path);
+        let sk = Curve.to_secret(path);
 
         let mut out = [0; 100];
         let sz = sk
@@ -68,16 +66,14 @@ impl BlindSign {
     #[inline(never)]
     pub fn start_sign(
         send_hash: bool,
-        p2: u8,
         init_data: &[u8],
         data: &'static [u8],
         flags: &mut u32,
     ) -> Result<u32, Error> {
-        let curve = Curve::try_from(p2).map_err(|_| Error::InvalidP1P2)?;
         let path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
 
         unsafe {
-            PATH.lock(Self)?.replace((path, curve));
+            PATH.lock(Self)?.replace(path);
         }
 
         let unsigned_hash = Self::sha256_digest(data)?;
@@ -108,7 +104,7 @@ impl ApduHandler for BlindSign {
         }
 
         if let Some(upload) = Uploader::new(Self).upload(&buffer)? {
-            *tx = Self::start_sign(true, upload.p2, upload.first, upload.data, flags)?;
+            *tx = Self::start_sign(true, upload.first, upload.data, flags)?;
         }
 
         Ok(())
@@ -149,12 +145,12 @@ impl Viewable for SignUI {
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let (path, curve) = match BlindSign::get_derivation_info() {
+        let path = match BlindSign::get_derivation_info() {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
 
-        let (sig_size, sig) = match BlindSign::sign(*curve, path, &self.hash[..]) {
+        let (sig_size, sig) = match BlindSign::sign(path, &self.hash[..]) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };

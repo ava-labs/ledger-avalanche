@@ -15,8 +15,8 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { cartesianProduct, curves, defaultOptions, models, ROOT_PATH } from './common'
-import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
+import { cartesianProduct, defaultOptions, models, ROOT_PATH } from './common'
+import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { ADD_VALIDATOR_DATA, ADD_DELEGATOR_DATA, ADD_SUBNET_VALIDATOR_DATA, P_IMPORT_FROM_X, P_EXPORT_TO_X, CREATE_SUBNET, CREATE_CHAIN } from './p_chain_vectors'
 
 // @ts-ignore
@@ -63,7 +63,7 @@ describe.each(models)('P_Sign[$name]; sign', function (m) {
       const app = new AvalancheApp(sim.getTransport())
       const msg = op
 
-      const testcase = `${m.prefix.toLowerCase()}-sign-${name}-${Curve.Secp256K1}`
+      const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
       const signers = ["0/0", "0/1", "1/100"];
       const respReq = app.sign(ROOT_PATH, signers, msg);

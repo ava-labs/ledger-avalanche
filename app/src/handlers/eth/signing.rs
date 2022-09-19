@@ -41,7 +41,7 @@ pub struct BlindSign;
 impl BlindSign {
     pub const SIGN_HASH_SIZE: usize = Keccak::<32>::DIGEST_LEN;
 
-    fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+    fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         match unsafe { PATH.acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
@@ -51,11 +51,10 @@ impl BlindSign {
     //(actual_size, [u8; MAX_SIGNATURE_SIZE])
     #[inline(never)]
     pub fn sign<const LEN: usize>(
-        curve: Curve,
         path: &BIP32Path<LEN>,
         data: &[u8],
     ) -> Result<(usize, [u8; 100]), Error> {
-        let sk = curve.to_secret(path);
+        let sk = Curve.to_secret(path);
 
         let mut out = [0; 100];
         let sz = sk
@@ -195,7 +194,7 @@ impl ApduHandler for BlindSign {
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
 
                 unsafe {
-                    PATH.lock(Self)?.replace((bip32_path, Curve::Secp256K1));
+                    PATH.lock(Self)?.replace(bip32_path);
                 }
 
                 //parse the length of the RLP message
@@ -294,12 +293,12 @@ impl Viewable for SignUI {
     }
 
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
-        let (path, curve) = match BlindSign::get_derivation_info() {
+        let path = match BlindSign::get_derivation_info() {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
 
-        let (sig_size, mut sig) = match BlindSign::sign(*curve, path, &self.hash[..]) {
+        let (sig_size, mut sig) = match BlindSign::sign(path, &self.hash[..]) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };

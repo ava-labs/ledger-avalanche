@@ -15,35 +15,35 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ROOT_PATH, cartesianProduct, curves, defaultOptions, models } from './common'
+import { ROOT_PATH, defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
-import { C_IMPORT_FROM_X, C_EXPORT_TO_X} from './c_chain_vectors'
+import { C_IMPORT_FROM_X, C_EXPORT_TO_X } from './c_chain_vectors'
 
 // @ts-ignore
 import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
-const SIGN_TEST_DATA = cartesianProduct(curves, [
+const SIGN_TEST_DATA = [
   {
     name: 'c_import_from_x',
-    op: C_IMPORT_FROM_X ,
+    op: C_IMPORT_FROM_X,
   },
   {
     name: 'c_export_to_x',
     op: C_EXPORT_TO_X,
   },
-])
+]
 
 describe.each(models)('C_Sign[%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign c-chain transactions', async function (curve, data) {
+  test.each(SIGN_TEST_DATA)('sign c-chain $name transaction', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new AvalancheApp(sim.getTransport())
-      const msg = data.op
+      const msg = op
 
-      const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
+      const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
       const signers = ["0/1", "5/8"];
       const respReq = app.sign(ROOT_PATH, signers, msg);
@@ -54,7 +54,7 @@ describe.each(models)('C_Sign[%s]; sign', function (m) {
 
       const resp = await respReq
 
-      console.log(resp, m.name, data.name, curve)
+      console.log(resp, m.name, name)
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')

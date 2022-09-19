@@ -48,16 +48,17 @@ impl GetPublicKey {
         PIC::new(Self::DEFAULT_CHAIN_ID).into_inner()
     }
 
-    /// Retrieve the public key with the given curve and bip32 path
+    /// Retrieve the public key with the given bip32 path
     #[inline(never)]
     pub fn new_key_into<const B: usize>(
-        curve: crypto::Curve,
         path: &sys::crypto::bip32::BIP32Path<B>,
         out: &mut MaybeUninit<crypto::PublicKey>,
         chaincode: Option<&mut [u8; 32]>,
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetAddres::new_key\x00");
-        curve.to_secret(path).into_public_into(chaincode, out)?;
+        crypto::Curve
+            .to_secret(path)
+            .into_public_into(chaincode, out)?;
 
         //this is safe because it's initialized
         // also unwrapping is fine because the ptr is valid
@@ -92,7 +93,6 @@ impl GetPublicKey {
 
     /// Handles the request according to the parameters given
     pub fn initialize_ui(
-        curve: crypto::Curve,
         hrp: &[u8],
         chain_id: &[u8],
         path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
@@ -101,7 +101,7 @@ impl GetPublicKey {
         let mut ui_initializer = AddrUIInitializer::new(ui);
 
         ui_initializer
-            .with_path(curve, path)
+            .with_path(path)
             .with_chain(chain_id)?
             .with_hrp(hrp)?;
 
@@ -123,7 +123,6 @@ impl ApduHandler for GetPublicKey {
         *tx = 0;
 
         let req_confirmation = buffer.p1() >= 1;
-        let curve = crypto::Curve::try_from(buffer.p2()).map_err(|_| Error::InvalidP1P2)?;
 
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
@@ -134,7 +133,7 @@ impl ApduHandler for GetPublicKey {
             .map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
-        Self::initialize_ui(curve, hrp, chainid, bip32_path, &mut ui)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui)?;
 
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };

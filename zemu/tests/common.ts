@@ -1,5 +1,4 @@
 import Zemu, { DEFAULT_START_OPTIONS, DeviceModel } from '@zondax/zemu'
-import { Curve } from '@zondax/ledger-avalanche-app'
 
 const Resolve = require('path').resolve
 
@@ -14,8 +13,6 @@ export const models: DeviceModel[] = [
   { name: 'nanox', prefix: 'X', path: APP_PATH_X },
   { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
 ]
-
-export const curves: Curve[] = [Curve.Secp256K1]
 
 export const defaultOptions = {
   ...DEFAULT_START_OPTIONS,

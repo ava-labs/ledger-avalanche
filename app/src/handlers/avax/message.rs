@@ -21,7 +21,6 @@ use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{ApduError as Error, BIP32_PATH_PREFIX_DEPTH},
-    crypto::Curve,
     dispatcher::ApduHandler,
     handlers::{
         avax::sign_hash::Sign as SignHash,
@@ -50,7 +49,6 @@ impl Sign {
         data: &'static [u8],
         flags: &mut u32,
     ) -> Result<u32, Error> {
-        let curve = Curve::Secp256K1;
         let root_path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
         // this path should be a root path of the form x/x/x
         if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
@@ -58,7 +56,7 @@ impl Sign {
         }
 
         unsafe {
-            PATH.lock(Self)?.replace((root_path, curve));
+            PATH.lock(Self)?.replace(root_path);
         }
 
         let digest = Self::sha256_digest(data)?;

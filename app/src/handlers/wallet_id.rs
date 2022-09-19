@@ -53,7 +53,6 @@ impl ApduHandler for WalletId {
         *tx = 0;
 
         let req_confirmation = buffer.p1() >= 1;
-        let curve = crypto::Curve::try_from(buffer.p2()).map_err(|_| Error::InvalidP1P2)?;
 
         //ok to unwrap as we have control over the input
         let bip32_path =
@@ -69,7 +68,7 @@ impl ApduHandler for WalletId {
                 Sha256HMAC::new(Self::hmac_key().as_bytes()).map_err(|_| Error::ExecutionError)?;
 
             let mut pkey = MaybeUninit::uninit();
-            curve
+            crypto::Curve
                 .to_secret(&bip32_path)
                 .into_public_into(None, &mut pkey)
                 .map_err(|_| Error::ExecutionError)?;
