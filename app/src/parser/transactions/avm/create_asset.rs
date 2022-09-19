@@ -30,7 +30,7 @@ use crate::{
 const MAX_NAME_LEN: usize = 128;
 const MAX_SYMBOL_LEN: usize = 4;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct CreateAssetTx<'b> {

@@ -36,7 +36,7 @@ const MAX_PAYLOAD_LEN: usize = 1024;
 // or raw bytes.
 const SHOW_PAYLOAD_LEN: usize = 50;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct NFTTransferOutput<'b> {
     group_id: u32,

@@ -31,7 +31,7 @@ use crate::{
 // The chainId for which this representation is valid
 // are the P and X chain, locals?. C-Chain defines
 // a custom AvmImportTx type.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct AvmImportTx<'b>(BaseImport<'b, AvmOutput<'b>>);
 

@@ -36,7 +36,7 @@ use super::{inputs::EVMInput, outputs::EOutput};
 const DESTINATION_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
 const EXPORT_TX_DESCRIPTION_LEN: usize = 13; //X to C Chain
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct ExportTx<'b> {
     pub tx_header: Header<'b>,

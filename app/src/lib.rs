@@ -16,6 +16,8 @@
 #![no_std]
 #![no_builtins]
 #![macro_use]
+// later we can rename enum_variant
+#![allow(clippy::enum_variant_names)]
 
 extern crate no_std_compat as std;
 

@@ -24,7 +24,7 @@ use crate::{
 
 #[derive(Educe)]
 #[cfg_attr(test, educe(Debug))]
-#[educe(Clone, Copy, PartialEq)]
+#[educe(Clone, Copy, PartialEq, Eq)]
 /// Represents an object list
 ///
 /// The number of objects is prepended as a BE u32 to the objects bytes

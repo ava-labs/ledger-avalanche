@@ -18,15 +18,15 @@ use nom::bytes::complete::take;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{DisplayableItem, ParserError},
-    utils::hex_encode,
+    parser::{cb58_output_len, DisplayableItem, ParserError, CB58_CHECKSUM_LEN},
+    utils::bs58_encode,
 };
 
 use zemu_sys::ViewError;
 
 pub const ASSET_ID_LEN: usize = 32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct AssetId<'b>(&'b [u8; ASSET_ID_LEN]);
 
@@ -37,13 +37,6 @@ impl<'b> AssetId<'b> {
 }
 
 impl<'b> AssetId<'b> {
-    #[cfg(test)]
-    pub fn from_bytes(input: &'b [u8]) -> nom::IResult<&[u8], Self, ParserError> {
-        let mut out = MaybeUninit::uninit();
-        let rem = Self::from_bytes_into(input, &mut out)?;
-        unsafe { Ok((rem, out.assume_init())) }
-    }
-
     #[inline(never)]
     pub fn from_bytes_into(
         input: &'b [u8],
@@ -86,11 +79,20 @@ impl<'a> DisplayableItem for AssetId<'a> {
 
         let title_content = pic_str!(b"AssetId");
         title[..title_content.len()].copy_from_slice(title_content);
+        let mut data = [0; ASSET_ID_LEN + CB58_CHECKSUM_LEN];
 
-        let sha = Sha256::digest(self.0).map_err(|_| ViewError::Unknown)?;
-        let mut hex_buf = [0; Sha256::DIGEST_LEN * 2];
-        hex_encode(&sha[..], &mut hex_buf).map_err(|_| ViewError::Unknown)?;
+        data[..ASSET_ID_LEN].copy_from_slice(&self.0[..]);
 
-        handle_ui_message(&hex_buf, message, page)
+        let checksum = Sha256::digest(&data[..ASSET_ID_LEN]).map_err(|_| ViewError::Unknown)?;
+
+        // prepare the data to be encoded by appending last 4-byte
+        data[ASSET_ID_LEN..].copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
+
+        const MAX_SIZE: usize = cb58_output_len::<ASSET_ID_LEN>();
+        let mut encoded = [0; MAX_SIZE];
+
+        let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&encoded[..len], message, page)
     }
 }

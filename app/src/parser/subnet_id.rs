@@ -23,7 +23,7 @@ use crate::utils::bs58_encode;
 
 pub const SUBNET_ID_LEN: usize = 32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SubnetId<'b>(&'b [u8; SUBNET_ID_LEN]);
 

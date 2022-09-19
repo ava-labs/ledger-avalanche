@@ -17,5 +17,10 @@
 pub mod inputs;
 pub mod outputs;
 
+pub mod data;
 pub mod export_tx;
 pub mod import_tx;
+pub mod native;
+
+pub use data::*;
+pub use native::*;

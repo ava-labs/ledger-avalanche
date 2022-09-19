@@ -20,7 +20,7 @@ use crate::parser::{ChainId, FromBytes, NetworkId, NetworkInfo, ParserError};
 
 pub const BLOCKCHAIN_ID_LEN: usize = 32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Header<'b> {
     pub network_id: u32,

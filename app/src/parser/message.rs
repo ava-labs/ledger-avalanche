@@ -28,7 +28,7 @@ use bolos::{pic_str, PIC};
 // message to around this size.
 const MAX_ASCII_LEN: usize = 103;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct AvaxMessage<'b> {
