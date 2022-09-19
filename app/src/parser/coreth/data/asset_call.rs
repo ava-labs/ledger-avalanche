@@ -21,14 +21,14 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::{eth::u256, handle_ui_message},
-    parser::{Address, AssetId, DisplayableItem, FromBytes, ParserError, ETH_SELECTOR_LEN},
+    parser::{Address, AssetId, DisplayableItem, FromBytes, ParserError},
 };
 use bolos::PIC;
 
 const DEPOSIT_SELECTOR: &[u8] = &[0xd0, 0xe3, 0x0d, 0xb0];
 const ASSETCALL_FIXED_DATA_WIDTH: usize = 20 + 32 + 32;
 
-const AMOUNT_SIZE: usize = core::mem::size_of::<u256>();
+const AMOUNT_SIZE: usize = u256::BITS as usize / 8;
 
 /// An asset call according to the documentation
 /// in https://docs.avax.network/specs/coreth-arc20s
