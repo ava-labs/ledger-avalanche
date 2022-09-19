@@ -33,7 +33,7 @@ use crate::{
 
 const TX_ID_LEN: usize = 32;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct TransferableInput<'b> {
@@ -156,7 +156,7 @@ impl<'b> DisplayableItem for TransferableInput<'b> {
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the Input enum which has the same representation
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 enum InputType {
     SECPTransfer,
@@ -182,7 +182,7 @@ struct SECPTransferVariant<'b>(InputType, SECPTransferInput<'b>);
 // later new input types could be defined
 // that is why this type is defined as an enum(holding one variant for now)
 // because new variants can be easily added
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the InputType tag

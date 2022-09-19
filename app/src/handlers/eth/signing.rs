@@ -93,7 +93,7 @@ impl BlindSign {
 
         //skip version if present/recognized
         // otherwise tx is probably legacy so no version, just rlp data
-        let version = *data.get(0).ok_or(Error::DataInvalid)?;
+        let version = *data.first().ok_or(Error::DataInvalid)?;
         match version {
             0x01 | 0x02 => {
                 data = data.get(1..).ok_or(Error::DataInvalid)?;

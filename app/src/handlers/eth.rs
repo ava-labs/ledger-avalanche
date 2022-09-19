@@ -43,3 +43,4 @@ mod utils {
 
     pub mod u256;
 }
+pub use utils::u256::u256;

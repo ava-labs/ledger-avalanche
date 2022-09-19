@@ -26,7 +26,7 @@ use crate::{
     parser::{DisplayableItem, FromBytes, ParserError, U32_SIZE},
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPTransferInput<'b> {
     pub amount: u64,

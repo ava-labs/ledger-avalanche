@@ -31,7 +31,7 @@ use crate::parser::{AssetId, DisplayableItem, FromBytes, ObjectList, UtxoId};
 
 use super::ParserError;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct TransferableOp<'b> {
@@ -80,7 +80,7 @@ impl<'b> DisplayableItem for TransferableOp<'b> {
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the Operation enum which has the same representation
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(u8)]
 pub enum OpType {
@@ -112,7 +112,7 @@ struct NFTMintOpVariant<'b>(OpType, NFTMintOperation<'b>);
 #[repr(C)]
 struct NFTTransferOpVariant<'b>(OpType, NFTTransferOperation<'b>);
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag

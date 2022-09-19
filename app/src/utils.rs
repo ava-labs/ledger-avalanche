@@ -154,7 +154,7 @@ pub fn bs58_encode(
 
 /// Reads a byte slice preprended with the slice len
 pub fn read_slice(input: &[u8]) -> Option<(usize, &[u8])> {
-    let len = input.get(0)?;
+    let len = input.first()?;
     let len = *len as usize;
 
     input.get(1..1 + len).map(|bytes| (1 + len, bytes))

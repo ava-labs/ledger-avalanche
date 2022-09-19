@@ -26,7 +26,7 @@ use nom::{
     number::complete::be_u32,
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(C)]
 pub struct NFTMintOperation<'b> {

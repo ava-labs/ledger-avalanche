@@ -26,7 +26,7 @@ use crate::{
     parser::{u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPOutputOwners<'b> {

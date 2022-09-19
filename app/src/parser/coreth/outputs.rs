@@ -29,7 +29,7 @@ use crate::{
 };
 
 // Wrapper for the Output type
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct EOutput<'b>(pub Output<'b>);
@@ -93,7 +93,7 @@ impl<'b> DisplayableItem for EOutput<'b> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct EVMOutput<'b> {

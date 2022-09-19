@@ -31,7 +31,7 @@ use nom::{
 
 const U32_SIZE: usize = std::mem::size_of::<u32>();
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPMintOperation<'b> {
     pub address_indices: &'b [[u8; U32_SIZE]],

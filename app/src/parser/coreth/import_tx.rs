@@ -35,7 +35,7 @@ use crate::{
 const SOURCE_CHAIN_LEN: usize = BLOCKCHAIN_ID_LEN;
 const IMPORT_DESCRIPTION_LEN: usize = 8;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct ImportTx<'b> {
     pub tx_header: Header<'b>,
