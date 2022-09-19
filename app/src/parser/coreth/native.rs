@@ -174,6 +174,24 @@ pub enum EthTransaction<'b> {
     Eip2930(Eip2930<'b>),
 }
 
+impl<'b> EthTransaction<'b> {
+    #[cfg(test)]
+    pub fn new(input: &'b [u8]) -> Result<Self, ParserError> {
+        let mut variant = MaybeUninit::uninit();
+        Self::new_into(input, &mut variant)?;
+        // Safe as parsing initializes it
+        Ok(unsafe { variant.assume_init() })
+    }
+
+    pub fn new_into(
+        input: &'b [u8],
+        out: &mut core::mem::MaybeUninit<Self>,
+    ) -> Result<(), ParserError> {
+        _ = Self::from_bytes_into(input, out)?;
+        Ok(())
+    }
+}
+
 impl<'b> FromBytes<'b> for EthTransaction<'b> {
     fn from_bytes_into(
         input: &'b [u8],
