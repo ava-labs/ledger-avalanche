@@ -82,14 +82,13 @@ describe.skip.each(models)('Ethereum [%s]; sign', function (m) {
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new AvalancheApp(sim.getTransport())
-      const msg = op
+      const msg = op.toString('hex')
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${name}`
       await enableBlindSigning(sim, testcase)
 
       const currentScreen = sim.snapshot();
-      const signers = ["0/1"];
-      const respReq = app.sign(ETH_DERIVATION, signers, msg);
+      const respReq = app.signEVMTransaction(ETH_DERIVATION, msg);
 
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
       await sim.compareSnapshotsAndApprove('.', testcase)
@@ -98,15 +97,18 @@ describe.skip.each(models)('Ethereum [%s]; sign', function (m) {
 
       console.log(resp, m.name, name)
 
-      expect(resp.returnCode).toEqual(0x9000)
-      expect(resp.errorMessage).toEqual('No errors')
-      expect(resp).toHaveProperty('signatures')
+      expect(resp).toHaveProperty('r')
+      expect(resp).toHaveProperty('s')
+      expect(resp).toHaveProperty('v')
 
-      const resp_addr = await app.getAddressAndPubKey(ETH_DERIVATION, false)
+      const sha3 = require('js-sha3');
+      const msgHash = sha3.keccak256(msg);
 
-      const signatureRS = resp.signatures?.get(signers[0])!.slice(0, -1)
+      const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
 
-      const signatureOk = secp256k1.ecdsaVerify(signatureRS, resp.hash, resp_addr.publicKey)
+      const signatureRS = Buffer.concat([Buffer.from(resp.r, 'hex'), Buffer.from(resp.s, 'hex')]);
+
+      const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, resp_addr.publicKey)
       expect(signatureOk).toEqual(true)
 
     } finally {
