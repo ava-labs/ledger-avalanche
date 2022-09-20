@@ -38,6 +38,9 @@ mod utils;
 mod utxo_id;
 mod validator;
 
+#[cfg(test)]
+mod snapshots_common;
+
 pub use address::*;
 pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
