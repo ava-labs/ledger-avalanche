@@ -62,11 +62,6 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
         // access list
         let (rem, access_list) = parse_rlp_item(rem)?;
 
-        // check there is nothing else
-        if !rem.is_empty() {
-            return Err(ParserError::UnexpectedData.into());
-        }
-
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);
             addr_of_mut!((*out).access_list).write(access_list);

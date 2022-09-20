@@ -110,7 +110,7 @@ impl<'b> BaseLegacy<'b> {
                 let label = pic_str!(b"Gas Limit");
                 title[..label.len()].copy_from_slice(label);
 
-                render_u256(self.gas_limit, WEI_NAVAX_DIGITS, message, page)
+                render_u256(self.gas_limit, 0, message, page)
             }
 
             2 if render_funding => {
