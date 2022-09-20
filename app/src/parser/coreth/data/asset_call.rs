@@ -133,7 +133,7 @@ impl<'b> DisplayableItem for AssetCall<'b> {
                     title[..transfer.len()].copy_from_slice(transfer);
                 }
 
-                let amount = u256::from_big_endian(self.amount);
+                let amount = u256::pic_from_big_endian()(self.amount);
                 let s = amount.to_lexical(&mut buffer[..u256::FORMATTED_SIZE_DECIMAL]);
 
                 let mut size = s.len();

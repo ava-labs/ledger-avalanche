@@ -130,12 +130,16 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 impl<'b> Eip1559<'b> {
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
-        let priority_fee = u256::from_big_endian(self.priority_fee);
-        let max_fee = u256::from_big_endian(self.max_fee);
-        let gas_limit = u256::from_big_endian(self.gas_limit);
+        let f = u256::pic_from_big_endian();
+
+        let priority_fee = f(self.priority_fee);
+        let max_fee = f(self.max_fee);
+        let gas_limit = f(self.gas_limit);
+
         let fee = priority_fee
             .checked_add(max_fee)
             .ok_or(ParserError::OperationOverflows)?;
+
         fee.checked_mul(gas_limit)
             .ok_or(ParserError::OperationOverflows)
     }
@@ -297,7 +301,8 @@ impl<'b> DisplayableItem for Eip1559<'b> {
         // The type of the data field defines how a transaction
         // info is displayed.
         match self.data {
-            EthData::None => 0,
+            // render a simple Transfer, to, fee
+            EthData::None => 1 + 1 + 1,
             // description, gas limit, funding contract(if value != zero), maximun fee and data.items
             EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + !self.value.is_empty() as usize,
             // asset items + fee

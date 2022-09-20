@@ -43,8 +43,10 @@ pub struct BaseLegacy<'b> {
 impl<'b> BaseLegacy<'b> {
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
-        let gas_price = u256::from_big_endian(self.gas_price);
-        let gas_limit = u256::from_big_endian(self.gas_limit);
+        let f = u256::pic_from_big_endian();
+
+        let gas_price = f(self.gas_price);
+        let gas_limit = f(self.gas_limit);
 
         gas_price
             .checked_mul(gas_limit)

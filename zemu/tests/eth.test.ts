@@ -21,10 +21,11 @@ import { ec } from 'elliptic'
 
 const SIGN_TEST_DATA = [
   {
-    name: 'blind sign',
+    name: 'transfer',
     //ethereum tx hash: 0x7935135a927b1746b54e73c2b353daee96ba6aad6dd45683b36075b8092608fe
+    // this has been trimmed to remove the signature
     op: Buffer.from(
-      '02f878018402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c080a01e514f7fc78197c66589083cc8fd06376bae627a4080f5fb58d52d90c0df340da049b048717f215e622c93722ff5b1e38e1d1a4ab9e26a39183969a34a5f8dea75',
+      '02f5018402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0',
       'hex',
     ),
   },

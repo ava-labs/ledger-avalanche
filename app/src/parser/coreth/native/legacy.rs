@@ -118,7 +118,7 @@ mod tests {
         let bytes = hex::decode(deploy).unwrap();
         let address = hex::decode("41c9cc6fd27e26e70f951869fb09da685a696f0a").unwrap();
         let amount = hex::decode("0123456789abcdef").unwrap();
-        let amount = u256::from_big_endian(&amount);
+        let amount = u256::pic_from_big_endian()(&amount);
 
         // get transaction bytes
         let (_, bytes) = parse_rlp_item(&bytes).unwrap();
@@ -126,7 +126,7 @@ mod tests {
 
         if let EthData::AssetCall(c) = tx.base.data {
             assert_eq!(&address[..], c.address.raw_address());
-            let parsed_amount = u256::from_big_endian(c.amount);
+            let parsed_amount = u256::pic_from_big_endian()(c.amount);
             assert_eq!(amount, parsed_amount);
         } else {
             panic!("Expected an AssetCall transaction!");
@@ -146,7 +146,7 @@ mod tests {
 
         if let EthData::AssetCall(c) = tx.base.data {
             assert_eq!(&address[..], c.address.raw_address());
-            let amount = u256::from_big_endian(c.amount);
+            let amount = u256::pic_from_big_endian()(c.amount);
             assert!(amount.is_zero());
         } else {
             panic!("Expected an AssetCall transaction!");

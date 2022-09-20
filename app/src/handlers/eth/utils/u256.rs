@@ -26,6 +26,8 @@ use core::ops::{
     Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
 };
 
+use bolos::PIC;
+
 /// Little-endian large integer type
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -41,17 +43,27 @@ impl AsRef<[u64]> for u256 {
 
 impl Default for u256 {
     fn default() -> Self {
-        Self::MIN
+        *Self::min()
     }
 }
 
 impl u256 {
     const WORD_BITS: usize = 64;
     /// Maximum value.
-    pub const MAX: u256 = Self([u64::MAX; 4]);
+    const MAX: &'static u256 = &Self([u64::MAX; 4]);
+
+    #[inline]
+    pub fn max() -> &'static Self {
+        PIC::new(Self::MAX).into_inner()
+    }
 
     /// Minimum value
-    pub const MIN: u256 = Self([0; 4]);
+    const MIN: &'static u256 = &Self([0; 4]);
+
+    #[inline]
+    pub fn min() -> &'static Self {
+        PIC::new(Self::MIN).into_inner()
+    }
 
     /// Number of bits of the integer
     pub const BITS: u32 = 256;
@@ -115,7 +127,7 @@ impl u256 {
     /// Whether this is zero.
     #[inline]
     pub fn is_zero(&self) -> bool {
-        self == &Self::MIN
+        self == Self::min()
     }
 
     #[inline]
@@ -245,8 +257,8 @@ impl u256 {
 
     /// The maximum value which can be inhabited by this type.
     #[inline]
-    pub const fn max_value() -> Self {
-        Self::MAX
+    pub fn max_value() -> Self {
+        *Self::max()
     }
 
     fn full_shl(self, shift: u32) -> [u64; 4 + 1] {
@@ -1146,7 +1158,8 @@ impl u256 {
     }
 
     /// Converts from big endian representation bytes in memory.
-    pub fn from_big_endian(slice: &[u8]) -> Self {
+    #[inline(never)]
+    fn from_big_endian(slice: &[u8]) -> Self {
         use byteorder::{BigEndian, ByteOrder};
         if 4 * 8 < slice.len() {
             panic!("assertion failed: 4 * 8 >= slice.len()")
@@ -1158,6 +1171,13 @@ impl u256 {
             ret[4 - i - 1] = BigEndian::read_u64(&padded[8 * i..]);
         }
         u256(ret)
+    }
+
+    /// Retrieve the function used to convert a slice of BE bytes into u256
+    pub fn pic_from_big_endian() -> fn(&[u8]) -> Self {
+        let to_pic = u256::from_big_endian as usize;
+        let picced = unsafe { PIC::manual(to_pic) };
+        unsafe { core::mem::transmute(picced) }
     }
 
     /// Converts from little endian representation bytes in memory.
@@ -1611,7 +1631,9 @@ impl u256 {
     /// To make sure there are enough bytes, use a buffer of size [`Self::FORMATTED_SIZE_DECIMAL`]
     pub fn to_lexical(mut self, bytes: &mut [u8]) -> &mut [u8] {
         //this is equivalent to Self::from(10)
-        const TEN: u256 = Self([10, 0, 0, 0]);
+        const TEN: &u256 = &Self([10, 0, 0, 0]);
+
+        let ten = *PIC::new(TEN).into_inner();
 
         //write it from the front
         // this is counter intuitive since we start
@@ -1622,7 +1644,7 @@ impl u256 {
         // We do that so we write from the start of the buffer, not the end
         let mut i = 0;
         loop {
-            let (this, digit) = self.div_mod(TEN);
+            let (this, digit) = self.div_mod(ten);
             let digit = digit.low_u64() as u8;
 
             //use the ascii property that we can
@@ -1665,7 +1687,7 @@ mod tests {
 
     #[test]
     fn formatting_max() {
-        formatting_impl(u256::MAX);
+        formatting_impl(*u256::max());
     }
 
     #[cfg(not(miri))]

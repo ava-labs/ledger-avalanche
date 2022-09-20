@@ -48,7 +48,7 @@ pub fn render_u256(
 ) -> Result<u8, ViewError> {
     let mut u256_str = [0; u256::FORMATTED_SIZE_DECIMAL + 2];
 
-    let amount = u256::from_big_endian(num);
+    let amount = u256::pic_from_big_endian()(num);
     amount.to_lexical(&mut u256_str);
 
     let out =
