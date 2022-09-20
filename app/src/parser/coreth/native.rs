@@ -293,3 +293,74 @@ impl<'b> DisplayableItem for EthTransaction<'b> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::prelude::v1::*;
+
+    use zemu_sys::Viewable;
+    use zuit::MockDriver;
+
+    use super::*;
+    use crate::parser::snapshots_common::{with_leaked, ReducedPage};
+
+    impl Viewable for EthTransaction<'static> {
+        fn num_items(&mut self) -> Result<u8, zemu_sys::ViewError> {
+            Ok(DisplayableItem::num_items(&*self) as u8)
+        }
+
+        fn render_item(
+            &mut self,
+            item_idx: u8,
+            title: &mut [u8],
+            message: &mut [u8],
+            page_idx: u8,
+        ) -> Result<u8, zemu_sys::ViewError> {
+            DisplayableItem::render_item(&*self, item_idx, title, message, page_idx)
+        }
+
+        fn accept(&mut self, _: &mut [u8]) -> (usize, u16) {
+            (0, 0)
+        }
+
+        fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
+            (0, 0)
+        }
+    }
+
+    #[test]
+    //isolation is enabled by defalt in miri
+    // and this prevents opening files, amonst other things
+    // we could either disable isolation or have miri
+    // return errors on open & co.
+    //
+    // considering we aren't doing anything special in this test
+    // we can just avoid having it run in miri directly
+    #[cfg_attr(miri, ignore)]
+    fn tx_eth_ui() {
+        insta::glob!("eth_testvectors/*.json", |path| {
+            let file = std::fs::File::open(path)
+                .unwrap_or_else(|e| panic!("Unable to open file {:?}: {:?}", path, e));
+            let input: Vec<u8> = serde_json::from_reader(file)
+                .unwrap_or_else(|e| panic!("Unable to read file {:?} as json: {:?}", path, e));
+
+            let test = |data| {
+                let tx = EthTransaction::new(data).expect("parse tx from data");
+
+                let mut driver = MockDriver::<_, 18, 1024>::new(tx);
+                driver.drive();
+
+                let ui = driver.out_ui();
+
+                let reduced = ui
+                    .iter()
+                    .flat_map(|item| item.iter().map(ReducedPage::from))
+                    .collect::<Vec<_>>();
+
+                insta::assert_debug_snapshot!(reduced);
+            };
+
+            unsafe { with_leaked(input, test) };
+        });
+    }
+}
