@@ -1,0 +1,11 @@
+---
+source: app/src/parser/coreth/native.rs
+expression: reduced
+input_file: app/src/parser/coreth/eth_testvectors/eip1559_contract_deploy.json
+---
+[
+    "Contract": "Creation",
+    "Gas Limit": "1500000",
+    "Data: ": "0x608060405234801561001057600080fd5b50610150806100206000396000...",
+    "Maximum Fee(GWEI)": "90000000",
+]
