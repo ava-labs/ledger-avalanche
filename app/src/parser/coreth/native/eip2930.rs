@@ -37,6 +37,12 @@ pub struct Eip2930<'b> {
     // that they are expected
 }
 
+impl<'b> Eip2930<'b> {
+    pub fn chain_id_low_byte(&self) -> u8 {
+        self.chain_id[self.chain_id.len() - 1]
+    }
+}
+
 impl<'b> FromBytes<'b> for Eip2930<'b> {
     fn from_bytes_into(
         input: &'b [u8],

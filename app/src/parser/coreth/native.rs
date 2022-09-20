@@ -190,6 +190,13 @@ impl<'b> EthTransaction<'b> {
         _ = Self::from_bytes_into(input, out)?;
         Ok(())
     }
+    pub fn chain_id_low_byte(&self) -> u8 {
+        match self {
+            Self::Legacy(t) => t.chain_id_low_byte(),
+            Self::Eip1559(t) => t.chain_id_low_byte(),
+            Self::Eip2930(t) => t.chain_id_low_byte(),
+        }
+    }
 }
 
 impl<'b> FromBytes<'b> for EthTransaction<'b> {

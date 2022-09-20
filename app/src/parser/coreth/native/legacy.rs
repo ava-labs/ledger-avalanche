@@ -33,6 +33,12 @@ pub struct Legacy<'b> {
     // that they are expected
 }
 
+impl<'b> Legacy<'b> {
+    pub fn chain_id_low_byte(&self) -> u8 {
+        self.chain_id[self.chain_id.len() - 1]
+    }
+}
+
 impl<'b> FromBytes<'b> for Legacy<'b> {
     fn from_bytes_into(
         input: &'b [u8],

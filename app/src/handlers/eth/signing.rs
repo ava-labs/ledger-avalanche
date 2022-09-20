@@ -260,6 +260,17 @@ impl Viewable for SignUI {
                 Err(_) => return (0, Error::ExecutionError as _),
             }
         }
+        // before returning It is necessary to write the right V
+        // component as it depends on the chainID(lowest byte) and the
+        // parity of the last byte of the S component, this procedure is
+        // defined by EIP-155.
+        let chain_id_byte = self.tx.chain_id_low_byte();
+
+        if chain_id_byte == 0 {
+            out[0] = out[tx - 1] & 0x01;
+        } else {
+            out[0] = (out[tx - 1] & 0x01) + (chain_id_byte << 1) + 35;
+        }
 
         (tx, Error::Success as _)
     }
