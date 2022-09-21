@@ -23,11 +23,13 @@ use crate::parser::{Address, DisplayableItem, ParserError};
 mod asset_call;
 mod contract_call;
 mod deploy;
+mod erc20;
 
 use super::native::parse_rlp_item;
 pub use asset_call::AssetCall;
 pub use contract_call::ContractCall;
 pub use deploy::Deploy;
+pub use erc20::ERC20;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
@@ -40,6 +42,7 @@ pub enum EthData<'b> {
     None, // empty data
     Deploy(Deploy<'b>),
     AssetCall(AssetCall<'b>),
+    Erc20(ERC20<'b>),
     ContractCall(ContractCall<'b>),
 }
 
@@ -71,7 +74,13 @@ impl<'b> EthData<'b> {
                 if AssetCall::is_asset_call(to, data) {
                     Self::parse_asset_call(data, out)?
                 } else {
-                    Self::parse_contract_call(data, out)?
+                    //TODO: chain in a more concise way
+                    // a-la nom::branch::alt
+                    // we want to parse all known contract types one by one
+                    // and see what doesn't fail
+                    if let Err(_) = Self::parse_erc20(data, out) {
+                        Self::parse_contract_call(data, out)?
+                    }
                 }
             }
         };
@@ -129,6 +138,24 @@ impl<'b> EthData<'b> {
         Ok(())
     }
 
+    fn parse_erc20(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
+        if data.is_empty() {
+            return Err(ParserError::NoData);
+        }
+
+        let out = out.as_mut_ptr() as *mut ContractCall__Variant;
+
+        let erc20 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+        _ = ERC20::parse_into(data, erc20)?;
+
+        //pointer is valid
+        unsafe {
+            addr_of_mut!((*out).0).write(EthData__Type::ContractCall);
+        }
+
+        Ok(())
+    }
+
     fn parse_contract_call(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
         if data.is_empty() {
             return Err(ParserError::NoData);
@@ -155,6 +182,7 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => 0,
             Self::Deploy(d) => d.num_items(),
             Self::AssetCall(d) => d.num_items(),
+            Self::Erc20(d) => d.num_items(),
             Self::ContractCall(d) => d.num_items(),
         }
     }
@@ -170,6 +198,7 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => Err(ViewError::NoData),
             Self::Deploy(d) => d.render_item(item_n, title, message, page),
             Self::AssetCall(d) => d.render_item(item_n, title, message, page),
+            Self::Erc20(d) => d.render_item(item_n, title, message, page),
             Self::ContractCall(d) => d.render_item(item_n, title, message, page),
         }
     }
