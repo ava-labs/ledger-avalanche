@@ -97,4 +97,4 @@ mod utils {
         }
     }
 }
-pub use utils::u256::u256;
+pub use utils::u256::{u256, BorrowedU256};
