@@ -18,9 +18,8 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
-use crate::parser::{DisplayableItem, FromBytes, ParserError};
-
 use super::BaseLegacy;
+use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -56,8 +55,15 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         let (rem, id_bytes) = parse_rlp_item(rem)?;
         let (rem, r) = parse_rlp_item(rem)?;
         let (rem, s) = parse_rlp_item(rem)?;
+
+        // r and s if not empty, should contain only one value
+        // which must be zero.
         if !r.is_empty() && !s.is_empty() {
-            return Err(ParserError::UnexpectedData.into());
+            let no_zero = r.iter().any(|v| *v != 0) && s.iter().any(|v| *v != 0);
+            if no_zero || r.len() != 1 || s.len() != 1 {
+                crate::sys::zemu_log_stack("Legacy::invalid_r_s\x00");
+                return Err(ParserError::UnexpectedData.into());
+            }
         }
 
         unsafe {
