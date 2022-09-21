@@ -1,0 +1,10 @@
+---
+source: app/src/parser/coreth/native.rs
+expression: reduced
+input_file: app/src/parser/coreth/eth_testvectors/legacy_simple_transfer_big_amount.json
+---
+[
+    "Transfer(AVAX)": "238547462614852887054687.704548455429902335",
+    "To": "0x28ee52a8f3d6e5d15f8b131996950d7f296c7952",
+    "Fee(GWEI)": "9870000",
+]
