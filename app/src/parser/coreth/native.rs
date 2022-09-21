@@ -332,7 +332,7 @@ mod tests {
                 .unwrap_or_else(|e| panic!("Unable to read file {:?} as json: {:?}", path, e));
 
             let test = |data| {
-                let tx = EthTransaction::new(data).expect("parse tx from data");
+                let (_, tx) = EthTransaction::from_bytes(data).expect("parse tx from data");
 
                 let mut driver = MockDriver::<_, 18, 1024>::new(tx);
                 driver.drive();
