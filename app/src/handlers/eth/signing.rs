@@ -26,7 +26,7 @@ use crate::{
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::resources::{BUFFER, PATH},
-    parser::{DisplayableItem, EthTransaction},
+    parser::{DisplayableItem, EthTransaction, FromBytes},
     sys,
     utils::ApduBufferRead,
 };
@@ -70,9 +70,16 @@ impl Sign {
 
     #[inline(never)]
     pub fn start_sign(txdata: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
-        let unsigned_hash = Self::digest(txdata)?;
         let mut tx = MaybeUninit::uninit();
-        EthTransaction::new_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
+        let rem =
+            EthTransaction::from_bytes_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
+
+        // some applications might append data at the end of an encoded
+        // transaction, so skip it to get the right hash.
+        let to_hash = txdata.len() - rem.len();
+        let to_hash = &txdata[..to_hash];
+        let unsigned_hash = Self::digest(to_hash)?;
+
         let tx = unsafe { tx.assume_init() };
 
         let ui = SignUI {

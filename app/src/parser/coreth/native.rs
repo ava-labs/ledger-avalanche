@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use core::{mem::MaybeUninit, ptr::addr_of_mut};
+use core::ptr::addr_of_mut;
 
 use nom::bytes::complete::take;
 use zemu_sys::ViewError;
@@ -175,21 +175,6 @@ pub enum EthTransaction<'b> {
 }
 
 impl<'b> EthTransaction<'b> {
-    #[cfg(test)]
-    pub fn new(input: &'b [u8]) -> Result<Self, ParserError> {
-        let mut variant = MaybeUninit::uninit();
-        Self::new_into(input, &mut variant)?;
-        // Safe as parsing initializes it
-        Ok(unsafe { variant.assume_init() })
-    }
-
-    pub fn new_into(
-        input: &'b [u8],
-        out: &mut core::mem::MaybeUninit<Self>,
-    ) -> Result<(), ParserError> {
-        _ = Self::from_bytes_into(input, out)?;
-        Ok(())
-    }
     pub fn chain_id_low_byte(&self) -> u8 {
         match self {
             Self::Legacy(t) => t.chain_id_low_byte(),
@@ -213,9 +198,11 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
 
         // parse rlp[] part in order to get the transaction bytes
         let (rem, tx_bytes) = parse_rlp_item(rem)?;
+
         if tx_bytes.is_empty() {
             return Err(ParserError::UnexpectedBufferEnd.into());
         }
+
         match tx_type {
             EthTxType::Legacy => {
                 let out = out.as_mut_ptr() as *mut LegacyVariant;
