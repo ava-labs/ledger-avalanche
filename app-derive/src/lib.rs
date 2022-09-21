@@ -55,3 +55,36 @@ mod unroll;
 pub fn unroll(input: TokenStream) -> TokenStream {
     unroll::unroll(input)
 }
+
+mod enum_init;
+#[proc_macro_attribute]
+/// The aim of this macro is to ease the writing of boilerplate for enums
+/// where we want to initialize said enum using [`MaybeUninit`].
+///
+/// The macro will generate an enum with N unit variants and N structs
+/// based on the number of variants of the original enum.
+///
+/// # Example
+/// ```rust,ignore
+/// #[enum_init]
+/// pub enum Foo {
+///     Bar(BarStruct),
+///     Baz(BazStruct)
+/// }
+///
+/// //will generate
+/// #[repr(u8)]
+/// enum FooType {
+///     Bar,
+///     Baz
+/// }
+///
+/// #[repr(C)]
+/// struct BarVariant(FooType, Bar);
+///
+/// #[repr(C)]
+/// struct BazVariant(FooType, Baz);
+/// ```
+pub fn enum_init(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    enum_init::enum_init(metadata, input)
+}
