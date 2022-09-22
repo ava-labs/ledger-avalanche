@@ -24,7 +24,7 @@ use crate::{
 
 #[derive(Educe)]
 #[cfg_attr(test, educe(Debug))]
-#[educe(Clone, Copy, PartialEq)]
+#[educe(Clone, Copy, PartialEq, Eq)]
 /// Represents an object list
 ///
 /// The number of objects is prepended as a BE u32 to the objects bytes
@@ -346,7 +346,7 @@ mod tests {
         assert!(rem.is_empty());
         let mut output: MaybeUninit<_> = MaybeUninit::uninit();
         let mut count = 0;
-        while let Some(_) = list.parse_next(&mut output) {
+        while list.parse_next(&mut output).is_some() {
             count += 1;
         }
 

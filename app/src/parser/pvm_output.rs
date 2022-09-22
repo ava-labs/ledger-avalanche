@@ -36,7 +36,7 @@ use zemu_sys::ViewError;
 // literal inlined can lead to len mismatch which can cause overlapping.
 const AVAX_UNTIL: &[u8; 12] = b" AVAX until ";
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PvmOutput<'b> {

@@ -1,4 +1,5 @@
 export MIRIFLAGS := "-Zmiri-symbolic-alignment-check"
+export RUST_BACKTRACE := "full"
 
 # Show this menu
 @help:
@@ -39,3 +40,9 @@ make *cmd='':
 
 try:
     cd zemu && yarn try
+
+alias c := cargo
+cargo *cmd='':
+    cargo {{cmd}}
+
+insta: (cargo "insta test --review")

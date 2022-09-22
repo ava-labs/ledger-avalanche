@@ -31,7 +31,7 @@ pub use secp_mint_output::SECPMintOutput;
 pub use secp_output_owners::SECPOutputOwners;
 pub use secp_transfer_output::SECPTransferOutput;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct TransferableOutput<'b, O>
@@ -138,7 +138,7 @@ where
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the Output enum which has the same representation
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(u8)]
 pub enum OutputType {
@@ -164,7 +164,7 @@ struct NFTMintVariant<'b>(OutputType, NFTMintOutput<'b>);
 #[repr(C)]
 struct SECPOwnersVariant<'b>(OutputType, SECPOutputOwners<'b>);
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag

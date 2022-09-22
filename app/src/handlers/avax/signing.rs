@@ -26,7 +26,7 @@ use crate::{
     constants::{
         ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
     },
-    crypto::{Curve, PublicKey},
+    crypto::PublicKey,
     dispatcher::ApduHandler,
     handlers::{
         avax::sign_hash::Sign as SignHash,
@@ -44,7 +44,7 @@ impl Sign {
     // sha256 is used
     pub const SIGN_HASH_SIZE: usize = Sha256::DIGEST_LEN;
 
-    fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+    fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         match unsafe { PATH.acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
@@ -59,14 +59,12 @@ impl Sign {
     #[inline(never)]
     pub fn compute_keyhash(
         path: &BIP32Path<MAX_BIP32_PATH_DEPTH>,
-        curve: Curve,
         out_hash: &mut [u8; Ripemd160::DIGEST_LEN],
     ) -> Result<(), Error> {
         use crate::handlers::public_key::GetPublicKey;
 
         let mut out = MaybeUninit::uninit();
-        GetPublicKey::new_key_into(curve, path, &mut out, None)
-            .map_err(|_| Error::ExecutionError)?;
+        GetPublicKey::new_key_into(path, &mut out, None).map_err(|_| Error::ExecutionError)?;
 
         // get the uncompressed pubkey for the provided path
         let pkey = unsafe { out.assume_init() };
@@ -107,8 +105,8 @@ impl Sign {
         list: &mut ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>,
         tx: &mut Transaction,
     ) -> Result<(), Error> {
-        // get root path and curve
-        let (path_root, curve) = Self::get_derivation_info()?;
+        // get root path
+        let path_root = Self::get_derivation_info()?;
 
         //We expect a path prefix of the form x'/x'/x'
         if path_root.components().len() != BIP32_PATH_PREFIX_DEPTH {
@@ -137,7 +135,7 @@ impl Sign {
             let full_path: BIP32Path<MAX_BIP32_PATH_DEPTH> =
                 BIP32Path::new(path_iter).map_err(|_| Error::DataInvalid)?;
 
-            Self::compute_keyhash(&full_path, *curve, &mut address)?;
+            Self::compute_keyhash(&full_path, &mut address)?;
 
             tx.disable_output_if(&address[..]);
         }
@@ -150,7 +148,6 @@ impl Sign {
         data: &'static [u8],
         flags: &mut u32,
     ) -> Result<u32, Error> {
-        let curve = Curve::Secp256K1;
         // read root path and store it in ram as during the
         // signing process and diseabling outputs we use it
         // to get a full path: root_path + path_suffix
@@ -161,7 +158,7 @@ impl Sign {
         }
 
         unsafe {
-            PATH.lock(Self)?.replace((root_path, curve));
+            PATH.lock(Self)?.replace(root_path);
         }
 
         // then, get the change_path list.

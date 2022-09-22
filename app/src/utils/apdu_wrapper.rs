@@ -7,7 +7,7 @@ pub struct ApduBufferRead<'apdu> {
     inner: &'apdu mut [u8],
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum ApduBufferReadError {
     /// The provided buffer was not long enough
     ///

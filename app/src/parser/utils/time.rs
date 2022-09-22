@@ -99,7 +99,6 @@ pub fn timestamp_to_date(timestamp: i64) -> Result<Date, TimeError> {
     let year_lookup = PIC::new(YEAR_LOOKUP).into_inner();
 
     let mut t = timestamp;
-    let mut tm_day: u16;
 
     let tm_sec = (t % 60) as u8;
     t -= tm_sec as i64;
@@ -125,7 +124,7 @@ pub fn timestamp_to_date(timestamp: i64) -> Result<Date, TimeError> {
     }
     tm_year -= 1;
 
-    tm_day = (t as u32 - year_lookup[tm_year] + 1) as u16;
+    let mut tm_day: u16 = (t as u32 - year_lookup[tm_year] + 1) as u16;
     tm_year += 1970;
 
     // Get day/month

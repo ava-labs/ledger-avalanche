@@ -47,34 +47,11 @@ impl AsRef<[u8]> for PublicKey {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
-pub enum Curve {
-    Secp256K1,
-}
-
-impl TryFrom<u8> for Curve {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(Self::Secp256K1),
-            _ => Err(()),
-        }
-    }
-}
-
-impl From<Curve> for u8 {
-    fn from(from: Curve) -> Self {
-        match from {
-            Curve::Secp256K1 => 0,
-        }
-    }
-}
+pub struct Curve;
 
 impl From<Curve> for sys::crypto::Curve {
-    fn from(from: Curve) -> Self {
-        match from {
-            Curve::Secp256K1 => Self::Secp256K1,
-        }
+    fn from(_from: Curve) -> Self {
+        Self::Secp256K1
     }
 }
 
@@ -85,7 +62,7 @@ impl TryFrom<sys::crypto::Curve> for Curve {
         use sys::crypto::Curve as CCurve;
 
         match ccrv {
-            CCurve::Secp256K1 => Ok(Self::Secp256K1),
+            CCurve::Secp256K1 => Ok(Self),
             #[allow(unreachable_patterns)]
             //this isn't actually unreachable because CCurve mock is just incomplete
             _ => Err(()),
@@ -140,15 +117,12 @@ impl<const B: usize> SecretKey<B> {
     }
 
     pub fn sign(&self, data: &[u8], out: &mut [u8]) -> Result<usize, SignError> {
-        match self.curve() {
-            Curve::Secp256K1 if out.len() < SECP256_SIGN_BUFFER_MIN_LENGTH => {
-                Err(SignError::BufferTooSmall)
-            }
-
-            Curve::Secp256K1 => self
-                .0
+        if out.len() < SECP256_SIGN_BUFFER_MIN_LENGTH {
+            Err(SignError::BufferTooSmall)
+        } else {
+            self.0
                 .sign::<Sha256>(data, out) //pass Sha256 for the signature nonce hasher
-                .map_err(SignError::Sys),
+                .map_err(SignError::Sys)
         }
     }
 }

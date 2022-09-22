@@ -15,6 +15,7 @@
 ********************************************************************************/
 use bolos::{crypto::bip32::BIP32Path, hash::Sha256};
 use core::mem::MaybeUninit;
+use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{
@@ -23,7 +24,10 @@ use crate::{
     },
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::resources::{HASH, PATH},
+    handlers::{
+        handle_ui_message,
+        resources::{HASH, PATH},
+    },
     parser::{FromBytes, PathWrapper},
     sys,
     utils::{convert_der_to_rs, ApduBufferRead},
@@ -36,7 +40,7 @@ impl Sign {
     // sha256 is used
     pub const SIGN_HASH_SIZE: usize = Sha256::DIGEST_LEN;
 
-    fn get_derivation_info() -> Result<&'static (BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+    fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         match unsafe { PATH.acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
@@ -54,10 +58,9 @@ impl Sign {
     #[inline(never)]
     pub fn sign(
         path: &BIP32Path<MAX_BIP32_PATH_DEPTH>,
-        curve: Curve,
         data: &[u8],
     ) -> Result<(usize, [u8; 100]), Error> {
-        let sk = curve.to_secret(path);
+        let sk = Curve.to_secret(path);
 
         let mut out = [0; 100];
         let sz = sk
@@ -68,7 +71,7 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn start_sign(data: &[u8]) -> Result<(), Error> {
+    pub fn start_sign(data: &[u8], flags: &mut u32) -> Result<usize, Error> {
         // the data contains root_path + 32-byte hash
         let mut path = MaybeUninit::uninit();
         let rem = PathWrapper::from_bytes_into(data, &mut path).map_err(|_| Error::Unknown)?;
@@ -78,10 +81,8 @@ impl Sign {
             return Err(Error::WrongLength);
         }
 
-        let curve = Curve::Secp256K1;
-
         unsafe {
-            PATH.lock(Self)?.replace((root_path, curve));
+            PATH.lock(Self)?.replace(root_path);
         }
 
         if rem.len() != Self::SIGN_HASH_SIZE {
@@ -91,16 +92,16 @@ impl Sign {
         let mut unsigned_hash = [0; Self::SIGN_HASH_SIZE];
         unsigned_hash.copy_from_slice(rem);
 
-        unsafe {
-            HASH.lock(Self)?.replace(unsigned_hash);
-        }
+        let ui = SignUI {
+            hash: unsigned_hash,
+        };
 
-        Ok(())
+        crate::show_ui!(ui.show(flags))
     }
 
-    fn get_signing_info(data: &[u8]) -> Result<(BIP32Path<MAX_BIP32_PATH_DEPTH>, Curve), Error> {
+    fn get_signing_info(data: &[u8]) -> Result<BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         //We expect a path prefix of the form x'/x'/x'
-        let (path_prefix, curve) = Self::get_derivation_info()?;
+        let path_prefix = Self::get_derivation_info()?;
         if path_prefix.components().len() != BIP32_PATH_PREFIX_DEPTH {
             return Err(Error::WrongLength);
         }
@@ -121,14 +122,71 @@ impl Sign {
 
         let full_path: BIP32Path<MAX_BIP32_PATH_DEPTH> =
             BIP32Path::new(path_iter).map_err(|_| Error::DataInvalid)?;
-        Ok((full_path, *curve))
+
+        Ok(full_path)
+    }
+}
+
+pub(crate) struct SignUI {
+    hash: [u8; Sign::SIGN_HASH_SIZE],
+}
+
+impl Viewable for SignUI {
+    fn num_items(&mut self) -> Result<u8, ViewError> {
+        Ok(1)
+    }
+
+    #[inline(never)]
+    fn render_item(
+        &mut self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        use crate::utils::hex_encode;
+        use bolos::{pic_str, PIC};
+
+        if item_n != 0 {
+            return Err(ViewError::NoData);
+        }
+        let title_content = pic_str!(b"Hash: ");
+        title[..title_content.len()].copy_from_slice(title_content);
+
+        let mut hex = [0; Sign::SIGN_HASH_SIZE * 2];
+
+        let size = hex_encode(self.hash, &mut hex[..]).map_err(|_| ViewError::Unknown)?;
+
+        handle_ui_message(&hex[..size], message, page)
+    }
+
+    fn accept(&mut self, _out: &mut [u8]) -> (usize, u16) {
+        let tx = 0;
+
+        // In this step the msg has not been signed
+        // so store the hash for the next steps
+        unsafe {
+            match HASH.lock(Sign) {
+                Ok(hash) => {
+                    hash.replace(self.hash);
+                }
+                Err(_) => return (0, Error::ExecutionError as _),
+            }
+        }
+
+        (tx, Error::Success as _)
+    }
+
+    fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
+        let _ = cleanup_globals();
+        (0, Error::CommandNotAllowed as _)
     }
 }
 
 impl ApduHandler for Sign {
     #[inline(never)]
     fn handle<'apdu>(
-        _flags: &mut u32,
+        flags: &mut u32,
         tx: &mut u32,
         buffer: ApduBufferRead<'apdu>,
     ) -> Result<(), Error> {
@@ -140,15 +198,19 @@ impl ApduHandler for Sign {
         let p1 = buffer.p1();
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
+        // this first message contain the hash which must be reviewed
+        // following messages are part of the signing process, and is used
+        // either for signing transactions, messages or a hash all of them,
+        // previously reviewed.
         if p1 == FIRST_MESSAGE {
-            return Self::start_sign(cdata);
+            return Self::start_sign(cdata, flags).map(|_| ());
         }
 
         // retrieve signing info
-        let (path_prefix, curve) = Sign::get_signing_info(cdata)?;
+        let path_prefix = Sign::get_signing_info(cdata)?;
         let hash = Self::get_hash()?;
 
-        let (sig_size, mut sig) = Sign::sign(&path_prefix, curve, hash)?;
+        let (sig_size, mut sig) = Sign::sign(&path_prefix, hash)?;
         let out = buffer.write();
 
         //write signature as RSV
@@ -164,11 +226,14 @@ impl ApduHandler for Sign {
             //write as R S (V written earlier)
             // this will write directly to buffer
             match convert_der_to_rs(&sig[..sig_size], &mut r, &mut s) {
-                Ok((written_r, written_s)) => {
+                Ok((_, _)) => {
                     //format R and S by only having 32 bytes each,
                     // skipping the first byte if necessary
-                    let r = if written_r == 33 { &r[1..] } else { &r[..32] };
-                    let s = if written_s == 33 { &s[1..] } else { &s[..32] };
+                    // if we have less than 32 bytes we just have 0s at the start
+                    // this is consistent with the fact that in `convert_der_to_rs`
+                    // we put the bytes at the end of the buffer first
+                    let r = &r[1..];
+                    let s = &s[1..];
 
                     out[offset..][..32].copy_from_slice(r);
                     offset += 32;

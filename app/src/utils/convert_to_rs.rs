@@ -118,11 +118,13 @@ pub fn convert_der_to_rs<const R: usize, const S: usize>(
     //after r (4 + r_len), after marker, after len
     let s = &sig[4 + r_len + 2..][..s_len];
 
+    //fill everything with 0 first
     out_r.fill(0);
-    out_r[..r_len].copy_from_slice(r);
-
     out_s.fill(0);
-    out_s[..s_len].copy_from_slice(s);
+
+    //populate from the back
+    out_r[R - r_len..][..r_len].copy_from_slice(r);
+    out_s[S - s_len..][..s_len].copy_from_slice(s);
 
     Ok((r_len, s_len))
 }

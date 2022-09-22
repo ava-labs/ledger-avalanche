@@ -36,7 +36,6 @@ pub struct GetExtendedPublicKey;
 
 impl GetExtendedPublicKey {
     pub fn initialize_ui(
-        curve: crypto::Curve,
         hrp: &[u8],
         chain_id: &[u8],
         path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
@@ -47,7 +46,7 @@ impl GetExtendedPublicKey {
         let mut initializer = ExtendedPubkeyUIInitializer::new(ui);
         initializer.set_is_avm(path_component_1 == BIP32_PATH_ROOT_1);
 
-        initializer.initialize_inner(curve, path, chain_id, hrp)?;
+        initializer.initialize_inner(path, chain_id, hrp)?;
 
         initializer.finalize().map_err(|_| Error::ExecutionError)
     }
@@ -65,7 +64,6 @@ impl ApduHandler for GetExtendedPublicKey {
         *tx = 0;
 
         let req_confirmation = buffer.p1() >= 1;
-        let curve = crypto::Curve::try_from(buffer.p2()).map_err(|_| Error::InvalidP1P2)?;
 
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
@@ -76,7 +74,7 @@ impl ApduHandler for GetExtendedPublicKey {
             .map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
-        Self::initialize_ui(curve, hrp, chainid, bip32_path, &mut ui)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui)?;
 
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };
@@ -159,14 +157,13 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
 
     pub fn initialize_inner(
         &mut self,
-        curve: crypto::Curve,
         path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
         chain_id: &[u8],
         hrp: &[u8],
     ) -> Result<&mut Self, AddrUIInitError> {
         let mut initializer = self.addr_ui_initializer();
         initializer
-            .with_path(curve, path)
+            .with_path(path)
             .with_chain(chain_id)?
             .with_hrp(hrp)?;
         initializer.finalize().map_err(|(_, err)| err)?;

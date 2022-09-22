@@ -27,7 +27,8 @@ use crate::handlers::{
 
 #[cfg(feature = "blind-sign")]
 use crate::handlers::{
-    avax::blind_signing::BlindSign as AvaxBlindSign, eth::signing::BlindSign as EthBlindSign,
+    avax::blind_signing::BlindSign as AvaxBlindSign, eth::blind_signing::BlindSign as EthBlindSign,
+    eth::signing::Sign as EthSign,
 };
 
 use crate::handlers::avax::{
@@ -80,6 +81,7 @@ pub fn apdu_dispatch<'apdu>(
         (CLA_ETH, INS_ETH_PROVIDE_ERC20) => ProvideERC20::handle(flags, tx, apdu_buffer),
         #[cfg(feature = "blind-sign")]
         (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_ETH_SIGN) => EthSign::handle(flags, tx, apdu_buffer),
 
         #[cfg(feature = "dev")]
         _ => Debug::handle(flags, tx, apdu_buffer),

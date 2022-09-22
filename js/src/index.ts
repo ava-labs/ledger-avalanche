@@ -20,8 +20,6 @@ import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseV
 import {
   CHUNK_SIZE,
   CLA,
-  CLA_ETH,
-  Curve,
   errorCodeToString,
   getVersion,
   INS,
@@ -35,7 +33,10 @@ import {
   HASH_LEN,
 } from './common'
 
-export { LedgerError, Curve }
+import { LedgerEthTransactionResolution, LoadConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
+import Eth from '@ledgerhq/hw-app-eth'
+
+export { LedgerError }
 export * from './types'
 
 function processGetAddrResponse(response: Buffer) {
@@ -86,12 +87,15 @@ function processGetXPubResponse(response: Buffer) {
 
 export default class AvalancheApp {
   transport
+  private eth;
 
-  constructor(transport: Transport) {
+  constructor(transport: Transport, ethScrambleKey = "w0w", ethLoadConfig: LoadConfig = {}) {
     this.transport = transport
     if (!transport) {
       throw new Error('Transport has not been defined')
     }
+
+    this.eth = new Eth(transport, ethScrambleKey, ethLoadConfig);
   }
 
   private static prepareChunks(message: Buffer, serializedPathBuffer?: Buffer) {
@@ -126,7 +130,7 @@ export default class AvalancheApp {
   }
 
   private concatMessageAndChangePath(message: Buffer, path?: Array<string>): Buffer {
-      // data
+    // data
     let msg = Buffer.concat([message]);
     // no change_path
     if (path === undefined) {
@@ -136,7 +140,7 @@ export default class AvalancheApp {
     } else {
       let buffer = Buffer.alloc(1);
       buffer.writeUInt8(path.length);
-      path.forEach( (element) => {
+      path.forEach((element) => {
         buffer = Buffer.concat([buffer, serializePathSuffix(element)]);
 
       });
@@ -145,13 +149,13 @@ export default class AvalancheApp {
 
   }
 
-  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, param?: number, ins: number = INS.SIGN, evm = false): Promise<ResponseSign> {
+  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, param?: number, ins: number = INS.SIGN): Promise<ResponseSign> {
     let payloadType = PAYLOAD_TYPE.ADD
     let p2 = 0
     if (chunkIdx === 1) {
       payloadType = PAYLOAD_TYPE.INIT
       if (param === undefined) {
-        throw Error('curve or number type not given')
+        throw Error('number type not given')
       }
       p2 = param
     }
@@ -159,10 +163,8 @@ export default class AvalancheApp {
       payloadType = PAYLOAD_TYPE.LAST
     }
 
-    const cla = evm ? CLA_ETH : CLA;
-
     return this.transport
-      .send(cla, ins, payloadType, p2, chunk, [
+      .send(CLA, ins, payloadType, p2, chunk, [
         LedgerError.NoErrors,
         LedgerError.DataIsInvalid,
         LedgerError.BadKeyHandle,
@@ -197,18 +199,15 @@ export default class AvalancheApp {
       }, processErrorResponse)
   }
 
-   async signHash(path_prefix: string, signing_paths: Array<string>, hash: Buffer, is_eth = false): Promise<ResponseSign> {
+  async signHash(path_prefix: string, signing_paths: Array<string>, hash: Buffer): Promise<ResponseSign> {
 
-     if (hash.length !== HASH_LEN) {
+    if (hash.length !== HASH_LEN) {
       throw new Error('Invalid hash length');
-     }
+    }
 
-    const cla = is_eth ? CLA_ETH : CLA;
-    const msg = Buffer.concat([hash]);
-
-     //send hash and path
+    //send hash and path
     const first_response = await this.transport
-      .send(cla, INS.SIGN_HASH, FIRST_MESSAGE, 0x00, Buffer.concat([serializePath(path_prefix), hash]), [LedgerError.NoErrors])
+      .send(CLA, INS.SIGN_HASH, FIRST_MESSAGE, 0x00, Buffer.concat([serializePath(path_prefix), hash]), [LedgerError.NoErrors])
       .then((response: Buffer) => {
         const errorCodeData = response.slice(-2)
         const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
@@ -237,7 +236,7 @@ export default class AvalancheApp {
     // base response object to output on each iteration
     let result = {
       returnCode: LedgerError.NoErrors,
-      errorMessage:"",
+      errorMessage: "",
       hash: null,
       signatures: null as null | Map<string, Buffer>,
     };
@@ -252,34 +251,34 @@ export default class AvalancheApp {
       const p1 = idx >= signing_paths.length - 1 ? LAST_MESSAGE : NEXT_MESSAGE;
 
       // send path to sign hash that should be in device's ram memory
-      await this.transport.send(CLA, INS.SIGN_HASH, p1, 0x00,  path_buf, [
+      await this.transport.send(CLA, INS.SIGN_HASH, p1, 0x00, path_buf, [
         LedgerError.NoErrors,
         LedgerError.DataIsInvalid,
         LedgerError.BadKeyHandle,
         LedgerError.SignVerifyError,
       ])
-      .then((response: Buffer) => {
-        const errorCodeData = response.slice(-2)
-        const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-        let errorMessage = errorCodeToString(returnCode)
+        .then((response: Buffer) => {
+          const errorCodeData = response.slice(-2)
+          const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
+          let errorMessage = errorCodeToString(returnCode)
 
-        if (
-          returnCode === LedgerError.BadKeyHandle ||
-          returnCode === LedgerError.DataIsInvalid ||
-          returnCode === LedgerError.SignVerifyError
-        ) {
-          result.errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
-        }
+          if (
+            returnCode === LedgerError.BadKeyHandle ||
+            returnCode === LedgerError.DataIsInvalid ||
+            returnCode === LedgerError.SignVerifyError
+          ) {
+            result.errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
+          }
 
-        if (returnCode === LedgerError.NoErrors && response.length > 2) {
-          signatures.set(suffix, response.slice(0, -2));
-        }
+          if (returnCode === LedgerError.NoErrors && response.length > 2) {
+            signatures.set(suffix, response.slice(0, -2));
+          }
 
-        result.returnCode = returnCode;
-        result.errorMessage = errorMessage;
+          result.returnCode = returnCode;
+          result.errorMessage = errorMessage;
 
-        return
-      }, processErrorResponse);
+          return
+        }, processErrorResponse);
 
       if (result.returnCode !== LedgerError.NoErrors) {
         break;
@@ -290,26 +289,12 @@ export default class AvalancheApp {
   }
 
   async sign(path_prefix: string, signing_paths: Array<string>, message: Buffer, change_paths?: Array<string>): Promise<ResponseSign> {
-    const coinType = pathCoinType(path_prefix);
-
-    let is_eth: boolean;
-    switch (coinType) {
-      case "9000\'":
-        is_eth = false
-        break;
-      case "60\'":
-        is_eth = true
-        break;
-      default:
-        throw "Path's cointype should be either 60\' or 9000\'"
-    }
-
     // Do not show outputs that go to the signers
     let paths = signing_paths;
-    if (change_paths !== undefined ) {
+    if (change_paths !== undefined) {
       // remove duplication just is case
-      paths = [...new Set([...paths ,...change_paths])];
-     }
+      paths = [...new Set([...paths, ...change_paths])];
+    }
 
     // Prepend change_paths to the message as the device do set which outputs should be
     // shown at parsing
@@ -317,7 +302,7 @@ export default class AvalancheApp {
 
     // Send transaction for review
     let response = await this.signGetChunks(msg, path_prefix).then(chunks => {
-      return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN, is_eth).then(async response => {
+      return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN).then(async response => {
         // initialize response
         let result = {
           returnCode: response.returnCode,
@@ -328,7 +313,7 @@ export default class AvalancheApp {
         // send chunks
         for (let i = 1; i < chunks.length; i += 1) {
           // eslint-disable-next-line no-await-in-loop
-          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], NEXT_MESSAGE, INS.SIGN, is_eth)
+          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], NEXT_MESSAGE, INS.SIGN)
           if (result.returnCode !== LedgerError.NoErrors) {
             break
           }
@@ -353,8 +338,6 @@ export default class AvalancheApp {
   async signMsg(path_prefix: string, signing_paths: Array<string>, message: string): Promise<ResponseSign> {
     const coinType = pathCoinType(path_prefix);
 
-    let is_eth = false;
-
     if (coinType !== "9000\'") {
       throw new Error("Only avax path is supported")
     }
@@ -370,7 +353,7 @@ export default class AvalancheApp {
 
     // Send msg for review
     let response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
-      return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN_MSG, is_eth).then(async response => {
+      return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN_MSG).then(async response => {
         // initialize response
         let result = {
           returnCode: response.returnCode,
@@ -381,7 +364,7 @@ export default class AvalancheApp {
         // send chunks
         for (let i = 1; i < chunks.length; i += 1) {
           // eslint-disable-next-line no-await-in-loop
-          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], NEXT_MESSAGE, INS.SIGN_MSG, is_eth)
+          result = await this.signSendChunk(1 + i, chunks.length, chunks[i], NEXT_MESSAGE, INS.SIGN_MSG)
           if (result.returnCode !== LedgerError.NoErrors) {
             break
           }
@@ -452,73 +435,41 @@ export default class AvalancheApp {
     }, processErrorResponse)
   }
 
-  private async _pubkey(path: string, curve: Curve, show: boolean, evm = false, hrp?: string, chainid?: string): Promise<ResponseAddress> {
+  private async _pubkey(path: string, show: boolean, hrp?: string, chainid?: string): Promise<ResponseAddress> {
     const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
     const serializedPath = serializePath(path)
-    const serializedHrp = evm ? Buffer.alloc(0) : serializeHrp(hrp)
-    const serializedChainID = evm ? Buffer.alloc(0) : serializeChainID(chainid);
-
-    const cla = evm ? CLA_ETH : CLA;
+    const serializedHrp = serializeHrp(hrp)
+    const serializedChainID = serializeChainID(chainid);
 
     return this.transport
-      .send(cla, INS.GET_ADDR, p1, curve, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
+      .send(CLA, INS.GET_ADDR, p1, 0, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
       .then(processGetAddrResponse, processErrorResponse)
   }
 
   async getAddressAndPubKey(path: string, show: boolean, hrp?: string, chainid?: string) {
-    const coinType = pathCoinType(path);
-
-    let is_eth: boolean;
-    switch (coinType) {
-      case "9000\'":
-        is_eth = false
-        break;
-      case "60\'":
-        is_eth = true
-        break;
-      default:
-        throw "Path's cointype should be either 60\' or 9000\'"
-    }
-
-    return this._pubkey(path, Curve.Secp256K1, show, is_eth, hrp, chainid)
+    return this._pubkey(path, show, hrp, chainid)
   }
 
-  private async _xpub(path: string, curve: Curve, show: boolean, evm = false, hrp?: string, chainid?: string): Promise<ResponseXPub> {
+  private async _xpub(path: string, show: boolean, hrp?: string, chainid?: string): Promise<ResponseXPub> {
     const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
     const serializedPath = serializePath(path)
-    const serializedHrp = evm ? Buffer.alloc(0) : serializeHrp(hrp)
-    const serializedChainID = evm ? Buffer.alloc(0) : serializeChainID(chainid);
-
-    const cla = evm ? CLA_ETH : CLA;
+    const serializedHrp = serializeHrp(hrp)
+    const serializedChainID = serializeChainID(chainid);
 
     return this.transport
-      .send(cla, INS.GET_EXTENDED_PUBLIC_KEY, p1, curve, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
+      .send(CLA, INS.GET_EXTENDED_PUBLIC_KEY, p1, 0, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
       .then(processGetXPubResponse, processErrorResponse)
   }
 
   async getExtendedPubKey(path: string, show: boolean, hrp?: string, chainid?: string) {
-    const coinType = pathCoinType(path);
-
-    let is_eth: boolean;
-    switch (coinType) {
-      case "9000\'":
-        is_eth = false
-        break;
-      case "60\'":
-        is_eth = true
-        break;
-      default:
-        throw "Path's cointype should be either 60\' or 9000\'"
-    }
-
-    return this._xpub(path, Curve.Secp256K1, show, is_eth, hrp, chainid)
+    return this._xpub(path, show, hrp, chainid)
   }
 
-  private async _walletId(show: boolean, curve: Curve): Promise<ResponseWalletId> {
+  private async _walletId(show: boolean): Promise<ResponseWalletId> {
     const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
 
     return this.transport
-      .send(CLA, INS.WALLET_ID, p1, curve)
+      .send(CLA, INS.WALLET_ID, p1, 0)
       .then(response => {
         const errorCodeData = response.slice(-2)
         const returnCode = (errorCodeData[0] * 256 + errorCodeData[1]) as LedgerError
@@ -531,11 +482,35 @@ export default class AvalancheApp {
       }, processErrorResponse)
   }
 
-  async getWalletId(curve: Curve) {
-    return this._walletId(false, curve)
+  async getWalletId() {
+    return this._walletId(false)
   }
 
-  async showWalletId(curve: Curve) {
-    return this._walletId(true, curve)
+  async showWalletId() {
+    return this._walletId(true)
+  }
+
+  signEVMTransaction(
+    path: string,
+    rawTxHex: string,
+    resolution?: LedgerEthTransactionResolution | null
+  ): Promise<{
+    s: string;
+    v: string;
+    r: string;
+  }> {
+    return this.eth.signTransaction(path, rawTxHex, resolution)
+  }
+
+  getETHAddress(
+    path: string,
+    boolDisplay?: boolean,
+    boolChaincode?: boolean
+  ): Promise<{
+    publicKey: string;
+    address: string;
+    chainCode?: string;
+  }> {
+    return this.eth.getAddress(path, boolDisplay, boolChaincode)
   }
 }

@@ -33,6 +33,7 @@ bytemuck = { version = "1" }
 lexical-core = { version = "0.7", features = ["libm"], default-features = false }
 educe = "0.4.19"
 crunchy = "0.2.2"
+byteorder = { version = "1.4.3", default-features = false }
 
 [target.thumbv6m-none-eabi.dev-dependencies]
 panic-halt = "0.2.0"
@@ -43,6 +44,7 @@ no-std-compat = { version = "0.4", features = ["std"] }
 serial_test = "0.5"
 zuit = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
 bolos = { git = "https://github.com/Zondax/ledger-rust", branch = "dev", features = ["derive-debug"] }
+bolos-common = { git = "http://github.com/Zondax/ledger-rust", branch = "dev", features = ["bip32-display"] }
 hex = "0.4.3"
 arrayvec = { version = "0.7"}
 time = { version = "0.3.11", features = ["formatting"]}
@@ -50,3 +52,5 @@ k256 = { version = "0.9.6", features = ["ecdsa", "keccak256"] }
 rand = "0.8.5"
 insta = { version = "1", features = ["glob"] }
 serde_json = "1.0.85"
+itertools = "0.10.4"
+proptest = "1"

@@ -16,14 +16,9 @@
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::number::complete::be_u32;
 
-use crate::{
-    handlers::handle_ui_message,
-    parser::{AvmOutput, DisplayableItem, FromBytes, ObjectList, ParserError},
-};
+use crate::parser::{AvmOutput, FromBytes, ObjectList, ParserError};
 
-use zemu_sys::ViewError;
-
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(C)]
 pub enum FxId {
@@ -42,7 +37,7 @@ impl TryFrom<u32> for FxId {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(C)]
 pub struct InitialState<'b> {
@@ -63,8 +58,8 @@ impl<'b> FromBytes<'b> for InitialState<'b> {
         let id = FxId::try_from(id)?;
 
         // get outputs
-        let mut outputs = unsafe { &mut *addr_of_mut!((*output).outputs).cast() };
-        let rem = ObjectList::<AvmOutput>::new_into(rem, &mut outputs)?;
+        let outputs = unsafe { &mut *addr_of_mut!((*output).outputs).cast() };
+        let rem = ObjectList::<AvmOutput>::new_into(rem, outputs)?;
 
         //good ptr and no uninit reads
         unsafe {

@@ -15,10 +15,12 @@
 ********************************************************************************/
 #![allow(unused_imports)]
 
+use rslib::constants::{
+    APDU_INDEX_CLA, APDU_INDEX_INS, APDU_INDEX_LEN, APDU_INDEX_P1, APDU_INDEX_P2,
+};
 pub use rslib::{
     constants::{self, ApduError, CLA, CLA_ETH},
-    crypto::{self, Curve},
-    rs_handle_apdu, PacketType,
+    crypto, rs_handle_apdu, PacketType,
 };
 
 pub use std::convert::TryInto;
@@ -38,20 +40,53 @@ pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, buffer: &mut [u8]) ->
     }
 }
 
+/// Split message in chunks ready to send to the handler
+pub fn chunk(ins: u8, p2: u8, init_data: &[u8], msg: &[u8]) -> Vec<[u8; 260]> {
+    let mut buffer = [0; 260];
+    buffer[APDU_INDEX_CLA] = CLA;
+    buffer[APDU_INDEX_INS] = ins;
+    buffer[APDU_INDEX_P2] = p2;
+    let buffer = buffer; //make immutable
+
+    let mut first_buffer = buffer;
+    first_buffer[APDU_INDEX_P1] = PacketType::Init as u8;
+
+    first_buffer[APDU_INDEX_LEN] = init_data.len() as u8;
+    first_buffer[APDU_INDEX_LEN + 1..][..init_data.len()].copy_from_slice(init_data);
+    let first_buffer = first_buffer; //make immutable
+
+    //split message in chunks of 255
+    let chunks_iter = msg.chunks(255).map(|data| {
+        let mut buf = buffer;
+        buf[APDU_INDEX_P1] = PacketType::Add as u8;
+        buf[APDU_INDEX_LEN] = data.len() as u8;
+        buf[APDU_INDEX_LEN + 1..][..data.len()].copy_from_slice(data);
+
+        buf
+    });
+
+    let mut chunks = Vec::with_capacity(1 + chunks_iter.len());
+    chunks.push(first_buffer);
+    chunks.extend(chunks_iter);
+
+    //set last message to Last
+    chunks.last_mut().unwrap()[APDU_INDEX_P1] = PacketType::Last as u8;
+
+    chunks
+}
+
 #[allow(dead_code)]
 pub fn prepare_buffer<const LEN: usize>(
     buffer: &mut [u8; 260],
     path: &[u32],
-    curve: Curve,
     hrp: Option<&[u8]>,
     chainid: Option<&[u8]>,
 ) -> usize {
-    let crv: u8 = curve.into();
     let path = BIP32Path::<LEN>::new(path.iter().map(|n| 0x8000_0000 + n))
         .unwrap()
         .serialize();
 
-    buffer[3] = crv;
+    buffer[3] = 0;
     buffer[4] = 0;
 
     let mut tx = 5;

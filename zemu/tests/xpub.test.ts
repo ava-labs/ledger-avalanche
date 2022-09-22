@@ -15,13 +15,13 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { curves, defaultOptions, models, ROOT_PATH } from './common'
+import { defaultOptions, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 describe.each(models)('Standard [%s] - extended pubkey', function (m) {
-  test.each(curves)(
+  test(
     'get pubkey %s',
-    async function (curve) {
+    async function () {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
@@ -40,9 +40,9 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
     },
   );
 
-  test.each(curves)(
-    'show addr %s',
-    async function (curve) {
+  test(
+    'show addr',
+    async function () {
       const sim = new Zemu(m.path)
       try {
         await sim.start({ ...defaultOptions, model: m.name })
@@ -51,7 +51,7 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
 
         await sim.waitScreenChange();
 
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-xpub-${curve}`);
+        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-xpub`);
 
         const resp = await respReq;
         console.log(resp, m.name)

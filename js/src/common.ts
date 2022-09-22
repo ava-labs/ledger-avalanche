@@ -30,14 +30,6 @@ export const P1_VALUES = {
   SHOW_ADDRESS_IN_DEVICE: 0x01,
 }
 
-export const P2_CURVE = {
-  SECP256K1: 0,
-}
-
-export enum Curve {
-  Secp256K1 = P2_CURVE.SECP256K1,
-}
-
 export enum LedgerError {
   U2FUnknown = 1,
   U2FBadRequest = 2,
@@ -52,10 +44,10 @@ export enum LedgerError {
   WrongLength = 0x6700,
   EmptyBuffer = 0x6982,
   OutputBufferTooSmall = 0x6983,
-  DataIsInvalid = 0x6984,
+  DataIsInvalid = 0x6a80,
   ConditionsNotSatisfied = 0x6985,
   TransactionRejected = 0x6986,
-  BadKeyHandle = 0x6a80,
+  BadKeyHandle = 0x6a81,
   InvalidP1P2 = 0x6b00,
   InstructionNotSupported = 0x6d00,
   AppDoesNotSeemToBeOpen = 0x6e00,

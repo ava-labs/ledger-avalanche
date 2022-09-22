@@ -38,11 +38,14 @@ mod utils;
 mod utxo_id;
 mod validator;
 
+#[cfg(test)]
+mod snapshots_common;
+
 pub use address::*;
 pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
 pub use constants::*;
-pub use coreth::{export_tx::ExportTx, import_tx::ImportTx};
+pub use coreth::{data::EthData, export_tx::ExportTx, import_tx::ImportTx, native::EthTransaction};
 pub use error::ParserError;
 pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};

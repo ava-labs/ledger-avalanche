@@ -23,7 +23,7 @@ use crate::parser::{
     MAX_ADDRESS_ENCODED_LEN, TRANSFER_TX,
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Transfer<'b> {
     header: Header<'b>,

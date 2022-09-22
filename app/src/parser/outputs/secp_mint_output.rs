@@ -26,7 +26,7 @@ use crate::{
     parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SECPMintOutput<'b> {
     // groups locktime(u64), threshold(u32)

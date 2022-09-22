@@ -35,7 +35,7 @@ use super::utils::parse_bip32_eth;
 pub struct GetPublicKey;
 
 impl GetPublicKey {
-    /// Retrieve the public key with the given curve and bip32 path
+    /// Retrieve the public key with the given bip32 path
     #[inline(never)]
     pub fn new_key_into<const B: usize>(
         path: &sys::crypto::bip32::BIP32Path<B>,
@@ -43,7 +43,7 @@ impl GetPublicKey {
         chaincode: Option<&mut [u8; 32]>,
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetEthAddres::new_key\x00");
-        crypto::Curve::Secp256K1
+        crypto::Curve
             .to_secret(path)
             .into_public_into(chaincode, out)?;
 

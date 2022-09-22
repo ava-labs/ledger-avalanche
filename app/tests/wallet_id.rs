@@ -25,7 +25,7 @@ fn wallet_id() {
     let rx = 5;
     let mut buffer = [0u8; 260];
 
-    buffer[..5].copy_from_slice(&[CLA, INS, 0, Curve::Secp256K1.into(), 0]);
+    buffer[..5].copy_from_slice(&[CLA, INS, 0, 0, 0]);
 
     handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
 

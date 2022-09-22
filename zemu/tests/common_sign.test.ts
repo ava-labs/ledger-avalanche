@@ -15,8 +15,8 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ROOT_PATH, cartesianProduct, curves, defaultOptions, models } from './common'
-import AvalancheApp, { Curve } from '@zondax/ledger-avalanche-app'
+import { ROOT_PATH, defaultOptions, models } from './common'
+import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { SIMPLE_TRANSFER_DATA } from './common_sign_vectors'
 
 const sha256 = require('js-sha256').sha256
@@ -26,10 +26,10 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
-const SIGN_TEST_DATA = cartesianProduct(curves, [
+const SIGN_TEST_DATA = [
   {
     name: 'simple_transfer',
-    op: SIMPLE_TRANSFER_DATA ,
+    op: SIMPLE_TRANSFER_DATA,
     filter: false,
   },
   // {
@@ -37,23 +37,23 @@ const SIGN_TEST_DATA = cartesianProduct(curves, [
   //   op: SIMPLE_TRANSFER_DATA ,
   //   filter: true,
   // },
-])
+]
 
 describe.each(models)('Transfer [%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign basic transactions', async function (curve, data) {
+  test.each(SIGN_TEST_DATA)('sign basic transactions', async function ({ name, op, filter }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new AvalancheApp(sim.getTransport())
-      const msg = data.op
+      const msg = op
 
-      const testcase = `${m.prefix.toLowerCase()}-sign-${data.name}-${curve}`
+      const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
       const currentScreen = sim.snapshot();
       const signers = ["0/0", "5/8"];
       let change_path = undefined
-      if (data.filter === true) {
-        change_path = ["0/1", "1/100" ];
+      if (filter === true) {
+        change_path = ["0/1", "1/100"];
       }
       const respReq = app.sign(ROOT_PATH, signers, msg, change_path);
 
@@ -63,31 +63,24 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
 
       const resp = await respReq
 
-      console.log(resp, m.name, data.name, curve)
+      console.log(resp, m.name, name)
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
       expect(resp).toHaveProperty('signatures')
       expect(resp.signatures?.size).toEqual(signers.length)
 
-      switch (curve) {
-        case Curve.Secp256K1:
-          const hash = crypto.createHash('sha256')
-          const msgHash = Uint8Array.from(hash.update(msg).digest())
+      const hash = crypto.createHash('sha256')
+      const msgHash = Uint8Array.from(hash.update(msg).digest())
 
-          for (const signer of signers) {
-            const path = `${ROOT_PATH}/${signer}`
-            const resp_addr = await app.getAddressAndPubKey(path, false)
-            const pk = Uint8Array.from(resp_addr.publicKey)
-            const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(0, -1)
+      for (const signer of signers) {
+        const path = `${ROOT_PATH}/${signer}`
+        const resp_addr = await app.getAddressAndPubKey(path, false)
+        const pk = Uint8Array.from(resp_addr.publicKey)
+        const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(0, -1)
 
-            const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
-            expect(signatureOk).toEqual(true)
-          }
-          break
-
-        default:
-          throw Error('not a valid curve type')
+        const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
+        expect(signatureOk).toEqual(true)
       }
     } finally {
       await sim.close()
@@ -95,8 +88,8 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
   })
 })
 
-describe.each(models)('Common [%s]; signHash', function (m) {
-  test.each(curves)('sign hash', async function (curve) {
+describe.each(models)('signHash [%s]', function (m) {
+  test('sign hash', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
@@ -104,14 +97,18 @@ describe.each(models)('Common [%s]; signHash', function (m) {
       const message = "AvalancheApp"
       const msg = Buffer.from(sha256(message), "hex");
 
-      const testcase = `${m.prefix.toLowerCase()}-sign-hash-${curve}`
+      const testcase = `${m.prefix.toLowerCase()}-sign-hash`
 
       const signing_list = ["0/0", "4/8"];
       const respReq = app.signHash(ROOT_PATH, signing_list, msg);
 
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+
+      await sim.compareSnapshotsAndApprove('.', testcase)
+
       const resp = await respReq
 
-      console.log(resp, m.name, "signHash", curve)
+      console.log(resp, m.name, "signHash")
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
@@ -133,14 +130,14 @@ describe.each(models)('Common [%s]; signHash', function (m) {
     }
   })
 
-  test.each(curves)('sign msg', async function (curve) {
+  test('signMsg', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new AvalancheApp(sim.getTransport())
       const message = "Welcome to OpenSea!\n\nClick to sign in and accept the OpenSea Terms of Service: https://opensea.io/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n0x9858effd232b4033e47d90003d41ec34ecaeda94\n\nNonce:\n2b02c8a0-f74f-4554-9821-a28054dc9121";
 
-      const testcase = `${m.prefix.toLowerCase()}-sign-msg-${curve}`
+      const testcase = `${m.prefix.toLowerCase()}-sign-msg`
 
       const signing_list = ["0/0", "4/8"];
       const respReq = app.signMsg(ROOT_PATH, signing_list, message);
@@ -151,7 +148,7 @@ describe.each(models)('Common [%s]; signHash', function (m) {
 
       const resp = await respReq
 
-      console.log(resp, m.name, "signMsg", curve)
+      console.log(resp, m.name, "signMsg")
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
