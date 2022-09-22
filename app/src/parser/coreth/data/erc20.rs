@@ -17,7 +17,7 @@
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
 use bolos::{pic_str, PIC};
-use nom::number::complete::be_u32;
+use nom::{bytes::complete::take, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
@@ -25,7 +25,10 @@ use crate::{
         eth::{u256, BorrowedU256},
         handle_ui_message,
     },
-    parser::{coreth::parse_rlp_item, Address, DisplayableItem, FromBytes, ParserError},
+    parser::{
+        coreth::parse_rlp_item, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
+        ETH_ARG_LEN,
+    },
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -36,7 +39,7 @@ pub struct Transfer<'b> {
 }
 
 impl<'b> Transfer<'b> {
-    pub const SELECTOR: u32 = 0xa9059cbb;
+    pub const SELECTOR: u32 = u32::from_be_bytes([0xa9, 0x05, 0x9c, 0xbb]);
 }
 
 impl<'b> FromBytes<'b> for Transfer<'b> {
@@ -50,10 +53,12 @@ impl<'b> FromBytes<'b> for Transfer<'b> {
         let out = out.as_mut_ptr();
 
         let to = unsafe { &mut *addr_of_mut!((*out).to).cast() };
-        let rem = Address::from_bytes_into(input, to)?;
+        let (rem, address) = take(ETH_ARG_LEN)(input)?;
+        //the first N bytes are for padding and are zeros
+        let _ = Address::from_bytes_into(&address[ETH_ARG_LEN - ADDRESS_LEN..], to)?;
 
         // value
-        let (rem, value) = parse_rlp_item(rem)?;
+        let (rem, value) = take(ETH_ARG_LEN)(rem)?;
         let value = BorrowedU256::new(value).ok_or(ParserError::InvalidEthMessage)?;
 
         unsafe {
@@ -73,7 +78,7 @@ pub struct TransferFrom<'b> {
 }
 
 impl<'b> TransferFrom<'b> {
-    pub const SELECTOR: u32 = 0x23b872dd;
+    pub const SELECTOR: u32 = u32::from_be_bytes([0x23, 0xb8, 0x72, 0xdd]);
 }
 
 impl<'b> FromBytes<'b> for TransferFrom<'b> {
@@ -87,13 +92,17 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
         let out = out.as_mut_ptr();
 
         let from = unsafe { &mut *addr_of_mut!((*out).from).cast() };
-        let rem = Address::from_bytes_into(input, from)?;
+        let (rem, address) = take(ETH_ARG_LEN)(input)?;
+        //the first N bytes are for padding and are zeros
+        let _ = Address::from_bytes_into(&address[ETH_ARG_LEN - ADDRESS_LEN..], from)?;
 
         let to = unsafe { &mut *addr_of_mut!((*out).to).cast() };
-        let rem = Address::from_bytes_into(rem, to)?;
+        let (rem, address) = take(ETH_ARG_LEN)(rem)?;
+        //the first N bytes are for padding and are zeros
+        let _ = Address::from_bytes_into(&address[ETH_ARG_LEN - ADDRESS_LEN..], to)?;
 
         // value
-        let (rem, value) = parse_rlp_item(rem)?;
+        let (rem, value) = take(ETH_ARG_LEN)(rem)?;
         let value = BorrowedU256::new(value).ok_or(ParserError::InvalidEthMessage)?;
 
         unsafe {
@@ -112,7 +121,7 @@ pub struct Approve<'b> {
 }
 
 impl<'b> Approve<'b> {
-    pub const SELECTOR: u32 = 0x095ea7b3;
+    pub const SELECTOR: u32 = u32::from_be_bytes([0x09, 0x5e, 0xa7, 0xb3]);
 }
 
 impl<'b> FromBytes<'b> for Approve<'b> {
@@ -126,10 +135,12 @@ impl<'b> FromBytes<'b> for Approve<'b> {
         let out = out.as_mut_ptr();
 
         let spender = unsafe { &mut *addr_of_mut!((*out).spender).cast() };
-        let rem = Address::from_bytes_into(input, spender)?;
+        let (rem, address) = take(ETH_ARG_LEN)(input)?;
+        //the first N bytes are for padding and are zeros
+        let _ = Address::from_bytes_into(&address[ETH_ARG_LEN - ADDRESS_LEN..], spender)?;
 
         // value
-        let (rem, value) = parse_rlp_item(rem)?;
+        let (rem, value) = take(ETH_ARG_LEN)(rem)?;
         let value = BorrowedU256::new(value).ok_or(ParserError::InvalidEthMessage)?;
 
         unsafe {
@@ -200,6 +211,7 @@ impl<'b> ERC20<'b> {
 
         // get selector
         let (rem, selector) = be_u32(data)?;
+
         let ty = ERC20__Type::from_selector(selector).ok_or(ParserError::InvalidEthSelector)?;
 
         match ty {
@@ -211,7 +223,7 @@ impl<'b> ERC20<'b> {
 
                 //no invalid ptrs
                 unsafe {
-                    addr_of_mut!((*out).0).write(ty);
+                    addr_of_mut!((*out).0).write(ERC20__Type::Transfer);
                 }
             }
             ERC20__Type::TransferFrom => {
@@ -222,7 +234,7 @@ impl<'b> ERC20<'b> {
 
                 //no invalid ptrs
                 unsafe {
-                    addr_of_mut!((*out).0).write(ty);
+                    addr_of_mut!((*out).0).write(ERC20__Type::TransferFrom);
                 }
             }
             ERC20__Type::Approve => {
@@ -233,7 +245,7 @@ impl<'b> ERC20<'b> {
 
                 //no invalid ptrs
                 unsafe {
-                    addr_of_mut!((*out).0).write(ty);
+                    addr_of_mut!((*out).0).write(ERC20__Type::Approve);
                 }
             }
         }
@@ -242,19 +254,12 @@ impl<'b> ERC20<'b> {
     }
 
     fn render_transfer(
-        &self,
+        this: &Transfer<'_>,
         item_n: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let this = match self {
-            ERC20::Transfer(t) => t,
-            ERC20::TransferFrom(_) | ERC20::Approve(_) => unsafe {
-                core::hint::unreachable_unchecked()
-            },
-        };
-
         match item_n {
             0 => {
                 let label = pic_str!(b"To");
@@ -277,17 +282,12 @@ impl<'b> ERC20<'b> {
     }
 
     fn render_transfer_from(
-        &self,
+        this: &TransferFrom<'_>,
         item_n: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let this = match self {
-            ERC20::TransferFrom(t) => t,
-            _ => unsafe { core::hint::unreachable_unchecked() },
-        };
-
         match item_n {
             0 => {
                 let label = pic_str!(b"From");
@@ -317,17 +317,12 @@ impl<'b> ERC20<'b> {
     }
 
     fn render_approve(
-        &self,
+        this: &Approve<'_>,
         item_n: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let this = match self {
-            ERC20::Approve(t) => t,
-            _ => unsafe { core::hint::unreachable_unchecked() },
-        };
-
         match item_n {
             0 => {
                 let label = pic_str!(b"To");
@@ -366,10 +361,6 @@ impl<'b> DisplayableItem for ERC20<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        if item_n != 0 {
-            return Err(ViewError::NoData);
-        }
-
         match item_n {
             0 => {
                 let title_content = pic_str!(b"ERC-20");
@@ -377,12 +368,16 @@ impl<'b> DisplayableItem for ERC20<'b> {
 
                 handle_ui_message(self.method_name(), message, page)
             }
-            x @ 1.. => match self {
-                ERC20::Transfer(_) => self.render_transfer(item_n - 1, title, message, page),
-                ERC20::TransferFrom(_) => {
-                    self.render_transfer_from(item_n - 1, title, message, page)
+            x @ 1.. => match &self {
+                ERC20::Transfer(call) => {
+                    Self::render_transfer(call, item_n - 1, title, message, page)
                 }
-                ERC20::Approve(_) => self.render_approve(item_n - 1, title, message, page),
+                ERC20::TransferFrom(call) => {
+                    Self::render_transfer_from(call, item_n - 1, title, message, page)
+                }
+                ERC20::Approve(call) => {
+                    Self::render_approve(call, item_n - 1, title, message, page)
+                }
             },
         }
     }

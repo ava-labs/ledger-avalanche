@@ -145,7 +145,6 @@ impl EthTransaction__Type {
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag
-#[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
 #[avalanche_app_derive::enum_init]
 pub enum EthTransaction<'b> {

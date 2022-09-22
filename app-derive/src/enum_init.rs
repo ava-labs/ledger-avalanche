@@ -70,6 +70,7 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
         #(#structs)*
 
         #(#attrs)*
+        #[repr(u8)]
         #vis enum #ident #generics {
             #variants
         }

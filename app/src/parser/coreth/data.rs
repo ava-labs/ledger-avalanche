@@ -35,7 +35,6 @@ pub use erc20::ERC20;
 // DO not change the representation
 // as it would cause unalignment issues
 // with the EthDataType tag
-#[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
 #[avalanche_app_derive::enum_init]
 pub enum EthData<'b> {
@@ -143,14 +142,14 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut ContractCall__Variant;
+        let out = out.as_mut_ptr() as *mut Erc20__Variant;
 
         let erc20 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
         _ = ERC20::parse_into(data, erc20)?;
 
         //pointer is valid
         unsafe {
-            addr_of_mut!((*out).0).write(EthData__Type::ContractCall);
+            addr_of_mut!((*out).0).write(EthData__Type::Erc20);
         }
 
         Ok(())
