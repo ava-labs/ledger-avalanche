@@ -52,7 +52,7 @@ pub const ETH_ARG_LEN: usize = 32;
 // when rendering the contract data
 // It is cropped as this data can be
 // very large.
-pub const DEPLOY_DATA_PREVIEW_LEN: usize = 50;
+pub const DEPLOY_DATA_PREVIEW_LEN: usize = 30;
 
 //Avax units
 pub const NANO_AVAX_DECIMAL_DIGITS: usize = 9;

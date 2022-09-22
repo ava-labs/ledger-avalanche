@@ -37,6 +37,12 @@ pub struct Eip2930<'b> {
     // that they are expected
 }
 
+impl<'b> Eip2930<'b> {
+    pub fn chain_id_low_byte(&self) -> u8 {
+        self.chain_id[self.chain_id.len() - 1]
+    }
+}
+
 impl<'b> FromBytes<'b> for Eip2930<'b> {
     fn from_bytes_into(
         input: &'b [u8],
@@ -55,11 +61,6 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
 
         // access list
         let (rem, access_list) = parse_rlp_item(rem)?;
-
-        // check there is nothing else
-        if !rem.is_empty() {
-            return Err(ParserError::UnexpectedData.into());
-        }
 
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);

@@ -18,9 +18,8 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
-use crate::parser::{DisplayableItem, FromBytes, ParserError};
-
 use super::BaseLegacy;
+use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -31,6 +30,12 @@ pub struct Legacy<'b> {
     // so do not put and empty
     // field here, it is just to indicate
     // that they are expected
+}
+
+impl<'b> Legacy<'b> {
+    pub fn chain_id_low_byte(&self) -> u8 {
+        self.chain_id[self.chain_id.len() - 1]
+    }
 }
 
 impl<'b> FromBytes<'b> for Legacy<'b> {
@@ -50,8 +55,15 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         let (rem, id_bytes) = parse_rlp_item(rem)?;
         let (rem, r) = parse_rlp_item(rem)?;
         let (rem, s) = parse_rlp_item(rem)?;
+
+        // r and s if not empty, should contain only one value
+        // which must be zero.
         if !r.is_empty() && !s.is_empty() {
-            return Err(ParserError::UnexpectedData.into());
+            let no_zero = r.iter().any(|v| *v != 0) && s.iter().any(|v| *v != 0);
+            if no_zero || r.len() != 1 || s.len() != 1 {
+                crate::sys::zemu_log_stack("Legacy::invalid_r_s\x00");
+                return Err(ParserError::UnexpectedData.into());
+            }
         }
 
         unsafe {
@@ -112,7 +124,7 @@ mod tests {
         let bytes = hex::decode(deploy).unwrap();
         let address = hex::decode("41c9cc6fd27e26e70f951869fb09da685a696f0a").unwrap();
         let amount = hex::decode("0123456789abcdef").unwrap();
-        let amount = u256::from_big_endian(&amount);
+        let amount = u256::pic_from_big_endian()(&amount);
 
         // get transaction bytes
         let (_, bytes) = parse_rlp_item(&bytes).unwrap();
@@ -120,7 +132,7 @@ mod tests {
 
         if let EthData::AssetCall(c) = tx.base.data {
             assert_eq!(&address[..], c.address.raw_address());
-            let parsed_amount = u256::from_big_endian(c.amount);
+            let parsed_amount = u256::pic_from_big_endian()(c.amount);
             assert_eq!(amount, parsed_amount);
         } else {
             panic!("Expected an AssetCall transaction!");
@@ -140,7 +152,7 @@ mod tests {
 
         if let EthData::AssetCall(c) = tx.base.data {
             assert_eq!(&address[..], c.address.raw_address());
-            let amount = u256::from_big_endian(c.amount);
+            let amount = u256::pic_from_big_endian()(c.amount);
             assert!(amount.is_zero());
         } else {
             panic!("Expected an AssetCall transaction!");

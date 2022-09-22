@@ -22,10 +22,10 @@ pub enum ApduError {
     WrongLength = 0x6700,
     ApduCodeEmptyBuffer = 0x6982,
     OutputBufferTooSmall = 0x6983,
-    DataInvalid = 0x6984,
+    DataInvalid = 0x6a80,
     ApduCodeConditionsNotSatisfied = 0x6985,
     CommandNotAllowed = 0x6986,
-    BadKeyExample = 0x6A80,
+    BadKeyExample = 0x6A81,
     InvalidP1P2 = 0x6B00,
     InsNotSupported = 0x6D00,
     ClaNotSupported = 0x6E00,
@@ -71,10 +71,10 @@ impl std::convert::TryFrom<u16> for ApduError {
             0x6700 => Ok(Self::WrongLength),
             0x6982 => Ok(Self::ApduCodeEmptyBuffer),
             0x6983 => Ok(Self::OutputBufferTooSmall),
-            0x6984 => Ok(Self::DataInvalid),
+            0x6A80 => Ok(Self::DataInvalid),
             0x6985 => Ok(Self::ApduCodeConditionsNotSatisfied),
             0x6986 => Ok(Self::CommandNotAllowed),
-            0x6A80 => Ok(Self::BadKeyExample),
+            0x6A81 => Ok(Self::BadKeyExample),
             0x6B00 => Ok(Self::InvalidP1P2),
             0x6D00 => Ok(Self::InsNotSupported),
             0x6E00 => Ok(Self::ClaNotSupported),
@@ -127,7 +127,8 @@ pub(crate) mod evm_instructions {
 
     pub const INS_ETH_GET_PUBLIC_KEY: u8 = 0x02;
     #[cfg(feature = "blind-sign")]
-    pub const INS_ETH_BLIND_SIGN: u8 = 0x04;
+    pub const INS_ETH_BLIND_SIGN: u8 = 0xF1;
+    pub const INS_ETH_SIGN: u8 = 0x04;
     pub const INS_ETH_PROVIDE_ERC20: u8 = 0x0A;
 }
 
