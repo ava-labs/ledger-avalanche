@@ -52,6 +52,10 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
+        #[cfg(feature = "blind-sign")]
+        BlindSign,
+        #[cfg(feature = "blind-sign")]
+        EthBlindSign,
         #[cfg(feature = "dev")]
         Debug,
     }
@@ -59,9 +63,13 @@ pub mod resources {
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum PATHAccessors {
         Sign,
+        EthSign,
         SignHash,
         SignMsg,
-        EthSign,
+        #[cfg(feature = "blind-sign")]
+        BlindSign,
+        #[cfg(feature = "blind-sign")]
+        EthBlindSign,
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
@@ -71,9 +79,10 @@ pub mod resources {
         SignMsg,
     }
 
+    #[cfg(feature = "blind-sign")]
     impl From<super::avax::blind_signing::BlindSign> for BUFFERAccessors {
         fn from(_: super::avax::blind_signing::BlindSign) -> Self {
-            Self::Sign
+            Self::BlindSign
         }
     }
 
@@ -95,9 +104,10 @@ pub mod resources {
         }
     }
 
+    #[cfg(feature = "blind-sign")]
     impl From<super::eth::blind_signing::BlindSign> for BUFFERAccessors {
         fn from(_: super::eth::blind_signing::BlindSign) -> Self {
-            Self::EthSign
+            Self::EthBlindSign
         }
     }
 
@@ -114,9 +124,10 @@ pub mod resources {
         }
     }
 
+    #[cfg(feature = "blind-sign")]
     impl From<super::avax::blind_signing::BlindSign> for PATHAccessors {
         fn from(_: super::avax::blind_signing::BlindSign) -> Self {
-            Self::Sign
+            Self::BlindSign
         }
     }
 
@@ -132,9 +143,10 @@ pub mod resources {
         }
     }
 
+    #[cfg(feature = "blind-sign")]
     impl From<super::eth::blind_signing::BlindSign> for PATHAccessors {
         fn from(_: super::eth::blind_signing::BlindSign) -> Self {
-            Self::EthSign
+            Self::EthBlindSign
         }
     }
 
