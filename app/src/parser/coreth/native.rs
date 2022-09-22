@@ -112,30 +112,18 @@ pub fn parse_rlp_item(data: &[u8]) -> Result<(&[u8], &[u8]), nom::Err<ParserErro
     take(to_read as usize)(&data[read..])
 }
 
-// Important: do not change the repr attribute,
-// as this type is use as the tag field
-// for the Transaction enum which has the same representation
-#[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(test, derive(Debug))]
-#[repr(u8)]
-pub enum EthTxType {
-    Legacy,
-    EIP1559,
-    EIP2930,
-}
-
-impl From<u8> for EthTxType {
+impl From<u8> for EthTransaction__Type {
     fn from(value: u8) -> Self {
         match value {
-            EIP1559_TX => Self::EIP1559,
-            EIP2930_TX => Self::EIP2930,
+            EIP1559_TX => Self::Eip1559,
+            EIP2930_TX => Self::Eip2930,
             // legacy is constructed
             _ => Self::Legacy,
         }
     }
 }
 
-impl EthTxType {
+impl EthTransaction__Type {
     fn from_bytes(input: &[u8]) -> Result<(&[u8], Self), ParserError> {
         if input.is_empty() {
             return Err(ParserError::UnexpectedBufferEnd);
@@ -144,8 +132,8 @@ impl EthTxType {
         let tx_type = input.get(0).ok_or(ParserError::UnexpectedBufferEnd)?;
 
         match *tx_type {
-            EIP1559_TX => Ok((&input[1..], Self::EIP1559)),
-            EIP2930_TX => Ok((&input[1..], Self::EIP2930)),
+            EIP1559_TX => Ok((&input[1..], Self::Eip1559)),
+            EIP2930_TX => Ok((&input[1..], Self::Eip2930)),
             // legacy transaction does not have a version so just parse
             // it, if it is not valid, the parser will error anyways
             _ => Ok((input, Self::Legacy)),
@@ -153,21 +141,12 @@ impl EthTxType {
     }
 }
 
-#[repr(C)]
-struct LegacyVariant<'b>(EthTxType, Legacy<'b>);
-
-#[repr(C)]
-struct Eip1559Variant<'b>(EthTxType, Eip1559<'b>);
-
-#[repr(C)]
-struct Eip2930Variant<'b>(EthTxType, Eip2930<'b>);
-
 #[derive(Clone, Copy, PartialEq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag
-#[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
+#[avalanche_app_derive::enum_init]
 pub enum EthTransaction<'b> {
     Legacy(Legacy<'b>),
     Eip1559(Eip1559<'b>),
@@ -194,7 +173,7 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
         // version for eip1559 = 2,
         // for eip2930 = 1,
         // for legacy it does not have a version
-        let (rem, tx_type) = EthTxType::from_bytes(input)?;
+        let (rem, tx_type) = EthTransaction__Type::from_bytes(input)?;
 
         // parse rlp[] part in order to get the transaction bytes
         let (rem, tx_bytes) = parse_rlp_item(rem)?;
@@ -204,8 +183,8 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
         }
 
         match tx_type {
-            EthTxType::Legacy => {
-                let out = out.as_mut_ptr() as *mut LegacyVariant;
+            EthTransaction__Type::Legacy => {
+                let out = out.as_mut_ptr() as *mut Legacy__Variant;
 
                 let legacy = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -217,11 +196,11 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(EthTxType::Legacy);
+                    addr_of_mut!((*out).0).write(EthTransaction__Type::Legacy);
                 }
             }
-            EthTxType::EIP1559 => {
-                let out = out.as_mut_ptr() as *mut Eip1559Variant;
+            EthTransaction__Type::Eip1559 => {
+                let out = out.as_mut_ptr() as *mut Eip1559__Variant;
 
                 let eip = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -233,11 +212,11 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(EthTxType::EIP1559);
+                    addr_of_mut!((*out).0).write(EthTransaction__Type::Eip1559);
                 }
             }
-            EthTxType::EIP2930 => {
-                let out = out.as_mut_ptr() as *mut Eip2930Variant;
+            EthTransaction__Type::Eip2930 => {
+                let out = out.as_mut_ptr() as *mut Eip2930__Variant;
 
                 let eip = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -249,7 +228,7 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(EthTxType::EIP2930);
+                    addr_of_mut!((*out).0).write(EthTransaction__Type::Eip2930);
                 }
             }
         }

@@ -23,48 +23,25 @@ use crate::parser::{Address, DisplayableItem, ParserError};
 mod asset_call;
 mod contract_call;
 mod deploy;
+mod erc20;
 
 use super::native::parse_rlp_item;
 pub use asset_call::AssetCall;
 pub use contract_call::ContractCall;
 pub use deploy::Deploy;
-
-// Important: do not change the repr attribute,
-// as this type is use as the tag field
-// for the EthData enum which has the same representation
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
-#[repr(u8)]
-pub enum EthDataType {
-    None,
-    Deploy,
-    AssetCall,
-    ContractCall,
-}
-
-// EthData enum variants
-#[repr(C)]
-struct DeployVariant<'b>(EthDataType, Deploy<'b>);
-
-#[repr(C)]
-struct NoneVariant(EthDataType);
-
-#[repr(C)]
-struct AssetCallVariant<'b>(EthDataType, AssetCall<'b>);
-
-#[repr(C)]
-struct ContractCallVariant<'b>(EthDataType, ContractCall<'b>);
+pub use erc20::ERC20;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the EthDataType tag
-#[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
+#[avalanche_app_derive::enum_init]
 pub enum EthData<'b> {
     None, // empty data
     Deploy(Deploy<'b>),
     AssetCall(AssetCall<'b>),
+    Erc20(ERC20<'b>),
     ContractCall(ContractCall<'b>),
 }
 
@@ -96,7 +73,13 @@ impl<'b> EthData<'b> {
                 if AssetCall::is_asset_call(to, data) {
                     Self::parse_asset_call(data, out)?
                 } else {
-                    Self::parse_contract_call(data, out)?
+                    //TODO: chain in a more concise way
+                    // a-la nom::branch::alt
+                    // we want to parse all known contract types one by one
+                    // and see what doesn't fail
+                    if let Err(_) = Self::parse_erc20(data, out) {
+                        Self::parse_contract_call(data, out)?
+                    }
                 }
             }
         };
@@ -104,11 +87,11 @@ impl<'b> EthData<'b> {
     }
 
     fn parse_none(out: &mut MaybeUninit<Self>) {
-        let out = out.as_mut_ptr() as *mut DeployVariant;
+        let out = out.as_mut_ptr() as *mut Deploy__Variant;
 
         //pointer is valid
         unsafe {
-            addr_of_mut!((*out).0).write(EthDataType::None);
+            addr_of_mut!((*out).0).write(EthData__Type::None);
         }
     }
 
@@ -117,7 +100,7 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut DeployVariant;
+        let out = out.as_mut_ptr() as *mut Deploy__Variant;
 
         let deploy = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -129,7 +112,7 @@ impl<'b> EthData<'b> {
 
         //pointer is valid
         unsafe {
-            addr_of_mut!((*out).0).write(EthDataType::Deploy);
+            addr_of_mut!((*out).0).write(EthData__Type::Deploy);
         }
 
         Ok(())
@@ -140,7 +123,7 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut AssetCallVariant;
+        let out = out.as_mut_ptr() as *mut AssetCall__Variant;
 
         let asset_call = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -148,7 +131,25 @@ impl<'b> EthData<'b> {
 
         //pointer is valid
         unsafe {
-            addr_of_mut!((*out).0).write(EthDataType::AssetCall);
+            addr_of_mut!((*out).0).write(EthData__Type::AssetCall);
+        }
+
+        Ok(())
+    }
+
+    fn parse_erc20(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
+        if data.is_empty() {
+            return Err(ParserError::NoData);
+        }
+
+        let out = out.as_mut_ptr() as *mut Erc20__Variant;
+
+        let erc20 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+        _ = ERC20::parse_into(data, erc20)?;
+
+        //pointer is valid
+        unsafe {
+            addr_of_mut!((*out).0).write(EthData__Type::Erc20);
         }
 
         Ok(())
@@ -159,7 +160,7 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut ContractCallVariant;
+        let out = out.as_mut_ptr() as *mut ContractCall__Variant;
 
         let contract_call = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -167,7 +168,7 @@ impl<'b> EthData<'b> {
 
         //pointer is valid
         unsafe {
-            addr_of_mut!((*out).0).write(EthDataType::ContractCall);
+            addr_of_mut!((*out).0).write(EthData__Type::ContractCall);
         }
 
         Ok(())
@@ -180,6 +181,7 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => 0,
             Self::Deploy(d) => d.num_items(),
             Self::AssetCall(d) => d.num_items(),
+            Self::Erc20(d) => d.num_items(),
             Self::ContractCall(d) => d.num_items(),
         }
     }
@@ -195,6 +197,7 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => Err(ViewError::NoData),
             Self::Deploy(d) => d.render_item(item_n, title, message, page),
             Self::AssetCall(d) => d.render_item(item_n, title, message, page),
+            Self::Erc20(d) => d.render_item(item_n, title, message, page),
             Self::ContractCall(d) => d.render_item(item_n, title, message, page),
         }
     }

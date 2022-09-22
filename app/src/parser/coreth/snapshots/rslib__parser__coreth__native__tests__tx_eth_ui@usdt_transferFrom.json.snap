@@ -1,0 +1,13 @@
+---
+source: app/src/parser/coreth/native.rs
+expression: reduced
+input_file: app/src/parser/coreth/eth_testvectors/usdt_transferFrom.json
+---
+[
+    "ERC-20": "transferFrom",
+    "From": "0x3ad798a53fc5886d46945bc10ad9acf0198df00f",
+    "To": "0x6dfc34609a05bc22319fa4cce1d1e2929548c0d7",
+    "Amount": "45003825",
+    "Contract": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+    "Maximun Fee(GWEI)": "620000",
+]

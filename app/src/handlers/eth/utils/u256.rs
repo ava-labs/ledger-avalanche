@@ -22,11 +22,55 @@
 use core::cmp::{Ord, Ordering};
 use core::iter::{Product, Sum};
 use core::ops::{
-    Add, AddAssign, BitAnd, BitOr, BitXor, Div, DivAssign, Mul, MulAssign, Not, Rem, RemAssign,
-    Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+    Add, AddAssign, BitAnd, BitOr, BitXor, Deref, Div, DivAssign, Mul, MulAssign, Not, Rem,
+    RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
 };
 
 use bolos::PIC;
+
+/// Wrapper around a region of memory that is to be interpreted
+/// as a [`u256`].
+///
+/// This exists to avoid having to store the entire u256 inside the struct (32 bytes)
+/// and instead store just a slice (2 * usize), but still enforce in the type system
+/// to read such memory as a u256
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(test, derive(Debug))]
+pub struct BorrowedU256<'b>(&'b [u8]);
+
+impl<'b> BorrowedU256<'b> {
+    /// Create a new instance
+    ///
+    /// # Return
+    /// This will return `None` in case the slice is longer than 32 bytes,
+    /// since that wouldn't fit in a u256
+    pub fn new(bytes: &'b [u8]) -> Option<Self> {
+        if bytes.len() > 32 {
+            None
+        } else {
+            //no need to construct a u256 here
+            Some(Self(bytes))
+        }
+    }
+
+    /// Retrieve the underlying u256
+    pub fn to_u256(&self) -> u256 {
+        u256::pic_from_big_endian()(self.0)
+    }
+
+    /// Returns `true` if the number is zero
+    pub fn is_zero(&self) -> bool {
+        self.0.iter().all(|v| *v != 0)
+    }
+}
+
+impl<'b> Deref for BorrowedU256<'b> {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
 
 /// Little-endian large integer type
 #[repr(C)]
