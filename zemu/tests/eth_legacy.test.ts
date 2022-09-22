@@ -47,6 +47,24 @@ const SIGN_TEST_DATA = [
         data: 'ee919d500000000000000000000000000000000000000000000000000000000000000001',
     } 
   },
+  {
+    name: 'erc20_transfer',
+    op: {
+        // this is not probably the contract address but lets use it
+        to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+        value: '0',
+        data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
+    } 
+  },
+  {
+    name: 'erc20_approve',
+    op: {
+        // this is not probably the contract address but lets use it
+        to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+        value: '0',
+        data: '095ea7b30000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
+    } 
+  },
 ]
 
 const rawUnsignedLegacyTransaction = (params: any, chainId=43112) => {
@@ -79,8 +97,8 @@ const rawUnsignedLegacyTransaction = (params: any, chainId=43112) => {
 
 };
 
-// an alternative verification method, taken from obsidian
-function check_signature(hexTx: string, signature: any, chainId=43112) {
+// an alternative verification method for legacy transactions, taken from obsidian
+function check_legacy_signature(hexTx: string, signature: any, chainId=43112) {
   const ethTx = Buffer.from(hexTx, 'hex');
 
   const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
@@ -136,7 +154,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       expect(signatureOK).toEqual(true)
 
       // alternative verification to be safe
-      const test = await check_signature(msg.toString('hex'),resp)
+      const test = await check_legacy_signature(msg.toString('hex'),resp)
       expect(test).toEqual(true)
     } finally {
       await sim.close()
