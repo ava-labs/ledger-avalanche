@@ -138,9 +138,11 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 impl<'b> Eip1559<'b> {
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
-        let priority_fee = self.priority_fee.to_u256();
-        let max_fee = self.max_fee.to_u256();
-        let gas_limit = self.gas_limit.to_u256();
+        let f = u256::pic_from_big_endian();
+
+        let priority_fee = f(&*self.priority_fee);
+        let max_fee = f(&*self.max_fee);
+        let gas_limit = f(&*self.gas_limit);
 
         let fee = priority_fee
             .checked_add(max_fee)
