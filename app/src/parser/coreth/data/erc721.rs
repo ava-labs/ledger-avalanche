@@ -388,7 +388,7 @@ impl<'b> ERC721<'b> {
                 this.base.render_item(item_n, title, message, page)
             }
             3 if !this.data.is_empty() => {
-                let label = pic_str!(b"Call Data");
+                let label = pic_str!(b"Extra Data");
                 title[..label.len()].copy_from_slice(label);
 
                 let prefix = pic_str!(b"0x"!);
