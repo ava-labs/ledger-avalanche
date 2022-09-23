@@ -1,0 +1,11 @@
+---
+source: app/src/parser/coreth/native.rs
+expression: reduced
+input_file: app/src/parser/coreth/eth_testvectors/eth_erc721_approval_for_all.json
+---
+[
+    "ERC-721": "approvalForAll",
+    "Allow": "0x5cb2dfb0f3792d50099429c548df2aafeb840b7c",
+    "Contract": "0x40cf6a63c35b6886421988871f6b74cc86309940",
+    "Maximun Fee(GWEI)": "2996347.415138355",
+]
