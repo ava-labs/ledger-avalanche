@@ -57,7 +57,7 @@ const SIGN_TEST_DATA = [
     } 
   },
   {
-    name: 'erc20_approve',
+    name: 'erc721_approve',
     op: {
         // this is not probably the contract address but lets use it
         to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
