@@ -25,17 +25,48 @@ use crate::{
         eth::{u256, BorrowedU256},
         handle_ui_message,
     },
-    parser::{
-        coreth::parse_rlp_item, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
-        ETH_ARG_LEN,
-    },
+    parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN, ETH_ARG_LEN},
 };
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+/// Represents a ERC20-like contract call
+///
+/// # ERC20-like
+/// What we define as ERC20-like is when the selector (and arguments)
+/// could be interpreted as being a call of the ERC20 specification
+///
+/// Namely, the following Solidity signatures are considered ERC20-like:
+/**
+```solidity
+function name() public view returns (string)
+function symbol() public view returns (string)
+function decimals() public view returns (uint8)
+function totalSupply() public view returns (uint256)
+function balanceOf(address _owner) public view returns (uint256 balance)
+function transfer(address _to, uint256 _value) public returns (bool success)
+function transferFrom(address _from, address _to, uint256 _value) public returns (bool success)
+function approve(address _spender, uint256 _value) public returns (bool success)
+function allowance(address _owner, address _spender) public view returns (uint256 remaining)
+```
+*/
+/// # Exclusions
+/// `public view` methods are excluded as those don't make sense to be called via a transaction
+#[avalanche_app_derive::enum_init]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
-pub struct Transfer<'b> {
-    to: Address<'b>,
-    value: BorrowedU256<'b>,
+pub enum ERC20<'b> {
+    Transfer {
+        to: Address<'b>,
+        value: BorrowedU256<'b>,
+    },
+    TransferFrom {
+        from: Address<'b>,
+        to: Address<'b>,
+        value: BorrowedU256<'b>,
+    },
+    Approve {
+        spender: Address<'b>,
+        value: BorrowedU256<'b>,
+    },
 }
 
 impl<'b> Transfer<'b> {
@@ -67,14 +98,6 @@ impl<'b> FromBytes<'b> for Transfer<'b> {
 
         Ok(rem)
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
-pub struct TransferFrom<'b> {
-    from: Address<'b>,
-    to: Address<'b>,
-    value: BorrowedU256<'b>,
 }
 
 impl<'b> TransferFrom<'b> {
@@ -113,13 +136,6 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
-pub struct Approve<'b> {
-    spender: Address<'b>,
-    value: BorrowedU256<'b>,
-}
-
 impl<'b> Approve<'b> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0x09, 0x5e, 0xa7, 0xb3]);
 }
@@ -151,37 +167,6 @@ impl<'b> FromBytes<'b> for Approve<'b> {
     }
 }
 
-/// Represents a ERC20-like contract call
-///
-/// # ERC20-like
-/// What we define as ERC20-like is when the selector (and arguments)
-/// could be interpreted as being a call of the ERC20 specification
-///
-/// Namely, the following Solidity signatures are considered ERC20-like:
-/**
-```solidity
-function name() public view returns (string)
-function symbol() public view returns (string)
-function decimals() public view returns (uint8)
-function totalSupply() public view returns (uint256)
-function balanceOf(address _owner) public view returns (uint256 balance)
-function transfer(address _to, uint256 _value) public returns (bool success)
-function transferFrom(address _from, address _to, uint256 _value) public returns (bool success)
-function approve(address _spender, uint256 _value) public returns (bool success)
-function allowance(address _owner, address _spender) public view returns (uint256 remaining)
-```
-*/
-/// # Exclusions
-/// `public view` methods are excluded as those don't make sense to be called via a transaction
-#[derive(Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
-#[avalanche_app_derive::enum_init]
-pub enum ERC20<'b> {
-    Transfer(Transfer<'b>),
-    TransferFrom(TransferFrom<'b>),
-    Approve(Approve<'b>),
-}
-
 impl ERC20__Type {
     pub fn from_selector(selector: u32) -> Option<Self> {
         match selector {
@@ -196,9 +181,9 @@ impl ERC20__Type {
 impl<'b> ERC20<'b> {
     pub fn method_name(&self) -> &'static [u8] {
         match self {
-            ERC20::Transfer(_) => pic_str!(b"transfer"!),
-            ERC20::TransferFrom(_) => pic_str!(b"transferFrom"!),
-            ERC20::Approve(_) => pic_str!(b"approve"!),
+            ERC20::Transfer { .. } => pic_str!(b"transfer"!),
+            ERC20::TransferFrom { .. } => pic_str!(b"transferFrom"!),
+            ERC20::Approve { .. } => pic_str!(b"approve"!),
         }
     }
 
@@ -216,37 +201,16 @@ impl<'b> ERC20<'b> {
 
         match ty {
             ERC20__Type::Transfer => {
-                let out = output.as_mut_ptr() as *mut Transfer__Variant;
-                let item = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                _ = Transfer::from_bytes_into(rem, item)?;
-
-                //no invalid ptrs
-                unsafe {
-                    addr_of_mut!((*out).0).write(ERC20__Type::Transfer);
-                }
+                Self::init_as_transfer(|item| Transfer::from_bytes_into(rem, item), output)?;
             }
             ERC20__Type::TransferFrom => {
-                let out = output.as_mut_ptr() as *mut TransferFrom__Variant;
-                let item = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                _ = TransferFrom::from_bytes_into(rem, item)?;
-
-                //no invalid ptrs
-                unsafe {
-                    addr_of_mut!((*out).0).write(ERC20__Type::TransferFrom);
-                }
+                Self::init_as_transfer_from(
+                    |item| TransferFrom::from_bytes_into(rem, item),
+                    output,
+                )?;
             }
             ERC20__Type::Approve => {
-                let out = output.as_mut_ptr() as *mut Approve__Variant;
-                let item = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                _ = Approve::from_bytes_into(rem, item)?;
-
-                //no invalid ptrs
-                unsafe {
-                    addr_of_mut!((*out).0).write(ERC20__Type::Approve);
-                }
+                Self::init_as_approve(|item| Approve::from_bytes_into(rem, item), output)?;
             }
         }
 
@@ -254,26 +218,31 @@ impl<'b> ERC20<'b> {
     }
 
     fn render_transfer(
-        this: &Transfer<'_>,
+        &self,
         item_n: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        let (to, value) = match &self {
+            Self::Transfer { to, value } => (to, value),
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        };
+
         match item_n {
             0 => {
                 let label = pic_str!(b"To");
                 title[..label.len()].copy_from_slice(label);
 
                 // should not panic as address was check
-                this.to.render_eth_address(message, page)
+                to.render_eth_address(message, page)
             }
             1 => {
                 let label = pic_str!(b"Amount");
                 title[..label.len()].copy_from_slice(label);
 
                 let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 1];
-                let bytes = this.value.to_u256().to_lexical(&mut bytes);
+                let bytes = value.to_u256().to_lexical(&mut bytes);
 
                 handle_ui_message(bytes, message, page)
             }
@@ -282,33 +251,38 @@ impl<'b> ERC20<'b> {
     }
 
     fn render_transfer_from(
-        this: &TransferFrom<'_>,
+        &self,
         item_n: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        let (from, to, value) = match &self {
+            Self::TransferFrom { from, to, value } => (from, to, value),
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        };
+
         match item_n {
             0 => {
                 let label = pic_str!(b"From");
                 title[..label.len()].copy_from_slice(label);
 
                 // should not panic as address was check
-                this.from.render_eth_address(message, page)
+                from.render_eth_address(message, page)
             }
             1 => {
                 let label = pic_str!(b"To");
                 title[..label.len()].copy_from_slice(label);
 
                 // should not panic as address was check
-                this.to.render_eth_address(message, page)
+                to.render_eth_address(message, page)
             }
             2 => {
                 let label = pic_str!(b"Amount");
                 title[..label.len()].copy_from_slice(label);
 
                 let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 1];
-                let bytes = this.value.to_u256().to_lexical(&mut bytes);
+                let bytes = value.to_u256().to_lexical(&mut bytes);
 
                 handle_ui_message(bytes, message, page)
             }
@@ -317,26 +291,31 @@ impl<'b> ERC20<'b> {
     }
 
     fn render_approve(
-        this: &Approve<'_>,
+        &self,
         item_n: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        let (spender, value) = match &self {
+            Self::Approve { spender, value } => (spender, value),
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        };
+
         match item_n {
             0 => {
                 let label = pic_str!(b"To");
                 title[..label.len()].copy_from_slice(label);
 
                 // should not panic as address was check
-                this.spender.render_eth_address(message, page)
+                spender.render_eth_address(message, page)
             }
             1 => {
                 let label = pic_str!(b"Amount");
                 title[..label.len()].copy_from_slice(label);
 
                 let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 1];
-                let bytes = this.value.to_u256().to_lexical(&mut bytes);
+                let bytes = value.to_u256().to_lexical(&mut bytes);
 
                 handle_ui_message(bytes, message, page)
             }
@@ -348,9 +327,9 @@ impl<'b> ERC20<'b> {
 impl<'b> DisplayableItem for ERC20<'b> {
     fn num_items(&self) -> usize {
         1 + match self {
-            ERC20::Transfer(_) => 2,
-            ERC20::TransferFrom(_) => 3,
-            ERC20::Approve(_) => 2,
+            ERC20::Transfer { .. } => 2,
+            ERC20::TransferFrom { .. } => 3,
+            ERC20::Approve { .. } => 2,
         }
     }
 
@@ -368,16 +347,12 @@ impl<'b> DisplayableItem for ERC20<'b> {
 
                 handle_ui_message(self.method_name(), message, page)
             }
-                ERC20::Transfer(call) => {
-                    Self::render_transfer(call, item_n - 1, title, message, page)
-                }
-                ERC20::TransferFrom(call) => {
-                    Self::render_transfer_from(call, item_n - 1, title, message, page)
-                }
-                ERC20::Approve(call) => {
-                    Self::render_approve(call, item_n - 1, title, message, page)
             _x @ 1.. => match &self {
+                ERC20::Transfer { .. } => self.render_transfer(item_n - 1, title, message, page),
+                ERC20::TransferFrom { .. } => {
+                    self.render_transfer_from(item_n - 1, title, message, page)
                 }
+                ERC20::Approve { .. } => self.render_approve(item_n - 1, title, message, page),
             },
         }
     }
