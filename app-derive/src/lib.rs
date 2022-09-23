@@ -13,12 +13,15 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-
+#![allow(dead_code)]
 //! This crate exports 2 macros with a specific use case for the ledger-avalanche app
 //!
 //! See [macro@unroll] for more documentation
 
 use proc_macro::TokenStream;
+use proc_macro_error::proc_macro_error;
+
+pub(crate) mod utils;
 
 mod version;
 #[proc_macro]
@@ -57,6 +60,8 @@ pub fn unroll(input: TokenStream) -> TokenStream {
 }
 
 mod enum_init;
+
+#[proc_macro_error]
 #[proc_macro_attribute]
 /// The aim of this macro is to ease the writing of boilerplate for enums
 /// where we want to initialize said enum using [`MaybeUninit`].

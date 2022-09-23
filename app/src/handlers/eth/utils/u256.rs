@@ -788,7 +788,7 @@ impl u256 {
                             *existing_low = low;
                             o
                         };
-                        carry = {
+                        _ = {
                             let existing_hi = &mut ret[i + j + 1];
                             let hi = hi + overflow as u64;
                             let (hi, o0) = hi.overflowing_add(carry);
@@ -876,7 +876,7 @@ impl u256 {
                                 *existing_low = low;
                                 o
                             };
-                            carry = {
+                            _ = {
                                 let existing_hi = &mut ret[i + j + 1];
                                 let hi = hi + overflow as u64;
                                 let (hi, o0) = hi.overflowing_add(carry);
@@ -965,7 +965,7 @@ impl u256 {
                                 *existing_low = low;
                                 o
                             };
-                            carry = {
+                            _ = {
                                 let existing_hi = &mut ret[i + j + 1];
                                 let hi = hi + overflow as u64;
                                 let (hi, o0) = hi.overflowing_add(carry);
@@ -1054,7 +1054,7 @@ impl u256 {
                                 *existing_low = low;
                                 o
                             };
-                            carry = {
+                            _ = {
                                 let existing_hi = &mut ret[i + j + 1];
                                 let hi = hi + overflow as u64;
                                 let (hi, o0) = hi.overflowing_add(carry);

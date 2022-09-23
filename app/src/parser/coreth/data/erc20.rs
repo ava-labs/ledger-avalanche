@@ -368,7 +368,6 @@ impl<'b> DisplayableItem for ERC20<'b> {
 
                 handle_ui_message(self.method_name(), message, page)
             }
-            x @ 1.. => match &self {
                 ERC20::Transfer(call) => {
                     Self::render_transfer(call, item_n - 1, title, message, page)
                 }
@@ -377,6 +376,7 @@ impl<'b> DisplayableItem for ERC20<'b> {
                 }
                 ERC20::Approve(call) => {
                     Self::render_approve(call, item_n - 1, title, message, page)
+            _x @ 1.. => match &self {
                 }
             },
         }
