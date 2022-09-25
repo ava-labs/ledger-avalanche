@@ -118,13 +118,7 @@ impl ApduHandler for Sign {
         match packet_type {
             //init
             0x00 => {
-                //we can't use .payload here since it's not prefixed with the length
-                // of the payload
-                let apdu_buffer = buffer.write();
-                let payload = &apdu_buffer
-                    .get(APDU_MIN_LENGTH as usize..)
-                    .ok_or(Error::DataInvalid)?;
-
+                let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
                 //parse path to verify it's the data we expect
                 let (rest, bip32_path) =
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
@@ -135,7 +129,6 @@ impl ApduHandler for Sign {
 
                 //parse the length of the RLP message
                 let (read, to_read) = get_tx_rlp_len(rest)?;
-
                 let len = core::cmp::min(to_read as usize + read, rest.len());
 
                 //write the rest to the swapping buffer so we persist this data
@@ -158,12 +151,7 @@ impl ApduHandler for Sign {
             }
             //next
             0x80 => {
-                //we can't use .payload here since it's not prefixed with the length
-                // of the payload
-                let apdu_buffer = buffer.write();
-                let payload = &apdu_buffer
-                    .get(APDU_MIN_LENGTH as usize..)
-                    .ok_or(Error::DataInvalid)?;
+                let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
 
                 let buffer = unsafe { BUFFER.acquire(Self)? };
 
