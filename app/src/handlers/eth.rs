@@ -72,7 +72,7 @@ mod utils {
         let marker = *data.get(0).ok_or(Error::DataInvalid)?;
 
         match marker {
-            slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xBF)),
+            slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xC0)),
             list @ 0xF8.. => {
                 // For lists longer than 55 bytes the length is encoded
                 // differently.
