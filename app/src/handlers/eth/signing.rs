@@ -22,10 +22,10 @@ use bolos::{
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, APDU_MIN_LENGTH, MAX_BIP32_PATH_DEPTH},
+    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::resources::{BUFFER, PATH},
+    handlers::resources::{BUFFER, NFT_INFO, PATH},
     parser::{DisplayableItem, EthTransaction, FromBytes},
     sys,
     utils::ApduBufferRead,
@@ -290,6 +290,13 @@ fn cleanup_globals() -> Result<(), Error> {
 
             //let's release the lock for the future
             let _ = BUFFER.release(Sign);
+        }
+
+        if let Ok(info) = NFT_INFO.acquire(Sign) {
+            info.take();
+
+            //let's release the lock for the future
+            let _ = NFT_INFO.release(Sign);
         }
     }
 

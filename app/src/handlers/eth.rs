@@ -16,6 +16,7 @@
 
 pub mod blind_signing;
 pub mod provide_erc20;
+pub mod provide_nft_info;
 pub mod public_key;
 pub mod signing;
 

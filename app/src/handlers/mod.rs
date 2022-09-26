@@ -30,6 +30,7 @@ pub mod resources {
     use crate::constants::MAX_BIP32_PATH_DEPTH;
 
     use super::lock::Lock;
+    use crate::parser::NftInfo;
     use bolos::{
         crypto::bip32::BIP32Path, hash::Sha256, lazy_static, new_swapping_buffer, pic::PIC,
         SwappingBuffer,
@@ -45,6 +46,9 @@ pub mod resources {
 
     #[lazy_static]
     pub static mut HASH: Lock<Option<[u8; Sha256::DIGEST_LEN]>, HASHAccessors> = Lock::new(None);
+
+    #[lazy_static]
+    pub static mut NFT_INFO: Lock<Option<NftInfo>, NFTInfoAccessors> = Lock::new(None);
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum BUFFERAccessors {
@@ -77,6 +81,12 @@ pub mod resources {
         Sign,
         SignHash,
         SignMsg,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum NFTInfoAccessors {
+        NftInfo,
+        EthSign,
     }
 
     #[cfg(feature = "blind-sign")]
@@ -112,6 +122,18 @@ pub mod resources {
     }
 
     impl From<super::eth::signing::Sign> for BUFFERAccessors {
+        fn from(_: super::eth::signing::Sign) -> Self {
+            Self::EthSign
+        }
+    }
+
+    impl From<super::eth::provide_nft_info::Info> for NFTInfoAccessors {
+        fn from(_: super::eth::provide_nft_info::Info) -> Self {
+            Self::NftInfo
+        }
+    }
+
+    impl From<super::eth::signing::Sign> for NFTInfoAccessors {
         fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
         }
