@@ -263,13 +263,20 @@ impl<'b> Eip1559<'b> {
     ) -> Result<u8, ViewError> {
         match item_n {
             0 => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
+                let content = pic_str!(b"Call");
+
+                handle_ui_message(content, message, page)
+            }
+            1 => {
                 let label = pic_str!(b"Transfer(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
                 render_u256(&self.value, WEI_AVAX_DIGITS, message, page)
             }
 
-            1 => {
+            2 => {
                 let label = pic_str!(b"To");
                 title[..label.len()].copy_from_slice(label);
 
@@ -279,8 +286,8 @@ impl<'b> Eip1559<'b> {
                     .apdu_unwrap()
                     .render_eth_address(message, page)
             }
-            2 => self.data.render_item(0, title, message, page),
-            3 => {
+            3 => self.data.render_item(0, title, message, page),
+            4 => {
                 let label = pic_str!(b"Maximun Fee(GWEI)");
                 title[..label.len()].copy_from_slice(label);
 
@@ -391,8 +398,8 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + !self.value.is_empty() as usize,
             // asset items + fee
             EthData::AssetCall(d) => d.num_items() + 1,
-            // amount, address, fee and contract_data
-            EthData::ContractCall(d) => 1 + 1 + 1 + d.num_items(),
+            // description amount, address, fee and contract_data
+            EthData::ContractCall(d) => 1 + 1 + 1 + 1 + d.num_items(),
             // address, fee
             EthData::Erc20(d) => 1 + 1 + d.num_items(),
             // address, fee
