@@ -41,7 +41,7 @@ fn eth_sign() {
     buffer[1] = INS;
     buffer[2] = 0x00;
     buffer[3] = 0x00;
-    buffer[4] = path.len() as u8;
+    buffer[4] = path.len() as u8 + data.len() as u8;
     buffer[5..][..path.len()].copy_from_slice(&path);
     buffer[5 + path.len()..][..data.len()].copy_from_slice(&data);
 

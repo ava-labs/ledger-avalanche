@@ -101,6 +101,13 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
         //the first N bytes are for padding and are zeros
         let _ = Address::from_bytes_into(&address[ETH_ARG_LEN - ADDRESS_LEN..], to)?;
 
+        // do not waste gas
+        let to = unsafe { &*to.as_ptr() };
+        let from = unsafe { &*from.as_ptr() };
+        if to == from {
+            return Err(ParserError::InvalidAddress.into());
+        }
+
         // value
         let (rem, value) = take(ETH_ARG_LEN)(rem)?;
         let value = BorrowedU256::new(value).ok_or(ParserError::InvalidEthMessage)?;

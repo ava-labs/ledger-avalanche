@@ -114,12 +114,7 @@ impl ApduHandler for BlindSign {
         match packet_type {
             //init
             0x00 => {
-                //we can't use .payload here since it's not prefixed with the length
-                // of the payload
-                let apdu_buffer = buffer.write();
-                let payload = &apdu_buffer
-                    .get(APDU_MIN_LENGTH as usize..)
-                    .ok_or(Error::DataInvalid)?;
+                let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
 
                 //parse path to verify it's the data we expect
                 let (rest, bip32_path) =
@@ -154,12 +149,7 @@ impl ApduHandler for BlindSign {
             }
             //next
             0x80 => {
-                //we can't use .payload here since it's not prefixed with the length
-                // of the payload
-                let apdu_buffer = buffer.write();
-                let payload = &apdu_buffer
-                    .get(APDU_MIN_LENGTH as usize..)
-                    .ok_or(Error::DataInvalid)?;
+                let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
 
                 let buffer = unsafe { BUFFER.acquire(Self)? };
 

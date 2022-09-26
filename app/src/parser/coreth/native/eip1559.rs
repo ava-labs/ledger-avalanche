@@ -263,13 +263,20 @@ impl<'b> Eip1559<'b> {
     ) -> Result<u8, ViewError> {
         match item_n {
             0 => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
+                let content = pic_str!(b"Call");
+
+                handle_ui_message(content, message, page)
+            }
+            1 => {
                 let label = pic_str!(b"Transfer(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
                 render_u256(&self.value, WEI_AVAX_DIGITS, message, page)
             }
 
-            1 => {
+            2 => {
                 let label = pic_str!(b"To");
                 title[..label.len()].copy_from_slice(label);
 
@@ -279,8 +286,8 @@ impl<'b> Eip1559<'b> {
                     .apdu_unwrap()
                     .render_eth_address(message, page)
             }
-            2 => self.data.render_item(0, title, message, page),
-            3 => {
+            3 => self.data.render_item(0, title, message, page),
+            4 => {
                 let label = pic_str!(b"Maximun Fee(GWEI)");
                 title[..label.len()].copy_from_slice(label);
 
@@ -329,6 +336,44 @@ impl<'b> Eip1559<'b> {
         }
     }
 
+    #[inline(never)]
+    fn render_erc721_call(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        let erc721 = match self.data {
+            EthData::Erc721(erc721) => erc721,
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        };
+
+        let num_items = erc721.num_items() as u8;
+
+        match item_n {
+            item_n @ 0.. if item_n < num_items => erc721.render_item(item_n, title, message, page),
+            x @ 0.. if x == num_items => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
+
+                // should not panic as address was check
+                self.to
+                    .as_ref()
+                    .apdu_unwrap()
+                    .render_eth_address(message, page)
+            }
+            x @ 0.. if x == num_items + 1 => {
+                let label = pic_str!(b"Maximun Fee(GWEI)");
+                title[..label.len()].copy_from_slice(label);
+
+                self.render_fee(message, page)
+            }
+
+            _ => Err(ViewError::NoData),
+        }
+    }
+
     fn render_fee(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
         let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 2];
 
@@ -353,10 +398,12 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + !self.value.is_empty() as usize,
             // asset items + fee
             EthData::AssetCall(d) => d.num_items() + 1,
-            // amount, address, fee and contract_data
-            EthData::ContractCall(d) => 1 + 1 + 1 + d.num_items(),
+            // description amount, address, fee and contract_data
+            EthData::ContractCall(d) => 1 + 1 + 1 + 1 + d.num_items(),
             // address, fee
             EthData::Erc20(d) => 1 + 1 + d.num_items(),
+            // address, fee
+            EthData::Erc721(d) => 1 + 1 + d.num_items(),
         }
     }
 
@@ -373,6 +420,7 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             EthData::AssetCall(..) => self.render_asset_call(item_n, title, message, page),
             EthData::ContractCall(..) => self.render_contract_call(item_n, title, message, page),
             EthData::Erc20(..) => self.render_erc20_call(item_n, title, message, page),
+            EthData::Erc721(..) => self.render_erc721_call(item_n, title, message, page),
         }
     }
 }
