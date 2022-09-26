@@ -33,12 +33,12 @@ pub use deploy::Deploy;
 pub use erc20::ERC20;
 pub use erc721::ERC721;
 
+#[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the EthDataType tag
 #[cfg_attr(test, derive(Debug))]
-#[avalanche_app_derive::enum_init]
 pub enum EthData<'b> {
     None, // empty data
     Deploy(Deploy<'b>),

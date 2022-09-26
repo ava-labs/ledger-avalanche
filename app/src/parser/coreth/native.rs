@@ -141,12 +141,12 @@ impl EthTransaction__Type {
     }
 }
 
+#[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag
 #[cfg_attr(test, derive(Debug))]
-#[avalanche_app_derive::enum_init]
 pub enum EthTransaction<'b> {
     Legacy(Legacy<'b>),
     Eip1559(Eip1559<'b>),
