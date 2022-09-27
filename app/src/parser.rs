@@ -46,7 +46,10 @@ pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
 pub use constants::*;
 pub use coreth::{
-    data::EthData, export_tx::ExportTx, import_tx::ImportTx, native::EthTransaction,
+    data::{ERC721Info, EthData},
+    export_tx::ExportTx,
+    import_tx::ImportTx,
+    native::EthTransaction,
     nft_info::NftInfo,
 };
 pub use error::ParserError;

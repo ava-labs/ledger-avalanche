@@ -87,6 +87,8 @@ pub mod resources {
     pub enum NFTInfoAccessors {
         NftInfo,
         EthSign,
+        // The subparser for ERC721 transactions
+        ERC721Parser,
     }
 
     #[cfg(feature = "blind-sign")]
@@ -136,6 +138,16 @@ pub mod resources {
     impl From<super::eth::signing::Sign> for NFTInfoAccessors {
         fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
+        }
+    }
+
+    // gives direct access to the ERC721 subparser, to
+    // get the information it needs. otherwise we would
+    // need to pass the NftInfo object all the way down
+    // modifying the EthTransaction parser.
+    impl From<crate::parser::ERC721Info> for NFTInfoAccessors {
+        fn from(_: crate::parser::ERC721Info) -> Self {
+            Self::ERC721Parser
         }
     }
 
