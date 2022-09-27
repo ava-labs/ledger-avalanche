@@ -48,7 +48,11 @@ impl Info {
         // skip type and version
         let mut nft_info = MaybeUninit::uninit();
 
-        _ = NftInfo::from_bytes_into(&input[2..], &mut nft_info).map_err(|_| Error::DataInvalid)?;
+        // omit type and version fields as for now it is not used
+        let offset = TYPE_SIZE + VERSION_SIZE;
+
+        _ = NftInfo::from_bytes_into(&input[offset..], &mut nft_info)
+            .map_err(|_| Error::DataInvalid)?;
 
         let nft_info = unsafe { nft_info.assume_init() };
 
