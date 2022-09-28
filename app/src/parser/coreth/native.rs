@@ -57,6 +57,18 @@ pub fn render_u256(
     handle_ui_message(out, message, page)
 }
 
+// Converts an slice of bytes in big-endian
+// to an u64 integer
+pub fn bytes_to_u64(input: &[u8]) -> Result<u64, ParserError> {
+    let mut raw = [0; U64_SIZE];
+
+    if input.len() <= U64_SIZE {
+        raw[U64_SIZE - input.len()..].copy_from_slice(input);
+        return Ok(u64::from_be_bytes(raw));
+    }
+    Err(ParserError::ValueOutOfRange)
+}
+
 /// Returns the remaining bytes from data along with the bytes
 /// representation of the found item
 pub fn parse_rlp_item(data: &[u8]) -> Result<(&[u8], &[u8]), nom::Err<ParserError>> {

@@ -36,7 +36,8 @@ pub struct NftInfo {
     // plus null terminator
     collection_name: [u8; COLLECTION_NAME_MAX_LEN + 1],
     // chain id is defined as a u64 value
-    chain_id: u64,
+    pub chain_id: u64,
+    name_len: u8,
 }
 
 impl NftInfo {
@@ -50,10 +51,12 @@ impl NftInfo {
     pub fn render_collection_name(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
         let not_found = pic_str!(b"Collection Name not provided?");
 
-        let len = rs_strlen(&self.collection_name[..]);
-
-        if len > 0 {
-            handle_ui_message(&self.collection_name[..=len], message, page)
+        if self.name_len > 0 {
+            handle_ui_message(
+                &self.collection_name[..self.name_len as usize],
+                message,
+                page,
+            )
         } else {
             handle_ui_message(not_found, message, page)
         }
@@ -101,6 +104,7 @@ impl<'b> FromBytes<'b> for NftInfo {
             let contract_address = &mut *addr_of_mut!((*out).contract_address);
             contract_address.copy_from_slice(address);
 
+            addr_of_mut!((*out).name_len).write(name_len as u8);
             addr_of_mut!((*out).chain_id).write(chain_id);
         }
 

@@ -429,28 +429,6 @@ impl<'b> ERC721<'b> {
             x @ 0.. if x < this.base.num_items() as u8 => {
                 this.base.render_item(item_n, title, message, page)
             }
-            3 if !this.data.is_empty() => {
-                let label = pic_str!(b"Extra Data");
-                title[..label.len()].copy_from_slice(label);
-
-                let prefix = pic_str!(b"0x"!);
-                let suffix = pic_str!(b"...");
-                let mut output = [0; SafeTransferFrom::CALL_DATA_PREVIEW_LEN * 2 + 2 + 4];
-                output[..prefix.len()].copy_from_slice(&prefix[..]);
-                let mut sz = prefix.len();
-
-                let mut len = SafeTransferFrom::CALL_DATA_PREVIEW_LEN;
-                if this.data.len() < SafeTransferFrom::CALL_DATA_PREVIEW_LEN {
-                    len = this.data.len();
-                }
-
-                sz += hex_encode(&this.data[..len], &mut output[prefix.len()..])
-                    .map_err(|_| ViewError::Unknown)?;
-                output[sz..sz + suffix.len()].copy_from_slice(&suffix[..]);
-                sz += suffix.len();
-
-                handle_ui_message(&output[..sz], message, page)
-            }
             _ => Err(ViewError::NoData),
         }
     }
@@ -527,9 +505,9 @@ impl<'b> DisplayableItem for ERC721<'b> {
     fn num_items(&self) -> usize {
         1 + match self {
             ERC721::TransferFrom(t) => t.base.num_items(),
-            ERC721::SafeTransferFrom(t) => t.base.num_items() + !t.data.is_empty() as usize,
+            ERC721::SafeTransferFrom(t) => t.base.num_items(),
             ERC721::Approve(_) => 3,
-            ERC721::ApprovalForAll(_) => 1,
+            ERC721::ApprovalForAll(_) => 2,
         }
     }
 

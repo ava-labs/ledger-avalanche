@@ -25,8 +25,8 @@ use crate::{
         handle_ui_message,
     },
     parser::{
-        intstr_to_fpstr_inplace, Address, DisplayableItem, EthData, FromBytes, ParserError,
-        ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
+        intstr_to_fpstr_inplace, Address, DisplayableItem, ERC721Info, EthData, FromBytes,
+        ParserError, ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
     },
     utils::ApduPanic,
 };
@@ -111,6 +111,16 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         let eth_data = unsafe { &*data_out.as_ptr() };
         if matches!(eth_data, EthData::AssetCall(..)) && !value.is_zero() {
             return Err(ParserError::InvalidAssetCall.into());
+        }
+
+        // check for erc721 call and chainID
+        let data = unsafe { &*data_out.as_ptr() };
+        if matches!(data, EthData::Erc721(..)) {
+            let chain_id = super::bytes_to_u64(id_bytes)?;
+            let contract_chain_id = ERC721Info::get_nft_info()?.chain_id;
+            if chain_id != contract_chain_id {
+                return Err(ParserError::InvalidAssetCall.into());
+            }
         }
 
         // access list
@@ -432,7 +442,7 @@ mod tests {
     #[test]
     fn parse_eip1559() {
         // market..
-        let data = "02f9018a82a868808506fc23ac008506fc23ac008316e3608080b90170608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100d9565b60405180910390f35b610073600480360381019061006e919061009d565b61007e565b005b60008054905090565b8060008190555050565b60008135905061009781610103565b92915050565b6000602082840312156100b3576100b26100fe565b5b60006100c184828501610088565b91505092915050565b6100d3816100f4565b82525050565b60006020820190506100ee60008301846100ca565b92915050565b6000819050919050565b600080fd5b61010c816100f4565b811461011757600080fd5b5056fea2646970667358221220404e37f487a89a932dca5e77faaf6ca2de3b991f93d230604b1b8daaef64766264736f6c63430008070033c0";
+        let data = "02f871018347eae184773594008517bfac7c008303291894dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000bb98f2a83d78310342da3e63278ce7515d52619d00000000000000000000000000000000000000000000000000000006e0456cd0c0";
         let data = hex::decode(data).unwrap();
 
         // remove the transaction type and get the transaction bytes as
@@ -441,21 +451,9 @@ mod tests {
 
         let (_, tx) = Eip1559::from_bytes(&tx_bytes).unwrap();
 
-        assert!(tx.to.is_none());
-
-        assert!(tx.nonce.is_empty());
-        assert_eq!(
-            &1500000u64.to_be_bytes()[8 - tx.gas_limit.len()..],
-            &*tx.gas_limit
-        );
-        assert_eq!(
-            &30000000000u64.to_be_bytes()[8 - tx.max_fee.len()..],
-            &*tx.max_fee
-        );
-        assert_eq!(
-            &30000000000u64.to_be_bytes()[8 - tx.priority_fee.len()..],
-            &*tx.priority_fee
-        );
+        assert_eq!(&[3, 41, 24], &*tx.gas_limit);
+        assert_eq!(&[23, 191, 172, 124, 0], &*tx.max_fee);
+        assert_eq!(&[119, 53, 148, 0], &*tx.priority_fee);
 
         assert_eq!(0, tx.value.len());
     }

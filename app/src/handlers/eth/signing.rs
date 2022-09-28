@@ -26,7 +26,7 @@ use crate::{
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::resources::{BUFFER, NFT_INFO, PATH},
-    parser::{DisplayableItem, EthTransaction, FromBytes},
+    parser::{DisplayableItem, ERC721Info, EthTransaction, FromBytes},
     sys,
     utils::ApduBufferRead,
 };
@@ -70,6 +70,11 @@ impl Sign {
 
     #[inline(never)]
     pub fn start_sign(txdata: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
+        // The ERC721 parser might need access to the NFT_INFO resource
+        // also during the review part
+        _ = unsafe { NFT_INFO.lock(ERC721Info) };
+
+        // now parse the transaction
         let mut tx = MaybeUninit::uninit();
         let rem =
             EthTransaction::from_bytes_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
@@ -292,7 +297,9 @@ fn cleanup_globals() -> Result<(), Error> {
             let _ = BUFFER.release(Sign);
         }
 
-        if let Ok(info) = NFT_INFO.acquire(Sign) {
+        // Forcefully acquire the resource as it is not longer in use
+        // transaction was rejected.
+        if let Ok(info) = NFT_INFO.lock(Sign) {
             info.take();
 
             //let's release the lock for the future
