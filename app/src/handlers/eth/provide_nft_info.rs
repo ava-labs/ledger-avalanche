@@ -15,31 +15,15 @@
 ********************************************************************************/
 use core::mem::MaybeUninit;
 
+use super::signing::Sign;
 use crate::{
     constants::{ApduError as Error, APDU_MIN_LENGTH, MAX_BIP32_PATH_DEPTH},
     dispatcher::ApduHandler,
     handlers::resources::NFT_INFO,
-    parser::{FromBytes, NftInfo},
+    parser::{ERC721Info, FromBytes, NftInfo},
     sys,
     utils::ApduBufferRead,
 };
-
-// taken from app-ethereum implementation
-const TYPE_SIZE: usize = 1;
-const VERSION_SIZE: usize = 1;
-const NAME_LENGTH_SIZE: usize = 1;
-const HEADER_SIZE: usize = TYPE_SIZE + VERSION_SIZE + NAME_LENGTH_SIZE;
-const CHAIN_ID_SIZE: usize = 8;
-const KEY_ID_SIZE: usize = 1;
-const ALGORITHM_ID_SIZE: usize = 1;
-const SIGNATURE_LENGTH_SIZE: usize = 1;
-const MIN_DER_SIG_SIZE: usize = 67;
-const MAX_DER_SIG_SIZE: usize = 72;
-const TEST_NFT_METADATA_KEY: usize = 0;
-const PROD_NFT_METADATA_KEY: usize = 1;
-const ALGORITHM_ID_1: usize = 1;
-const TYPE_1: usize = 1;
-const VERSION_1: usize = 1;
 
 pub struct Info;
 
@@ -48,17 +32,13 @@ impl Info {
         // skip type and version
         let mut nft_info = MaybeUninit::uninit();
 
-        // omit type and version fields as for now it is not used
-        let offset = TYPE_SIZE + VERSION_SIZE;
-
-        _ = NftInfo::from_bytes_into(&input[offset..], &mut nft_info)
-            .map_err(|_| Error::DataInvalid)?;
+        _ = NftInfo::from_bytes_into(input, &mut nft_info).map_err(|_| Error::DataInvalid)?;
 
         let nft_info = unsafe { nft_info.assume_init() };
 
         // store the information use to parse erc721 token
         unsafe {
-            NFT_INFO.lock(Self)?.replace(nft_info);
+            NFT_INFO.lock(Sign)?.replace(nft_info);
         }
 
         Ok(())
@@ -72,7 +52,7 @@ impl ApduHandler for Info {
         tx: &mut u32,
         buffer: ApduBufferRead<'apdu>,
     ) -> Result<(), Error> {
-        sys::zemu_log_stack("EthSign::handle\x00");
+        sys::zemu_log_stack("NftInfoProvider::handle\x00");
 
         *tx = 0;
 
@@ -80,10 +60,6 @@ impl ApduHandler for Info {
         // it is arount 90 bytes length so It should error in case It received
         // less than that
         let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
-
-        if payload.len() <= HEADER_SIZE {
-            return Err(Error::WrongLength);
-        }
 
         Info::process(payload)?;
 

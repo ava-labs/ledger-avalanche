@@ -19,20 +19,24 @@ use nom::{bytes::complete::take, number::streaming::be_u64};
 use crate::{
     handlers::handle_ui_message,
     parser::{Address, FromBytes, ParserError, ADDRESS_LEN, COLLECTION_NAME_MAX_LEN},
-    utils::ApduPanic,
+    utils::{rs_strlen, ApduPanic},
 };
 use bolos::{pic_str, PIC};
 use zemu_sys::ViewError;
+
+// taken from app-ethereum implementation
+const TYPE_SIZE: usize = 1;
+const VERSION_SIZE: usize = 1;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct NftInfo {
     contract_address: [u8; ADDRESS_LEN],
+    // plus null terminator
     collection_name: [u8; COLLECTION_NAME_MAX_LEN + 1],
     // chain id is defined as a u64 value
     chain_id: u64,
-    name_len: u8,
 }
 
 impl NftInfo {
@@ -46,8 +50,10 @@ impl NftInfo {
     pub fn render_collection_name(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
         let not_found = pic_str!(b"Collection Name not provided?");
 
-        if self.name_len != 0 {
-            handle_ui_message(&self.collection_name[..], message, page)
+        let len = rs_strlen(&self.collection_name[..]);
+
+        if len > 0 {
+            handle_ui_message(&self.collection_name[..=len], message, page)
         } else {
             handle_ui_message(not_found, message, page)
         }
@@ -59,9 +65,17 @@ impl<'b> FromBytes<'b> for NftInfo {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        crate::sys::zemu_log_stack("NftInfo::from_bytes_into\x00");
+
+        // omit type and version fields as for now They are not used
+        let offset = TYPE_SIZE + VERSION_SIZE;
+
         if input.is_empty() {
             return Err(ParserError::UnexpectedBufferEnd.into());
         }
+
+        let input = &input[offset..];
+
         // get nft collection name
         let name_len = input[0] as usize;
         if name_len > COLLECTION_NAME_MAX_LEN {
@@ -87,7 +101,6 @@ impl<'b> FromBytes<'b> for NftInfo {
             let contract_address = &mut *addr_of_mut!((*out).contract_address);
             contract_address.copy_from_slice(address);
 
-            addr_of_mut!((*out).name_len).write(name_len as u8);
             addr_of_mut!((*out).chain_id).write(chain_id);
         }
 
