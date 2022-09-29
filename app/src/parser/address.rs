@@ -20,7 +20,7 @@ use crate::{
     constants::ASCII_HRP_MAX_SIZE,
     handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, ParserError},
-    utils::hex_encode,
+    utils::{hex_encode, ApduPanic},
 };
 use bolos::{pic_str, PIC};
 
@@ -117,5 +117,46 @@ impl<'a> DisplayableItem for Address<'a> {
         title[..title_content.len()].copy_from_slice(title_content);
 
         handle_ui_message(&addr[..len], message, page)
+    }
+}
+
+// ripemd160(sha256(compress(secp256k1.publicKey()))
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(test, derive(Debug))]
+pub struct OwnedAddress([u8; ADDRESS_LEN]);
+
+impl OwnedAddress {
+    pub fn raw_address(&self) -> &[u8] {
+        &self.0[..]
+    }
+
+    pub fn address(&self) -> Address<'_> {
+        let mut address = MaybeUninit::uninit();
+        _ = Address::from_bytes_into(&self.0[..], &mut address).apdu_unwrap();
+        unsafe { address.assume_init() }
+    }
+
+    pub fn render_eth_address(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
+        let address = self.address();
+        address.render_eth_address(message, page)
+    }
+}
+
+impl<'b> FromBytes<'b> for OwnedAddress {
+    #[inline(never)]
+    fn from_bytes_into(
+        input: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<&'b [u8], nom::Err<ParserError>> {
+        let (rem, addr) = take(ADDRESS_LEN)(input)?;
+        let addr = arrayref::array_ref!(addr, 0, ADDRESS_LEN);
+
+        //good ptr and no uninit reads
+        let out = out.as_mut_ptr();
+        unsafe {
+            (*out).0.copy_from_slice(addr);
+        }
+
+        Ok(rem)
     }
 }

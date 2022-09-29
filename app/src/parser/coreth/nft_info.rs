@@ -18,8 +18,8 @@ use nom::{bytes::complete::take, number::streaming::be_u64};
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{Address, FromBytes, ParserError, ADDRESS_LEN, COLLECTION_NAME_MAX_LEN},
-    utils::{rs_strlen, ApduPanic},
+    parser::{Address, FromBytes, OwnedAddress, ParserError, ADDRESS_LEN, COLLECTION_NAME_MAX_LEN},
+    utils::ApduPanic,
 };
 use bolos::{pic_str, PIC};
 use zemu_sys::ViewError;
@@ -32,20 +32,17 @@ const VERSION_SIZE: usize = 1;
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct NftInfo {
-    contract_address: [u8; ADDRESS_LEN],
+    contract_address: OwnedAddress,
     // plus null terminator
     collection_name: [u8; COLLECTION_NAME_MAX_LEN + 1],
-    // chain id is defined as a u64 value
+    // chain id is constd as a u64 value
     pub chain_id: u64,
     name_len: u8,
 }
 
 impl NftInfo {
     pub fn address(&self) -> Address<'_> {
-        let mut address = MaybeUninit::uninit();
-        // this wont fail as address was already parsed
-        _ = Address::from_bytes_into(&self.contract_address[..], &mut address).apdu_unwrap();
-        unsafe { address.assume_init() }
+        self.contract_address.address()
     }
 
     pub fn render_collection_name(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
@@ -77,7 +74,9 @@ impl<'b> FromBytes<'b> for NftInfo {
             return Err(ParserError::UnexpectedBufferEnd.into());
         }
 
-        let input = &input[offset..];
+        let input = input
+            .get(offset..)
+            .ok_or(ParserError::UnexpectedBufferEnd)?;
 
         // get nft collection name
         let name_len = input[0] as usize;
@@ -97,12 +96,12 @@ impl<'b> FromBytes<'b> for NftInfo {
         let (rem, chain_id) = be_u64(rem)?;
 
         let out = out.as_mut_ptr();
+        let mut owned = unsafe { &mut *addr_of_mut!((*out).contract_address).cast() };
+        _ = OwnedAddress::from_bytes_into(address, &mut owned)?;
 
         unsafe {
             let collection_name = &mut *addr_of_mut!((*out).collection_name);
             collection_name[..name.len()].copy_from_slice(name);
-            let contract_address = &mut *addr_of_mut!((*out).contract_address);
-            contract_address.copy_from_slice(address);
 
             addr_of_mut!((*out).name_len).write(name_len as u8);
             addr_of_mut!((*out).chain_id).write(chain_id);
