@@ -129,6 +129,8 @@ pub(crate) mod evm_instructions {
     #[cfg(feature = "blind-sign")]
     pub const INS_ETH_BLIND_SIGN: u8 = 0xF1;
     pub const INS_ETH_SIGN: u8 = 0x04;
+    pub const INS_SET_PLUGIN: u8 = 0x16;
+    pub const INS_PROVIDE_NFT_INFORMATION: u8 = 0x14;
     pub const INS_ETH_PROVIDE_ERC20: u8 = 0x0A;
 }
 

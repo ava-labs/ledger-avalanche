@@ -9,6 +9,16 @@ export const LAST_MESSAGE = 0x02;
 export const NEXT_MESSAGE = 0x03;
 export const HASH_LEN = 32;
 
+// the max collection len is set to 70-bytes 
+// lets decrease it to 50 to save some stack
+export const COLLECTION_NAME_MAX_LEN = 50;
+export const CHAIN_ID_SIZE = 8;
+export const CONTRACT_ADDRESS_LEN = 20;
+export const TYPE_1 = 1;
+export const VERSION_1 = 1;
+
+ 
+ 
 export const INS = {
   GET_VERSION: 0x00,
   WALLET_ID: 0x01,
@@ -17,6 +27,7 @@ export const INS = {
   SIGN_HASH: 0x04,
   SIGN: 0x05,
   SIGN_MSG: 0x06,
+  ETH_PROVIDE_NFT_INFO: 0x14,
 }
 
 export const PAYLOAD_TYPE = {

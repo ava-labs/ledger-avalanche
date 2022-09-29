@@ -40,6 +40,8 @@ pub enum ParserError {
     InvalidEthMessage,
     InvalidEthSelector,
     InvalidAssetCall,
+    NftInfoNotProvided,
+    InvalidContractAddress,
 }
 
 impl From<ErrorKind> for ParserError {

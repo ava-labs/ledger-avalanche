@@ -24,24 +24,27 @@ mod asset_call;
 mod contract_call;
 mod deploy;
 mod erc20;
+mod erc721;
 
 use super::native::parse_rlp_item;
 pub use asset_call::AssetCall;
 pub use contract_call::ContractCall;
 pub use deploy::Deploy;
 pub use erc20::ERC20;
+pub use erc721::{ERC721Info, ERC721};
 
+#[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the EthDataType tag
 #[cfg_attr(test, derive(Debug))]
-#[avalanche_app_derive::enum_init]
 pub enum EthData<'b> {
     None, // empty data
     Deploy(Deploy<'b>),
     AssetCall(AssetCall<'b>),
     Erc20(ERC20<'b>),
+    Erc721(ERC721<'b>),
     ContractCall(ContractCall<'b>),
 }
 
@@ -73,13 +76,12 @@ impl<'b> EthData<'b> {
                 if AssetCall::is_asset_call(to, data) {
                     Self::parse_asset_call(data, out)?
                 } else {
-                    //TODO: chain in a more concise way
-                    // a-la nom::branch::alt
-                    // we want to parse all known contract types one by one
-                    // and see what doesn't fail
-                    if let Err(_) = Self::parse_erc20(data, out) {
-                        Self::parse_contract_call(data, out)?
-                    }
+                    // chain contract parsing, prioritizing ERC-721
+                    // if it fails try ERC-20, otherwise default to
+                    // a generic contract call
+                    Self::parse_erc721(to, data, out)
+                        .or_else(|_| Self::parse_erc20(data, out))
+                        .or_else(|_| Self::parse_contract_call(data, out))?;
                 }
             }
         };
@@ -155,6 +157,28 @@ impl<'b> EthData<'b> {
         Ok(())
     }
 
+    fn parse_erc721(
+        contract_address: &Address<'b>,
+        data: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<(), ParserError> {
+        if data.is_empty() {
+            return Err(ParserError::NoData);
+        }
+
+        let out = out.as_mut_ptr() as *mut Erc721__Variant;
+
+        let erc721 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+        _ = ERC721::parse_into(contract_address, data, erc721)?;
+
+        //pointer is valid
+        unsafe {
+            addr_of_mut!((*out).0).write(EthData__Type::Erc721);
+        }
+
+        Ok(())
+    }
+
     fn parse_contract_call(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
         if data.is_empty() {
             return Err(ParserError::NoData);
@@ -182,6 +206,7 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::Deploy(d) => d.num_items(),
             Self::AssetCall(d) => d.num_items(),
             Self::Erc20(d) => d.num_items(),
+            Self::Erc721(d) => d.num_items(),
             Self::ContractCall(d) => d.num_items(),
         }
     }
@@ -198,6 +223,7 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::Deploy(d) => d.render_item(item_n, title, message, page),
             Self::AssetCall(d) => d.render_item(item_n, title, message, page),
             Self::Erc20(d) => d.render_item(item_n, title, message, page),
+            Self::Erc721(d) => d.render_item(item_n, title, message, page),
             Self::ContractCall(d) => d.render_item(item_n, title, message, page),
         }
     }

@@ -57,6 +57,18 @@ pub fn render_u256(
     handle_ui_message(out, message, page)
 }
 
+// Converts an slice of bytes in big-endian
+// to an u64 integer
+pub fn bytes_to_u64(input: &[u8]) -> Result<u64, ParserError> {
+    let mut raw = [0; U64_SIZE];
+
+    if input.len() <= U64_SIZE {
+        raw[U64_SIZE - input.len()..].copy_from_slice(input);
+        return Ok(u64::from_be_bytes(raw));
+    }
+    Err(ParserError::ValueOutOfRange)
+}
+
 /// Returns the remaining bytes from data along with the bytes
 /// representation of the found item
 pub fn parse_rlp_item(data: &[u8]) -> Result<(&[u8], &[u8]), nom::Err<ParserError>> {
@@ -141,12 +153,12 @@ impl EthTransaction__Type {
     }
 }
 
+#[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag
 #[cfg_attr(test, derive(Debug))]
-#[avalanche_app_derive::enum_init]
 pub enum EthTransaction<'b> {
     Legacy(Legacy<'b>),
     Eip1559(Eip1559<'b>),

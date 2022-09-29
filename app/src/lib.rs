@@ -17,7 +17,9 @@
 #![no_builtins]
 #![macro_use]
 // later we can rename enum_variant
-#![allow(clippy::enum_variant_names)]
+// we have some functions that we might use in the future
+// and some initializations that rust doesn't detect properly
+#![allow(clippy::enum_variant_names, dead_code)]
 
 extern crate no_std_compat as std;
 

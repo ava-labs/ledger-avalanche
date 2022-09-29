@@ -25,8 +25,8 @@ use crate::{
         handle_ui_message,
     },
     parser::{
-        intstr_to_fpstr_inplace, Address, DisplayableItem, EthData, FromBytes, ParserError,
-        ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
+        intstr_to_fpstr_inplace, Address, DisplayableItem, ERC721Info, EthData, FromBytes,
+        ParserError, ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
     },
     utils::ApduPanic,
 };
@@ -111,6 +111,16 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         let eth_data = unsafe { &*data_out.as_ptr() };
         if matches!(eth_data, EthData::AssetCall(..)) && !value.is_zero() {
             return Err(ParserError::InvalidAssetCall.into());
+        }
+
+        // check for erc721 call and chainID
+        let data = unsafe { &*data_out.as_ptr() };
+        if matches!(data, EthData::Erc721(..)) {
+            let chain_id = super::bytes_to_u64(id_bytes)?;
+            let contract_chain_id = ERC721Info::get_nft_info()?.chain_id;
+            if chain_id != contract_chain_id {
+                return Err(ParserError::InvalidAssetCall.into());
+            }
         }
 
         // access list
@@ -263,13 +273,20 @@ impl<'b> Eip1559<'b> {
     ) -> Result<u8, ViewError> {
         match item_n {
             0 => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
+                let content = pic_str!(b"Call");
+
+                handle_ui_message(content, message, page)
+            }
+            1 => {
                 let label = pic_str!(b"Transfer(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
                 render_u256(&self.value, WEI_AVAX_DIGITS, message, page)
             }
 
-            1 => {
+            2 => {
                 let label = pic_str!(b"To");
                 title[..label.len()].copy_from_slice(label);
 
@@ -279,8 +296,8 @@ impl<'b> Eip1559<'b> {
                     .apdu_unwrap()
                     .render_eth_address(message, page)
             }
-            2 => self.data.render_item(0, title, message, page),
-            3 => {
+            3 => self.data.render_item(0, title, message, page),
+            4 => {
                 let label = pic_str!(b"Maximun Fee(GWEI)");
                 title[..label.len()].copy_from_slice(label);
 
@@ -329,6 +346,44 @@ impl<'b> Eip1559<'b> {
         }
     }
 
+    #[inline(never)]
+    fn render_erc721_call(
+        &self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        let erc721 = match self.data {
+            EthData::Erc721(erc721) => erc721,
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        };
+
+        let num_items = erc721.num_items() as u8;
+
+        match item_n {
+            item_n @ 0.. if item_n < num_items => erc721.render_item(item_n, title, message, page),
+            x @ 0.. if x == num_items => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
+
+                // should not panic as address was check
+                self.to
+                    .as_ref()
+                    .apdu_unwrap()
+                    .render_eth_address(message, page)
+            }
+            x @ 0.. if x == num_items + 1 => {
+                let label = pic_str!(b"Maximun Fee(GWEI)");
+                title[..label.len()].copy_from_slice(label);
+
+                self.render_fee(message, page)
+            }
+
+            _ => Err(ViewError::NoData),
+        }
+    }
+
     fn render_fee(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
         let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 2];
 
@@ -353,10 +408,12 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + !self.value.is_empty() as usize,
             // asset items + fee
             EthData::AssetCall(d) => d.num_items() + 1,
-            // amount, address, fee and contract_data
-            EthData::ContractCall(d) => 1 + 1 + 1 + d.num_items(),
+            // description amount, address, fee and contract_data
+            EthData::ContractCall(d) => 1 + 1 + 1 + 1 + d.num_items(),
             // address, fee
             EthData::Erc20(d) => 1 + 1 + d.num_items(),
+            // address, fee
+            EthData::Erc721(d) => 1 + 1 + d.num_items(),
         }
     }
 
@@ -373,6 +430,7 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             EthData::AssetCall(..) => self.render_asset_call(item_n, title, message, page),
             EthData::ContractCall(..) => self.render_contract_call(item_n, title, message, page),
             EthData::Erc20(..) => self.render_erc20_call(item_n, title, message, page),
+            EthData::Erc721(..) => self.render_erc721_call(item_n, title, message, page),
         }
     }
 }
@@ -384,30 +442,18 @@ mod tests {
     #[test]
     fn parse_eip1559() {
         // market..
-        let data = "02f9018a82a868808506fc23ac008506fc23ac008316e3608080b90170608060405234801561001057600080fd5b50610150806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100d9565b60405180910390f35b610073600480360381019061006e919061009d565b61007e565b005b60008054905090565b8060008190555050565b60008135905061009781610103565b92915050565b6000602082840312156100b3576100b26100fe565b5b60006100c184828501610088565b91505092915050565b6100d3816100f4565b82525050565b60006020820190506100ee60008301846100ca565b92915050565b6000819050919050565b600080fd5b61010c816100f4565b811461011757600080fd5b5056fea2646970667358221220404e37f487a89a932dca5e77faaf6ca2de3b991f93d230604b1b8daaef64766264736f6c63430008070033c0";
+        let data = "02f871018347eae184773594008517bfac7c008303291894dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000bb98f2a83d78310342da3e63278ce7515d52619d00000000000000000000000000000000000000000000000000000006e0456cd0c0";
         let data = hex::decode(data).unwrap();
 
         // remove the transaction type and get the transaction bytes as
         // data = 2 + rlp([tx_bytes])
         let (_, tx_bytes) = parse_rlp_item(&data[1..]).unwrap();
 
-        let (_, tx) = Eip1559::from_bytes(&tx_bytes).unwrap();
+        let (_, tx) = Eip1559::from_bytes(tx_bytes).unwrap();
 
-        assert!(tx.to.is_none());
-
-        assert!(tx.nonce.is_empty());
-        assert_eq!(
-            &1500000u64.to_be_bytes()[8 - tx.gas_limit.len()..],
-            &*tx.gas_limit
-        );
-        assert_eq!(
-            &30000000000u64.to_be_bytes()[8 - tx.max_fee.len()..],
-            &*tx.max_fee
-        );
-        assert_eq!(
-            &30000000000u64.to_be_bytes()[8 - tx.priority_fee.len()..],
-            &*tx.priority_fee
-        );
+        assert_eq!(&[3, 41, 24], &*tx.gas_limit);
+        assert_eq!(&[23, 191, 172, 124, 0], &*tx.max_fee);
+        assert_eq!(&[119, 53, 148, 0], &*tx.priority_fee);
 
         assert_eq!(0, tx.value.len());
     }

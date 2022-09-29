@@ -22,11 +22,11 @@ use bolos::{
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, APDU_MIN_LENGTH, MAX_BIP32_PATH_DEPTH},
+    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
-    handlers::resources::{BUFFER, PATH},
-    parser::{DisplayableItem, EthTransaction, FromBytes},
+    handlers::resources::{BUFFER, NFT_INFO, PATH},
+    parser::{DisplayableItem, ERC721Info, EthTransaction, FromBytes},
     sys,
     utils::ApduBufferRead,
 };
@@ -70,6 +70,11 @@ impl Sign {
 
     #[inline(never)]
     pub fn start_sign(txdata: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
+        // The ERC721 parser might need access to the NFT_INFO resource
+        // also during the review part
+        _ = unsafe { NFT_INFO.lock(ERC721Info) };
+
+        // now parse the transaction
         let mut tx = MaybeUninit::uninit();
         let rem =
             EthTransaction::from_bytes_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
@@ -118,13 +123,7 @@ impl ApduHandler for Sign {
         match packet_type {
             //init
             0x00 => {
-                //we can't use .payload here since it's not prefixed with the length
-                // of the payload
-                let apdu_buffer = buffer.write();
-                let payload = &apdu_buffer
-                    .get(APDU_MIN_LENGTH as usize..)
-                    .ok_or(Error::DataInvalid)?;
-
+                let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
                 //parse path to verify it's the data we expect
                 let (rest, bip32_path) =
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
@@ -135,7 +134,6 @@ impl ApduHandler for Sign {
 
                 //parse the length of the RLP message
                 let (read, to_read) = get_tx_rlp_len(rest)?;
-
                 let len = core::cmp::min(to_read as usize + read, rest.len());
 
                 //write the rest to the swapping buffer so we persist this data
@@ -158,12 +156,7 @@ impl ApduHandler for Sign {
             }
             //next
             0x80 => {
-                //we can't use .payload here since it's not prefixed with the length
-                // of the payload
-                let apdu_buffer = buffer.write();
-                let payload = &apdu_buffer
-                    .get(APDU_MIN_LENGTH as usize..)
-                    .ok_or(Error::DataInvalid)?;
+                let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
 
                 let buffer = unsafe { BUFFER.acquire(Self)? };
 
@@ -302,6 +295,15 @@ fn cleanup_globals() -> Result<(), Error> {
 
             //let's release the lock for the future
             let _ = BUFFER.release(Sign);
+        }
+
+        // Forcefully acquire the resource as it is not longer in use
+        // transaction was rejected.
+        if let Ok(info) = NFT_INFO.lock(Sign) {
+            info.take();
+
+            //let's release the lock for the future
+            let _ = NFT_INFO.release(Sign);
         }
     }
 

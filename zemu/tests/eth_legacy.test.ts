@@ -17,6 +17,7 @@
 import Zemu from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions, models, enableBlindSigning } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
+import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { Transaction, FeeMarketEIP1559Transaction } from "@ethereumjs/tx"; 
 import Common from '@ethereumjs/common'
 import { bnToRlp, rlp } from "ethereumjs-util";
@@ -24,20 +25,33 @@ import { ec } from 'elliptic'
 const BN = require('bn.js');
 
 
+type NftInfo = {
+    token_address: string,
+    token_name: string,
+    chain_id: number,
+}
+
+type TestData = {
+    name: string,
+    op: Buffer,
+    nft_info: NftInfo | undefined
+}
 const SIGN_TEST_DATA = [
   {
     name: 'basic_transfer',
     op: {
         value: 'abcdef00',
         to: 'df073477da421520cf03af261b782282c304ad66',
-    } 
+    }, 
+    nft_info: undefined,
   },
   {
     name: 'legacy_contract_deploy',
     op: {
         value: 'abcdef00',
         data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-    } 
+    }, 
+    nft_info: undefined,
   },
   {
     name: 'legacy_contract_call',
@@ -45,7 +59,8 @@ const SIGN_TEST_DATA = [
         to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
         value: 'abcdef00',
         data: 'ee919d500000000000000000000000000000000000000000000000000000000000000001',
-    } 
+    }, 
+    nft_info: undefined,
   },
   {
     name: 'erc20_transfer',
@@ -54,16 +69,32 @@ const SIGN_TEST_DATA = [
         to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
         value: '0',
         data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
-    } 
+    }, 
+    nft_info: undefined,
   },
   {
-    name: 'erc20_approve',
+    name: 'pangolin_contract_call',
+    op: {
+        // Pangolin AVAX/DAI swap 2
+        to: '62650ae5c5777d1660cc17fcd4f550000eacdfa0',
+        value: '0',
+        data: '8a657e670000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000c7b9b39ab3081ac34fc4324e3f648b55528871970000000000000000000000000000000000000000000000000000017938e114be0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b31f66aa3c1e785363f0875a1b74e27b85fd66c7000000000000000000000000ba7deebbfc5fa1100fb055a87773e1e99cd3507a',
+    }, 
+    nft_info: undefined,
+  },
+  {
+    name: 'erc721_approve',
     op: {
         // this is not probably the contract address but lets use it
         to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
         value: '0',
         data: '095ea7b30000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
-    } 
+    }, 
+    nft_info: {
+      token_address: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+      token_name: 'Unknown',
+      chain_id: 43112,
+    },
   },
 ]
 
@@ -80,7 +111,7 @@ const rawUnsignedLegacyTransaction = (params: any, chainId=43112) => {
 
     const common = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId });
 
-    //// legacy
+    // legacy
     const tx = Transaction.fromTxData(txParams, {common})
 
     return rlp.encode([
@@ -118,14 +149,20 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
-      const app = new Eth(sim.getTransport())
+      const app = new AvalancheApp(sim.getTransport())
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
 
       const currentScreen = sim.snapshot()
       const msg = rawUnsignedLegacyTransaction(data.op);
 
-      const respReq = app.signTransaction(ETH_DERIVATION, msg.toString('hex'), null)
+      const nft = data.nft_info
+      if (nft !== undefined) {
+          const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
+          expect(provide_resp.returnCode).toEqual(0x9000)
+      }
+
+      const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
@@ -138,7 +175,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       expect(resp).toHaveProperty('v')
 
       //Verify signature
-     const resp_addr = await app.getAddress(ETH_DERIVATION, false)
+     const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
 
       const EC = new ec("secp256k1");
       const sha3 = require('js-sha3');

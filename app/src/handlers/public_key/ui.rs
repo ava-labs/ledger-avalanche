@@ -74,13 +74,13 @@ impl<'ui> AddrUIInitializer<'ui> {
     }
 
     /// Produce the closure to initialize a key
-    pub fn key_initializer<'p, const B: usize>(
-        path: &'p BIP32Path<B>,
+    pub fn key_initializer<const B: usize>(
+        path: &'_ BIP32Path<B>,
     ) -> impl FnOnce(
         &mut MaybeUninit<crypto::PublicKey>,
         Option<&mut [u8; CHAIN_CODE_LEN]>,
     ) -> Result<(), AddrUIInitError>
-           + 'p {
+           + '_ {
         move |key, cc| {
             GetPublicKey::new_key_into(path, key, cc).map_err(|_| AddrUIInitError::KeyInitError)
         }
@@ -358,7 +358,7 @@ mod tests {
     }
 
     fn test_chain_alias(alias: Option<&str>, chain_code: Option<&[u8; 32]>) {
-        let chain_code = chain_code.unwrap_or(GetPublicKey::default_chainid());
+        let chain_code = chain_code.unwrap_or_else(|| GetPublicKey::default_chainid());
         let ui = AddrUI::new(path(), chain_code, GetPublicKey::DEFAULT_HRP);
 
         //construct the expected message

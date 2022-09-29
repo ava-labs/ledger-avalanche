@@ -54,7 +54,7 @@ impl<'b> BorrowedU256<'b> {
     }
 
     /// Retrieve the underlying u256
-    pub fn to_u256(&self) -> u256 {
+    pub fn as_u256(&self) -> u256 {
         u256::pic_from_big_endian()(self.0)
     }
 
@@ -177,12 +177,7 @@ impl u256 {
     #[inline]
     fn fits_word(&self) -> bool {
         let &u256(ref arr) = self;
-        for i in 1..4 {
-            if arr[i] != 0 {
-                return false;
-            }
-        }
-        true
+        arr.iter().take(4).skip(1).all(|n| *n == 0)
     }
 
     /// Return the least number of bits needed to represent the number
@@ -251,7 +246,7 @@ impl u256 {
 
     /// Write to the slice in big-endian format.
     #[inline]
-    pub fn to_big_endian(&self, bytes: &mut [u8]) {
+    pub fn as_big_endian(&self, bytes: &mut [u8]) {
         use byteorder::{BigEndian, ByteOrder};
         if 4 * 8 != bytes.len() {
             panic!("assertion failed: 4 * 8 == bytes.len()")
@@ -264,7 +259,7 @@ impl u256 {
 
     /// Write to the slice in little-endian format.
     #[inline]
-    pub fn to_little_endian(&self, bytes: &mut [u8]) {
+    pub fn as_little_endian(&self, bytes: &mut [u8]) {
         use byteorder::{ByteOrder, LittleEndian};
         if 4 * 8 != bytes.len() {
             panic!("assertion failed: 4 * 8 == bytes.len()")
@@ -322,12 +317,12 @@ impl u256 {
             panic!("assertion failed: shift < Self::WORD_BITS as u32")
         };
         let mut res = Self::zero();
-        for i in 0..4 {
-            res.0[i] = u[i] >> shift;
+        for (i, u) in u.iter().enumerate().take(4) {
+            res.0[i] = u >> shift;
         }
         if shift > 0 {
-            for i in 1..=4 {
-                res.0[i - 1] |= u[i] << (Self::WORD_BITS as u32 - shift);
+            for (i, u) in u.iter().enumerate().skip(1) {
+                res.0[i - 1] |= u << (Self::WORD_BITS as u32 - shift);
             }
         }
         res
@@ -352,6 +347,7 @@ impl u256 {
     }
 
     fn div_mod_knuth(self, mut v: Self, n: usize, m: usize) -> (Self, Self) {
+        #![allow(clippy::nonminimal_bool)]
         if !(self.bits() >= v.bits() && !v.fits_word()) {
             panic!("assertion failed: self.bits() >= v.bits() && !v.fits_word()",)
         }
@@ -788,7 +784,7 @@ impl u256 {
                             *existing_low = low;
                             o
                         };
-                        carry = {
+                        _ = {
                             let existing_hi = &mut ret[i + j + 1];
                             let hi = hi + overflow as u64;
                             let (hi, o0) = hi.overflowing_add(carry);
@@ -876,7 +872,7 @@ impl u256 {
                                 *existing_low = low;
                                 o
                             };
-                            carry = {
+                            _ = {
                                 let existing_hi = &mut ret[i + j + 1];
                                 let hi = hi + overflow as u64;
                                 let (hi, o0) = hi.overflowing_add(carry);
@@ -965,7 +961,7 @@ impl u256 {
                                 *existing_low = low;
                                 o
                             };
-                            carry = {
+                            _ = {
                                 let existing_hi = &mut ret[i + j + 1];
                                 let hi = hi + overflow as u64;
                                 let (hi, o0) = hi.overflowing_add(carry);
@@ -1054,7 +1050,7 @@ impl u256 {
                                 *existing_low = low;
                                 o
                             };
-                            carry = {
+                            _ = {
                                 let existing_hi = &mut ret[i + j + 1];
                                 let hi = hi + overflow as u64;
                                 let (hi, o0) = hi.overflowing_add(carry);
@@ -1246,7 +1242,7 @@ impl u256 {
 impl From<u256> for [u8; 4 * 8] {
     fn from(number: u256) -> Self {
         let mut arr = [0u8; 4 * 8];
-        number.to_big_endian(&mut arr);
+        number.as_big_endian(&mut arr);
         arr
     }
 }
@@ -1569,10 +1565,8 @@ impl u256 {
     #[inline]
     pub fn as_u128(&self) -> u128 {
         let &u256(ref arr) = self;
-        for i in 2..4 {
-            if arr[i] != 0 {
-                panic!("Integer overflow when casting to u128");
-            }
+        if arr.iter().take(4).skip(2).any(|n| *n != 0) {
+            panic!("Integer overflow when casting to u128");
         }
         self.low_u128()
     }

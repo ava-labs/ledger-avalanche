@@ -16,7 +16,9 @@
 
 pub mod blind_signing;
 pub mod provide_erc20;
+pub mod provide_nft_info;
 pub mod public_key;
+pub mod set_plugin;
 pub mod signing;
 
 mod utils {
@@ -72,7 +74,7 @@ mod utils {
         let marker = *data.get(0).ok_or(Error::DataInvalid)?;
 
         match marker {
-            slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xBF)),
+            slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xC0)),
             list @ 0xF8.. => {
                 // For lists longer than 55 bytes the length is encoded
                 // differently.
