@@ -19,7 +19,7 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
-use crate::parser::{DisplayableItem, FromBytes, ParserError};
+use crate::parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -61,6 +61,16 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
 
         // access list
         let (rem, access_list) = parse_rlp_item(rem)?;
+
+        // check for erc721 call and chainID
+        let base = unsafe { &*data_out.as_ptr() };
+        if matches!(base.data, EthData::Erc721(..)) {
+            let chain_id = super::bytes_to_u64(id_bytes)?;
+            let contract_chain_id = ERC721Info::get_nft_info()?.chain_id;
+            if chain_id != contract_chain_id {
+                return Err(ParserError::InvalidAssetCall.into());
+            }
+        }
 
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);

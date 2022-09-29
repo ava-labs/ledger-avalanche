@@ -31,7 +31,7 @@ pub use asset_call::AssetCall;
 pub use contract_call::ContractCall;
 pub use deploy::Deploy;
 pub use erc20::ERC20;
-pub use erc721::ERC721;
+pub use erc721::{ERC721Info, ERC721};
 
 #[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -79,7 +79,7 @@ impl<'b> EthData<'b> {
                     // chain contract parsing, prioritizing ERC-721
                     // if it fails try ERC-20, otherwise default to
                     // a generic contract call
-                    Self::parse_erc721(data, out)
+                    Self::parse_erc721(to, data, out)
                         .or_else(|_| Self::parse_erc20(data, out))
                         .or_else(|_| Self::parse_contract_call(data, out))?;
                 }
@@ -157,7 +157,11 @@ impl<'b> EthData<'b> {
         Ok(())
     }
 
-    fn parse_erc721(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
+    fn parse_erc721(
+        contract_address: &Address<'b>,
+        data: &'b [u8],
+        out: &mut MaybeUninit<Self>,
+    ) -> Result<(), ParserError> {
         if data.is_empty() {
             return Err(ParserError::NoData);
         }
@@ -165,7 +169,7 @@ impl<'b> EthData<'b> {
         let out = out.as_mut_ptr() as *mut Erc721__Variant;
 
         let erc721 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-        _ = ERC721::parse_into(data, erc721)?;
+        _ = ERC721::parse_into(contract_address, data, erc721)?;
 
         //pointer is valid
         unsafe {

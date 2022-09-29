@@ -4,9 +4,9 @@ expression: reduced
 input_file: app/src/parser/coreth/eth_testvectors/usdt_approve.json
 ---
 [
-    "ERC-721": "approve",
-    "Allow": "0x945de0f44ca827bf03f87a87985bf08669050c73",
-    "To Manage": "111111tHGqB74zfBw5NwY6WP9WR8yztRqcZJcvCpNSAchnN",
+    "ERC-20": "approve",
+    "To": "0x945de0f44ca827bf03f87a87985bf08669050c73",
+    "Amount": "411256436224324320870982430867023952481793415358246197461731293",
     "Contract": "0xdac17f958d2ee523a2206206994597c13d831ec7",
     "Maximun Fee(GWEI)": "256874.44874",
 ]

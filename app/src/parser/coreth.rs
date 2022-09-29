@@ -21,6 +21,8 @@ pub mod data;
 pub mod export_tx;
 pub mod import_tx;
 pub mod native;
+pub mod nft_info;
 
 pub use data::*;
 pub use native::*;
+pub use nft_info::*;

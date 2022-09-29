@@ -21,19 +21,48 @@ use nom::{bytes::complete::take, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
-    handlers::handle_ui_message,
-    parser::{Address, AssetId, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN, ETH_ARG_LEN},
+    handlers::{handle_ui_message, resources::NFT_INFO},
+    parser::{
+        Address, AssetId, DisplayableItem, FromBytes, NftInfo, ParserError, ADDRESS_LEN,
+        ETH_ARG_LEN,
+    },
+    utils::ApduPanic,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
-pub struct BaseTransferFrom<'b> {
+pub struct ERC721Info;
+
+impl ERC721Info {
+    pub fn get_nft_info() -> Result<&'static NftInfo, ParserError> {
+        match unsafe { NFT_INFO.acquire(Self) } {
+            Ok(Some(some)) => Ok(some),
+            _ => Err(ParserError::NftInfoNotProvided),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn set_info(info: NftInfo) -> Result<(), ParserError> {
+        // store the information use to parse erc721 token
+        unsafe {
+            NFT_INFO
+                .lock(Self)
+                .map_err(|_| ParserError::UnexpectedError)?
+                .replace(info);
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(test, derive(Debug))]
+pub struct BaseTransfer<'b> {
     to: Address<'b>,
     from: Address<'b>,
     asset_id: AssetId<'b>,
 }
 
-impl<'b> DisplayableItem for BaseTransferFrom<'b> {
+impl<'b> DisplayableItem for BaseTransfer<'b> {
     fn num_items(&self) -> usize {
         3
     }
@@ -45,20 +74,22 @@ impl<'b> DisplayableItem for BaseTransferFrom<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        // valid as at this point it was checked
+        let nft_info = ERC721Info::get_nft_info().apdu_unwrap();
+
         match item_n {
             0 => {
-                let label = pic_str!(b"From");
-                title[..label.len()].copy_from_slice(label);
-
-                // should not panic as address was check
-                self.from.render_eth_address(message, page)
-            }
-            1 => {
                 let label = pic_str!(b"To");
                 title[..label.len()].copy_from_slice(label);
 
                 // should not panic as address was check
                 self.to.render_eth_address(message, page)
+            }
+            1 => {
+                let label = pic_str!(b"Collection Name");
+                title[..label.len()].copy_from_slice(label);
+
+                nft_info.render_collection_name(message, page)
             }
             2 => {
                 let label = pic_str!(b"TokenID");
@@ -74,7 +105,7 @@ impl<'b> DisplayableItem for BaseTransferFrom<'b> {
     }
 }
 
-impl<'b> FromBytes<'b> for BaseTransferFrom<'b> {
+impl<'b> FromBytes<'b> for BaseTransfer<'b> {
     fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
@@ -112,7 +143,7 @@ impl<'b> FromBytes<'b> for BaseTransferFrom<'b> {
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct TransferFrom<'b> {
-    base: BaseTransferFrom<'b>,
+    base: BaseTransfer<'b>,
 }
 
 impl<'b> TransferFrom<'b> {
@@ -131,7 +162,7 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
 
         // base items
         let base = unsafe { &mut *addr_of_mut!((*out).base).cast() };
-        let rem = BaseTransferFrom::from_bytes_into(input, base)?;
+        let rem = BaseTransfer::from_bytes_into(input, base)?;
 
         Ok(rem)
     }
@@ -142,7 +173,7 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct SafeTransferFrom<'b> {
-    base: BaseTransferFrom<'b>,
+    base: BaseTransfer<'b>,
     data: &'b [u8],
 }
 
@@ -164,7 +195,7 @@ impl<'b> FromBytes<'b> for SafeTransferFrom<'b> {
 
         // base items
         let base = unsafe { &mut *addr_of_mut!((*out).base).cast() };
-        let rem = BaseTransferFrom::from_bytes_into(input, base)?;
+        let rem = BaseTransfer::from_bytes_into(input, base)?;
 
         // data is the remaining bytes
         unsafe {
@@ -302,12 +333,23 @@ impl<'b> ERC721<'b> {
         }
     }
 
-    pub fn parse_into(data: &'b [u8], output: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
+    pub fn parse_into(
+        contract_address: &Address<'b>,
+        data: &'b [u8],
+        output: &mut MaybeUninit<Self>,
+    ) -> Result<(), ParserError> {
         // a call data regarless the contract, consists of
         // - 4-bytes selector that are the first bytes
         // of the sha3("method_signature")
         // - a list or arguments, which can be empty,
         // each argument should be 32-bytes len.
+
+        // Check the required information to parse this data was provided
+        let nft_info = ERC721Info::get_nft_info()?;
+
+        if contract_address != &nft_info.address() {
+            return Err(ParserError::InvalidContractAddress);
+        }
 
         // get selector
         let (rem, selector) = be_u32(data)?;
@@ -387,28 +429,6 @@ impl<'b> ERC721<'b> {
             x @ 0.. if x < this.base.num_items() as u8 => {
                 this.base.render_item(item_n, title, message, page)
             }
-            3 if !this.data.is_empty() => {
-                let label = pic_str!(b"Extra Data");
-                title[..label.len()].copy_from_slice(label);
-
-                let prefix = pic_str!(b"0x"!);
-                let suffix = pic_str!(b"...");
-                let mut output = [0; SafeTransferFrom::CALL_DATA_PREVIEW_LEN * 2 + 2 + 4];
-                output[..prefix.len()].copy_from_slice(&prefix[..]);
-                let mut sz = prefix.len();
-
-                let mut len = SafeTransferFrom::CALL_DATA_PREVIEW_LEN;
-                if this.data.len() < SafeTransferFrom::CALL_DATA_PREVIEW_LEN {
-                    len = this.data.len();
-                }
-
-                sz += hex_encode(&this.data[..len], &mut output[prefix.len()..])
-                    .map_err(|_| ViewError::Unknown)?;
-                output[sz..sz + suffix.len()].copy_from_slice(&suffix[..]);
-                sz += suffix.len();
-
-                handle_ui_message(&output[..sz], message, page)
-            }
             _ => Err(ViewError::NoData),
         }
     }
@@ -420,6 +440,9 @@ impl<'b> ERC721<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        // this wont panic as it was checked at parsing
+        let nft_info = ERC721Info::get_nft_info().apdu_unwrap();
+
         match item_n {
             0 => {
                 let label = pic_str!(b"Allow");
@@ -429,10 +452,14 @@ impl<'b> ERC721<'b> {
                 this.controller.render_eth_address(message, page)
             }
             1 => {
-                let label = pic_str!(b"To Manage");
-
+                let label = pic_str!(b"To Manage your");
+                title[..label.len()].copy_from_slice(label);
+                nft_info.render_collection_name(message, page)
+            }
+            2 => {
                 let res = this.asset_id.render_item(0, title, message, page);
                 // Chanche title from Asse to Token
+                let label = pic_str!(b"TokenID");
                 title.iter_mut().for_each(|v| *v = 0);
                 title[..label.len()].copy_from_slice(label);
                 res
@@ -448,6 +475,9 @@ impl<'b> ERC721<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        // valid as at this point it was checked
+        let nft_info = ERC721Info::get_nft_info().apdu_unwrap();
+
         match item_n {
             0 => {
                 let allow = pic_str!(b"Allow");
@@ -461,6 +491,11 @@ impl<'b> ERC721<'b> {
                 // should not panic as address was check
                 this.controller.render_eth_address(message, page)
             }
+            1 => {
+                let label = pic_str!(b"To Manage ALL");
+                title[..label.len()].copy_from_slice(label);
+                nft_info.render_collection_name(message, page)
+            }
             _ => Err(ViewError::NoData),
         }
     }
@@ -470,9 +505,9 @@ impl<'b> DisplayableItem for ERC721<'b> {
     fn num_items(&self) -> usize {
         1 + match self {
             ERC721::TransferFrom(t) => t.base.num_items(),
-            ERC721::SafeTransferFrom(t) => t.base.num_items() + !t.data.is_empty() as usize,
-            ERC721::Approve(_) => 2,
-            ERC721::ApprovalForAll(_) => 1,
+            ERC721::SafeTransferFrom(t) => t.base.num_items(),
+            ERC721::Approve(_) => 3,
+            ERC721::ApprovalForAll(_) => 2,
         }
     }
 

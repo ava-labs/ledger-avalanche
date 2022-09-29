@@ -46,13 +46,15 @@ pub const EVM_IMPORT_TX: u32 = 0x00000000;
 pub const EVM_EXPORT_TX: u32 = 0x00000001;
 pub const EIP1559_TX: u8 = 0x02;
 pub const EIP2930_TX: u8 = 0x01;
-pub const ETH_SELECTOR_LEN: usize = 4;
 pub const ETH_ARG_LEN: usize = 32;
 // The number of bytes to be shown
 // when rendering the contract data
 // It is cropped as this data can be
 // very large.
 pub const DEPLOY_DATA_PREVIEW_LEN: usize = 30;
+// taken from app-ethereum where its value is 70
+// but we reduce it to 50 to save some bytes
+pub const COLLECTION_NAME_MAX_LEN: usize = 50;
 
 //Avax units
 pub const NANO_AVAX_DECIMAL_DIGITS: usize = 9;

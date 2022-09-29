@@ -19,7 +19,11 @@ use core::hint::unreachable_unchecked;
 use crate::constants::{evm_instructions::*, instructions::*, ApduError};
 
 use crate::handlers::{
-    eth::{provide_erc20::ProvideERC20, public_key::GetPublicKey as GetEthPublicKey},
+    eth::{
+        provide_erc20::ProvideERC20, provide_nft_info::Info as NftProvider,
+        public_key::GetPublicKey as GetEthPublicKey, set_plugin::SetPlugin,
+        signing::Sign as EthSign,
+    },
     public_key::{GetExtendedPublicKey, GetPublicKey},
     version::GetVersion,
     wallet_id::WalletId,
@@ -28,7 +32,6 @@ use crate::handlers::{
 #[cfg(feature = "blind-sign")]
 use crate::handlers::{
     avax::blind_signing::BlindSign as AvaxBlindSign, eth::blind_signing::BlindSign as EthBlindSign,
-    eth::signing::Sign as EthSign,
 };
 
 use crate::handlers::avax::{
@@ -78,7 +81,9 @@ pub fn apdu_dispatch<'apdu>(
         (CLA, INS_SIGN_MSG) => AvaxSignMsg::handle(flags, tx, apdu_buffer),
 
         (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_SET_PLUGIN) => SetPlugin::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_PROVIDE_ERC20) => ProvideERC20::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_PROVIDE_NFT_INFORMATION) => NftProvider::handle(flags, tx, apdu_buffer),
         #[cfg(feature = "blind-sign")]
         (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_SIGN) => EthSign::handle(flags, tx, apdu_buffer),
