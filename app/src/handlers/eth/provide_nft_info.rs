@@ -17,10 +17,10 @@ use core::mem::MaybeUninit;
 
 use super::signing::Sign;
 use crate::{
-    constants::{ApduError as Error, APDU_MIN_LENGTH, MAX_BIP32_PATH_DEPTH},
+    constants::ApduError as Error,
     dispatcher::ApduHandler,
     handlers::resources::NFT_INFO,
-    parser::{ERC721Info, FromBytes, NftInfo},
+    parser::{FromBytes, NftInfo},
     sys,
     utils::ApduBufferRead,
 };
@@ -48,7 +48,7 @@ impl Info {
 impl ApduHandler for Info {
     #[inline(never)]
     fn handle<'apdu>(
-        flags: &mut u32,
+        _flags: &mut u32,
         tx: &mut u32,
         buffer: ApduBufferRead<'apdu>,
     ) -> Result<(), Error> {

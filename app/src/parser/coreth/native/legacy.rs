@@ -111,7 +111,7 @@ mod tests {
         let data = hex::decode(data).unwrap();
 
         let (_, bytes) = parse_rlp_item(&data).unwrap();
-        let (_, tx) = Legacy::from_bytes(bytes).unwrap();
+        let (_, _tx) = Legacy::from_bytes(bytes).unwrap();
     }
 
     #[test]
@@ -121,7 +121,7 @@ mod tests {
 
         // get transaction bytes
         let (_, bytes) = parse_rlp_item(&bytes).unwrap();
-        let (_, tx) = Legacy::from_bytes(&bytes).unwrap();
+        let (_, tx) = Legacy::from_bytes(bytes).unwrap();
 
         assert!(tx.base.to.is_none());
         assert!(matches!(tx.base.data, EthData::Deploy(..)));
@@ -138,7 +138,7 @@ mod tests {
 
         // get transaction bytes
         let (_, bytes) = parse_rlp_item(&bytes).unwrap();
-        let (_, tx) = Legacy::from_bytes(&bytes).unwrap();
+        let (_, tx) = Legacy::from_bytes(bytes).unwrap();
 
         if let EthData::AssetCall(c) = tx.base.data {
             assert_eq!(&address[..], c.address.raw_address());
@@ -158,7 +158,7 @@ mod tests {
 
         // get transaction bytes
         let (_, bytes) = parse_rlp_item(&bytes).unwrap();
-        let (_, tx) = Legacy::from_bytes(&bytes).unwrap();
+        let (_, tx) = Legacy::from_bytes(bytes).unwrap();
 
         if let EthData::AssetCall(c) = tx.base.data {
             assert_eq!(&address[..], c.address.raw_address());

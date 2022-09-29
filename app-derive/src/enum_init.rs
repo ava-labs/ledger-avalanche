@@ -178,7 +178,7 @@ fn create_variant_struct_for_unnamed(type_enum: &Ident, name: &Ident, inner: &Fi
         ..
     } = inner;
 
-    let generics = GenericArgumentsCollector::traverse_type(&inner_ty, None)
+    let generics = GenericArgumentsCollector::traverse_type(inner_ty, None)
         .generics
         .into_iter()
         .fold_punctuate::<Token![,]>();
@@ -215,10 +215,9 @@ fn create_data_struct_for_named(
 ) -> ItemStruct {
     let mut generics = fields
         .iter()
-        .map(|Field { ty: inner_ty, .. }| {
-            GenericArgumentsCollector::traverse_type(&inner_ty, filter_generics.to_vec()).generics
+        .flat_map(|Field { ty: inner_ty, .. }| {
+            GenericArgumentsCollector::traverse_type(inner_ty, filter_generics.to_vec()).generics
         })
-        .flatten()
         .collect::<Vec<_>>();
 
     //remove duplicated, like multiple instances of the same lifetime

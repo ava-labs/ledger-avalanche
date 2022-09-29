@@ -449,7 +449,7 @@ mod tests {
         // data = 2 + rlp([tx_bytes])
         let (_, tx_bytes) = parse_rlp_item(&data[1..]).unwrap();
 
-        let (_, tx) = Eip1559::from_bytes(&tx_bytes).unwrap();
+        let (_, tx) = Eip1559::from_bytes(tx_bytes).unwrap();
 
         assert_eq!(&[3, 41, 24], &*tx.gas_limit);
         assert_eq!(&[23, 191, 172, 124, 0], &*tx.max_fee);

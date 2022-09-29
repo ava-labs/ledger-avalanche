@@ -101,17 +101,19 @@ fn p_create_chain() {
     verifications
         .into_iter()
         .filter(|(_, v)| !v)
-        .inspect(|_| counter += 1)
-        .for_each(|(signer, v)| match v {
-            true => unreachable!(),
-            false => eprintln!("{} verification ok!", signer),
+        .for_each(|(signer, v)| {
+            counter += 1;
+            match v {
+                true => unreachable!(),
+                false => eprintln!("{} verification ok!", signer),
+            }
         });
 
     assert_eq!(counter, 0, "verification failed")
 }
 
 fn p_create_chain_inner(signers: &[[u32; 2]]) -> HashMap<String, bool> {
-    const ROOT: [u32; 3] = [0x8000_0000 + 44, 0x8000_0000 + 9000, 0x8000_0000 + 0];
+    const ROOT: [u32; 3] = [0x8000_0000 + 44, 0x8000_0000 + 9000, 0];
 
     let op = AvaxSign::new(ROOT, signers, P_CREATE_CHAIN, &[]);
 

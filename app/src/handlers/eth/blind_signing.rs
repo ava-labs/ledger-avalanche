@@ -22,7 +22,7 @@ use bolos::{
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::{ApduError as Error, APDU_MIN_LENGTH, MAX_BIP32_PATH_DEPTH},
+    constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::{

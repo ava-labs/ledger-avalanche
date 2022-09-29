@@ -249,7 +249,7 @@ impl<'b> ERC20<'b> {
                 title[..label.len()].copy_from_slice(label);
 
                 let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 1];
-                let bytes = value.to_u256().to_lexical(&mut bytes);
+                let bytes = value.as_u256().to_lexical(&mut bytes);
 
                 handle_ui_message(bytes, message, page)
             }
@@ -289,7 +289,7 @@ impl<'b> ERC20<'b> {
                 title[..label.len()].copy_from_slice(label);
 
                 let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 1];
-                let bytes = value.to_u256().to_lexical(&mut bytes);
+                let bytes = value.as_u256().to_lexical(&mut bytes);
 
                 handle_ui_message(bytes, message, page)
             }
@@ -322,7 +322,7 @@ impl<'b> ERC20<'b> {
                 title[..label.len()].copy_from_slice(label);
 
                 let mut bytes = [0; u256::FORMATTED_SIZE_DECIMAL + 1];
-                let bytes = value.to_u256().to_lexical(&mut bytes);
+                let bytes = value.as_u256().to_lexical(&mut bytes);
 
                 handle_ui_message(bytes, message, page)
             }

@@ -19,7 +19,6 @@ use nom::{bytes::complete::take, number::streaming::be_u64};
 use crate::{
     handlers::handle_ui_message,
     parser::{Address, FromBytes, OwnedAddress, ParserError, ADDRESS_LEN, COLLECTION_NAME_MAX_LEN},
-    utils::ApduPanic,
 };
 use bolos::{pic_str, PIC};
 use zemu_sys::ViewError;
@@ -96,8 +95,8 @@ impl<'b> FromBytes<'b> for NftInfo {
         let (rem, chain_id) = be_u64(rem)?;
 
         let out = out.as_mut_ptr();
-        let mut owned = unsafe { &mut *addr_of_mut!((*out).contract_address).cast() };
-        _ = OwnedAddress::from_bytes_into(address, &mut owned)?;
+        let owned = unsafe { &mut *addr_of_mut!((*out).contract_address).cast() };
+        _ = OwnedAddress::from_bytes_into(address, owned)?;
 
         unsafe {
             let collection_name = &mut *addr_of_mut!((*out).collection_name);

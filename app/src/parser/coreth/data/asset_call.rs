@@ -83,11 +83,11 @@ impl<'b> AssetCall<'b> {
         // empty. otherwise, check that it contains the deposit_selector
         // if not returns an error.
         if !rem.is_empty() && rem.len() != selector.len() {
-            return Err(ParserError::UnexpectedData.into());
+            return Err(ParserError::UnexpectedData);
         }
 
-        if !rem.is_empty() && rem != &selector[..] {
-            return Err(ParserError::InvalidEthSelector.into());
+        if !rem.is_empty() && rem != selector {
+            return Err(ParserError::InvalidEthSelector);
         }
 
         // safe writes

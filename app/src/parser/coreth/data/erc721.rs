@@ -423,8 +423,6 @@ impl<'b> ERC721<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        use crate::utils::hex_encode;
-
         match item_n {
             x @ 0.. if x < this.base.num_items() as u8 => {
                 this.base.render_item(item_n, title, message, page)
@@ -525,7 +523,7 @@ impl<'b> DisplayableItem for ERC721<'b> {
 
                 handle_ui_message(self.method_name(), message, page)
             }
-            x @ 1.. => match &self {
+            _x @ 1.. => match &self {
                 ERC721::TransferFrom(call) => {
                     Self::render_transfer_from(call, item_n - 1, title, message, page)
                 }
