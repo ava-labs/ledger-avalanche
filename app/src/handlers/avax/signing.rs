@@ -69,36 +69,13 @@ impl Sign {
         // get the uncompressed pubkey for the provided path
         let pkey = unsafe { out.assume_init() };
 
-        // get the 33-bytes compressed version of the key
-        // as it is the one we have to used to get the pkh
-        let key = Self::compress_key(&pkey);
-
         let mut tmp = [0; Sha256::DIGEST_LEN];
 
-        Sha256::digest_into(&key[..], &mut tmp)
+        Sha256::digest_into(pkey.as_ref(), &mut tmp)
             .and_then(|_| Ripemd160::digest_into(&tmp, out_hash))
             .map_err(|_| Error::DataInvalid)?;
 
         Ok(())
-    }
-
-    /// Compresses an uncompressed elliptic curve key which has 3 components:
-    /// - A tag that should be 0x04 as the key provided by the SDK is uncompressed
-    /// - X = 32-bytes
-    /// - Y = 32-bytes
-    /// To compress it, check for the LSB of the Y component as follow:
-    ///  - If LSB bit of Y = 0 then, the tag = 0x02
-    ///  - If LSB bit of Y = 1 then, the tag = 0x03
-    ///  then, the compressed pub-key would be:
-    ///  - tag + X -> 1-bytes + 32-bytes of X component => 33-bytes
-    #[inline(never)]
-    fn compress_key(pk: &PublicKey) -> [u8; 33] {
-        let key = pk.as_ref();
-        let tag = if (key[64] & 0x1) > 0 { 0x03 } else { 0x02 };
-        let mut compressed_key = [0; 33];
-        compressed_key[0] = tag;
-        compressed_key[1..].copy_from_slice(&key[1..32 + 1]);
-        compressed_key
     }
 
     fn disable_outputs(
