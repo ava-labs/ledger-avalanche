@@ -8,9 +8,9 @@ export function pathCoinType(path: String): String {
   }
 
   //skip the first element (m)
-  const pathArray = path.split('/').slice(1);
+  const pathArray = path.split('/').slice(1)
 
-  const maybe44 = Number(pathArray[0].slice(0, -1));
+  const maybe44 = Number(pathArray[0].slice(0, -1))
   if (maybe44 != 44) {
     throw new Error(`Path\'s first element should be "44", got ${maybe44} (e.g "m/44\'/5757\'/5\'/0/3")`)
   }
@@ -66,7 +66,7 @@ export function serializePathSuffix(path: string): Buffer {
   const pathArray = path.split('/')
 
   if (pathArray.length !== 2) {
-    throw new Error("Invalid path suffix. (e.g \"0/3\")")
+    throw new Error('Invalid path suffix. (e.g "0/3")')
   }
 
   const buf = Buffer.alloc(1 + pathArray.length * 4)
@@ -77,7 +77,7 @@ export function serializePathSuffix(path: string): Buffer {
     let child = pathArray[i]
 
     if (child.endsWith("'")) {
-      throw new Error("Invalid hardened path suffix. (e.g \"0/3\")")
+      throw new Error('Invalid hardened path suffix. (e.g "0/3")')
     }
 
     const childNumber = Number(child)
@@ -100,25 +100,25 @@ export function serializePathSuffix(path: string): Buffer {
 
 export function serializeHrp(hrp?: string): Buffer {
   if (hrp) {
-    const bufHrp = Buffer.from(hrp, 'ascii');
-    return Buffer.concat([Buffer.alloc(1, bufHrp.length), bufHrp]);
+    const bufHrp = Buffer.from(hrp, 'ascii')
+    return Buffer.concat([Buffer.alloc(1, bufHrp.length), bufHrp])
   } else {
-    return Buffer.alloc(1, 0);
+    return Buffer.alloc(1, 0)
   }
 }
 
 export function serializeChainID(chainid?: string): Buffer {
   if (chainid) {
-    let decoded = bs58_decode(chainid);
+    let decoded = bs58_decode(chainid)
     if (decoded.length == 36) {
       //chop checksum off
-      decoded = decoded.slice(0, 32);
+      decoded = decoded.slice(0, 32)
     } else if (decoded.length != 32) {
-      throw Error("ChainID was not 32 bytes long (encoded with base58)")
+      throw Error('ChainID was not 32 bytes long (encoded with base58)')
     }
 
-    return Buffer.concat([Buffer.alloc(1, decoded.length), decoded]);
+    return Buffer.concat([Buffer.alloc(1, decoded.length), decoded])
   } else {
-    return Buffer.alloc(1, 0);
+    return Buffer.alloc(1, 0)
   }
 }
