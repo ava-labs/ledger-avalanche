@@ -2,7 +2,7 @@ import { decode as bs58_decode } from 'bs58'
 
 const HARDENED = 0x80000000
 
-export function pathCoinType(path: String): String {
+export function pathCoinType(path: string): string {
   if (!path.startsWith('m')) {
     throw new Error('Path should start with "m" (e.g "m/44\'/5757\'/5\'/0/3")')
   }
@@ -12,7 +12,7 @@ export function pathCoinType(path: String): String {
 
   const maybe44 = Number(pathArray[0].slice(0, -1))
   if (maybe44 != 44) {
-    throw new Error(`Path\'s first element should be "44", got ${maybe44} (e.g "m/44\'/5757\'/5\'/0/3")`)
+    throw new Error(`Path's first element should be "44", got ${maybe44} (e.g "m/44'/5757'/5'/0/3")`)
   }
 
   return pathArray[1]
@@ -74,7 +74,7 @@ export function serializePathSuffix(path: string): Buffer {
 
   for (let i = 0; i < pathArray.length; i += 1) {
     let value = 0
-    let child = pathArray[i]
+    const child = pathArray[i]
 
     if (child.endsWith("'")) {
       throw new Error('Invalid hardened path suffix. (e.g "0/3")')

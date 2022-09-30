@@ -110,7 +110,7 @@ export default class AvalancheApp {
     // First chunk (only path)
     if (serializedPathBuffer !== undefined) {
       // First chunk (only path)
-      chunks.push(serializedPathBuffer!)
+      chunks.push(serializedPathBuffer)
     }
 
     const messageBuffer = Buffer.from(message)
@@ -137,10 +137,10 @@ export default class AvalancheApp {
 
   private concatMessageAndChangePath(message: Buffer, path?: Array<string>): Buffer {
     // data
-    let msg = Buffer.concat([message])
+    const msg = Buffer.concat([message])
     // no change_path
     if (path === undefined) {
-      let buffer = Buffer.alloc(1)
+      const buffer = Buffer.alloc(1)
       buffer.writeUInt8(0)
       return Buffer.concat([buffer, msg])
     } else {
@@ -240,7 +240,7 @@ export default class AvalancheApp {
 
   private async _signAndCollect(signing_paths: Array<string>): Promise<ResponseSign> {
     // base response object to output on each iteration
-    let result = {
+    const result = {
       returnCode: LedgerError.NoErrors,
       errorMessage: '',
       hash: null,
@@ -248,7 +248,7 @@ export default class AvalancheApp {
     }
 
     // where each pair path_suffix, signature are stored
-    let signatures = new Map()
+    const signatures = new Map()
 
     for (let idx = 0; idx < signing_paths.length; idx++) {
       const suffix = signing_paths[idx]
@@ -267,7 +267,7 @@ export default class AvalancheApp {
         .then((response: Buffer) => {
           const errorCodeData = response.slice(-2)
           const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-          let errorMessage = errorCodeToString(returnCode)
+          const errorMessage = errorCodeToString(returnCode)
 
           if (
             returnCode === LedgerError.BadKeyHandle ||
@@ -308,7 +308,7 @@ export default class AvalancheApp {
     const msg = this.concatMessageAndChangePath(message, paths)
 
     // Send transaction for review
-    let response = await this.signGetChunks(msg, path_prefix).then(chunks => {
+    const response = await this.signGetChunks(msg, path_prefix).then(chunks => {
       return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN).then(async response => {
         // initialize response
         let result = {
@@ -351,15 +351,15 @@ export default class AvalancheApp {
 
     const header = Buffer.from('\x1AAvalanche Signed Message:\n', 'utf8')
 
-    let content = Buffer.from(message, 'utf8')
+    const content = Buffer.from(message, 'utf8')
 
-    let msgSize = Buffer.alloc(4)
+    const msgSize = Buffer.alloc(4)
     msgSize.writeUInt32BE(content.length, 0)
 
-    let avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
+    const avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
 
     // Send msg for review
-    let response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
+    const response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
       return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN_MSG).then(async response => {
         // initialize response
         let result = {
@@ -526,14 +526,12 @@ export default class AvalancheApp {
   // an alternative to avoid writing a full NFT service provider to be use in pair with the
   // hw-app-eth package.
   async provideNftInfo(contract_address: string, token_name: string, chainId: number): Promise<ResponseBase> {
-    let payloadType = PAYLOAD_TYPE.ADD
-
-    let p2 = 0
-    let p1 = 0
+    const p2 = 0
+    const p1 = 0
 
     let offset = 0
     // allocate version, type, name_len, name, contract_address and chain_id
-    var buffer = Buffer.alloc(1 + 1 + 1 + CHAIN_ID_SIZE + COLLECTION_NAME_MAX_LEN + CONTRACT_ADDRESS_LEN + CHAIN_ID_SIZE)
+    const buffer = Buffer.alloc(1 + 1 + 1 + CHAIN_ID_SIZE + COLLECTION_NAME_MAX_LEN + CONTRACT_ADDRESS_LEN + CHAIN_ID_SIZE)
 
     // write type and version
     buffer.writeInt8(TYPE_1, offset) // type_1
