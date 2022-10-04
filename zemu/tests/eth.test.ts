@@ -43,7 +43,7 @@ const SIGN_TEST_DATA = [
     nft_info: undefined,
   },
   {
-   
+
     name: 'asset_transfer',
     op: Buffer.from(
       'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080',
@@ -162,12 +162,16 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     try {
       await sim.start({ ...defaultOptions, model: m.name })
       const app = new Eth(sim.getTransport())
-      const resp = await app.getAddress(ETH_DERIVATION, false)
+
+      const ETH_PATH = "m/44'/60'/0'/0'/5"
+      const EXPECTED_PUBLIC_KEY = '024f1dd50f180bfd546339e75410b127331469837fa618d950f7cfb8be351b0020';
+      const resp = await app.getAddress(ETH_PATH, false)
 
       console.log(resp, m.name)
 
       expect(resp).toHaveProperty('address')
       expect(resp).toHaveProperty('publicKey')
+      expect(resp.publicKey === EXPECTED_PUBLIC_KEY)
     } finally {
       await sim.close()
     }

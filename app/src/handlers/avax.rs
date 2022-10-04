@@ -14,6 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
+#[cfg(feature = "blind-sign")]
 pub mod blind_signing;
 pub mod message;
 pub mod sign_hash;

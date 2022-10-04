@@ -6,7 +6,7 @@ import * as readline from 'node:readline/promises'
 
 const APP_PATH = path.resolve('../build/output/app_s.elf')
 const CLA = 0x80
-const APP_DERIVATION = "m/44'/9000'/0'"
+const APP_DERIVATION = "m/44'/9000'/0'/0/0"
 const ETH_DERIVATION = "m/44'/60'/0'/0/0"
 
 const seed = 'equip will roof matter pink blind book anxiety banner elbow sun young'
