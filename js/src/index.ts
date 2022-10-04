@@ -15,35 +15,35 @@
  *  limitations under the License.
  ******************************************************************************* */
 import Transport from '@ledgerhq/hw-transport'
-import { serializePath, serializePathSuffix, serializeHrp, serializeChainID, pathCoinType } from './helper'
-import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId, ResponseXPub } from './types'
 import {
+  CHAIN_ID_SIZE,
   CHUNK_SIZE,
   CLA,
+  CLA_ETH,
+  COLLECTION_NAME_MAX_LEN,
+  CONTRACT_ADDRESS_LEN,
   errorCodeToString,
+  FIRST_MESSAGE,
   getVersion,
+  HASH_LEN,
   INS,
+  LAST_MESSAGE,
   LedgerError,
+  NEXT_MESSAGE,
   P1_VALUES,
   PAYLOAD_TYPE,
   processErrorResponse,
-  FIRST_MESSAGE,
-  NEXT_MESSAGE,
-  LAST_MESSAGE,
-  HASH_LEN,
-  CHAIN_ID_SIZE,
-  CONTRACT_ADDRESS_LEN,
-  COLLECTION_NAME_MAX_LEN,
-  CLA_ETH,
   TYPE_1,
   VERSION_1,
 } from './common'
+import { pathCoinType, serializeChainID, serializeHrp, serializePath, serializePathSuffix } from './helper'
+import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId, ResponseXPub } from './types'
 
-import { LedgerEthTransactionResolution, LoadConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
 import Eth from '@ledgerhq/hw-app-eth'
+import { LedgerEthTransactionResolution, LoadConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
 
-export { LedgerError }
 export * from './types'
+export { LedgerError }
 
 function processGetAddrResponse(response: Buffer) {
   let partialResponse = response
@@ -93,15 +93,15 @@ function processGetXPubResponse(response: Buffer) {
 
 export default class AvalancheApp {
   transport
-  private eth;
+  private eth
 
-  constructor(transport: Transport, ethScrambleKey = "w0w", ethLoadConfig: LoadConfig = {}) {
+  constructor(transport: Transport, ethScrambleKey = 'w0w', ethLoadConfig: LoadConfig = {}) {
     this.transport = transport
     if (!transport) {
       throw new Error('Transport has not been defined')
     }
 
-    this.eth = new Eth(transport, ethScrambleKey, ethLoadConfig);
+    this.eth = new Eth(transport, ethScrambleKey, ethLoadConfig)
   }
 
   private static prepareChunks(message: Buffer, serializedPathBuffer?: Buffer) {
@@ -110,7 +110,7 @@ export default class AvalancheApp {
     // First chunk (only path)
     if (serializedPathBuffer !== undefined) {
       // First chunk (only path)
-      chunks.push(serializedPathBuffer!)
+      chunks.push(serializedPathBuffer)
     }
 
     const messageBuffer = Buffer.from(message)
@@ -137,25 +137,29 @@ export default class AvalancheApp {
 
   private concatMessageAndChangePath(message: Buffer, path?: Array<string>): Buffer {
     // data
-    let msg = Buffer.concat([message]);
+    const msg = Buffer.concat([message])
     // no change_path
     if (path === undefined) {
-      let buffer = Buffer.alloc(1);
-      buffer.writeUInt8(0);
-      return Buffer.concat([buffer, msg]);
+      const buffer = Buffer.alloc(1)
+      buffer.writeUInt8(0)
+      return Buffer.concat([buffer, msg])
     } else {
-      let buffer = Buffer.alloc(1);
-      buffer.writeUInt8(path.length);
-      path.forEach((element) => {
-        buffer = Buffer.concat([buffer, serializePathSuffix(element)]);
-
-      });
-      return Buffer.concat([buffer, msg]);
+      let buffer = Buffer.alloc(1)
+      buffer.writeUInt8(path.length)
+      path.forEach(element => {
+        buffer = Buffer.concat([buffer, serializePathSuffix(element)])
+      })
+      return Buffer.concat([buffer, msg])
     }
-
   }
 
-  private async signSendChunk(chunkIdx: number, chunkNum: number, chunk: Buffer, param?: number, ins: number = INS.SIGN): Promise<ResponseSign> {
+  private async signSendChunk(
+    chunkIdx: number,
+    chunkNum: number,
+    chunk: Buffer,
+    param?: number,
+    ins: number = INS.SIGN,
+  ): Promise<ResponseSign> {
     let payloadType = PAYLOAD_TYPE.ADD
     let p2 = 0
     if (chunkIdx === 1) {
@@ -206,9 +210,8 @@ export default class AvalancheApp {
   }
 
   async signHash(path_prefix: string, signing_paths: Array<string>, hash: Buffer): Promise<ResponseSign> {
-
     if (hash.length !== HASH_LEN) {
-      throw new Error('Invalid hash length');
+      throw new Error('Invalid hash length')
     }
 
     //send hash and path
@@ -219,10 +222,7 @@ export default class AvalancheApp {
         const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
         let errorMessage = errorCodeToString(returnCode)
 
-        if (
-          returnCode === LedgerError.BadKeyHandle ||
-          returnCode === LedgerError.DataIsInvalid
-        ) {
+        if (returnCode === LedgerError.BadKeyHandle || returnCode === LedgerError.DataIsInvalid) {
           errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
         }
         return {
@@ -232,7 +232,7 @@ export default class AvalancheApp {
       }, processErrorResponse)
 
     if (first_response.returnCode !== LedgerError.NoErrors) {
-      return first_response;
+      return first_response
     }
 
     return this._signAndCollect(signing_paths)
@@ -240,33 +240,34 @@ export default class AvalancheApp {
 
   private async _signAndCollect(signing_paths: Array<string>): Promise<ResponseSign> {
     // base response object to output on each iteration
-    let result = {
+    const result = {
       returnCode: LedgerError.NoErrors,
-      errorMessage: "",
+      errorMessage: '',
       hash: null,
       signatures: null as null | Map<string, Buffer>,
-    };
+    }
 
     // where each pair path_suffix, signature are stored
-    let signatures = new Map();
+    const signatures = new Map()
 
     for (let idx = 0; idx < signing_paths.length; idx++) {
-      const suffix = signing_paths[idx];
-      const path_buf = serializePathSuffix(suffix);
+      const suffix = signing_paths[idx]
+      const path_buf = serializePathSuffix(suffix)
 
-      const p1 = idx >= signing_paths.length - 1 ? LAST_MESSAGE : NEXT_MESSAGE;
+      const p1 = idx >= signing_paths.length - 1 ? LAST_MESSAGE : NEXT_MESSAGE
 
       // send path to sign hash that should be in device's ram memory
-      await this.transport.send(CLA, INS.SIGN_HASH, p1, 0x00, path_buf, [
-        LedgerError.NoErrors,
-        LedgerError.DataIsInvalid,
-        LedgerError.BadKeyHandle,
-        LedgerError.SignVerifyError,
-      ])
+      await this.transport
+        .send(CLA, INS.SIGN_HASH, p1, 0x00, path_buf, [
+          LedgerError.NoErrors,
+          LedgerError.DataIsInvalid,
+          LedgerError.BadKeyHandle,
+          LedgerError.SignVerifyError,
+        ])
         .then((response: Buffer) => {
           const errorCodeData = response.slice(-2)
           const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-          let errorMessage = errorCodeToString(returnCode)
+          const errorMessage = errorCodeToString(returnCode)
 
           if (
             returnCode === LedgerError.BadKeyHandle ||
@@ -277,37 +278,37 @@ export default class AvalancheApp {
           }
 
           if (returnCode === LedgerError.NoErrors && response.length > 2) {
-            signatures.set(suffix, response.slice(0, -2));
+            signatures.set(suffix, response.slice(0, -2))
           }
 
-          result.returnCode = returnCode;
-          result.errorMessage = errorMessage;
+          result.returnCode = returnCode
+          result.errorMessage = errorMessage
 
           return
-        }, processErrorResponse);
+        }, processErrorResponse)
 
       if (result.returnCode !== LedgerError.NoErrors) {
-        break;
+        break
       }
-    };
-    result.signatures = signatures;
-    return result;
+    }
+    result.signatures = signatures
+    return result
   }
 
   async sign(path_prefix: string, signing_paths: Array<string>, message: Buffer, change_paths?: Array<string>): Promise<ResponseSign> {
     // Do not show outputs that go to the signers
-    let paths = signing_paths;
+    let paths = signing_paths
     if (change_paths !== undefined) {
       // remove duplication just is case
-      paths = [...new Set([...paths, ...change_paths])];
+      paths = [...new Set([...paths, ...change_paths])]
     }
 
     // Prepend change_paths to the message as the device do set which outputs should be
     // shown at parsing
-    const msg = this.concatMessageAndChangePath(message, paths);
+    const msg = this.concatMessageAndChangePath(message, paths)
 
     // Send transaction for review
-    let response = await this.signGetChunks(msg, path_prefix).then(chunks => {
+    const response = await this.signGetChunks(msg, path_prefix).then(chunks => {
       return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN).then(async response => {
         // initialize response
         let result = {
@@ -329,12 +330,12 @@ export default class AvalancheApp {
     }, processErrorResponse)
 
     if (response.returnCode !== LedgerError.NoErrors) {
-      return response;
+      return response
     }
 
     // Transaction was approved so start iterating over signing_paths to sign
     // and collect each signature
-    return this._signAndCollect(signing_paths);
+    return this._signAndCollect(signing_paths)
   }
 
   // Sign an arbitrary message.
@@ -342,23 +343,23 @@ export default class AvalancheApp {
   // signing_paths: ["0/1", "5/8"]
   // message: The message to be signed
   async signMsg(path_prefix: string, signing_paths: Array<string>, message: string): Promise<ResponseSign> {
-    const coinType = pathCoinType(path_prefix);
+    const coinType = pathCoinType(path_prefix)
 
-    if (coinType !== "9000\'") {
-      throw new Error("Only avax path is supported")
+    if (coinType !== "9000'") {
+      throw new Error('Only avax path is supported')
     }
 
-    const header = Buffer.from("\x1AAvalanche Signed Message:\n", 'utf8');
+    const header = Buffer.from('\x1AAvalanche Signed Message:\n', 'utf8')
 
-    let content = Buffer.from(message, 'utf8')
+    const content = Buffer.from(message, 'utf8')
 
-    let msgSize = Buffer.alloc(4)
+    const msgSize = Buffer.alloc(4)
     msgSize.writeUInt32BE(content.length, 0)
 
-    let avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
+    const avax_msg = Buffer.from(`${header}${msgSize}${content}`, 'utf8')
 
     // Send msg for review
-    let response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
+    const response = await this.signGetChunks(avax_msg, path_prefix).then(chunks => {
       return this.signSendChunk(1, chunks.length, chunks[0], FIRST_MESSAGE, INS.SIGN_MSG).then(async response => {
         // initialize response
         let result = {
@@ -380,12 +381,12 @@ export default class AvalancheApp {
     }, processErrorResponse)
 
     if (response.returnCode !== LedgerError.NoErrors) {
-      return response;
+      return response
     }
 
     // Message was approved so start iterating over signing_paths to sign
     // and collect each signature
-    return this._signAndCollect(signing_paths);
+    return this._signAndCollect(signing_paths)
   }
 
   async getVersion(): Promise<ResponseVersion> {
@@ -442,10 +443,10 @@ export default class AvalancheApp {
   }
 
   private async _pubkey(path: string, show: boolean, hrp?: string, chainid?: string): Promise<ResponseAddress> {
-    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
+    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE
     const serializedPath = serializePath(path)
     const serializedHrp = serializeHrp(hrp)
-    const serializedChainID = serializeChainID(chainid);
+    const serializedChainID = serializeChainID(chainid)
 
     return this.transport
       .send(CLA, INS.GET_ADDR, p1, 0, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
@@ -457,13 +458,15 @@ export default class AvalancheApp {
   }
 
   private async _xpub(path: string, show: boolean, hrp?: string, chainid?: string): Promise<ResponseXPub> {
-    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
+    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE
     const serializedPath = serializePath(path)
     const serializedHrp = serializeHrp(hrp)
-    const serializedChainID = serializeChainID(chainid);
+    const serializedChainID = serializeChainID(chainid)
 
     return this.transport
-      .send(CLA, INS.GET_EXTENDED_PUBLIC_KEY, p1, 0, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
+      .send(CLA, INS.GET_EXTENDED_PUBLIC_KEY, p1, 0, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [
+        LedgerError.NoErrors,
+      ])
       .then(processGetXPubResponse, processErrorResponse)
   }
 
@@ -472,20 +475,18 @@ export default class AvalancheApp {
   }
 
   private async _walletId(show: boolean): Promise<ResponseWalletId> {
-    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE;
+    const p1 = show ? P1_VALUES.SHOW_ADDRESS_IN_DEVICE : P1_VALUES.ONLY_RETRIEVE
 
-    return this.transport
-      .send(CLA, INS.WALLET_ID, p1, 0)
-      .then(response => {
-        const errorCodeData = response.slice(-2)
-        const returnCode = (errorCodeData[0] * 256 + errorCodeData[1]) as LedgerError
+    return this.transport.send(CLA, INS.WALLET_ID, p1, 0).then(response => {
+      const errorCodeData = response.slice(-2)
+      const returnCode = (errorCodeData[0] * 256 + errorCodeData[1]) as LedgerError
 
-        return {
-          returnCode,
-          errorMessage: errorCodeToString(returnCode),
-          id: response.slice(0, 6),
-        }
-      }, processErrorResponse)
+      return {
+        returnCode,
+        errorMessage: errorCodeToString(returnCode),
+        id: response.slice(0, 6),
+      }
+    }, processErrorResponse)
   }
 
   async getWalletId() {
@@ -499,11 +500,11 @@ export default class AvalancheApp {
   signEVMTransaction(
     path: string,
     rawTxHex: string,
-    resolution?: LedgerEthTransactionResolution | null
+    resolution?: LedgerEthTransactionResolution | null,
   ): Promise<{
-    s: string;
-    v: string;
-    r: string;
+    s: string
+    v: string
+    r: string
   }> {
     return this.eth.signTransaction(path, rawTxHex, resolution)
   }
@@ -511,44 +512,42 @@ export default class AvalancheApp {
   getETHAddress(
     path: string,
     boolDisplay?: boolean,
-    boolChaincode?: boolean
+    boolChaincode?: boolean,
   ): Promise<{
-    publicKey: string;
-    address: string;
-    chainCode?: string;
+    publicKey: string
+    address: string
+    chainCode?: string
   }> {
     return this.eth.getAddress(path, boolDisplay, boolChaincode)
   }
 
   // Function that provides the necessary token information to parse ERC721 transactions
-  // The implementation aligns with the reference app-ethereum does, but it is provided as 
+  // The implementation aligns with the reference app-ethereum does, but it is provided as
   // an alternative to avoid writing a full NFT service provider to be use in pair with the
   // hw-app-eth package.
   async provideNftInfo(contract_address: string, token_name: string, chainId: number): Promise<ResponseBase> {
-    let payloadType = PAYLOAD_TYPE.ADD
-
-    let p2 = 0
-    let p1 = 0
+    const p2 = 0
+    const p1 = 0
 
     let offset = 0
     // allocate version, type, name_len, name, contract_address and chain_id
-    var buffer = Buffer.alloc(1 + 1 + 1 + CHAIN_ID_SIZE + COLLECTION_NAME_MAX_LEN + CONTRACT_ADDRESS_LEN + CHAIN_ID_SIZE)
+    const buffer = Buffer.alloc(1 + 1 + 1 + CHAIN_ID_SIZE + COLLECTION_NAME_MAX_LEN + CONTRACT_ADDRESS_LEN + CHAIN_ID_SIZE)
 
-    // write type and version 
-    buffer.writeInt8(TYPE_1, offset); // type_1
-    offset += 1;
-    buffer.writeInt8(VERSION_1, offset); // version
-    offset += 1;
+    // write type and version
+    buffer.writeInt8(TYPE_1, offset) // type_1
+    offset += 1
+    buffer.writeInt8(VERSION_1, offset) // version
+    offset += 1
 
     // the len prefix is just 1-byte
-    if(token_name.length > COLLECTION_NAME_MAX_LEN) {
-        return {
-            returnCode: LedgerError.WrongLength,
-            errorMessage: "Token name too long",
-        } 
+    if (token_name.length > COLLECTION_NAME_MAX_LEN) {
+      return {
+        returnCode: LedgerError.WrongLength,
+        errorMessage: 'Token name too long',
+      }
     }
 
-    buffer.writeInt8(token_name.length,offset); 
+    buffer.writeInt8(token_name.length, offset)
     offset += 1
 
     // copy token name
@@ -559,37 +558,30 @@ export default class AvalancheApp {
     const address = Buffer.from(contract_address, 'hex')
     offset += address.copy(buffer, offset)
 
-    // copy chainID 
+    // copy chainID
     const id = BigInt(chainId)
     buffer.writeBigUInt64BE(id, offset)
-    
-    return this.transport
-      .send(CLA_ETH, INS.ETH_PROVIDE_NFT_INFO, p1, p2, buffer)
-      .then((response: Buffer) => {
 
-        const errorCodeData = response.slice(-2)
-        const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-        let errorMessage = errorCodeToString(returnCode)
+    return this.transport.send(CLA_ETH, INS.ETH_PROVIDE_NFT_INFO, p1, p2, buffer).then((response: Buffer) => {
+      const errorCodeData = response.slice(-2)
+      const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
+      let errorMessage = errorCodeToString(returnCode)
 
-        if (
-          returnCode === LedgerError.DataIsInvalid ||
-          returnCode === LedgerError.WrongLength
-        ) {
-          errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
-        }
+      if (returnCode === LedgerError.DataIsInvalid || returnCode === LedgerError.WrongLength) {
+        errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
+      }
 
-        if (returnCode === LedgerError.NoErrors && response.length > 2) {
-          return {
-            returnCode: returnCode,
-            errorMessage: errorMessage,
-          }
-        }
-
+      if (returnCode === LedgerError.NoErrors && response.length > 2) {
         return {
           returnCode: returnCode,
           errorMessage: errorMessage,
         }
-      }, processErrorResponse)
+      }
+
+      return {
+        returnCode: returnCode,
+        errorMessage: errorMessage,
+      }
+    }, processErrorResponse)
   }
 }
-

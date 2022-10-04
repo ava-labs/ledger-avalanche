@@ -1,24 +1,22 @@
 import Transport from '@ledgerhq/hw-transport'
 
 export const CLA = 0x80
-export const CLA_ETH = 0xE0
+export const CLA_ETH = 0xe0
 export const CHUNK_SIZE = 250
 export const APP_KEY = 'AVAX'
-export const FIRST_MESSAGE = 0x01;
-export const LAST_MESSAGE = 0x02;
-export const NEXT_MESSAGE = 0x03;
-export const HASH_LEN = 32;
+export const FIRST_MESSAGE = 0x01
+export const LAST_MESSAGE = 0x02
+export const NEXT_MESSAGE = 0x03
+export const HASH_LEN = 32
 
-// the max collection len is set to 70-bytes 
+// the max collection len is set to 70-bytes
 // lets decrease it to 50 to save some stack
-export const COLLECTION_NAME_MAX_LEN = 50;
-export const CHAIN_ID_SIZE = 8;
-export const CONTRACT_ADDRESS_LEN = 20;
-export const TYPE_1 = 1;
-export const VERSION_1 = 1;
+export const COLLECTION_NAME_MAX_LEN = 50
+export const CHAIN_ID_SIZE = 8
+export const CONTRACT_ADDRESS_LEN = 20
+export const TYPE_1 = 1
+export const VERSION_1 = 1
 
- 
- 
 export const INS = {
   GET_VERSION: 0x00,
   WALLET_ID: 0x01,
@@ -61,7 +59,7 @@ export enum LedgerError {
   BadKeyHandle = 0x6a81,
   InvalidP1P2 = 0x6b00,
   InstructionNotSupported = 0x6d00,
-  AppDoesNotSeemToBeOpen = 0x6e00,
+  AppDoesNotSeemToBeOpen = 0x6e01,
   UnknownError = 0x6f00,
   SignVerifyError = 0x6f01,
 }
