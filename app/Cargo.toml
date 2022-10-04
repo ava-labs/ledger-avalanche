@@ -15,11 +15,11 @@ dev = []
 derive-debug = []
 blind-sign= []
 blind-sign-toggle = ["blind-sign"]
-default = ["derive-debug", "blind-sign-toggle"]
+default = ["derive-debug"]
 
 [dependencies]
-bolos = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
-zemu-sys = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
+bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "601dad" }
+zemu-sys = { git = "https://github.com/Zondax/ledger-rust", rev = "601dad" }
 
 no-std-compat = { version = "0.4" }
 cfg-if = "1.0.0"
@@ -42,9 +42,9 @@ panic-halt = "0.2.0"
 zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }
 no-std-compat = { version = "0.4", features = ["std"] }
 serial_test = "0.5"
-zuit = { git = "https://github.com/Zondax/ledger-rust", branch = "dev" }
-bolos = { git = "https://github.com/Zondax/ledger-rust", branch = "dev", features = ["derive-debug"] }
-bolos-common = { git = "http://github.com/Zondax/ledger-rust", branch = "dev", features = ["bip32-display"] }
+zuit = { git = "https://github.com/Zondax/ledger-rust", rev = "601dad" }
+bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "601dad", features = ["derive-debug"] }
+bolos-common = { git = "http://github.com/Zondax/ledger-rust", rev = "601dad", features = ["bip32-display"] }
 hex = "0.4.3"
 arrayvec = { version = "0.7"}
 time = { version = "0.3.11", features = ["formatting"]}
