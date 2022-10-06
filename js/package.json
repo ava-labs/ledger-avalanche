@@ -1,5 +1,5 @@
 {
-  "name": "@zondax/ledger-avalanche-app",
+  "name": "@avalabs/hw-app-avalanche",
   "author": "Zondax GmbH",
   "license": "Apache-2.0",
   "version": "0.1.0",
@@ -7,10 +7,10 @@
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "types": "./dist/index.d.ts",
-  "homepage": "https://github.com/zondax/ledger-avalanche",
+  "homepage": "https://github.com/ava-labs/ledger-avalanche",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zondax/ledger-avalanche.git"
+    "url": "git+https://github.com/ava-labs/ledger-avalanche.git"
   },
   "keywords": [
     "Zondax",
@@ -22,7 +22,7 @@
     "build": "tsc"
   },
   "bugs": {
-    "url": "https://github.com/zondax/ledger-avalanche/issues"
+    "url": "https://github.com/ava-labs/ledger-avalanche/issues"
   },
   "dependencies": {
     "@ledgerhq/hw-app-eth": "^6.29.7",
