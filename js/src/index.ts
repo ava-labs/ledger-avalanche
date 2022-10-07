@@ -521,6 +521,16 @@ export default class AvalancheApp {
     return this.eth.getAddress(path, boolDisplay, boolChaincode)
   }
 
+  getAppConfiguration(): Promise<{
+    arbitraryDataEnabled: number;
+    erc20ProvisioningNecessary: number;
+    starkEnabled: number;
+    starkv2Supported: number;
+    version: string;
+  }> {
+    return this.eth.getAppConfiguration()
+  }
+
   // Function that provides the necessary token information to parse ERC721 transactions
   // The implementation aligns with the reference app-ethereum does, but it is provided as
   // an alternative to avoid writing a full NFT service provider to be use in pair with the
