@@ -22,15 +22,15 @@ import { ledgerService } from "@ledgerhq/hw-app-eth"
 import { ec } from 'elliptic'
 
 type NftInfo = {
-    token_address: string,
-    token_name: string,
-    chain_id: number,
+  token_address: string,
+  token_name: string,
+  chain_id: number,
 }
 
 type TestData = {
-    name: string,
-    op: Buffer,
-    nft_info: NftInfo | undefined
+  name: string,
+  op: Buffer,
+  nft_info: NftInfo | undefined
 }
 
 const SIGN_TEST_DATA = [
@@ -93,7 +93,7 @@ const SIGN_TEST_DATA = [
   {
     name: 'erc721_approve_for_all',
     op: Buffer.from(
-        '02f86f0182034a8459682f00850322d538d182b67094bd3f82a81c3f74542736765ce4fd579d177b6bc580b844a22cb4650000000000000000000000001e0049783f008a0085193e00003d00cd54003c710000000000000000000000000000000000000000000000000000000000000001c0',
+      '02f86f0182034a8459682f00850322d538d182b67094bd3f82a81c3f74542736765ce4fd579d177b6bc580b844a22cb4650000000000000000000000001e0049783f008a0085193e00003d00cd54003c710000000000000000000000000000000000000000000000000000000000000001c0',
       'hex',
     ),
     nft_info: {
@@ -118,8 +118,8 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 
       const nft = data.nft_info
       if (nft !== undefined) {
-          const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
-          expect(provide_resp.returnCode).toEqual(0x9000)
+        const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
+        expect(provide_resp.returnCode).toEqual(0x9000)
       }
 
 
@@ -136,7 +136,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
       expect(resp).toHaveProperty('v')
 
       //Verify signature
-     const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
+      const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
 
       const EC = new ec("secp256k1");
       const sha3 = require('js-sha3');
@@ -210,6 +210,27 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
       expect(resp).toHaveProperty('publicKey')
       expect(resp).toHaveProperty('chainCode')
       expect(resp.chainCode).not.toBeUndefined();
+    } finally {
+      await sim.close()
+    }
+  })
+})
+
+describe.each(models)('Ethereum [%s] - misc', function (m) {
+  test('get app configuration', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new Eth(sim.getTransport())
+
+      const resp = await app.getAppConfiguration()
+
+      console.log(resp, m.name)
+
+      expect(resp.arbitraryDataEnabled).toBeFalsy()
+      expect(resp.erc20ProvisioningNecessary).toBeTruthy()
+      expect(resp.starkEnabled).toBeFalsy()
+      expect(resp.starkv2Supported).toBeFalsy()
     } finally {
       await sim.close()
     }
