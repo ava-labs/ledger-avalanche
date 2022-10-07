@@ -42,7 +42,7 @@ void view_init(void) {
   blind_sign.toggle = false;
   h_blind_sign_update();
 #endif
-  IDLE_MESSAGE_LAZY = MENU_MAIN_APP_LINE2;
+  IDLE_MESSAGE = MENU_MAIN_APP_LINE2;
   UX_INIT();
 }
 

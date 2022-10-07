@@ -41,7 +41,7 @@ typedef struct NanoSBackend {
 } NanoSBackend;
 
 extern struct NanoSBackend BACKEND_LAZY;
-extern const uint8_t *IDLE_MESSAGE_LAZY;
+extern const uint8_t *IDLE_MESSAGE;
 
 #elif defined(TARGET_NANOX)
 
@@ -57,7 +57,7 @@ typedef struct NanoXBackend {
 } NanoXBackend;
 
 extern struct NanoXBackend BACKEND_LAZY;
-extern const uint8_t *IDLE_MESSAGE_LAZY;
+extern const uint8_t *IDLE_MESSAGE;
 
 #elif defined(TARGET_NANOS2)
 
@@ -73,7 +73,7 @@ typedef struct NanoSPBackend {
 } NanoSPBackend;
 
 extern struct NanoSPBackend BACKEND_LAZY;
-extern const uint8_t *IDLE_MESSAGE_LAZY;
+extern const uint8_t *IDLE_MESSAGE;
 
 #endif
 
