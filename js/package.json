@@ -1,9 +1,9 @@
 {
   "name": "@avalabs/hw-app-avalanche",
-  "author": "Zondax GmbH",
+  "author": "Zondax AG",
   "license": "Apache-2.0",
   "version": "0.1.0",
-  "description": "Node API for Avalanche App (Ledger Nano S/X)",
+  "description": "Node API for Avalanche App (Ledger Nano S/X/S+)",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "types": "./dist/index.d.ts",
@@ -12,12 +12,7 @@
     "type": "git",
     "url": "git+https://github.com/ava-labs/ledger-avalanche.git"
   },
-  "keywords": [
-    "Zondax",
-    "Ledger",
-    "Avalanche",
-    "Javascript"
-  ],
+  "keywords": ["Zondax", "Ledger", "Avalanche", "Javascript"],
   "scripts": {
     "build": "tsc"
   },
@@ -48,19 +43,13 @@
     "prettier": "^2.0.4",
     "typescript": "^4.2.4"
   },
-  "moduleDirectories": [
-    "node_modules",
-    "dist"
-  ],
+  "moduleDirectories": ["node_modules", "dist"],
   "postcss": {
     "plugins": {
       "autoprefixer": {}
     }
   },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions"
-  ],
+  "browserslist": ["> 1%", "last 2 versions"],
   "publishConfig": {
     "access": "public"
   }
