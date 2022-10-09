@@ -20,9 +20,9 @@ use crate::constants::{evm_instructions::*, instructions::*, ApduError};
 
 use crate::handlers::{
     eth::{
-        provide_erc20::ProvideERC20, provide_nft_info::Info as NftProvider,
-        public_key::GetPublicKey as GetEthPublicKey, set_plugin::SetPlugin,
-        signing::Sign as EthSign,
+        get_app_configuration::GetAppConfiguration as EthGetAppConfig, provide_erc20::ProvideERC20,
+        provide_nft_info::Info as NftProvider, public_key::GetPublicKey as GetEthPublicKey,
+        set_plugin::SetPlugin, signing::Sign as EthSign,
     },
     public_key::{GetExtendedPublicKey, GetPublicKey},
     version::GetVersion,
@@ -84,6 +84,7 @@ pub fn apdu_dispatch<'apdu>(
         (CLA_ETH, INS_SET_PLUGIN) => SetPlugin::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_PROVIDE_ERC20) => ProvideERC20::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_PROVIDE_NFT_INFORMATION) => NftProvider::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_ETH_GET_APP_CONFIGURATION) => EthGetAppConfig::handle(flags, tx, apdu_buffer),
         #[cfg(feature = "blind-sign")]
         (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_SIGN) => EthSign::handle(flags, tx, apdu_buffer),
