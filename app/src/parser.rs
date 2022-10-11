@@ -51,11 +51,12 @@ pub use coreth::{
     import_tx::ImportTx,
     native::EthTransaction,
     nft_info::NftInfo,
+    PersonalMsg,
 };
 pub use error::ParserError;
 pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
-pub use message::AvaxMessage;
+pub use message::{AvaxMessage, Message};
 pub use network_info::*;
 pub use object_list::ObjectList;
 pub use operations::{Operation, TransferableOp};

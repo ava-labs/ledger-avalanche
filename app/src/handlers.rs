@@ -56,6 +56,7 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
+        EthSignMsg,
         #[cfg(feature = "blind-sign")]
         BlindSign,
         #[cfg(feature = "blind-sign")]
@@ -70,6 +71,7 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
+        EthSignMsg,
         #[cfg(feature = "blind-sign")]
         BlindSign,
         #[cfg(feature = "blind-sign")]
@@ -95,6 +97,12 @@ pub mod resources {
     impl From<super::avax::blind_signing::BlindSign> for BUFFERAccessors {
         fn from(_: super::avax::blind_signing::BlindSign) -> Self {
             Self::BlindSign
+        }
+    }
+
+    impl From<super::eth::personal_msg::Sign> for BUFFERAccessors {
+        fn from(_: super::eth::personal_msg::Sign) -> Self {
+            Self::EthSignMsg
         }
     }
 
@@ -181,6 +189,12 @@ pub mod resources {
     impl From<super::eth::blind_signing::BlindSign> for PATHAccessors {
         fn from(_: super::eth::blind_signing::BlindSign) -> Self {
             Self::EthBlindSign
+        }
+    }
+
+    impl From<super::eth::personal_msg::Sign> for PATHAccessors {
+        fn from(_: super::eth::personal_msg::Sign) -> Self {
+            Self::EthSignMsg
         }
     }
 

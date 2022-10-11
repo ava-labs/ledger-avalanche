@@ -30,6 +30,8 @@ mod legacy;
 pub use legacy::Legacy;
 mod base;
 pub use base::BaseLegacy;
+mod sign_msg;
+pub use sign_msg::PersonalMsg;
 
 mod eip1559;
 pub use eip1559::Eip1559;
