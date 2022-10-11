@@ -46,15 +46,13 @@ pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
 pub use constants::*;
 pub use coreth::{
-    data::EthData,
-    export_tx::ExportTx,
-    import_tx::ImportTx,
-    native::{bytes_to_u64, EthTransaction},
+    bytes_to_u64, data::EthData, export_tx::ExportTx, import_tx::ImportTx, native::EthTransaction,
+    PersonalMsg,
 };
 pub use error::ParserError;
 pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
-pub use message::AvaxMessage;
+pub use message::{AvaxMessage, Message};
 pub use network_info::*;
 pub use object_list::ObjectList;
 pub use operations::{Operation, TransferableOp};
