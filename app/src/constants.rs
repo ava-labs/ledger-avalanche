@@ -129,6 +129,7 @@ pub(crate) mod evm_instructions {
     pub const INS_SET_PLUGIN: u8 = 0x16;
     pub const INS_PROVIDE_NFT_INFORMATION: u8 = 0x14;
     pub const INS_ETH_PROVIDE_ERC20: u8 = 0x0A;
+    pub const INS_SIGN_ETH_MSG: u8 = 0x08;
 }
 
 pub const BIP32_PATH_ROOT_0: u32 = 0x8000_0000 + 44;
