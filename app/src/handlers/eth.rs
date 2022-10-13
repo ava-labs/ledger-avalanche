@@ -17,6 +17,7 @@
 #[cfg(feature = "blind-sign")]
 pub mod blind_signing;
 pub mod get_app_configuration;
+pub mod personal_msg;
 pub mod provide_erc20;
 pub mod provide_nft_info;
 pub mod public_key;

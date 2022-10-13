@@ -20,7 +20,8 @@ use crate::constants::{evm_instructions::*, instructions::*, ApduError};
 
 use crate::handlers::{
     eth::{
-        get_app_configuration::GetAppConfiguration as EthGetAppConfig, provide_erc20::ProvideERC20,
+        get_app_configuration::GetAppConfiguration as EthGetAppConfig,
+        personal_msg::Sign as EthSignMsg, provide_erc20::ProvideERC20,
         provide_nft_info::Info as NftProvider, public_key::GetPublicKey as GetEthPublicKey,
         set_plugin::SetPlugin, signing::Sign as EthSign,
     },
@@ -88,6 +89,7 @@ pub fn apdu_dispatch<'apdu>(
         #[cfg(feature = "blind-sign")]
         (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_SIGN) => EthSign::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_SIGN_ETH_MSG) => EthSignMsg::handle(flags, tx, apdu_buffer),
 
         #[cfg(feature = "dev")]
         _ => Debug::handle(flags, tx, apdu_buffer),
