@@ -41,7 +41,6 @@ typedef struct NanoSBackend {
 } NanoSBackend;
 
 extern struct NanoSBackend BACKEND_LAZY;
-extern const uint8_t *IDLE_MESSAGE;
 
 #elif defined(TARGET_NANOX)
 
@@ -57,7 +56,6 @@ typedef struct NanoXBackend {
 } NanoXBackend;
 
 extern struct NanoXBackend BACKEND_LAZY;
-extern const uint8_t *IDLE_MESSAGE;
 
 #elif defined(TARGET_NANOS2)
 
@@ -73,7 +71,6 @@ typedef struct NanoSPBackend {
 } NanoSPBackend;
 
 extern struct NanoSPBackend BACKEND_LAZY;
-extern const uint8_t *IDLE_MESSAGE;
 
 #endif
 
@@ -98,3 +95,4 @@ void h_blind_sign_update();
 ///////////////////////////////////////////////
 
 void view_idle_show_impl(uint8_t item_idx, char *statusString);
+void view_init_impl(uint8_t *msg);
