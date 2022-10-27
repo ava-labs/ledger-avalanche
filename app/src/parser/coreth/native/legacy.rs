@@ -19,7 +19,10 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
-use crate::parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError};
+use crate::{
+    parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError},
+    utils::ApduPanic,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -34,7 +37,7 @@ pub struct Legacy<'b> {
 
 impl<'b> Legacy<'b> {
     pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id[self.chain_id.len() - 1]
+        self.chain_id.last().copied().apdu_unwrap()
     }
 }
 
@@ -53,6 +56,10 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(rem)?;
+        if id_bytes.len() < 1 {
+            return Err(ParserError::InvalidChainId.into());
+        }
+
         let (rem, r) = parse_rlp_item(rem)?;
         let (rem, s) = parse_rlp_item(rem)?;
 

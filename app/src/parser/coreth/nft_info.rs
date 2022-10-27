@@ -78,6 +78,9 @@ impl<'b> FromBytes<'b> for NftInfo {
             .ok_or(ParserError::UnexpectedBufferEnd)?;
 
         // get nft collection name
+        if input.is_empty() {
+            return Err(ParserError::ValueOutOfRange.into());
+        }
         let name_len = input[0] as usize;
         if name_len > COLLECTION_NAME_MAX_LEN {
             return Err(ParserError::ValueOutOfRange.into());

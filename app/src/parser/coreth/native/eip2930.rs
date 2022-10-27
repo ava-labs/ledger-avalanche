@@ -13,13 +13,15 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
-use crate::parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError};
+use crate::{
+    parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError},
+    utils::ApduPanic,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -28,7 +30,7 @@ pub struct Eip2930<'b> {
     // is an u32, u8, u32,
     // considering this might
     // come from an avax C-Chain
-    pub chain_id: &'b [u8],
+    chain_id: &'b [u8],
     pub base: BaseLegacy<'b>,
     access_list: &'b [u8],
     // R and S must be empty
@@ -39,7 +41,7 @@ pub struct Eip2930<'b> {
 
 impl<'b> Eip2930<'b> {
     pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id[self.chain_id.len() - 1]
+        self.chain_id.last().copied().apdu_unwrap()
     }
 }
 
@@ -55,6 +57,9 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(input)?;
+        if id_bytes.len() < 1 {
+            return Err(ParserError::InvalidChainId.into());
+        }
 
         let data_out = unsafe { &mut *addr_of_mut!((*out).base).cast() };
         let rem = BaseLegacy::from_bytes_into(rem, data_out)?;

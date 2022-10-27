@@ -34,7 +34,7 @@ use crate::{
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip1559<'b> {
-    pub chain_id: &'b [u8],
+    chain_id: &'b [u8],
     pub nonce: BorrowedU256<'b>,
     pub priority_fee: BorrowedU256<'b>,
     pub max_fee: BorrowedU256<'b>,
@@ -52,7 +52,7 @@ pub struct Eip1559<'b> {
 
 impl<'b> Eip1559<'b> {
     pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id[self.chain_id.len() - 1]
+        self.chain_id.last().copied().apdu_unwrap()
     }
 }
 
@@ -68,6 +68,9 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(input)?;
+        if id_bytes.len() < 1 {
+            return Err(ParserError::InvalidChainId.into());
+        }
 
         // nonce
         let (rem, nonce) = parse_rlp_item(rem)?;
