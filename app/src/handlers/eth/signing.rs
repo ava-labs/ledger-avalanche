@@ -269,7 +269,9 @@ impl Viewable for SignUI {
         if chain_id_byte == 0 {
             out[0] = out[tx - 1] & 0x01;
         } else {
-            out[0] = (out[tx - 1] & 0x01).saturating_add(chain_id_byte << 1).saturating_add(35);
+            out[0] = (out[tx - 1] & 0x01)
+                .saturating_add(chain_id_byte << 1)
+                .saturating_add(35);
         }
 
         (tx, Error::Success as _)

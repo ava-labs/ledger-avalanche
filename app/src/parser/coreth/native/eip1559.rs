@@ -52,7 +52,7 @@ pub struct Eip1559<'b> {
 
 impl<'b> Eip1559<'b> {
     pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id.last().copied().unwrap_or_default()
+        self.chain_id.last().copied().apdu_unwrap()
     }
 }
 
@@ -68,6 +68,9 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(input)?;
+        if id_bytes.len() < 1 {
+            return Err(ParserError::InvalidChainId.into());
+        }
 
         // nonce
         let (rem, nonce) = parse_rlp_item(rem)?;

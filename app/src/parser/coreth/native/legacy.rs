@@ -19,13 +19,16 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
-use crate::parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError};
+use crate::{
+    parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError},
+    utils::ApduPanic,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Legacy<'b> {
     pub base: BaseLegacy<'b>,
-    chain_id: &'b [u8],
+    pub chain_id: &'b [u8],
     // R and S must be empty
     // so do not put and empty
     // field here, it is just to indicate
@@ -34,14 +37,7 @@ pub struct Legacy<'b> {
 
 impl<'b> Legacy<'b> {
     pub fn chain_id_low_byte(&self) -> u8 {
-        //we define the low_byte as the last byte
-        // but we are also providing a default because
-        // slices can't prevent from having no items
-        // and if we indexed with 0 on no items we'd panic
-
-        //we shouldn't apdu_unwrap here as that's reserved for
-        // impossible scenarios
-        self.chain_id.last().copied().unwrap_or_default()
+        self.chain_id.last().copied().apdu_unwrap()
     }
 }
 
@@ -60,6 +56,10 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(rem)?;
+        if id_bytes.len() < 1 {
+            return Err(ParserError::InvalidChainId.into());
+        }
+
         let (rem, r) = parse_rlp_item(rem)?;
         let (rem, s) = parse_rlp_item(rem)?;
 
