@@ -34,7 +34,7 @@ use crate::{
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip1559<'b> {
-    pub chain_id: &'b [u8],
+    chain_id: &'b [u8],
     pub nonce: BorrowedU256<'b>,
     pub priority_fee: BorrowedU256<'b>,
     pub max_fee: BorrowedU256<'b>,

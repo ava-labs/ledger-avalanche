@@ -30,7 +30,7 @@ pub struct Eip2930<'b> {
     // is an u32, u8, u32,
     // considering this might
     // come from an avax C-Chain
-    pub chain_id: &'b [u8],
+    chain_id: &'b [u8],
     pub base: BaseLegacy<'b>,
     access_list: &'b [u8],
     // R and S must be empty

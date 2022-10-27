@@ -28,7 +28,7 @@ use crate::{
 #[cfg_attr(test, derive(Debug))]
 pub struct Legacy<'b> {
     pub base: BaseLegacy<'b>,
-    pub chain_id: &'b [u8],
+    chain_id: &'b [u8],
     // R and S must be empty
     // so do not put and empty
     // field here, it is just to indicate
