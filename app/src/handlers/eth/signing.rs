@@ -134,7 +134,7 @@ impl ApduHandler for Sign {
 
                 //parse the length of the RLP message
                 let (read, to_read) = get_tx_rlp_len(rest)?;
-                let len = core::cmp::min(to_read as usize + read, rest.len());
+                let len = core::cmp::min((to_read as usize).saturating_add(read), rest.len());
 
                 //write the rest to the swapping buffer so we persist this data
                 let buffer = unsafe { BUFFER.lock(Self)? };
@@ -146,7 +146,7 @@ impl ApduHandler for Sign {
 
                 //if the number of bytes read and the number of bytes to read
                 // is the same as what we read...
-                if to_read as usize + read - len == 0 {
+                if (to_read as usize).saturating_add(read).saturating_sub(len) == 0 {
                     //then we actually had all bytes in this tx!
                     // we should sign directly
                     *tx = Self::start_sign(buffer.read_exact(), flags)?;
@@ -269,7 +269,7 @@ impl Viewable for SignUI {
         if chain_id_byte == 0 {
             out[0] = out[tx - 1] & 0x01;
         } else {
-            out[0] = (out[tx - 1] & 0x01) + (chain_id_byte << 1) + 35;
+            out[0] = (out[tx - 1] & 0x01).saturating_add(chain_id_byte << 1).saturating_add(35);
         }
 
         (tx, Error::Success as _)

@@ -34,7 +34,14 @@ pub struct Legacy<'b> {
 
 impl<'b> Legacy<'b> {
     pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id[self.chain_id.len() - 1]
+        //we define the low_byte as the last byte
+        // but we are also providing a default because
+        // slices can't prevent from having no items
+        // and if we indexed with 0 on no items we'd panic
+
+        //we shouldn't apdu_unwrap here as that's reserved for
+        // impossible scenarios
+        self.chain_id.last().copied().unwrap_or_default()
     }
 }
 

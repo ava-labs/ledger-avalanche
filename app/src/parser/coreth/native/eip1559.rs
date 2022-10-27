@@ -52,7 +52,7 @@ pub struct Eip1559<'b> {
 
 impl<'b> Eip1559<'b> {
     pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id[self.chain_id.len() - 1]
+        self.chain_id.last().copied().unwrap_or_default()
     }
 }
 
