@@ -47,7 +47,7 @@ bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "e8b678f", featur
 bolos-common = { git = "http://github.com/Zondax/ledger-rust", rev = "e8b678f", features = ["bip32-display"] }
 hex = "0.4.3"
 arrayvec = { version = "0.7"}
-time = { version = "0.3.11", features = ["formatting"]}
+time = { version = "0.3.15", features = ["formatting"]}
 k256 = { version = "0.9.6", features = ["ecdsa", "keccak256"] }
 rand = "0.8.5"
 insta = { version = "1", features = ["glob"] }
