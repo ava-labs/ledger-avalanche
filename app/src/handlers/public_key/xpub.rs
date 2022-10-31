@@ -225,10 +225,10 @@ impl Viewable for ExtendedPubkeyUI {
         out[tx] = pkey_bytes.len() as u8;
         tx += 1;
 
-        out[tx..tx + pkey_bytes.len()].copy_from_slice(pkey_bytes);
+        out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
         tx += pkey_bytes.len();
 
-        out[tx..tx + cc.len()].copy_from_slice(&cc);
+        out[tx..][..cc.len()].copy_from_slice(&cc);
         tx += cc.len();
 
         (tx, Error::Success as _)
