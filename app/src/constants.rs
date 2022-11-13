@@ -22,15 +22,15 @@ pub enum ApduError {
     WrongLength = 0x6700,
     ApduCodeEmptyBuffer = 0x6982,
     OutputBufferTooSmall = 0x6983,
-    DataInvalid = 0x6a80,
+    DataInvalid = 0x6A80,
     ApduCodeConditionsNotSatisfied = 0x6985,
     CommandNotAllowed = 0x6986,
-    BadKeyExample = 0x6A81,
+    BadKeyExample = 0x6A81, //unused
     InvalidP1P2 = 0x6B00,
     InsNotSupported = 0x6D00,
     ClaNotSupported = 0x6E00,
     Unknown = 0x6F00,
-    SignVerifyError = 0x6F01,
+    SignVerifyError = 0x6F01, //unused
     Success = 0x9000,
     Busy = 0x9001,
 }
