@@ -308,12 +308,12 @@ impl Viewable for AddrUI {
 
         out[tx] = pkey_bytes.len() as u8;
         tx += 1;
-        out[tx..tx + pkey_bytes.len()].copy_from_slice(pkey_bytes);
+        out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
         tx += pkey_bytes.len();
 
         match self.hash(&pkey) {
             Ok(hash) => {
-                out[tx..tx + hash.len()].copy_from_slice(&hash[..]);
+                out[tx..][..hash.len()].copy_from_slice(&hash[..]);
                 tx += hash.len();
             }
             Err(e) => return (0, e as _),
