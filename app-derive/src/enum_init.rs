@@ -35,7 +35,15 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input as ItemEnum);
 
-    let type_enum = create_type_enum(&ident, variants.iter().map(|variant| &variant.ident));
+    let type_enum = create_type_enum(
+        &ident,
+        variants.iter().map(|variant| {
+            (
+                &variant.ident,
+                cfg_variant_attributes(variant.attrs.clone()),
+            )
+        }),
+    );
 
     let items = variants.iter().map(|variant| match &variant.fields {
         syn::Fields::Named(named) => {
@@ -146,8 +154,11 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Creates an enum that only contains unit variants with the given names
-fn create_type_enum<'a>(name: &Ident, variants: impl Iterator<Item = &'a Ident>) -> ItemEnum {
+/// Creates an enum that only contains unit variants with the given names and attributes for the variants
+fn create_type_enum<'a>(
+    name: &Ident,
+    variants: impl Iterator<Item = (&'a Ident, Vec<Attribute>)>,
+) -> ItemEnum {
     let name = Ident::new(&format!("{}__Type", name), name.span());
 
     //simple way to retrieve some items,
@@ -166,9 +177,9 @@ fn create_type_enum<'a>(name: &Ident, variants: impl Iterator<Item = &'a Ident>)
         enum Foo {}
     };
 
-    let variants = variants.cloned().map(|ident| Variant {
-        attrs: vec![],
-        ident,
+    let variants = variants.map(|(ident, attrs)| Variant {
+        attrs,
+        ident: ident.clone(),
         fields: syn::Fields::Unit,
         discriminant: None,
     });
