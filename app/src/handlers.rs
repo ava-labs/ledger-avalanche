@@ -30,7 +30,6 @@ pub mod resources {
     use crate::constants::MAX_BIP32_PATH_DEPTH;
 
     use super::lock::Lock;
-    use crate::parser::NftInfo;
     use bolos::{
         crypto::bip32::BIP32Path, hash::Sha256, lazy_static, new_swapping_buffer, pic::PIC,
         SwappingBuffer,
@@ -47,8 +46,10 @@ pub mod resources {
     #[lazy_static]
     pub static mut HASH: Lock<Option<[u8; Sha256::DIGEST_LEN]>, HASHAccessors> = Lock::new(None);
 
+    #[cfg(feature = "full")]
     #[lazy_static]
-    pub static mut NFT_INFO: Lock<Option<NftInfo>, NFTInfoAccessors> = Lock::new(None);
+    pub static mut NFT_INFO: Lock<Option<crate::parser::NftInfo>, NFTInfoAccessors> =
+        Lock::new(None);
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum BUFFERAccessors {
@@ -84,6 +85,7 @@ pub mod resources {
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
+    #[cfg(feature = "full")]
     pub enum NFTInfoAccessors {
         NftInfo,
         EthSign,
@@ -129,12 +131,14 @@ pub mod resources {
         }
     }
 
+    #[cfg(feature = "full")]
     impl From<super::eth::provide_nft_info::Info> for NFTInfoAccessors {
         fn from(_: super::eth::provide_nft_info::Info) -> Self {
             Self::NftInfo
         }
     }
 
+    #[cfg(feature = "full")]
     impl From<super::eth::signing::Sign> for NFTInfoAccessors {
         fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
@@ -145,6 +149,7 @@ pub mod resources {
     // get the information it needs. otherwise we would
     // need to pass the NftInfo object all the way down
     // modifying the EthTransaction parser.
+    #[cfg(feature = "full")]
     impl From<crate::parser::ERC721Info> for NFTInfoAccessors {
         fn from(_: crate::parser::ERC721Info) -> Self {
             Self::ERC721Parser

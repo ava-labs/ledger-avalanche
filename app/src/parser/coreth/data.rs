@@ -23,15 +23,21 @@ use crate::parser::{Address, DisplayableItem, ParserError};
 mod asset_call;
 mod contract_call;
 mod deploy;
-mod erc20;
-mod erc721;
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "full")] {
+        mod erc20;
+        mod erc721;
+
+        pub use erc20::ERC20;
+        pub use erc721::{ERC721Info, ERC721};
+    }
+}
 
 use super::native::parse_rlp_item;
 pub use asset_call::AssetCall;
 pub use contract_call::ContractCall;
 pub use deploy::Deploy;
-pub use erc20::ERC20;
-pub use erc721::{ERC721Info, ERC721};
 
 #[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,9 +49,11 @@ pub enum EthData<'b> {
     None, // empty data
     Deploy(Deploy<'b>),
     AssetCall(AssetCall<'b>),
-    Erc20(ERC20<'b>),
-    Erc721(ERC721<'b>),
     ContractCall(ContractCall<'b>),
+    #[cfg(feature = "full")]
+    Erc20(ERC20<'b>),
+    #[cfg(feature = "full")]
+    Erc721(ERC721<'b>),
 }
 
 impl<'b> EthData<'b> {
@@ -79,9 +87,15 @@ impl<'b> EthData<'b> {
                     // chain contract parsing, prioritizing ERC-721
                     // if it fails try ERC-20, otherwise default to
                     // a generic contract call
-                    Self::parse_erc721(to, data, out)
-                        .or_else(|_| Self::parse_erc20(data, out))
-                        .or_else(|_| Self::parse_contract_call(data, out))?;
+                    cfg_if::cfg_if! {
+                        if #[cfg(feature = "full")] {
+                            Self::parse_erc721(to, data, out)
+                                .or_else(|_| Self::parse_erc20(data, out))
+                                .or_else(|_| Self::parse_contract_call(data, out))?;
+                        } else {
+                            Self::parse_contract_call(data, out)?;
+                        }
+                    }
                 }
             }
         };
@@ -139,6 +153,7 @@ impl<'b> EthData<'b> {
         Ok(())
     }
 
+    #[cfg(feature = "full")]
     fn parse_erc20(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
         if data.is_empty() {
             return Err(ParserError::NoData);
@@ -157,6 +172,7 @@ impl<'b> EthData<'b> {
         Ok(())
     }
 
+    #[cfg(feature = "full")]
     fn parse_erc721(
         contract_address: &Address<'b>,
         data: &'b [u8],
@@ -205,7 +221,9 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => 0,
             Self::Deploy(d) => d.num_items(),
             Self::AssetCall(d) => d.num_items(),
+            #[cfg(feature = "full")]
             Self::Erc20(d) => d.num_items(),
+            #[cfg(feature = "full")]
             Self::Erc721(d) => d.num_items(),
             Self::ContractCall(d) => d.num_items(),
         }
@@ -222,7 +240,9 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => Err(ViewError::NoData),
             Self::Deploy(d) => d.render_item(item_n, title, message, page),
             Self::AssetCall(d) => d.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
             Self::Erc20(d) => d.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
             Self::Erc721(d) => d.render_item(item_n, title, message, page),
             Self::ContractCall(d) => d.render_item(item_n, title, message, page),
         }

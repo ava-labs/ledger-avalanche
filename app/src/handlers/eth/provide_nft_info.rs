@@ -13,34 +13,35 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use core::mem::MaybeUninit;
-
-use super::signing::Sign;
-use crate::{
-    constants::ApduError as Error,
-    dispatcher::ApduHandler,
-    handlers::resources::NFT_INFO,
-    parser::{FromBytes, NftInfo},
-    sys,
-    utils::ApduBufferRead,
-};
+use crate::{constants::ApduError as Error, dispatcher::ApduHandler, sys, utils::ApduBufferRead};
 
 pub struct Info;
 
+#[cfg(feature = "full")]
 impl Info {
     fn process(input: &[u8]) -> Result<(), Error> {
         // skip type and version
-        let mut nft_info = MaybeUninit::uninit();
+        let mut nft_info = core::mem::MaybeUninit::uninit();
 
-        _ = NftInfo::from_bytes_into(input, &mut nft_info).map_err(|_| Error::DataInvalid)?;
+        _ = crate::parser::FromBytes::from_bytes_into(input, &mut nft_info)
+            .map_err(|_| Error::DataInvalid)?;
 
         let nft_info = unsafe { nft_info.assume_init() };
 
         // store the information use to parse erc721 token
         unsafe {
-            NFT_INFO.lock(Sign)?.replace(nft_info);
+            crate::handlers::resources::NFT_INFO
+                .lock(super::signing::Sign)?
+                .replace(nft_info);
         }
 
+        Ok(())
+    }
+}
+
+#[cfg(not(feature = "full"))]
+impl Info {
+    fn process(_: &[u8]) -> Result<(), Error> {
         Ok(())
     }
 }

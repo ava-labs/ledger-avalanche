@@ -21,8 +21,12 @@ pub mod data;
 pub mod export_tx;
 pub mod import_tx;
 pub mod native;
+
+#[cfg(feature = "full")]
 pub mod nft_info;
 
 pub use data::*;
 pub use native::*;
+
+#[cfg(feature = "full")]
 pub use nft_info::*;
