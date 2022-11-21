@@ -117,7 +117,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         }
 
         // check for erc721 call and chainID
-        #[cfg(feature = "full")]
+        #[cfg(feature = "erc721")]
         {
             let data = unsafe { &*data_out.as_ptr() };
             if matches!(data, EthData::Erc721(..)) {
@@ -315,7 +315,7 @@ impl<'b> Eip1559<'b> {
     }
 
     #[inline(never)]
-    #[cfg(feature = "full")]
+    #[cfg(feature = "erc20")]
     fn render_erc20_call(
         &self,
         item_n: u8,
@@ -354,7 +354,7 @@ impl<'b> Eip1559<'b> {
     }
 
     #[inline(never)]
-    #[cfg(feature = "full")]
+    #[cfg(feature = "erc721")]
     fn render_erc721_call(
         &self,
         item_n: u8,
@@ -419,10 +419,10 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             // description amount, address, fee and contract_data
             EthData::ContractCall(d) => 1 + 1 + 1 + 1 + d.num_items(),
             // address, fee
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc20")]
             EthData::Erc20(d) => 1 + 1 + d.num_items(),
             // address, fee
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc721")]
             EthData::Erc721(d) => 1 + 1 + d.num_items(),
         }
     }
@@ -439,9 +439,9 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             EthData::Deploy(..) => self.render_deploy(item_n, title, message, page),
             EthData::AssetCall(..) => self.render_asset_call(item_n, title, message, page),
             EthData::ContractCall(..) => self.render_contract_call(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc20")]
             EthData::Erc20(..) => self.render_erc20_call(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc721")]
             EthData::Erc721(..) => self.render_erc721_call(item_n, title, message, page),
         }
     }

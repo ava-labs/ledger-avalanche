@@ -7,7 +7,7 @@ pub use import_tx::*;
 pub use operation_tx::*;
 
 cfg_if::cfg_if! {
-    if #[cfg(feature = "full")] {
+    if #[cfg(feature = "create-asset")] {
         mod create_asset;
         pub use create_asset::*;
     }

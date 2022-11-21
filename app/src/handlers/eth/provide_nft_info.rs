@@ -17,7 +17,7 @@ use crate::{constants::ApduError as Error, dispatcher::ApduHandler, sys, utils::
 
 pub struct Info;
 
-#[cfg(feature = "full")]
+#[cfg(feature = "erc721")]
 impl Info {
     fn process(input: &[u8]) -> Result<(), Error> {
         // skip type and version
@@ -39,7 +39,7 @@ impl Info {
     }
 }
 
-#[cfg(not(feature = "full"))]
+#[cfg(not(feature = "erc721"))]
 impl Info {
     fn process(_: &[u8]) -> Result<(), Error> {
         Ok(())

@@ -65,7 +65,7 @@ pub use utils::*;
 pub use utxo_id::UtxoId;
 pub use validator::*;
 
-#[cfg(feature = "full")]
+#[cfg(feature = "erc721")]
 pub use coreth::{data::ERC721Info, nft_info::NftInfo};
 
 ///This trait defines the interface useful in the UI context

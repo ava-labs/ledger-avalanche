@@ -68,7 +68,7 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
         let (rem, access_list) = parse_rlp_item(rem)?;
 
         // check for erc721 call and chainID
-        #[cfg(feature = "full")]
+        #[cfg(feature = "erc721")]
         {
             let base = unsafe { &*data_out.as_ptr() };
             if matches!(base.data, crate::parser::EthData::Erc721(..)) {

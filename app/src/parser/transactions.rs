@@ -43,24 +43,46 @@ use crate::parser::{
 pub use avm::{AvmExportTx, AvmImportTx, OperationTx};
 pub use pvm::{PvmExportTx, PvmImportTx};
 
-#[cfg(feature = "full")]
+#[cfg(feature = "create-asset")]
 pub use avm::CreateAssetTx;
 
-#[cfg(feature = "full")]
-pub use pvm::{
-    AddDelegatorTx, AddSubnetValidatorTx, AddValidatorTx, CreateChainTx, CreateSubnetTx,
-};
+#[cfg(feature = "create-chain")]
+pub use pvm::CreateChainTx;
+
+#[cfg(feature = "add-subnet-validator")]
+pub use pvm::AddSubnetValidatorTx;
+
+#[cfg(feature = "create-subnet")]
+pub use pvm::CreateSubnetTx;
+
+#[cfg(feature = "add-delegator")]
+pub use pvm::AddDelegatorTx;
+
+#[cfg(feature = "add-validator")]
+pub use pvm::AddValidatorTx;
 
 use super::{
     ChainId, FromBytes, NetworkInfo, ParserError, AVM_EXPORT_TX, AVM_IMPORT_TX, AVM_OPERATION_TX,
     EVM_EXPORT_TX, TRANSFER_TX,
 };
 
-#[cfg(feature = "full")]
-use super::{
-    AVM_CREATE_ASSET_TX, PVM_ADD_DELEGATOR, PVM_ADD_SUBNET_VALIDATOR, PVM_ADD_VALIDATOR,
-    PVM_CREATE_CHAIN, PVM_CREATE_SUBNET,
-};
+#[cfg(feature = "create-asset")]
+use super::AVM_CREATE_ASSET_TX;
+
+#[cfg(feature = "create-chain")]
+use super::PVM_CREATE_CHAIN;
+
+#[cfg(feature = "create-subnet")]
+use super::PVM_CREATE_SUBNET;
+
+#[cfg(feature = "add-subnet-validator")]
+use super::PVM_ADD_SUBNET_VALIDATOR;
+
+#[cfg(feature = "add-validator")]
+use super::PVM_ADD_VALIDATOR;
+
+#[cfg(feature = "add-delegator")]
+use super::PVM_ADD_DELEGATOR;
 
 impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
     type Error = ParserError;
@@ -83,19 +105,19 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
                 Transaction__Type::CImport
             }
             TRANSFER_TX => Transaction__Type::Transfer,
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-asset")]
             AVM_CREATE_ASSET_TX if matches!(value.1.chain_id, ChainId::XChain) => {
                 Transaction__Type::XAsset
             }
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-chain")]
             PVM_CREATE_CHAIN => Transaction__Type::CreateChain,
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-delegator")]
             PVM_ADD_DELEGATOR => Transaction__Type::Delegator,
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-subnet")]
             PVM_CREATE_SUBNET => Transaction__Type::CreateSubnet,
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-validator")]
             PVM_ADD_VALIDATOR => Transaction__Type::Validator,
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-subnet-validator")]
             PVM_ADD_SUBNET_VALIDATOR => Transaction__Type::SubnetValidator,
             _ => return Err(ParserError::InvalidTransactionType),
         };
@@ -116,17 +138,17 @@ pub enum Transaction<'b> {
     CImport(EvmImport<'b>),
     CExport(EvmExport<'b>),
     Transfer(Transfer<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "create-asset")]
     XAsset(CreateAssetTx<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "add-validator")]
     Validator(AddValidatorTx<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "add-delegator")]
     Delegator(AddDelegatorTx<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "create-chain")]
     CreateChain(CreateChainTx<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "create-subnet")]
     CreateSubnet(CreateSubnetTx<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "add-subnet-validator")]
     SubnetValidator(AddSubnetValidatorTx<'b>),
 }
 
@@ -169,9 +191,9 @@ impl<'b> Transaction<'b> {
             Self::Transfer(tx) => tx.disable_output_if(address),
             Self::CImport(tx) => tx.disable_output_if(address),
             Self::CExport(tx) => tx.disable_output_if(address),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-validator")]
             Self::Validator(tx) => tx.disable_output_if(address),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-delegator")]
             Self::Delegator(tx) => tx.disable_output_if(address),
             _ => {}
         }
@@ -297,7 +319,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-asset")]
             Transaction__Type::XAsset => {
                 let out = out.as_mut_ptr() as *mut XAsset__Variant;
                 //valid pointer
@@ -312,7 +334,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-chain")]
             Transaction__Type::CreateChain => {
                 let out = out.as_mut_ptr() as *mut CreateChain__Variant;
                 //valid pointer
@@ -327,7 +349,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-subnet")]
             Transaction__Type::CreateSubnet => {
                 let out = out.as_mut_ptr() as *mut CreateSubnet__Variant;
                 //valid pointer
@@ -342,7 +364,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-validator")]
             Transaction__Type::Validator => {
                 let out = out.as_mut_ptr() as *mut Validator__Variant;
                 //valid pointer
@@ -357,7 +379,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-delegator")]
             Transaction__Type::Delegator => {
                 let out = out.as_mut_ptr() as *mut Delegator__Variant;
                 //valid pointer
@@ -372,7 +394,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-subnet-validator")]
             Transaction__Type::SubnetValidator => {
                 let out = out.as_mut_ptr() as *mut SubnetValidator__Variant;
                 //valid pointer
@@ -410,17 +432,17 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::CImport(tx) => tx.num_items(),
             Self::CExport(tx) => tx.num_items(),
             Self::Transfer(tx) => tx.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-asset")]
             Self::XAsset(tx) => tx.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-validator")]
             Self::Validator(tx) => tx.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-subnet-validator")]
             Self::SubnetValidator(tx) => tx.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-delegator")]
             Self::Delegator(tx) => tx.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-chain")]
             Self::CreateChain(tx) => tx.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-subnet")]
             Self::CreateSubnet(tx) => tx.num_items(),
         }
     }
@@ -441,17 +463,17 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::CImport(tx) => tx.render_item(item_n, title, message, page),
             Self::CExport(tx) => tx.render_item(item_n, title, message, page),
             Self::Transfer(tx) => tx.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-asset")]
             Self::XAsset(tx) => tx.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-validator")]
             Self::Validator(tx) => tx.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-subnet-validator")]
             Self::SubnetValidator(tx) => tx.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "add-delegator")]
             Self::Delegator(tx) => tx.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-chain")]
             Self::CreateChain(tx) => tx.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "create-subnet")]
             Self::CreateSubnet(tx) => tx.render_item(item_n, title, message, page),
         }
     }

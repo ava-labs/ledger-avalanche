@@ -24,15 +24,15 @@ mod asset_call;
 mod contract_call;
 mod deploy;
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "full")] {
-        mod erc20;
-        mod erc721;
+#[cfg(feature = "erc20")]
+mod erc20;
+#[cfg(feature = "erc20")]
+pub use erc20::ERC20;
 
-        pub use erc20::ERC20;
-        pub use erc721::{ERC721Info, ERC721};
-    }
-}
+#[cfg(feature = "erc721")]
+mod erc721;
+#[cfg(feature = "erc721")]
+pub use erc721::{ERC721Info, ERC721};
 
 use super::native::parse_rlp_item;
 pub use asset_call::AssetCall;
@@ -47,9 +47,9 @@ pub enum EthData<'b> {
     Deploy(Deploy<'b>),
     AssetCall(AssetCall<'b>),
     ContractCall(ContractCall<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "erc20")]
     Erc20(ERC20<'b>),
-    #[cfg(feature = "full")]
+    #[cfg(feature = "erc721")]
     Erc721(ERC721<'b>),
 }
 
@@ -85,9 +85,15 @@ impl<'b> EthData<'b> {
                     // if it fails try ERC-20, otherwise default to
                     // a generic contract call
                     cfg_if::cfg_if! {
-                        if #[cfg(feature = "full")] {
+                        if #[cfg(all(feature = "erc721", feature = "erc20"))] {
                             Self::parse_erc721(to, data, out)
                                 .or_else(|_| Self::parse_erc20(data, out))
+                                .or_else(|_| Self::parse_contract_call(data, out))?;
+                        } else if #[cfg(feature = "erc721")] {
+                            Self::parse_erc721(to, data, out)
+                                .or_else(|_| Self::parse_contract_call(data, out))?;
+                        } else if #[cfg(feature = "erc20")] {
+                            Self::parse_erc20(data, out)
                                 .or_else(|_| Self::parse_contract_call(data, out))?;
                         } else {
                             Self::parse_contract_call(data, out)?;
@@ -150,7 +156,7 @@ impl<'b> EthData<'b> {
         Ok(())
     }
 
-    #[cfg(feature = "full")]
+    #[cfg(feature = "erc20")]
     fn parse_erc20(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
         if data.is_empty() {
             return Err(ParserError::NoData);
@@ -169,7 +175,7 @@ impl<'b> EthData<'b> {
         Ok(())
     }
 
-    #[cfg(feature = "full")]
+    #[cfg(feature = "erc721")]
     fn parse_erc721(
         contract_address: &Address<'b>,
         data: &'b [u8],
@@ -218,9 +224,9 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => 0,
             Self::Deploy(d) => d.num_items(),
             Self::AssetCall(d) => d.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc20")]
             Self::Erc20(d) => d.num_items(),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc721")]
             Self::Erc721(d) => d.num_items(),
             Self::ContractCall(d) => d.num_items(),
         }
@@ -237,9 +243,9 @@ impl<'b> DisplayableItem for EthData<'b> {
             Self::None => Err(ViewError::NoData),
             Self::Deploy(d) => d.render_item(item_n, title, message, page),
             Self::AssetCall(d) => d.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc20")]
             Self::Erc20(d) => d.render_item(item_n, title, message, page),
-            #[cfg(feature = "full")]
+            #[cfg(feature = "erc721")]
             Self::Erc721(d) => d.render_item(item_n, title, message, page),
             Self::ContractCall(d) => d.render_item(item_n, title, message, page),
         }

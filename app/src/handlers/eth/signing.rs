@@ -72,7 +72,7 @@ impl Sign {
     pub fn start_sign(txdata: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
         // The ERC721 parser might need access to the NFT_INFO resource
         // also during the review part
-        #[cfg(feature = "full")]
+        #[cfg(feature = "erc721")]
         unsafe {
             _ = crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
         };
@@ -304,7 +304,7 @@ fn cleanup_globals() -> Result<(), Error> {
 
         // Forcefully acquire the resource as it is not longer in use
         // transaction was rejected.
-        #[cfg(feature = "full")]
+        #[cfg(feature = "erc721")]
         if let Ok(info) = crate::handlers::resources::NFT_INFO.lock(Sign) {
             info.take();
 

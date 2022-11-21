@@ -12,11 +12,21 @@ crate-type = ["staticlib", "rlib"]
 
 [features]
 dev = []
-full = []
 derive-debug = []
 blind-sign= []
 blind-sign-toggle = ["blind-sign"]
 default = ["derive-debug"]
+full = ["create-asset", "create-chain", "create-subnet",
+        "add-subnet-validator", "add-delegator", "add-validator",
+        "erc20", "erc721"]
+create-asset = []
+create-chain = []
+create-subnet = []
+add-subnet-validator = []
+add-delegator = []
+add-validator = []
+erc20 = []
+erc721 = []
 
 [dependencies]
 bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "e8b678f" }
