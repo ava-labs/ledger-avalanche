@@ -41,9 +41,6 @@ pub use deploy::Deploy;
 
 #[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
-// DO not change the representation
-// as it would cause unalignment issues
-// with the EthDataType tag
 #[cfg_attr(test, derive(Debug))]
 pub enum EthData<'b> {
     None, // empty data

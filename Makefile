@@ -47,7 +47,7 @@ zemu_debug:
 
 .PHONY: rust_test
 rust_test:
-	cargo test
+	cargo test --features "full"
 
 test_all:
 	make rust_test

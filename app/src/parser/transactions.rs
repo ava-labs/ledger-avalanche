@@ -52,58 +52,35 @@ use super::{
     PVM_ADD_VALIDATOR, PVM_CREATE_CHAIN, PVM_CREATE_SUBNET, TRANSFER_TX,
 };
 
-// Important: do not change the repr attribute,
-// as this type is use as the tag field
-// for the Transaction enum which has the same representation
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
-#[repr(u8)]
-pub enum TransactionType {
-    XImport,
-    XExport,
-    XAsset,
-    XOperation,
-    PImport,
-    PExport,
-    CImport,
-    CExport,
-    Validator,
-    Delegator,
-    CreateChain,
-    CreateSubnet,
-    SubnetValidator,
-    Transfer,
-}
-
-impl TryFrom<(u32, NetworkInfo)> for TransactionType {
+impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
     type Error = ParserError;
 
     fn try_from(value: (u32, NetworkInfo)) -> Result<Self, Self::Error> {
         crate::sys::zemu_log_stack("TransactionType::TryFrom\x00");
         let tx_type = match value.0 {
-            PVM_EXPORT_TX => TransactionType::PExport,
-            PVM_IMPORT_TX => TransactionType::PImport,
-            AVM_EXPORT_TX => TransactionType::XExport,
-            AVM_IMPORT_TX => TransactionType::XImport,
-            AVM_OPERATION_TX => TransactionType::XOperation,
+            PVM_EXPORT_TX => Transaction__Type::PExport,
+            PVM_IMPORT_TX => Transaction__Type::PImport,
+            AVM_EXPORT_TX => Transaction__Type::XExport,
+            AVM_IMPORT_TX => Transaction__Type::XImport,
+            AVM_OPERATION_TX => Transaction__Type::XOperation,
             // avoid collition with evm_export tx in C-chain
             AVM_CREATE_ASSET_TX if matches!(value.1.chain_id, ChainId::XChain) => {
-                TransactionType::XAsset
+                Transaction__Type::XAsset
             }
-            PVM_CREATE_CHAIN => TransactionType::CreateChain,
+            PVM_CREATE_CHAIN => Transaction__Type::CreateChain,
             // avoid collition with createAsset tx in X-chain
             EVM_EXPORT_TX if matches!(value.1.chain_id, ChainId::CChain) => {
-                TransactionType::CExport
+                Transaction__Type::CExport
             }
             // avoid collition with normal_transfer tx in X-chain/P-chain
             EVM_IMPORT_TX if matches!(value.1.chain_id, ChainId::CChain) => {
-                TransactionType::CImport
+                Transaction__Type::CImport
             }
-            PVM_ADD_DELEGATOR => TransactionType::Delegator,
-            PVM_CREATE_SUBNET => TransactionType::CreateSubnet,
-            PVM_ADD_VALIDATOR => TransactionType::Validator,
-            PVM_ADD_SUBNET_VALIDATOR => TransactionType::SubnetValidator,
-            TRANSFER_TX => TransactionType::Transfer,
+            PVM_ADD_DELEGATOR => Transaction__Type::Delegator,
+            PVM_CREATE_SUBNET => Transaction__Type::CreateSubnet,
+            PVM_ADD_VALIDATOR => Transaction__Type::Validator,
+            PVM_ADD_SUBNET_VALIDATOR => Transaction__Type::SubnetValidator,
+            TRANSFER_TX => Transaction__Type::Transfer,
             _ => return Err(ParserError::InvalidTransactionType),
         };
 
@@ -111,53 +88,8 @@ impl TryFrom<(u32, NetworkInfo)> for TransactionType {
     }
 }
 
-#[repr(C)]
-struct XImportVariant<'b>(TransactionType, AvmImportTx<'b>);
-
-#[repr(C)]
-struct XExportVariant<'b>(TransactionType, AvmExportTx<'b>);
-
-#[repr(C)]
-struct XCreateAssetVariant<'b>(TransactionType, CreateAssetTx<'b>);
-
-#[repr(C)]
-struct XOperationVariant<'b>(TransactionType, OperationTx<'b>);
-
-#[repr(C)]
-struct PImportVariant<'b>(TransactionType, PvmImportTx<'b>);
-
-#[repr(C)]
-struct PExportVariant<'b>(TransactionType, PvmExportTx<'b>);
-
-#[repr(C)]
-struct CImportVariant<'b>(TransactionType, EvmImport<'b>);
-
-#[repr(C)]
-struct CExportVariant<'b>(TransactionType, EvmExport<'b>);
-
-#[repr(C)]
-struct ChainVariant<'b>(TransactionType, CreateChainTx<'b>);
-
-#[repr(C)]
-struct SubnetVariant<'b>(TransactionType, CreateSubnetTx<'b>);
-
-#[repr(C)]
-struct ValidatorVariant<'b>(TransactionType, AddValidatorTx<'b>);
-
-#[repr(C)]
-struct SubnetValidatorVariant<'b>(TransactionType, AddSubnetValidatorTx<'b>);
-
-#[repr(C)]
-struct DelegatorVariant<'b>(TransactionType, AddDelegatorTx<'b>);
-
-#[repr(C)]
-struct TransferVariant<'b>(TransactionType, Transfer<'b>);
-
+#[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
-// DO not change the representation
-// as it would cause unalignment issues
-// with the OutputType tag
-#[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
 pub enum Transaction<'b> {
     XImport(AvmImportTx<'b>),
@@ -226,11 +158,11 @@ impl<'b> Transaction<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         let info = Self::peek_transaction_info(input)?;
-        let transaction_type = TransactionType::try_from(info)?;
+        let transaction_type = Transaction__Type::try_from(info)?;
 
         let rem = match transaction_type {
-            TransactionType::PImport => {
-                let out = out.as_mut_ptr() as *mut PImportVariant;
+            Transaction__Type::PImport => {
+                let out = out.as_mut_ptr() as *mut PImport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -238,13 +170,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::PImport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::PImport);
                 }
 
                 rem
             }
-            TransactionType::PExport => {
-                let out = out.as_mut_ptr() as *mut PExportVariant;
+            Transaction__Type::PExport => {
+                let out = out.as_mut_ptr() as *mut PExport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -252,13 +184,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::PExport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::PExport);
                 }
 
                 rem
             }
-            TransactionType::XImport => {
-                let out = out.as_mut_ptr() as *mut XImportVariant;
+            Transaction__Type::XImport => {
+                let out = out.as_mut_ptr() as *mut XImport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -266,13 +198,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::XImport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::XImport);
                 }
 
                 rem
             }
-            TransactionType::XExport => {
-                let out = out.as_mut_ptr() as *mut XExportVariant;
+            Transaction__Type::XExport => {
+                let out = out.as_mut_ptr() as *mut XExport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -280,13 +212,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::XExport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::XExport);
                 }
 
                 rem
             }
-            TransactionType::XAsset => {
-                let out = out.as_mut_ptr() as *mut XCreateAssetVariant;
+            Transaction__Type::XAsset => {
+                let out = out.as_mut_ptr() as *mut XAsset__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -299,8 +231,8 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            TransactionType::XOperation => {
-                let out = out.as_mut_ptr() as *mut XOperationVariant;
+            Transaction__Type::XOperation => {
+                let out = out.as_mut_ptr() as *mut XOperation__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -313,8 +245,8 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            TransactionType::CExport => {
-                let out = out.as_mut_ptr() as *mut CExportVariant;
+            Transaction__Type::CExport => {
+                let out = out.as_mut_ptr() as *mut CExport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -322,13 +254,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CExport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::CExport);
                 }
 
                 rem
             }
-            TransactionType::CImport => {
-                let out = out.as_mut_ptr() as *mut CImportVariant;
+            Transaction__Type::CImport => {
+                let out = out.as_mut_ptr() as *mut CImport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -336,13 +268,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CImport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::CImport);
                 }
 
                 rem
             }
-            TransactionType::CreateChain => {
-                let out = out.as_mut_ptr() as *mut ChainVariant;
+            Transaction__Type::CreateChain => {
+                let out = out.as_mut_ptr() as *mut CreateChain__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -350,13 +282,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CreateChain);
+                    addr_of_mut!((*out).0).write(Transaction__Type::CreateChain);
                 }
 
                 rem
             }
-            TransactionType::CreateSubnet => {
-                let out = out.as_mut_ptr() as *mut SubnetVariant;
+            Transaction__Type::CreateSubnet => {
+                let out = out.as_mut_ptr() as *mut CreateSubnet__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -364,13 +296,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CreateSubnet);
+                    addr_of_mut!((*out).0).write(Transaction__Type::CreateSubnet);
                 }
 
                 rem
             }
-            TransactionType::Validator => {
-                let out = out.as_mut_ptr() as *mut ValidatorVariant;
+            Transaction__Type::Validator => {
+                let out = out.as_mut_ptr() as *mut Validator__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -378,13 +310,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::Validator);
+                    addr_of_mut!((*out).0).write(Transaction__Type::Validator);
                 }
 
                 rem
             }
-            TransactionType::Delegator => {
-                let out = out.as_mut_ptr() as *mut DelegatorVariant;
+            Transaction__Type::Delegator => {
+                let out = out.as_mut_ptr() as *mut Delegator__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -392,13 +324,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::Delegator);
+                    addr_of_mut!((*out).0).write(Transaction__Type::Delegator);
                 }
 
                 rem
             }
-            TransactionType::SubnetValidator => {
-                let out = out.as_mut_ptr() as *mut SubnetValidatorVariant;
+            Transaction__Type::SubnetValidator => {
+                let out = out.as_mut_ptr() as *mut SubnetValidator__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -406,13 +338,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::SubnetValidator);
+                    addr_of_mut!((*out).0).write(Transaction__Type::SubnetValidator);
                 }
 
                 rem
             }
-            TransactionType::Transfer => {
-                let out = out.as_mut_ptr() as *mut TransferVariant;
+            Transaction__Type::Transfer => {
+                let out = out.as_mut_ptr() as *mut Transfer__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -420,7 +352,7 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::Transfer);
+                    addr_of_mut!((*out).0).write(Transaction__Type::Transfer);
                 }
 
                 rem

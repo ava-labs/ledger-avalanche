@@ -88,6 +88,7 @@ OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_x.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_x.sh
 RUST_TARGET:=thumbv6m-none-eabi
 APP_LOAD_PARAMS += --appFlags 0x200
+APP_FULL:=1
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOS2)
@@ -97,12 +98,16 @@ OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_sp.sh
 #RUST_TARGET:=thumbv8m.main-none-eabi
 RUST_TARGET:=thumbv6m-none-eabi
 APP_LOAD_PARAMS += --appFlags 0x000
+APP_FULL:=1
 endif
 
 RUST_FEATURES:=--features "blind-sign-toggle"
 DEFINES += BLIND_SIGN_TOGGLE
 ifeq ($(APP_TESTING),1)
 RUST_FEATURES:=$(RUST_FEATURES),"dev"
+endif
+ifeq ($(APP_FULL),1)
+RUST_FEATURES:=$(RUST_FEATURES),"full"
 endif
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
