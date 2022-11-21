@@ -40,16 +40,26 @@ use crate::parser::{
     DisplayableItem, ExportTx as EvmExport, ImportTx as EvmImport, EVM_IMPORT_TX, PVM_EXPORT_TX,
     PVM_IMPORT_TX,
 };
-pub use avm::{AvmExportTx, AvmImportTx, CreateAssetTx, OperationTx};
+pub use avm::{AvmExportTx, AvmImportTx, OperationTx};
+pub use pvm::{PvmExportTx, PvmImportTx};
+
+#[cfg(feature = "full")]
+pub use avm::CreateAssetTx;
+
+#[cfg(feature = "full")]
 pub use pvm::{
     AddDelegatorTx, AddSubnetValidatorTx, AddValidatorTx, CreateChainTx, CreateSubnetTx,
-    PvmExportTx, PvmImportTx,
 };
 
 use super::{
-    ChainId, FromBytes, NetworkInfo, ParserError, AVM_CREATE_ASSET_TX, AVM_EXPORT_TX,
-    AVM_IMPORT_TX, AVM_OPERATION_TX, EVM_EXPORT_TX, PVM_ADD_DELEGATOR, PVM_ADD_SUBNET_VALIDATOR,
-    PVM_ADD_VALIDATOR, PVM_CREATE_CHAIN, PVM_CREATE_SUBNET, TRANSFER_TX,
+    ChainId, FromBytes, NetworkInfo, ParserError, AVM_EXPORT_TX, AVM_IMPORT_TX, AVM_OPERATION_TX,
+    EVM_EXPORT_TX, TRANSFER_TX,
+};
+
+#[cfg(feature = "full")]
+use super::{
+    AVM_CREATE_ASSET_TX, PVM_ADD_DELEGATOR, PVM_ADD_SUBNET_VALIDATOR, PVM_ADD_VALIDATOR,
+    PVM_CREATE_CHAIN, PVM_CREATE_SUBNET,
 };
 
 impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
@@ -63,24 +73,30 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
             AVM_EXPORT_TX => Transaction__Type::XExport,
             AVM_IMPORT_TX => Transaction__Type::XImport,
             AVM_OPERATION_TX => Transaction__Type::XOperation,
-            // avoid collition with evm_export tx in C-chain
-            AVM_CREATE_ASSET_TX if matches!(value.1.chain_id, ChainId::XChain) => {
-                Transaction__Type::XAsset
-            }
-            PVM_CREATE_CHAIN => Transaction__Type::CreateChain,
-            // avoid collition with createAsset tx in X-chain
+            // avoid collision with evm_export tx in C-chain
+            // avoid collision with createAsset tx in X-chain
             EVM_EXPORT_TX if matches!(value.1.chain_id, ChainId::CChain) => {
                 Transaction__Type::CExport
             }
-            // avoid collition with normal_transfer tx in X-chain/P-chain
+            // avoid collision with normal_transfer tx in X-chain/P-chain
             EVM_IMPORT_TX if matches!(value.1.chain_id, ChainId::CChain) => {
                 Transaction__Type::CImport
             }
-            PVM_ADD_DELEGATOR => Transaction__Type::Delegator,
-            PVM_CREATE_SUBNET => Transaction__Type::CreateSubnet,
-            PVM_ADD_VALIDATOR => Transaction__Type::Validator,
-            PVM_ADD_SUBNET_VALIDATOR => Transaction__Type::SubnetValidator,
             TRANSFER_TX => Transaction__Type::Transfer,
+            #[cfg(feature = "full")]
+            AVM_CREATE_ASSET_TX if matches!(value.1.chain_id, ChainId::XChain) => {
+                Transaction__Type::XAsset
+            }
+            #[cfg(feature = "full")]
+            PVM_CREATE_CHAIN => Transaction__Type::CreateChain,
+            #[cfg(feature = "full")]
+            PVM_ADD_DELEGATOR => Transaction__Type::Delegator,
+            #[cfg(feature = "full")]
+            PVM_CREATE_SUBNET => Transaction__Type::CreateSubnet,
+            #[cfg(feature = "full")]
+            PVM_ADD_VALIDATOR => Transaction__Type::Validator,
+            #[cfg(feature = "full")]
+            PVM_ADD_SUBNET_VALIDATOR => Transaction__Type::SubnetValidator,
             _ => return Err(ParserError::InvalidTransactionType),
         };
 
@@ -94,18 +110,24 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
 pub enum Transaction<'b> {
     XImport(AvmImportTx<'b>),
     XExport(AvmExportTx<'b>),
-    XAsset(CreateAssetTx<'b>),
     XOperation(OperationTx<'b>),
     PImport(PvmImportTx<'b>),
     PExport(PvmExportTx<'b>),
     CImport(EvmImport<'b>),
     CExport(EvmExport<'b>),
-    Validator(AddValidatorTx<'b>),
-    Delegator(AddDelegatorTx<'b>),
-    CreateChain(CreateChainTx<'b>),
-    CreateSubnet(CreateSubnetTx<'b>),
-    SubnetValidator(AddSubnetValidatorTx<'b>),
     Transfer(Transfer<'b>),
+    #[cfg(feature = "full")]
+    XAsset(CreateAssetTx<'b>),
+    #[cfg(feature = "full")]
+    Validator(AddValidatorTx<'b>),
+    #[cfg(feature = "full")]
+    Delegator(AddDelegatorTx<'b>),
+    #[cfg(feature = "full")]
+    CreateChain(CreateChainTx<'b>),
+    #[cfg(feature = "full")]
+    CreateSubnet(CreateSubnetTx<'b>),
+    #[cfg(feature = "full")]
+    SubnetValidator(AddSubnetValidatorTx<'b>),
 }
 
 impl<'b> Transaction<'b> {
@@ -147,7 +169,9 @@ impl<'b> Transaction<'b> {
             Self::Transfer(tx) => tx.disable_output_if(address),
             Self::CImport(tx) => tx.disable_output_if(address),
             Self::CExport(tx) => tx.disable_output_if(address),
+            #[cfg(feature = "full")]
             Self::Validator(tx) => tx.disable_output_if(address),
+            #[cfg(feature = "full")]
             Self::Delegator(tx) => tx.disable_output_if(address),
             _ => {}
         }
@@ -217,20 +241,6 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            Transaction__Type::XAsset => {
-                let out = out.as_mut_ptr() as *mut XAsset__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = CreateAssetTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(transaction_type);
-                }
-
-                rem
-            }
             Transaction__Type::XOperation => {
                 let out = out.as_mut_ptr() as *mut XOperation__Variant;
                 //valid pointer
@@ -273,6 +283,36 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
+            Transaction__Type::Transfer => {
+                let out = out.as_mut_ptr() as *mut Transfer__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = Transfer::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(Transaction__Type::Transfer);
+                }
+
+                rem
+            }
+            #[cfg(feature = "full")]
+            Transaction__Type::XAsset => {
+                let out = out.as_mut_ptr() as *mut XAsset__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = CreateAssetTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(transaction_type);
+                }
+
+                rem
+            }
+            #[cfg(feature = "full")]
             Transaction__Type::CreateChain => {
                 let out = out.as_mut_ptr() as *mut CreateChain__Variant;
                 //valid pointer
@@ -287,6 +327,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
+            #[cfg(feature = "full")]
             Transaction__Type::CreateSubnet => {
                 let out = out.as_mut_ptr() as *mut CreateSubnet__Variant;
                 //valid pointer
@@ -301,6 +342,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
+            #[cfg(feature = "full")]
             Transaction__Type::Validator => {
                 let out = out.as_mut_ptr() as *mut Validator__Variant;
                 //valid pointer
@@ -315,6 +357,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
+            #[cfg(feature = "full")]
             Transaction__Type::Delegator => {
                 let out = out.as_mut_ptr() as *mut Delegator__Variant;
                 //valid pointer
@@ -329,6 +372,7 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
+            #[cfg(feature = "full")]
             Transaction__Type::SubnetValidator => {
                 let out = out.as_mut_ptr() as *mut SubnetValidator__Variant;
                 //valid pointer
@@ -339,20 +383,6 @@ impl<'b> Transaction<'b> {
                 //pointer is valid
                 unsafe {
                     addr_of_mut!((*out).0).write(Transaction__Type::SubnetValidator);
-                }
-
-                rem
-            }
-            Transaction__Type::Transfer => {
-                let out = out.as_mut_ptr() as *mut Transfer__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = Transfer::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::Transfer);
                 }
 
                 rem
@@ -374,18 +404,24 @@ impl<'b> DisplayableItem for Transaction<'b> {
         match self {
             Self::XImport(tx) => tx.num_items(),
             Self::XExport(tx) => tx.num_items(),
-            Self::XAsset(tx) => tx.num_items(),
             Self::XOperation(tx) => tx.num_items(),
             Self::PImport(tx) => tx.num_items(),
             Self::PExport(tx) => tx.num_items(),
             Self::CImport(tx) => tx.num_items(),
             Self::CExport(tx) => tx.num_items(),
-            Self::Validator(tx) => tx.num_items(),
-            Self::SubnetValidator(tx) => tx.num_items(),
-            Self::Delegator(tx) => tx.num_items(),
-            Self::CreateChain(tx) => tx.num_items(),
-            Self::CreateSubnet(tx) => tx.num_items(),
             Self::Transfer(tx) => tx.num_items(),
+            #[cfg(feature = "full")]
+            Self::XAsset(tx) => tx.num_items(),
+            #[cfg(feature = "full")]
+            Self::Validator(tx) => tx.num_items(),
+            #[cfg(feature = "full")]
+            Self::SubnetValidator(tx) => tx.num_items(),
+            #[cfg(feature = "full")]
+            Self::Delegator(tx) => tx.num_items(),
+            #[cfg(feature = "full")]
+            Self::CreateChain(tx) => tx.num_items(),
+            #[cfg(feature = "full")]
+            Self::CreateSubnet(tx) => tx.num_items(),
         }
     }
 
@@ -399,18 +435,24 @@ impl<'b> DisplayableItem for Transaction<'b> {
         match self {
             Self::XImport(tx) => tx.render_item(item_n, title, message, page),
             Self::XExport(tx) => tx.render_item(item_n, title, message, page),
-            Self::XAsset(tx) => tx.render_item(item_n, title, message, page),
             Self::XOperation(tx) => tx.render_item(item_n, title, message, page),
             Self::PImport(tx) => tx.render_item(item_n, title, message, page),
             Self::PExport(tx) => tx.render_item(item_n, title, message, page),
             Self::CImport(tx) => tx.render_item(item_n, title, message, page),
             Self::CExport(tx) => tx.render_item(item_n, title, message, page),
-            Self::Validator(tx) => tx.render_item(item_n, title, message, page),
-            Self::SubnetValidator(tx) => tx.render_item(item_n, title, message, page),
-            Self::Delegator(tx) => tx.render_item(item_n, title, message, page),
-            Self::CreateChain(tx) => tx.render_item(item_n, title, message, page),
-            Self::CreateSubnet(tx) => tx.render_item(item_n, title, message, page),
             Self::Transfer(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
+            Self::XAsset(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
+            Self::Validator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
+            Self::SubnetValidator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
+            Self::Delegator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
+            Self::CreateChain(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "full")]
+            Self::CreateSubnet(tx) => tx.render_item(item_n, title, message, page),
         }
     }
 }
