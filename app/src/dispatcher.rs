@@ -14,8 +14,6 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::hint::unreachable_unchecked;
-
 use crate::constants::{evm_instructions::*, instructions::*, ApduError};
 
 #[cfg(feature = "erc20")]
@@ -112,8 +110,14 @@ pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8
             .and(Err::<(), _>(ApduError::Success))
             .map_err(|e| e as u16)
         {
+            Err(_) if (*tx + 2) as usize >= apdu_buffer.len() => {
+                //sw won't fit in the buffer
+                // set tx to 0 and override error
+                *tx = 0;
+                ApduError::OutputBufferTooSmall as u16
+            }
             Err(e) => e,
-            Ok(_) => unsafe { unreachable_unchecked() },
+            Ok(_) => unsafe { core::hint::unreachable_unchecked() },
         },
         Err(_) => ApduError::WrongLength as u16,
     };
@@ -122,7 +126,7 @@ pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8
     apdu_buffer
         .get_mut(txu..txu + 2)
         .apdu_unwrap()
-        .copy_from_slice(status_word.to_be_bytes().as_ref());
+        .copy_from_slice(&status_word.to_be_bytes());
 
     *tx += 2;
 }

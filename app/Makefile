@@ -101,13 +101,15 @@ APP_LOAD_PARAMS += --appFlags 0x000
 APP_FULL:=1
 endif
 
-RUST_FEATURES:=--features "blind-sign-toggle"
-DEFINES += BLIND_SIGN_TOGGLE
 ifeq ($(APP_TESTING),1)
-RUST_FEATURES:=$(RUST_FEATURES),"dev"
+RUST_FEATURES+="dev"
 endif
 ifeq ($(APP_FULL),1)
-RUST_FEATURES:=$(RUST_FEATURES),"full"
+RUST_FEATURES+="full"
+endif
+
+ifdef $(RUST_FEATURES)
+RUST_FEATURES:=--features $(RUST_FEATURES)
 endif
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
@@ -220,7 +222,9 @@ SDK_SOURCE_PATH += lib_ux
 
 .PHONY: rust
 rust:
-	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) cargo build --target $(RUST_TARGET) --release --no-default-features $(RUST_FEATURES)
+	RUSTFLAGS="-C link-args=-zstack-size=3000" \
+	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) cargo build \
+	--target $(RUST_TARGET) --release --no-default-features $(RUST_FEATURES)
 
 .PHONY: rust_clean
 rust_clean:
