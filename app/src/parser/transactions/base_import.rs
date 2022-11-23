@@ -223,8 +223,12 @@ where
         let mut export_str: ArrayString<IMPORT_DESCRIPTION_LEN> = ArrayString::new();
         let from_alias = chain_alias_lookup(self.source_chain).map_err(|_| ViewError::Unknown)?;
 
-        export_str.push_str(from_alias);
-        export_str.push_str(pic_str!(" Chain"));
+        export_str
+            .try_push_str(from_alias)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_push_str(pic_str!(" Chain"))
+            .map_err(|_| ViewError::Unknown)?;
 
         handle_ui_message(export_str.as_bytes(), message, page)
     }

@@ -287,10 +287,11 @@ where
         let mut export_str: ArrayVec<u8, EXPORT_TX_DESCRIPTION_LEN> = ArrayVec::new();
 
         match self.tx_header.chain_id().map_err(|_| ViewError::Unknown)? {
-            ChainId::PChain => export_str.push(b'P'),
-            ChainId::XChain => export_str.push(b'X'),
-            ChainId::CChain => export_str.push(b'C'),
+            ChainId::PChain => export_str.try_push(b'P'),
+            ChainId::XChain => export_str.try_push(b'X'),
+            ChainId::CChain => export_str.try_push(b'C'),
         }
+        .map_err(|_| ViewError::Unknown)?;
 
         let to_alias = chain_alias_lookup(self.destination_chain)
             .map(|a| a.as_bytes())

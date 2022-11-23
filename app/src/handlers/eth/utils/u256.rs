@@ -1200,7 +1200,6 @@ impl u256 {
     /// Converts from big endian representation bytes in memory.
     #[inline(never)]
     fn from_big_endian(slice: &[u8]) -> Self {
-        use byteorder::{BigEndian, ByteOrder};
         if 4 * 8 < slice.len() {
             panic!("assertion failed: 4 * 8 >= slice.len()")
         };
@@ -1208,7 +1207,8 @@ impl u256 {
         padded[4 * 8 - slice.len()..4 * 8].copy_from_slice(slice);
         let mut ret = [0; 4];
         for i in 0..4 {
-            ret[4 - i - 1] = BigEndian::read_u64(&padded[8 * i..]);
+            let buf = arrayref::array_ref!(padded, i * 8, 8);
+            ret[4 - i - 1] = u64::from_be_bytes(*buf);
         }
         u256(ret)
     }
@@ -1225,7 +1225,6 @@ impl u256 {
 
     /// Converts from little endian representation bytes in memory.
     pub fn from_little_endian(slice: &[u8]) -> Self {
-        use byteorder::{ByteOrder, LittleEndian};
         if 4 * 8 < slice.len() {
             panic!("assertion failed: 4 * 8 >= slice.len()")
         };
@@ -1233,7 +1232,8 @@ impl u256 {
         padded[0..slice.len()].copy_from_slice(slice);
         let mut ret = [0; 4];
         for i in 0..4 {
-            ret[i] = LittleEndian::read_u64(&padded[8 * i..]);
+            let buf = arrayref::array_ref!(padded, i * 8, 8);
+            ret[i] = u64::from_le_bytes(*buf);
         }
         u256(ret)
     }
