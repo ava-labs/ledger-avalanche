@@ -1231,9 +1231,9 @@ impl u256 {
         let mut padded = [0u8; 4 * 8];
         padded[0..slice.len()].copy_from_slice(slice);
         let mut ret = [0; 4];
-        for i in 0..4 {
+        for (i, num) in ret.iter_mut().enumerate() {
             let buf = arrayref::array_ref!(padded, i * 8, 8);
-            ret[i] = u64::from_le_bytes(*buf);
+            *num = u64::from_le_bytes(*buf);
         }
         u256(ret)
     }

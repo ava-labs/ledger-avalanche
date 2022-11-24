@@ -73,7 +73,7 @@ mod utils {
             _ => {}
         }
 
-        let marker = *data.get(0).ok_or(Error::DataInvalid)?;
+        let marker = *data.first().ok_or(Error::DataInvalid)?;
 
         match marker {
             slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xC0)),

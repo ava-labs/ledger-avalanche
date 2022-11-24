@@ -484,10 +484,8 @@ mod tests {
     use std::prelude::v1::*;
 
     use zemu_sys::Viewable;
-    use zuit::MockDriver;
 
     use super::*;
-    use crate::parser::snapshots_common::{with_leaked, ReducedPage};
 
     /// This is only to be used for testing, hence why
     /// it's present inside the `mod test` block only
@@ -544,6 +542,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "full")]
     //isolation is enabled by defalt in miri
     // and this prevents opening files, amonst other things
     // we could either disable isolation or have miri
@@ -553,6 +552,8 @@ mod tests {
     // we can just avoid having it run in miri directly
     #[cfg_attr(miri, ignore)]
     fn tx_ui() {
+        use crate::parser::snapshots_common::{with_leaked, ReducedPage};
+
         insta::glob!("testvectors/*.json", |path| {
             let file = std::fs::File::open(path)
                 .unwrap_or_else(|e| panic!("Unable to open file {:?}: {:?}", path, e));
@@ -562,7 +563,7 @@ mod tests {
             let test = |data| {
                 let tx = Transaction::new(data).expect("parse tx from data");
 
-                let mut driver = MockDriver::<_, 18, 1024>::new(tx);
+                let mut driver = zuit::MockDriver::<_, 18, 1024>::new(tx);
                 driver.drive();
 
                 let ui = driver.out_ui();

@@ -16,7 +16,6 @@
 #![no_std]
 #![no_builtins]
 #![macro_use]
-#![no_main]
 // later we can rename enum_variant
 // we have some functions that we might use in the future
 // and some initializations that rust doesn't detect properly

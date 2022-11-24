@@ -72,7 +72,7 @@ where
 
         // get chains info
         let header = tx_header.as_ptr();
-        let base_chain_id = unsafe { (&*header).chain_id()? };
+        let base_chain_id = unsafe { (*header).chain_id()? };
         let dest_chain_id = ChainId::try_from(destination_chain)?;
 
         // Exporting to the same chain is an error

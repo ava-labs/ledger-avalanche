@@ -44,7 +44,7 @@ impl<'a> Address<'a> {
             return Err(ParserError::InvalidAsciiValue);
         }
 
-        let len = bech32::encode(hrp, &self.0, encoded, Variant::Bech32)
+        let len = bech32::encode(hrp, self.0, encoded, Variant::Bech32)
             .map_err(|_| ParserError::UnexpectedBufferEnd)?;
 
         Ok(len)

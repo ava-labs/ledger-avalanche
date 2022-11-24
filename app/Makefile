@@ -102,13 +102,13 @@ APP_FULL:=1
 endif
 
 ifeq ($(APP_TESTING),1)
-RUST_FEATURES+="dev"
+RUST_FEATURES+="dev",
 endif
 ifeq ($(APP_FULL),1)
-RUST_FEATURES+="full"
+RUST_FEATURES+="full",
 endif
 
-ifdef $(RUST_FEATURES)
+ifdef RUST_FEATURES
 RUST_FEATURES:=--features $(RUST_FEATURES)
 endif
 

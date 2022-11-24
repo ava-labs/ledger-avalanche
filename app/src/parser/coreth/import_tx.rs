@@ -67,7 +67,7 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
         let source_chain = arrayref::array_ref!(source_chain_id, 0, SOURCE_CHAIN_LEN);
         // get chains info
         let header = tx_header.as_ptr();
-        let blockchain_id = unsafe { (&*header).chain_id()? };
+        let blockchain_id = unsafe { (*header).chain_id()? };
         let src_id = ChainId::try_from(source_chain)?;
 
         // Importing from the same chain is an error

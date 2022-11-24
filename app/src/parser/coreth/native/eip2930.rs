@@ -57,7 +57,7 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(input)?;
-        if id_bytes.len() < 1 {
+        if id_bytes.is_empty() {
             return Err(ParserError::InvalidChainId.into());
         }
 

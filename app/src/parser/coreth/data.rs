@@ -127,7 +127,7 @@ impl<'b> EthData<'b> {
         // we do not have a way to verify this data. in the worst scenario
         // the transaction would be rejected, and for this reason
         // It is shown on the screen(partially) for the user to review.
-        _ = Deploy::parse_into(data, deploy)?;
+        Deploy::parse_into(data, deploy)?;
 
         //pointer is valid
         unsafe {
@@ -146,7 +146,7 @@ impl<'b> EthData<'b> {
 
         let asset_call = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-        _ = AssetCall::parse_into(data, asset_call)?;
+        AssetCall::parse_into(data, asset_call)?;
 
         //pointer is valid
         unsafe {
@@ -165,7 +165,7 @@ impl<'b> EthData<'b> {
         let out = out.as_mut_ptr() as *mut Erc20__Variant;
 
         let erc20 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-        _ = ERC20::parse_into(data, erc20)?;
+        ERC20::parse_into(data, erc20)?;
 
         //pointer is valid
         unsafe {
@@ -188,7 +188,7 @@ impl<'b> EthData<'b> {
         let out = out.as_mut_ptr() as *mut Erc721__Variant;
 
         let erc721 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-        _ = ERC721::parse_into(contract_address, data, erc721)?;
+        ERC721::parse_into(contract_address, data, erc721)?;
 
         //pointer is valid
         unsafe {
@@ -207,7 +207,7 @@ impl<'b> EthData<'b> {
 
         let contract_call = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
-        _ = ContractCall::parse_into(data, contract_call)?;
+        ContractCall::parse_into(data, contract_call)?;
 
         //pointer is valid
         unsafe {

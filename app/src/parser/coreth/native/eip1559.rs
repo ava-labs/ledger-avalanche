@@ -68,7 +68,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(input)?;
-        if id_bytes.len() < 1 {
+        if id_bytes.is_empty() {
             return Err(ParserError::InvalidChainId.into());
         }
 
@@ -156,9 +156,9 @@ impl<'b> Eip1559<'b> {
     fn fee(&self) -> Result<u256, ParserError> {
         let f = u256::pic_from_big_endian();
 
-        let priority_fee = f(&*self.priority_fee);
-        let max_fee = f(&*self.max_fee);
-        let gas_limit = f(&*self.gas_limit);
+        let priority_fee = f(&self.priority_fee);
+        let max_fee = f(&self.max_fee);
+        let gas_limit = f(&self.gas_limit);
 
         let fee = priority_fee
             .checked_add(max_fee)

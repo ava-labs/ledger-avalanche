@@ -56,7 +56,7 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(rem)?;
-        if id_bytes.len() < 1 {
+        if id_bytes.is_empty() {
             return Err(ParserError::InvalidChainId.into());
         }
 

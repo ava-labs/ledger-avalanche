@@ -280,6 +280,7 @@ fn create_data_struct_for_named(
 /// and using the given `type_enum` to construct the discriminator
 ///
 /// Doesn't make sense to be used for unit variants, so we have the generation there instead
+#[allow(clippy::too_many_arguments)]
 pub fn impl_initializer(
     name: &Ident,
     generics: &Generics,

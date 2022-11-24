@@ -39,7 +39,7 @@ jobs:
       #- name: clippy
         #run: |
           #cargo clippy --version
-          #cargo clippy --all-targets
+          #cargo clippy --all-targets --features "full","derive-debug"
 
   build:
     runs-on: ubuntu-latest
