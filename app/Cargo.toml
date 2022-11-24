@@ -3,12 +3,12 @@ name = "avalanche-app"
 version = "0.1.0"
 edition = "2018"
 authors = ["Zondax <hello@zondax.ch>"]
-
+autotests = false #TODO: to be enabled when we can emit rlib
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "rslib"
-crate-type = ["staticlib", "rlib"]
+crate-type = ["staticlib"]
 
 [features]
 lite = ["erc20", "erc721", "add-validator", "add-delegator"]

@@ -23,14 +23,14 @@
 
 extern crate no_std_compat as std;
 
-pub mod constants;
-pub mod dispatcher;
+mod constants;
+mod dispatcher;
 mod handlers;
 mod parser;
 mod sys;
 
-pub use handlers::ZPacketType as PacketType;
-pub use parser::Transaction;
+use handlers::ZPacketType as PacketType;
+use parser::Transaction;
 
 #[cfg(not(fuzzing))]
 sys::panic_handler! {}
@@ -39,7 +39,7 @@ sys::panic_handler! {}
 mod utils;
 use utils::ApduPanic;
 
-pub mod crypto;
+mod crypto;
 
 cfg_if::cfg_if! {
     if #[cfg(fuzzing)] {
