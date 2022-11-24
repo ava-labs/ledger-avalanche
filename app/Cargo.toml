@@ -11,8 +11,8 @@ name = "rslib"
 crate-type = ["staticlib", "rlib"]
 
 [features]
-default = ["erc20", "erc721", "add-validator", "add-delegator"]
-full = ["create-asset", "create-chain", "create-subnet",
+lite = ["erc20", "erc721", "add-validator", "add-delegator"]
+full = ["lite", "create-asset", "create-chain", "create-subnet",
         "add-subnet-validator"]
 
 #features
@@ -37,7 +37,6 @@ zemu-sys = { git = "https://github.com/Zondax/ledger-rust", rev = "0465b5a" }
 
 no-std-compat = { version = "0.4" }
 cfg-if = "1.0.0"
-git-testament = { version = "0.2.1", default-features = false }
 
 avalanche-app-derive = { path = "../app-derive" }
 arrayvec = { version = "0.7", default-features = false }
@@ -46,11 +45,7 @@ nom = { version = "7.1.1", default-features = false}
 bytemuck = { version = "1" }
 lexical-core = { version = "0.7", features = ["libm"], default-features = false }
 educe = "0.4.19"
-crunchy = "0.2.2"
 byteorder = { version = "1.4.3", default-features = false }
-
-[target.thumbv6m-none-eabi.dev-dependencies]
-panic-halt = "0.2.0"
 
 [dev-dependencies]
 zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }

@@ -257,18 +257,6 @@ impl u256 {
         }
     }
 
-    /// Write to the slice in little-endian format.
-    #[inline]
-    pub fn as_little_endian(&self, bytes: &mut [u8]) {
-        use byteorder::{ByteOrder, LittleEndian};
-        if 4 * 8 != bytes.len() {
-            panic!("assertion failed: 4 * 8 == bytes.len()")
-        }
-        for i in 0..4 {
-            LittleEndian::write_u64(&mut bytes[8 * i..], self.0[i]);
-        }
-    }
-
     /// Create `10**n` as this type.
     ///
     /// # Panics
@@ -1221,21 +1209,6 @@ impl u256 {
         let picced = unsafe { PIC::manual(to_pic) } as *const ();
 
         unsafe { core::mem::transmute(picced) }
-    }
-
-    /// Converts from little endian representation bytes in memory.
-    pub fn from_little_endian(slice: &[u8]) -> Self {
-        if 4 * 8 < slice.len() {
-            panic!("assertion failed: 4 * 8 >= slice.len()")
-        };
-        let mut padded = [0u8; 4 * 8];
-        padded[0..slice.len()].copy_from_slice(slice);
-        let mut ret = [0; 4];
-        for (i, num) in ret.iter_mut().enumerate() {
-            let buf = arrayref::array_ref!(padded, i * 8, 8);
-            *num = u64::from_le_bytes(*buf);
-        }
-        u256(ret)
     }
 }
 
