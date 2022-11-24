@@ -35,7 +35,7 @@ use bolos::PIC;
 /// and instead store just a slice (2 * usize), but still enforce in the type system
 /// to read such memory as a u256
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct BorrowedU256<'b>(&'b [u8]);
 
 impl<'b> BorrowedU256<'b> {

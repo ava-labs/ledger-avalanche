@@ -222,7 +222,6 @@ SDK_SOURCE_PATH += lib_ux
 
 .PHONY: rust
 rust:
-	RUSTFLAGS="-C link-args=-zstack-size=3000" \
 	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) cargo build \
 	--target $(RUST_TARGET) --release --no-default-features $(RUST_FEATURES)
 

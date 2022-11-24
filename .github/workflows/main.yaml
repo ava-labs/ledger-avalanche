@@ -26,9 +26,13 @@ jobs:
           cargo +nightly miri --version
       - name: Test with Miri
         env:
-          MIRIFLAGS: -Zmiri-symbolic-alignment-check -Zmiri-check-number-validity
+          MIRIFLAGS: |
+            -Zmiri-symbolic-alignment-check
+            -Zmiri-check-number-validity
+            -Zmiri-permissive-provenance
+            -Zmiri-backtrace=full
         run: |
-          cargo +nightly miri test
+          cargo +nightly miri test --features "full","derive-debug"
       - name: show versions
         run: |
           rustup show

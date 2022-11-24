@@ -34,7 +34,7 @@ pub const MAX_ADDRESS_ENCODED_LEN: usize = bech32::estimate_size(ASCII_HRP_MAX_S
 
 // ripemd160(sha256(compress(secp256k1.publicKey()))
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct Address<'b>(&'b [u8; ADDRESS_LEN]);
 
 impl<'a> Address<'a> {

@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{mem::MaybeUninit, ptr::addr_of_mut};
+use core::mem::MaybeUninit;
 
 use zemu_sys::ViewError;
 
@@ -41,7 +41,7 @@ pub use deploy::Deploy;
 
 #[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum EthData<'b> {
     None, // empty data
     Deploy(Deploy<'b>),
@@ -106,12 +106,7 @@ impl<'b> EthData<'b> {
     }
 
     fn parse_none(out: &mut MaybeUninit<Self>) {
-        let out = out.as_mut_ptr() as *mut Deploy__Variant;
-
-        //pointer is valid
-        unsafe {
-            addr_of_mut!((*out).0).write(EthData__Type::None);
-        }
+        out.write(Self::None);
     }
 
     fn parse_deploy(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
@@ -119,22 +114,11 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut Deploy__Variant;
-
-        let deploy = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
         // read all the data as the contract deployment
         // we do not have a way to verify this data. in the worst scenario
         // the transaction would be rejected, and for this reason
         // It is shown on the screen(partially) for the user to review.
-        Deploy::parse_into(data, deploy)?;
-
-        //pointer is valid
-        unsafe {
-            addr_of_mut!((*out).0).write(EthData__Type::Deploy);
-        }
-
-        Ok(())
+        Self::init_as_deploy(|deploy| Deploy::parse_into(data, deploy), out)
     }
 
     fn parse_asset_call(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
@@ -142,18 +126,7 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut AssetCall__Variant;
-
-        let asset_call = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-        AssetCall::parse_into(data, asset_call)?;
-
-        //pointer is valid
-        unsafe {
-            addr_of_mut!((*out).0).write(EthData__Type::AssetCall);
-        }
-
-        Ok(())
+        Self::init_as_asset_call(|asset| AssetCall::parse_into(data, asset), out)
     }
 
     #[cfg(feature = "erc20")]
@@ -162,17 +135,7 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut Erc20__Variant;
-
-        let erc20 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-        ERC20::parse_into(data, erc20)?;
-
-        //pointer is valid
-        unsafe {
-            addr_of_mut!((*out).0).write(EthData__Type::Erc20);
-        }
-
-        Ok(())
+        Self::init_as_erc_20(|erc20| ERC20::parse_into(data, erc20), out)
     }
 
     #[cfg(feature = "erc721")]
@@ -185,17 +148,10 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut Erc721__Variant;
-
-        let erc721 = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-        ERC721::parse_into(contract_address, data, erc721)?;
-
-        //pointer is valid
-        unsafe {
-            addr_of_mut!((*out).0).write(EthData__Type::Erc721);
-        }
-
-        Ok(())
+        Self::init_as_erc_721(
+            |erc721| ERC721::parse_into(contract_address, data, erc721),
+            out,
+        )
     }
 
     fn parse_contract_call(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
@@ -203,18 +159,7 @@ impl<'b> EthData<'b> {
             return Err(ParserError::NoData);
         }
 
-        let out = out.as_mut_ptr() as *mut ContractCall__Variant;
-
-        let contract_call = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-        ContractCall::parse_into(data, contract_call)?;
-
-        //pointer is valid
-        unsafe {
-            addr_of_mut!((*out).0).write(EthData__Type::ContractCall);
-        }
-
-        Ok(())
+        Self::init_as_contract_call(|cc| ContractCall::parse_into(data, cc), out)
     }
 }
 

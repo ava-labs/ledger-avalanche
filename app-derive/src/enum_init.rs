@@ -267,6 +267,7 @@ fn create_data_struct_for_named(
     parse_quote_spanned! { name.span() =>
         #(#extra_attrs)*
         #(#variant_attrs)*
+        #[repr(C)]
         pub struct #name <#generics> {
             #fields
         }
