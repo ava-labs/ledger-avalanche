@@ -15,7 +15,7 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, ETH_DERIVATION, defaultOptions, models, enableBlindSigning, ROOT_PATH } from './common'
+import { ETH_DERIVATION, defaultOptions, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 // @ts-ignore
@@ -39,7 +39,6 @@ describe.skip.each(models)('Standard [%s]; sign', function (m) {
       const msg = op
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
-      await enableBlindSigning(sim, testcase)
 
       const currentScreen = sim.snapshot();
       const signers = ["0/1", "5/8"];
@@ -85,7 +84,6 @@ describe.skip.each(models)('Ethereum [%s]; sign', function (m) {
       const msg = op.toString('hex')
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${name}`
-      await enableBlindSigning(sim, testcase)
 
       const currentScreen = sim.snapshot();
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg);

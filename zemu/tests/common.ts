@@ -31,7 +31,3 @@ type MapCartesian<T extends any[][]> = {
 
 export const cartesianProduct = <T extends any[][]>(...arr: T): MapCartesian<T>[] =>
   arr.reduce((a, b) => a.flatMap(c => b.map(d => [...c, d])), [[]]) as MapCartesian<T>[]
-
-export async function enableBlindSigning(sim: Zemu, testcase: string): Promise<void> {
-  await sim.navigateAndCompareUntilText('.', `${testcase}-extra`, "Signing mode");
-}
