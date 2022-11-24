@@ -24,7 +24,7 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
-const SIGN_TEST_DATA = [
+const LITE_SIGN_TEST_DATA = [
   {
     name: 'x_import_from_p',
     op: X_IMPORT_FROM_P,
@@ -34,17 +34,68 @@ const SIGN_TEST_DATA = [
     op: X_EXPORT_TO_C,
   },
   {
-    name: 'x_create_asset',
-    op: X_CREATE_ASSET,
-  },
-  {
     name: 'x_operation',
     op: X_OPERATION,
   },
 ]
 
+const FULL_SIGN_TEST_DATA = [
+  {
+    name: 'x_create_asset',
+    op: X_CREATE_ASSET,
+  },
+]
+
 describe.each(models)('X_Sign[%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign x-chain $name', async function ({ name, op }) {
+  test.each(FULL_SIGN_TEST_DATA)('[full] sign x-chain $name', async function ({ name, op }) {
+    //skip nanos in full tests
+    if (m.name == 'nanos') {
+      return;
+    }
+
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new AvalancheApp(sim.getTransport())
+      const msg = op
+
+      const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
+
+      const signers = ["0/1", "5/8"];
+      const respReq = app.sign(ROOT_PATH, signers, msg);
+
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+
+      await sim.compareSnapshotsAndApprove('.', testcase)
+
+      const resp = await respReq
+
+      console.log(resp, m.name, name)
+
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('signatures')
+      expect(resp.signatures?.size).toEqual(signers.length)
+
+      const hash = crypto.createHash('sha256')
+      const msgHash = Uint8Array.from(hash.update(msg).digest())
+
+      for (const signer of signers) {
+        const path = `${ROOT_PATH}/${signer}`
+        const resp_addr = await app.getAddressAndPubKey(path, false)
+        const pk = Uint8Array.from(resp_addr.publicKey)
+        const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(0, -1)
+
+        const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
+        expect(signatureOk).toEqual(true)
+      }
+
+    } finally {
+      await sim.close()
+    }
+  })
+
+  test.each(LITE_SIGN_TEST_DATA)('sign x-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
