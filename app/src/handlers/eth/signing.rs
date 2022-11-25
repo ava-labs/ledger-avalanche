@@ -26,7 +26,7 @@ use crate::{
     crypto::Curve,
     dispatcher::ApduHandler,
     handlers::resources::{BUFFER, PATH},
-    parser::{DisplayableItem, EthTransaction, FromBytes},
+    parser::{bytes_to_u64, DisplayableItem, EthTransaction, FromBytes, U32_SIZE},
     sys,
     utils::ApduBufferRead,
 };
@@ -64,8 +64,18 @@ impl Sign {
     }
 
     #[inline(never)]
-    fn digest(buffer: &[u8]) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
-        Keccak::<32>::digest(buffer).map_err(|_| Error::ExecutionError)
+    fn digest(to_hash: &[u8], tx: &EthTransaction) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
+        let mut hasher = Keccak::<32>::new().map_err(|_| Error::Unknown)?;
+
+        if let Some(t) = tx.raw_tx_type() {
+            // according to EIP-2718 we also need to sign the transaction type,
+            // The app-ethereum does the same
+            let t = [t];
+            hasher.update(&t).map_err(|_| Error::Unknown)?;
+        }
+
+        hasher.update(to_hash).map_err(|_| Error::Unknown)?;
+        hasher.finalize().map_err(|_| Error::Unknown)
     }
 
     #[inline(never)]
@@ -86,9 +96,10 @@ impl Sign {
         // transaction, so skip it to get the right hash.
         let to_hash = txdata.len() - rem.len();
         let to_hash = &txdata[..to_hash];
-        let unsigned_hash = Self::digest(to_hash)?;
 
         let tx = unsafe { tx.assume_init() };
+
+        let unsigned_hash = Self::digest(to_hash, &tx)?;
 
         let ui = SignUI {
             hash: unsigned_hash,
@@ -263,21 +274,39 @@ impl Viewable for SignUI {
                 Err(_) => return (0, Error::ExecutionError as _),
             }
         }
-        // before returning It is necessary to write the right V
+        // It is necessary to write the right V
         // component as it depends on the chainID(lowest byte) and the
         // parity of the last byte of the S component, this procedure is
         // defined by EIP-155.
-        let chain_id_byte = self.tx.chain_id_low_byte();
-
-        if chain_id_byte == 0 {
+        //
+        // Check for typed transactions
+        if let Some(_) = self.tx.raw_tx_type() {
             out[0] = out[tx - 1] & 0x01;
+            (tx, Error::Success as _)
         } else {
-            out[0] = (out[tx - 1] & 0x01)
-                .saturating_add(chain_id_byte << 1)
-                .saturating_add(35);
+            let chain_id = self.tx.chain_id();
+            if chain_id.is_empty() {
+                // according to app-ethereum this is the legacy non eip155 conformant
+                // so V would be either 27 or 28
+                out[0] = 27;
+            } else {
+                // app-ethereum reads the first 4 bytes then cast it to an u8
+                // this is not good but it relies on hw-eth-app lib from ledger
+                // to recover the right chain_id from the V component being computed here, and
+                // which is returned with the signature
+                let len = core::cmp::min(U32_SIZE, chain_id.len());
+                if let Ok(v) = bytes_to_u64(&chain_id[..len]) {
+                    let v = (v as u32 * 2) + 35;
+                    out[0] = v as u8;
+                }
+            }
+            // adds 1 to V depending on S oddity
+            out[0] += out[tx - 1] & 0x01;
+            // TODO
+            // Add check for CX_ECCINFO_xGTn to follow what the app-ethereum app does
+            // although the EIP155 docs does not say anything about this check
+            (tx, Error::Success as _)
         }
-
-        (tx, Error::Success as _)
     }
 
     fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
