@@ -163,7 +163,7 @@ impl Viewable for WalletIdUI {
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
         let mut tx = 0;
 
-        out[tx..tx + self.id.len()].copy_from_slice(&self.id);
+        out[tx..][..self.id.len()].copy_from_slice(&self.id);
         tx += self.id.len();
 
         (tx, Error::Success as _)

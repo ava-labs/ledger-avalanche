@@ -220,8 +220,9 @@ SDK_SOURCE_PATH += lib_ux
 
 .PHONY: rust
 rust:
-	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) cargo build \
-	--target $(RUST_TARGET) --release --no-default-features $(RUST_FEATURES)
+	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cargo build --release --target $(RUST_TARGET) \
+	--no-default-features $(RUST_FEATURES)
 
 .PHONY: rust_clean
 rust_clean:
