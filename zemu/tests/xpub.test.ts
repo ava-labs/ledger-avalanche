@@ -49,8 +49,7 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
         const app = new AvalancheApp(sim.getTransport())
         const respReq = app.getExtendedPubKey(ROOT_PATH, true)
 
-        await sim.waitScreenChange();
-
+        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
         await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-xpub`);
 
         const resp = await respReq;

@@ -184,7 +184,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
       const app = new Eth(sim.getTransport())
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
-      await sim.waitScreenChange()
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-eth-addr`)
 
       const resp = await respReq
