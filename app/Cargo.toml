@@ -13,7 +13,7 @@ crate-type = ["staticlib"]
 [features]
 lite = ["erc20", "erc721", "add-validator", "add-delegator"]
 full = ["lite", "create-asset", "create-chain", "create-subnet",
-        "add-subnet-validator","erc20", "erc721", "add-validator", "add-delegator"]
+        "add-subnet-validator"]
 
 #features
 create-asset = []

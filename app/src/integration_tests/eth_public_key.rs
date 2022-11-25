@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2022 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,9 +13,9 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-mod prelude;
+use super::prelude::*;
+
 use bolos::hash::{Hasher, Keccak};
-use prelude::*;
 
 use constants::INS_ETH_GET_PUBLIC_KEY as INS;
 

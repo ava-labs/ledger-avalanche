@@ -89,3 +89,6 @@ pub fn handle_apdu_raw(bytes: &[u8]) -> (u32, u32, std::vec::Vec<u8>) {
 
     (flags, tx, out)
 }
+
+#[cfg(test)]
+mod integration_tests;

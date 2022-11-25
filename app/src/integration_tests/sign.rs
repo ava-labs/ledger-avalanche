@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2022 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,12 +13,11 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-mod prelude;
+use super::prelude::*;
 use std::collections::HashMap;
 
 use arrayref::{array_ref, array_refs};
 use itertools::Itertools;
-use prelude::*;
 
 use k256::{
     ecdsa::{signature::Verifier, Signature, VerifyingKey},
@@ -30,10 +29,11 @@ use bolos::{
     crypto::bip32::BIP32Path,
     hash::{Hasher, Sha256},
 };
+use rand::Rng;
+
 #[cfg(feature = "blind-sign")]
 use constants::INS_BLIND_SIGN as INS;
-use rand::Rng;
-use rslib::constants::{
+use constants::{
     APDU_INDEX_CLA, APDU_INDEX_INS, APDU_INDEX_LEN, APDU_INDEX_P1, APDU_INDEX_P2,
     INS_GET_PUBLIC_KEY, INS_SIGN, INS_SIGN_HASH,
 };
