@@ -16,14 +16,14 @@
 use core::mem::MaybeUninit;
 
 use bolos::{
-    crypto::bip32::BIP32Path,
+    crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
 };
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
-    crypto::Curve,
+    crypto::{Curve, ECCInfoFlags},
     dispatcher::ApduHandler,
     handlers::resources::{BUFFER, PATH},
     parser::{bytes_to_u64, DisplayableItem, EthTransaction, FromBytes, U32_SIZE},
@@ -52,26 +52,31 @@ impl Sign {
     pub fn sign<const LEN: usize>(
         path: &BIP32Path<LEN>,
         data: &[u8],
-    ) -> Result<(usize, [u8; 100]), Error> {
+    ) -> Result<(ECCInfoFlags, usize, [u8; 100]), Error> {
         let sk = Curve.to_secret(path);
 
         let mut out = [0; 100];
-        let sz = sk
+        let (flags, sz) = sk
             .sign(data, &mut out[..])
             .map_err(|_| Error::ExecutionError)?;
 
-        Ok((sz, out))
+        Ok((flags, sz, out))
     }
 
     #[inline(never)]
     fn digest(to_hash: &[u8], tx: &EthTransaction) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
-        let mut hasher = Keccak::<32>::new().map_err(|_| Error::Unknown)?;
+        let mut hasher = {
+            let mut k = MaybeUninit::uninit();
+            Keccak::<32>::new_gce(&mut k).map_err(|_| Error::Unknown)?;
+
+            //safe: initialized
+            unsafe { k.assume_init() }
+        };
 
         if let Some(t) = tx.raw_tx_type() {
             // according to EIP-2718 we also need to sign the transaction type,
             // The app-ethereum does the same
-            let t = [t];
-            hasher.update(&t).map_err(|_| Error::Unknown)?;
+            hasher.update(&[t]).map_err(|_| Error::Unknown)?;
         }
 
         hasher.update(to_hash).map_err(|_| Error::Unknown)?;
@@ -230,7 +235,7 @@ impl Viewable for SignUI {
             Ok(k) => k,
         };
 
-        let (sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
+        let (flags, sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
@@ -243,11 +248,43 @@ impl Viewable for SignUI {
         let mut tx = 0;
 
         //write signature as VRS
-        //write V, which is the LSB of the firsts byte
-        out[tx] = sig[0] & 0x01;
-        tx += 1;
 
-        //reset to 0x30 for the conversion
+        // It is necessary to write the right V
+        // component as it depends on the chainID(lowest byte) and the
+        // parity of the last byte of the S component, this procedure is
+        // defined by EIP-155.
+        //
+        // Check for typed transactions
+        if let Some(_) = self.tx.raw_tx_type() {
+            //write V, which is the oddity of the signature
+            out[tx] = flags.contains(ECCInfo::ParityOdd) as u8;
+            tx += 1;
+        } else {
+            let chain_id = self.tx.chain_id();
+            if chain_id.is_empty() {
+                // according to app-ethereum this is the legacy non eip155 conformant
+                // so V should be made before EIP155 which had
+                // 27 + {0, 1}
+                // 27, decided by the parity of Y
+                // see https://bitcoin.stackexchange.com/a/112489
+                //     https://ethereum.stackexchange.com/a/113505
+                //     https://eips.ethereum.org/EIPS/eip-155
+                out[tx] = 27 + flags.contains(ECCInfo::ParityOdd) as u8;
+            } else {
+                // app-ethereum reads the first 4 bytes then cast it to an u8
+                // this is not good but it relies on hw-eth-app lib from ledger
+                // to recover the right chain_id from the V component being computed here, and
+                // which is returned with the signature
+                let len = core::cmp::min(U32_SIZE, chain_id.len());
+                if let Ok(chain_id) = bytes_to_u64(&chain_id[..len]) {
+                    let v = (chain_id as u32 * 2) + 35 + flags.contains(ECCInfo::ParityOdd) as u32;
+                    out[tx] = v as u8;
+                }
+            }
+            tx += 1;
+        }
+
+        //set to 0x30 for the DER conversion
         sig[0] = 0x30;
         {
             let mut r = [0; 33];
@@ -274,39 +311,8 @@ impl Viewable for SignUI {
                 Err(_) => return (0, Error::ExecutionError as _),
             }
         }
-        // It is necessary to write the right V
-        // component as it depends on the chainID(lowest byte) and the
-        // parity of the last byte of the S component, this procedure is
-        // defined by EIP-155.
-        //
-        // Check for typed transactions
-        if let Some(_) = self.tx.raw_tx_type() {
-            out[0] = out[tx - 1] & 0x01;
-            (tx, Error::Success as _)
-        } else {
-            let chain_id = self.tx.chain_id();
-            if chain_id.is_empty() {
-                // according to app-ethereum this is the legacy non eip155 conformant
-                // so V would be either 27 or 28
-                out[0] = 27;
-            } else {
-                // app-ethereum reads the first 4 bytes then cast it to an u8
-                // this is not good but it relies on hw-eth-app lib from ledger
-                // to recover the right chain_id from the V component being computed here, and
-                // which is returned with the signature
-                let len = core::cmp::min(U32_SIZE, chain_id.len());
-                if let Ok(v) = bytes_to_u64(&chain_id[..len]) {
-                    let v = (v as u32 * 2) + 35;
-                    out[0] = v as u8;
-                }
-            }
-            // adds 1 to V depending on S oddity
-            out[0] += out[tx - 1] & 0x01;
-            // TODO
-            // Add check for CX_ECCINFO_xGTn to follow what the app-ethereum app does
-            // although the EIP155 docs does not say anything about this check
-            (tx, Error::Success as _)
-        }
+
+        (tx, Error::Success as _)
     }
 
     fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {

@@ -23,6 +23,9 @@ use sys::{
     hash::Sha256,
 };
 
+pub use sys::crypto::ecfp256::{BitFlags, ECCInfo};
+pub type ECCInfoFlags = BitFlags<ECCInfo>;
+
 #[derive(Clone, Copy)]
 pub struct PublicKey(pub(crate) sys::crypto::ecfp256::PublicKey);
 
@@ -116,7 +119,7 @@ impl<const B: usize> SecretKey<B> {
         self.0.curve().try_into().apdu_unwrap()
     }
 
-    pub fn sign(&self, data: &[u8], out: &mut [u8]) -> Result<usize, SignError> {
+    pub fn sign(&self, data: &[u8], out: &mut [u8]) -> Result<(ECCInfoFlags, usize), SignError> {
         if out.len() < SECP256_SIGN_BUFFER_MIN_LENGTH {
             Err(SignError::BufferTooSmall)
         } else {

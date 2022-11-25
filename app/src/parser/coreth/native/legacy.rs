@@ -61,9 +61,10 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
             unsafe {
                 // write an empty chain-id as it is used to compute the right V component
                 // when transaction is signed
-                addr_of_mut!((*out).chain_id).write(rem);
+                addr_of_mut!((*out).chain_id).write(&[]);
             }
-            return Ok(rem);
+
+            return Ok(&[]);
         }
 
         // Transaction comes with a chainID so it is EIP155 compliant
