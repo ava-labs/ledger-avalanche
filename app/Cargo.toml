@@ -11,6 +11,7 @@ name = "rslib"
 crate-type = ["staticlib"]
 
 [features]
+default = ["full"]
 lite = ["erc20", "erc721", "add-validator", "add-delegator"]
 full = ["lite", "create-asset", "create-chain", "create-subnet",
         "add-subnet-validator"]
