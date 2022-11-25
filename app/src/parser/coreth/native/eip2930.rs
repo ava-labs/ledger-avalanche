@@ -18,16 +18,13 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
-use crate::{
-    parser::{DisplayableItem, FromBytes, ParserError},
-    utils::ApduPanic,
-};
+use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip2930<'b> {
     // it is not clear if chainID
-    // is an u32, u8, u32,
+    // is an u32, u8, u64
     // considering this might
     // come from an avax C-Chain
     chain_id: &'b [u8],
@@ -40,8 +37,8 @@ pub struct Eip2930<'b> {
 }
 
 impl<'b> Eip2930<'b> {
-    pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id.last().copied().apdu_unwrap()
+    pub fn chain_id(&self) -> &'b [u8] {
+        self.chain_id
     }
 }
 
