@@ -64,7 +64,7 @@ impl Sign {
     }
 
     #[inline(never)]
-    fn digest(to_hash: &[u8], tx: &EthTransaction) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
+    fn digest(to_hash: &[u8]) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
         let mut hasher = {
             let mut k = MaybeUninit::uninit();
             Keccak::<32>::new_gce(&mut k).map_err(|_| Error::Unknown)?;
@@ -72,12 +72,6 @@ impl Sign {
             //safe: initialized
             unsafe { k.assume_init() }
         };
-
-        if let Some(t) = tx.raw_tx_type() {
-            // according to EIP-2718 we also need to sign the transaction type,
-            // The app-ethereum does the same
-            hasher.update(&[t]).map_err(|_| Error::Unknown)?;
-        }
 
         hasher.update(to_hash).map_err(|_| Error::Unknown)?;
         hasher.finalize().map_err(|_| Error::Unknown)
@@ -99,12 +93,14 @@ impl Sign {
 
         // some applications might append data at the end of an encoded
         // transaction, so skip it to get the right hash.
+        //
+        // this would also include the tx type, as required by EIP-2718
+        // since the tx type is at the start of the data
         let to_hash = txdata.len() - rem.len();
         let to_hash = &txdata[..to_hash];
 
+        let unsigned_hash = Self::digest(to_hash)?;
         let tx = unsafe { tx.assume_init() };
-
-        let unsigned_hash = Self::digest(to_hash, &tx)?;
 
         let ui = SignUI {
             hash: unsigned_hash,
