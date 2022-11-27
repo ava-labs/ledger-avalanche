@@ -11,6 +11,7 @@ name = "rslib"
 crate-type = ["staticlib"]
 
 [features]
+default = ["full"]
 lite = ["erc20", "erc721", "add-validator", "add-delegator"]
 full = ["lite", "create-asset", "create-chain", "create-subnet",
         "add-subnet-validator"]
@@ -32,8 +33,8 @@ blind-sign = []
 blind-sign-toggle = ["blind-sign"]
 
 [dependencies]
-bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "4ce6c69" }
-zemu-sys = { git = "https://github.com/Zondax/ledger-rust", rev = "4ce6c69" }
+bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580" }
+zemu-sys = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580" }
 
 no-std-compat = { version = "0.4" }
 cfg-if = "1.0.0"
@@ -51,9 +52,9 @@ byteorder = { version = "1.4.3", default-features = false }
 zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }
 no-std-compat = { version = "0.4", features = ["std"] }
 serial_test = "0.5"
-zuit = { git = "https://github.com/Zondax/ledger-rust", rev = "4ce6c69" }
-bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "4ce6c69", features = ["derive-debug"] }
-bolos-common = { git = "http://github.com/Zondax/ledger-rust", rev = "4ce6c69", features = ["bip32-display"] }
+zuit = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580" }
+bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580", features = ["derive-debug"] }
+bolos-common = { git = "http://github.com/Zondax/ledger-rust", rev = "cb36580", features = ["bip32-display"] }
 hex = "0.4.3"
 arrayvec = { version = "0.7"}
 time = { version = "0.3.15", features = ["formatting"]}

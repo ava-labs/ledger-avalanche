@@ -80,6 +80,7 @@ OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_s.elf
 OUTPUT_INSTALLER := $(ARTIFACT_OUTPUT_PATH)/pkg/installer_s.sh
 RUST_TARGET:=thumbv6m-none-eabi
 APP_LOAD_PARAMS += --appFlags 0x000
+APP_FULL:=1
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)

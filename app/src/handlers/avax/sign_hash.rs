@@ -13,7 +13,10 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use bolos::{crypto::bip32::BIP32Path, hash::Sha256};
+use bolos::{
+    crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
+    hash::Sha256,
+};
 use core::mem::MaybeUninit;
 use zemu_sys::{Show, ViewError, Viewable};
 
@@ -22,7 +25,7 @@ use crate::{
         ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, FIRST_MESSAGE,
         LAST_MESSAGE, MAX_BIP32_PATH_DEPTH,
     },
-    crypto::Curve,
+    crypto::{Curve, ECCInfoFlags},
     dispatcher::ApduHandler,
     handlers::{
         handle_ui_message,
@@ -59,15 +62,15 @@ impl Sign {
     pub fn sign(
         path: &BIP32Path<MAX_BIP32_PATH_DEPTH>,
         data: &[u8],
-    ) -> Result<(usize, [u8; 100]), Error> {
+    ) -> Result<(ECCInfoFlags, usize, [u8; 100]), Error> {
         let sk = Curve.to_secret(path);
 
         let mut out = [0; 100];
-        let sz = sk
+        let (flags, sz) = sk
             .sign(data, &mut out[..])
             .map_err(|_| Error::ExecutionError)?;
 
-        Ok((sz, out))
+        Ok((flags, sz, out))
     }
 
     #[inline(never)]
@@ -210,14 +213,14 @@ impl ApduHandler for Sign {
         let path_prefix = Sign::get_signing_info(cdata)?;
         let hash = Self::get_hash()?;
 
-        let (sig_size, mut sig) = Sign::sign(&path_prefix, hash)?;
+        let (flags, sig_size, mut sig) = Sign::sign(&path_prefix, hash)?;
         let out = buffer.write();
 
         //write signature as RSV
-        //write V, which is the LSB of the firsts byte
-        let v = sig[0] & 0x01;
+        //write V, which is the oddity of the signature
+        let v = flags.contains(ECCInfo::ParityOdd) as u8;
 
-        //reset to 0x30 for the conversion
+        //set to 0x30 for the DER conversion
         sig[0] = 0x30;
         {
             let mut r = [0; 33];
