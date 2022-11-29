@@ -29,8 +29,7 @@ erc721 = []
 #debugging features
 dev = []
 derive-debug = []
-blind-sign = []
-blind-sign-toggle = ["blind-sign"]
+blind-sign-togle = []
 
 [dependencies]
 bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580" }

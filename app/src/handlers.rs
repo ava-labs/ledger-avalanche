@@ -57,10 +57,6 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
-        #[cfg(feature = "blind-sign")]
-        BlindSign,
-        #[cfg(feature = "blind-sign")]
-        EthBlindSign,
         #[cfg(feature = "dev")]
         Debug,
     }
@@ -71,10 +67,6 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
-        #[cfg(feature = "blind-sign")]
-        BlindSign,
-        #[cfg(feature = "blind-sign")]
-        EthBlindSign,
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
@@ -93,13 +85,6 @@ pub mod resources {
         ERC721Parser,
     }
 
-    #[cfg(feature = "blind-sign")]
-    impl From<super::avax::blind_signing::BlindSign> for BUFFERAccessors {
-        fn from(_: super::avax::blind_signing::BlindSign) -> Self {
-            Self::BlindSign
-        }
-    }
-
     impl From<super::avax::signing::Sign> for BUFFERAccessors {
         fn from(_: super::avax::signing::Sign) -> Self {
             Self::Sign
@@ -115,13 +100,6 @@ pub mod resources {
     impl From<super::avax::sign_hash::Sign> for BUFFERAccessors {
         fn from(_: super::avax::sign_hash::Sign) -> Self {
             Self::SignHash
-        }
-    }
-
-    #[cfg(feature = "blind-sign")]
-    impl From<super::eth::blind_signing::BlindSign> for BUFFERAccessors {
-        fn from(_: super::eth::blind_signing::BlindSign) -> Self {
-            Self::EthBlindSign
         }
     }
 
@@ -163,13 +141,6 @@ pub mod resources {
         }
     }
 
-    #[cfg(feature = "blind-sign")]
-    impl From<super::avax::blind_signing::BlindSign> for PATHAccessors {
-        fn from(_: super::avax::blind_signing::BlindSign) -> Self {
-            Self::BlindSign
-        }
-    }
-
     impl From<super::avax::signing::Sign> for PATHAccessors {
         fn from(_: super::avax::signing::Sign) -> Self {
             Self::Sign
@@ -179,13 +150,6 @@ pub mod resources {
     impl From<super::avax::message::Sign> for PATHAccessors {
         fn from(_: super::avax::message::Sign) -> Self {
             Self::SignMsg
-        }
-    }
-
-    #[cfg(feature = "blind-sign")]
-    impl From<super::eth::blind_signing::BlindSign> for PATHAccessors {
-        fn from(_: super::eth::blind_signing::BlindSign) -> Self {
-            Self::EthBlindSign
         }
     }
 

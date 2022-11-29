@@ -32,11 +32,6 @@ use crate::handlers::{
 #[cfg(feature = "erc721")]
 use crate::handlers::eth::provide_nft_info::Info as NftProvider;
 
-#[cfg(feature = "blind-sign")]
-use crate::handlers::{
-    avax::blind_signing::BlindSign as AvaxBlindSign, eth::blind_signing::BlindSign as EthBlindSign,
-};
-
 use crate::handlers::avax::{
     message::Sign as AvaxSignMsg, sign_hash::Sign as SignHash, signing::Sign as AvaxSign,
 };
@@ -76,8 +71,6 @@ pub fn apdu_dispatch<'apdu>(
         (CLA, INS_GET_VERSION) => GetVersion::handle(flags, tx, apdu_buffer),
         (CLA, INS_GET_PUBLIC_KEY) => GetPublicKey::handle(flags, tx, apdu_buffer),
         (CLA, INS_GET_EXTENDED_PUBLIC_KEY) => GetExtendedPublicKey::handle(flags, tx, apdu_buffer),
-        #[cfg(feature = "blind-sign")]
-        (CLA, INS_BLIND_SIGN) => AvaxBlindSign::handle(flags, tx, apdu_buffer),
         (CLA, INS_GET_WALLET_ID) => WalletId::handle(flags, tx, apdu_buffer),
         (CLA, INS_SIGN) => AvaxSign::handle(flags, tx, apdu_buffer),
         (CLA, INS_SIGN_HASH) => SignHash::handle(flags, tx, apdu_buffer),
@@ -90,8 +83,6 @@ pub fn apdu_dispatch<'apdu>(
         #[cfg(feature = "erc721")]
         (CLA_ETH, INS_PROVIDE_NFT_INFORMATION) => NftProvider::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_GET_APP_CONFIGURATION) => EthGetAppConfig::handle(flags, tx, apdu_buffer),
-        #[cfg(feature = "blind-sign")]
-        (CLA_ETH, INS_ETH_BLIND_SIGN) => EthBlindSign::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_ETH_SIGN) => EthSign::handle(flags, tx, apdu_buffer),
 
         #[cfg(feature = "dev")]

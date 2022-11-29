@@ -16,7 +16,6 @@
 #![allow(unused_imports, dead_code)]
 
 mod eth_public_key;
-mod eth_sign;
 mod extended_public_key;
 mod public_key;
 mod sign;

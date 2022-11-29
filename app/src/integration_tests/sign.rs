@@ -31,46 +31,10 @@ use bolos::{
 };
 use rand::Rng;
 
-#[cfg(feature = "blind-sign")]
-use constants::INS_BLIND_SIGN as INS;
 use constants::{
     APDU_INDEX_CLA, APDU_INDEX_INS, APDU_INDEX_LEN, APDU_INDEX_P1, APDU_INDEX_P2,
     INS_GET_PUBLIC_KEY, INS_SIGN, INS_SIGN_HASH,
 };
-
-const MSG: &[u8] = b"hello@zondax.ch";
-
-#[cfg(feature = "blind-sign")]
-#[test]
-fn sign() {
-    let mut flags = 0;
-    let mut tx = 0;
-    let mut buffer = [0; 260];
-
-    buffer[0] = CLA;
-    buffer[1] = INS;
-    buffer[2] = PacketType::Init.into();
-    let len = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], None, None);
-
-    let out = handle_apdu(&mut flags, &mut tx, 5 + len as u32, &mut buffer);
-    println!("{}:{}", tx, hex::encode(&out));
-    assert_error_code!(tx, out, ApduError::Success);
-
-    buffer[0] = CLA;
-    buffer[1] = INS;
-    buffer[2] = PacketType::Last.into();
-    buffer[3] = 0;
-    buffer[4] = MSG.len() as u8;
-    buffer[5..5 + MSG.len()].copy_from_slice(MSG);
-
-    let out = handle_apdu(&mut flags, &mut tx, 5 + MSG.len() as u32, &mut buffer);
-    println!("{}:{}", tx, hex::encode(&out));
-    assert_error_code!(tx, out, ApduError::Success);
-
-    let out_hash = &out[..32];
-    let expected = Sha256::digest(MSG).unwrap();
-    assert_eq!(&expected, out_hash);
-}
 
 #[test]
 #[ignore]
