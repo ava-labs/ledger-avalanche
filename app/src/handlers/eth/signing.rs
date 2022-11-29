@@ -273,7 +273,8 @@ impl Viewable for SignUI {
                 // which is returned with the signature
                 let len = core::cmp::min(U32_SIZE, chain_id.len());
                 if let Ok(chain_id) = bytes_to_u64(&chain_id[..len]) {
-                    let v = (chain_id as u32 * 2) + 35 + flags.contains(ECCInfo::ParityOdd) as u32;
+                    let v = (35 + flags.contains(ECCInfo::ParityOdd) as u32)
+                        .saturating_add((chain_id as u32) << 1);
                     out[tx] = v as u8;
                 }
             }
