@@ -29,9 +29,6 @@ mod handlers;
 mod parser;
 mod sys;
 
-use handlers::ZPacketType as PacketType;
-use parser::Transaction;
-
 #[cfg(not(fuzzing))]
 sys::panic_handler! {}
 
@@ -39,6 +36,8 @@ sys::panic_handler! {}
 mod utils;
 use utils::ApduPanic;
 
+#[cfg(test)]
+use {handlers::ZPacketType as PacketType, parser::Transaction};
 mod crypto;
 
 cfg_if::cfg_if! {
