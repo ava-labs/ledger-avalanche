@@ -40,70 +40,85 @@ use crate::parser::{
     DisplayableItem, ExportTx as EvmExport, ImportTx as EvmImport, EVM_IMPORT_TX, PVM_EXPORT_TX,
     PVM_IMPORT_TX,
 };
-pub use avm::{AvmExportTx, AvmImportTx, CreateAssetTx, OperationTx};
-pub use pvm::{
-    AddDelegatorTx, AddSubnetValidatorTx, AddValidatorTx, CreateChainTx, CreateSubnetTx,
-    PvmExportTx, PvmImportTx,
-};
+pub use avm::{AvmExportTx, AvmImportTx, OperationTx};
+pub use pvm::{PvmExportTx, PvmImportTx};
+
+#[cfg(feature = "create-asset")]
+pub use avm::CreateAssetTx;
+
+#[cfg(feature = "create-chain")]
+pub use pvm::CreateChainTx;
+
+#[cfg(feature = "add-subnet-validator")]
+pub use pvm::AddSubnetValidatorTx;
+
+#[cfg(feature = "create-subnet")]
+pub use pvm::CreateSubnetTx;
+
+#[cfg(feature = "add-delegator")]
+pub use pvm::AddDelegatorTx;
+
+#[cfg(feature = "add-validator")]
+pub use pvm::AddValidatorTx;
 
 use super::{
-    ChainId, FromBytes, NetworkInfo, ParserError, AVM_CREATE_ASSET_TX, AVM_EXPORT_TX,
-    AVM_IMPORT_TX, AVM_OPERATION_TX, EVM_EXPORT_TX, PVM_ADD_DELEGATOR, PVM_ADD_SUBNET_VALIDATOR,
-    PVM_ADD_VALIDATOR, PVM_CREATE_CHAIN, PVM_CREATE_SUBNET, TRANSFER_TX,
+    ChainId, FromBytes, NetworkInfo, ParserError, AVM_EXPORT_TX, AVM_IMPORT_TX, AVM_OPERATION_TX,
+    EVM_EXPORT_TX, TRANSFER_TX,
 };
 
-// Important: do not change the repr attribute,
-// as this type is use as the tag field
-// for the Transaction enum which has the same representation
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
-#[repr(u8)]
-pub enum TransactionType {
-    XImport,
-    XExport,
-    XAsset,
-    XOperation,
-    PImport,
-    PExport,
-    CImport,
-    CExport,
-    Validator,
-    Delegator,
-    CreateChain,
-    CreateSubnet,
-    SubnetValidator,
-    Transfer,
-}
+#[cfg(feature = "create-asset")]
+use super::AVM_CREATE_ASSET_TX;
 
-impl TryFrom<(u32, NetworkInfo)> for TransactionType {
+#[cfg(feature = "create-chain")]
+use super::PVM_CREATE_CHAIN;
+
+#[cfg(feature = "create-subnet")]
+use super::PVM_CREATE_SUBNET;
+
+#[cfg(feature = "add-subnet-validator")]
+use super::PVM_ADD_SUBNET_VALIDATOR;
+
+#[cfg(feature = "add-validator")]
+use super::PVM_ADD_VALIDATOR;
+
+#[cfg(feature = "add-delegator")]
+use super::PVM_ADD_DELEGATOR;
+
+impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
     type Error = ParserError;
 
     fn try_from(value: (u32, NetworkInfo)) -> Result<Self, Self::Error> {
         crate::sys::zemu_log_stack("TransactionType::TryFrom\x00");
         let tx_type = match value.0 {
-            PVM_EXPORT_TX => TransactionType::PExport,
-            PVM_IMPORT_TX => TransactionType::PImport,
-            AVM_EXPORT_TX => TransactionType::XExport,
-            AVM_IMPORT_TX => TransactionType::XImport,
-            AVM_OPERATION_TX => TransactionType::XOperation,
-            // avoid collition with evm_export tx in C-chain
-            AVM_CREATE_ASSET_TX if matches!(value.1.chain_id, ChainId::XChain) => {
-                TransactionType::XAsset
-            }
-            PVM_CREATE_CHAIN => TransactionType::CreateChain,
-            // avoid collition with createAsset tx in X-chain
+            PVM_EXPORT_TX => Transaction__Type::PExport,
+            PVM_IMPORT_TX => Transaction__Type::PImport,
+            AVM_EXPORT_TX => Transaction__Type::XExport,
+            AVM_IMPORT_TX => Transaction__Type::XImport,
+            AVM_OPERATION_TX => Transaction__Type::XOperation,
+            // avoid collision with evm_export tx in C-chain
+            // avoid collision with createAsset tx in X-chain
             EVM_EXPORT_TX if matches!(value.1.chain_id, ChainId::CChain) => {
-                TransactionType::CExport
+                Transaction__Type::CExport
             }
-            // avoid collition with normal_transfer tx in X-chain/P-chain
+            // avoid collision with normal_transfer tx in X-chain/P-chain
             EVM_IMPORT_TX if matches!(value.1.chain_id, ChainId::CChain) => {
-                TransactionType::CImport
+                Transaction__Type::CImport
             }
-            PVM_ADD_DELEGATOR => TransactionType::Delegator,
-            PVM_CREATE_SUBNET => TransactionType::CreateSubnet,
-            PVM_ADD_VALIDATOR => TransactionType::Validator,
-            PVM_ADD_SUBNET_VALIDATOR => TransactionType::SubnetValidator,
-            TRANSFER_TX => TransactionType::Transfer,
+            TRANSFER_TX => Transaction__Type::Transfer,
+            #[cfg(feature = "create-asset")]
+            AVM_CREATE_ASSET_TX if matches!(value.1.chain_id, ChainId::XChain) => {
+                Transaction__Type::XAsset
+            }
+            #[cfg(feature = "create-chain")]
+            PVM_CREATE_CHAIN => Transaction__Type::CreateChain,
+            #[cfg(feature = "add-delegator")]
+            PVM_ADD_DELEGATOR => Transaction__Type::Delegator,
+            #[cfg(feature = "create-subnet")]
+            PVM_CREATE_SUBNET => Transaction__Type::CreateSubnet,
+            #[cfg(feature = "add-validator")]
+            PVM_ADD_VALIDATOR => Transaction__Type::Validator,
+            #[cfg(feature = "add-subnet-validator")]
+            PVM_ADD_SUBNET_VALIDATOR => Transaction__Type::SubnetValidator,
             _ => return Err(ParserError::InvalidTransactionType),
         };
 
@@ -111,69 +126,30 @@ impl TryFrom<(u32, NetworkInfo)> for TransactionType {
     }
 }
 
-#[repr(C)]
-struct XImportVariant<'b>(TransactionType, AvmImportTx<'b>);
-
-#[repr(C)]
-struct XExportVariant<'b>(TransactionType, AvmExportTx<'b>);
-
-#[repr(C)]
-struct XCreateAssetVariant<'b>(TransactionType, CreateAssetTx<'b>);
-
-#[repr(C)]
-struct XOperationVariant<'b>(TransactionType, OperationTx<'b>);
-
-#[repr(C)]
-struct PImportVariant<'b>(TransactionType, PvmImportTx<'b>);
-
-#[repr(C)]
-struct PExportVariant<'b>(TransactionType, PvmExportTx<'b>);
-
-#[repr(C)]
-struct CImportVariant<'b>(TransactionType, EvmImport<'b>);
-
-#[repr(C)]
-struct CExportVariant<'b>(TransactionType, EvmExport<'b>);
-
-#[repr(C)]
-struct ChainVariant<'b>(TransactionType, CreateChainTx<'b>);
-
-#[repr(C)]
-struct SubnetVariant<'b>(TransactionType, CreateSubnetTx<'b>);
-
-#[repr(C)]
-struct ValidatorVariant<'b>(TransactionType, AddValidatorTx<'b>);
-
-#[repr(C)]
-struct SubnetValidatorVariant<'b>(TransactionType, AddSubnetValidatorTx<'b>);
-
-#[repr(C)]
-struct DelegatorVariant<'b>(TransactionType, AddDelegatorTx<'b>);
-
-#[repr(C)]
-struct TransferVariant<'b>(TransactionType, Transfer<'b>);
-
+#[avalanche_app_derive::enum_init]
 #[derive(Clone, Copy, PartialEq, Eq)]
-// DO not change the representation
-// as it would cause unalignment issues
-// with the OutputType tag
-#[repr(u8)]
 #[cfg_attr(test, derive(Debug))]
 pub enum Transaction<'b> {
     XImport(AvmImportTx<'b>),
     XExport(AvmExportTx<'b>),
-    XAsset(CreateAssetTx<'b>),
     XOperation(OperationTx<'b>),
     PImport(PvmImportTx<'b>),
     PExport(PvmExportTx<'b>),
     CImport(EvmImport<'b>),
     CExport(EvmExport<'b>),
-    Validator(AddValidatorTx<'b>),
-    Delegator(AddDelegatorTx<'b>),
-    CreateChain(CreateChainTx<'b>),
-    CreateSubnet(CreateSubnetTx<'b>),
-    SubnetValidator(AddSubnetValidatorTx<'b>),
     Transfer(Transfer<'b>),
+    #[cfg(feature = "create-asset")]
+    XAsset(CreateAssetTx<'b>),
+    #[cfg(feature = "add-validator")]
+    Validator(AddValidatorTx<'b>),
+    #[cfg(feature = "add-delegator")]
+    Delegator(AddDelegatorTx<'b>),
+    #[cfg(feature = "create-chain")]
+    CreateChain(CreateChainTx<'b>),
+    #[cfg(feature = "create-subnet")]
+    CreateSubnet(CreateSubnetTx<'b>),
+    #[cfg(feature = "add-subnet-validator")]
+    SubnetValidator(AddSubnetValidatorTx<'b>),
 }
 
 impl<'b> Transaction<'b> {
@@ -215,7 +191,9 @@ impl<'b> Transaction<'b> {
             Self::Transfer(tx) => tx.disable_output_if(address),
             Self::CImport(tx) => tx.disable_output_if(address),
             Self::CExport(tx) => tx.disable_output_if(address),
+            #[cfg(feature = "add-validator")]
             Self::Validator(tx) => tx.disable_output_if(address),
+            #[cfg(feature = "add-delegator")]
             Self::Delegator(tx) => tx.disable_output_if(address),
             _ => {}
         }
@@ -226,11 +204,11 @@ impl<'b> Transaction<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         let info = Self::peek_transaction_info(input)?;
-        let transaction_type = TransactionType::try_from(info)?;
+        let transaction_type = Transaction__Type::try_from(info)?;
 
         let rem = match transaction_type {
-            TransactionType::PImport => {
-                let out = out.as_mut_ptr() as *mut PImportVariant;
+            Transaction__Type::PImport => {
+                let out = out.as_mut_ptr() as *mut PImport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -238,13 +216,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::PImport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::PImport);
                 }
 
                 rem
             }
-            TransactionType::PExport => {
-                let out = out.as_mut_ptr() as *mut PExportVariant;
+            Transaction__Type::PExport => {
+                let out = out.as_mut_ptr() as *mut PExport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -252,13 +230,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::PExport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::PExport);
                 }
 
                 rem
             }
-            TransactionType::XImport => {
-                let out = out.as_mut_ptr() as *mut XImportVariant;
+            Transaction__Type::XImport => {
+                let out = out.as_mut_ptr() as *mut XImport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -266,13 +244,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::XImport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::XImport);
                 }
 
                 rem
             }
-            TransactionType::XExport => {
-                let out = out.as_mut_ptr() as *mut XExportVariant;
+            Transaction__Type::XExport => {
+                let out = out.as_mut_ptr() as *mut XExport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -280,27 +258,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::XExport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::XExport);
                 }
 
                 rem
             }
-            TransactionType::XAsset => {
-                let out = out.as_mut_ptr() as *mut XCreateAssetVariant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = CreateAssetTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(transaction_type);
-                }
-
-                rem
-            }
-            TransactionType::XOperation => {
-                let out = out.as_mut_ptr() as *mut XOperationVariant;
+            Transaction__Type::XOperation => {
+                let out = out.as_mut_ptr() as *mut XOperation__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -313,8 +277,8 @@ impl<'b> Transaction<'b> {
 
                 rem
             }
-            TransactionType::CExport => {
-                let out = out.as_mut_ptr() as *mut CExportVariant;
+            Transaction__Type::CExport => {
+                let out = out.as_mut_ptr() as *mut CExport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -322,13 +286,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CExport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::CExport);
                 }
 
                 rem
             }
-            TransactionType::CImport => {
-                let out = out.as_mut_ptr() as *mut CImportVariant;
+            Transaction__Type::CImport => {
+                let out = out.as_mut_ptr() as *mut CImport__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -336,83 +300,13 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CImport);
+                    addr_of_mut!((*out).0).write(Transaction__Type::CImport);
                 }
 
                 rem
             }
-            TransactionType::CreateChain => {
-                let out = out.as_mut_ptr() as *mut ChainVariant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = CreateChainTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CreateChain);
-                }
-
-                rem
-            }
-            TransactionType::CreateSubnet => {
-                let out = out.as_mut_ptr() as *mut SubnetVariant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = CreateSubnetTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::CreateSubnet);
-                }
-
-                rem
-            }
-            TransactionType::Validator => {
-                let out = out.as_mut_ptr() as *mut ValidatorVariant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AddValidatorTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::Validator);
-                }
-
-                rem
-            }
-            TransactionType::Delegator => {
-                let out = out.as_mut_ptr() as *mut DelegatorVariant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AddDelegatorTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::Delegator);
-                }
-
-                rem
-            }
-            TransactionType::SubnetValidator => {
-                let out = out.as_mut_ptr() as *mut SubnetValidatorVariant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AddSubnetValidatorTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::SubnetValidator);
-                }
-
-                rem
-            }
-            TransactionType::Transfer => {
-                let out = out.as_mut_ptr() as *mut TransferVariant;
+            Transaction__Type::Transfer => {
+                let out = out.as_mut_ptr() as *mut Transfer__Variant;
                 //valid pointer
                 let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
 
@@ -420,7 +314,97 @@ impl<'b> Transaction<'b> {
 
                 //pointer is valid
                 unsafe {
-                    addr_of_mut!((*out).0).write(TransactionType::Transfer);
+                    addr_of_mut!((*out).0).write(Transaction__Type::Transfer);
+                }
+
+                rem
+            }
+            #[cfg(feature = "create-asset")]
+            Transaction__Type::XAsset => {
+                let out = out.as_mut_ptr() as *mut XAsset__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = CreateAssetTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(transaction_type);
+                }
+
+                rem
+            }
+            #[cfg(feature = "create-chain")]
+            Transaction__Type::CreateChain => {
+                let out = out.as_mut_ptr() as *mut CreateChain__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = CreateChainTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(Transaction__Type::CreateChain);
+                }
+
+                rem
+            }
+            #[cfg(feature = "create-subnet")]
+            Transaction__Type::CreateSubnet => {
+                let out = out.as_mut_ptr() as *mut CreateSubnet__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = CreateSubnetTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(Transaction__Type::CreateSubnet);
+                }
+
+                rem
+            }
+            #[cfg(feature = "add-validator")]
+            Transaction__Type::Validator => {
+                let out = out.as_mut_ptr() as *mut Validator__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = AddValidatorTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(Transaction__Type::Validator);
+                }
+
+                rem
+            }
+            #[cfg(feature = "add-delegator")]
+            Transaction__Type::Delegator => {
+                let out = out.as_mut_ptr() as *mut Delegator__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = AddDelegatorTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(Transaction__Type::Delegator);
+                }
+
+                rem
+            }
+            #[cfg(feature = "add-subnet-validator")]
+            Transaction__Type::SubnetValidator => {
+                let out = out.as_mut_ptr() as *mut SubnetValidator__Variant;
+                //valid pointer
+                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
+
+                let rem = AddSubnetValidatorTx::from_bytes_into(input, data)?;
+
+                //pointer is valid
+                unsafe {
+                    addr_of_mut!((*out).0).write(Transaction__Type::SubnetValidator);
                 }
 
                 rem
@@ -442,18 +426,24 @@ impl<'b> DisplayableItem for Transaction<'b> {
         match self {
             Self::XImport(tx) => tx.num_items(),
             Self::XExport(tx) => tx.num_items(),
-            Self::XAsset(tx) => tx.num_items(),
             Self::XOperation(tx) => tx.num_items(),
             Self::PImport(tx) => tx.num_items(),
             Self::PExport(tx) => tx.num_items(),
             Self::CImport(tx) => tx.num_items(),
             Self::CExport(tx) => tx.num_items(),
-            Self::Validator(tx) => tx.num_items(),
-            Self::SubnetValidator(tx) => tx.num_items(),
-            Self::Delegator(tx) => tx.num_items(),
-            Self::CreateChain(tx) => tx.num_items(),
-            Self::CreateSubnet(tx) => tx.num_items(),
             Self::Transfer(tx) => tx.num_items(),
+            #[cfg(feature = "create-asset")]
+            Self::XAsset(tx) => tx.num_items(),
+            #[cfg(feature = "add-validator")]
+            Self::Validator(tx) => tx.num_items(),
+            #[cfg(feature = "add-subnet-validator")]
+            Self::SubnetValidator(tx) => tx.num_items(),
+            #[cfg(feature = "add-delegator")]
+            Self::Delegator(tx) => tx.num_items(),
+            #[cfg(feature = "create-chain")]
+            Self::CreateChain(tx) => tx.num_items(),
+            #[cfg(feature = "create-subnet")]
+            Self::CreateSubnet(tx) => tx.num_items(),
         }
     }
 
@@ -467,18 +457,24 @@ impl<'b> DisplayableItem for Transaction<'b> {
         match self {
             Self::XImport(tx) => tx.render_item(item_n, title, message, page),
             Self::XExport(tx) => tx.render_item(item_n, title, message, page),
-            Self::XAsset(tx) => tx.render_item(item_n, title, message, page),
             Self::XOperation(tx) => tx.render_item(item_n, title, message, page),
             Self::PImport(tx) => tx.render_item(item_n, title, message, page),
             Self::PExport(tx) => tx.render_item(item_n, title, message, page),
             Self::CImport(tx) => tx.render_item(item_n, title, message, page),
             Self::CExport(tx) => tx.render_item(item_n, title, message, page),
-            Self::Validator(tx) => tx.render_item(item_n, title, message, page),
-            Self::SubnetValidator(tx) => tx.render_item(item_n, title, message, page),
-            Self::Delegator(tx) => tx.render_item(item_n, title, message, page),
-            Self::CreateChain(tx) => tx.render_item(item_n, title, message, page),
-            Self::CreateSubnet(tx) => tx.render_item(item_n, title, message, page),
             Self::Transfer(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "create-asset")]
+            Self::XAsset(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "add-validator")]
+            Self::Validator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "add-subnet-validator")]
+            Self::SubnetValidator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "add-delegator")]
+            Self::Delegator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "create-chain")]
+            Self::CreateChain(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "create-subnet")]
+            Self::CreateSubnet(tx) => tx.render_item(item_n, title, message, page),
         }
     }
 }
@@ -488,10 +484,8 @@ mod tests {
     use std::prelude::v1::*;
 
     use zemu_sys::Viewable;
-    use zuit::MockDriver;
 
     use super::*;
-    use crate::parser::snapshots_common::{with_leaked, ReducedPage};
 
     /// This is only to be used for testing, hence why
     /// it's present inside the `mod test` block only
@@ -548,6 +542,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "full")]
     //isolation is enabled by defalt in miri
     // and this prevents opening files, amonst other things
     // we could either disable isolation or have miri
@@ -557,6 +552,8 @@ mod tests {
     // we can just avoid having it run in miri directly
     #[cfg_attr(miri, ignore)]
     fn tx_ui() {
+        use crate::parser::snapshots_common::{with_leaked, ReducedPage};
+
         insta::glob!("testvectors/*.json", |path| {
             let file = std::fs::File::open(path)
                 .unwrap_or_else(|e| panic!("Unable to open file {:?}: {:?}", path, e));
@@ -566,7 +563,7 @@ mod tests {
             let test = |data| {
                 let tx = Transaction::new(data).expect("parse tx from data");
 
-                let mut driver = MockDriver::<_, 18, 1024>::new(tx);
+                let mut driver = zuit::MockDriver::<_, 18, 1024>::new(tx);
                 driver.drive();
 
                 let ui = driver.out_ui();

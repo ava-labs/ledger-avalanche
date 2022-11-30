@@ -71,7 +71,7 @@ impl<'b> FromBytes<'b> for ExportTx<'b> {
 
         // get chains info
         let header = tx_header.as_ptr();
-        let blockchain_id = unsafe { (&*header).chain_id()? };
+        let blockchain_id = unsafe { (*header).chain_id()? };
         let dest_id = ChainId::try_from(destination_chain)?;
 
         // Exporting to the same chain is an error

@@ -25,8 +25,8 @@ use crate::{
         handle_ui_message,
     },
     parser::{
-        intstr_to_fpstr_inplace, Address, DisplayableItem, ERC721Info, EthData, FromBytes,
-        ParserError, ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
+        intstr_to_fpstr_inplace, Address, DisplayableItem, EthData, FromBytes, ParserError,
+        ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
     },
     utils::ApduPanic,
 };
@@ -51,8 +51,8 @@ pub struct Eip1559<'b> {
 }
 
 impl<'b> Eip1559<'b> {
-    pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id.last().copied().apdu_unwrap()
+    pub fn chain_id(&self) -> &'b [u8] {
+        self.chain_id
     }
 }
 
@@ -68,7 +68,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(input)?;
-        if id_bytes.len() < 1 {
+        if id_bytes.is_empty() {
             return Err(ParserError::InvalidChainId.into());
         }
 
@@ -117,12 +117,15 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         }
 
         // check for erc721 call and chainID
-        let data = unsafe { &*data_out.as_ptr() };
-        if matches!(data, EthData::Erc721(..)) {
-            let chain_id = super::bytes_to_u64(id_bytes)?;
-            let contract_chain_id = ERC721Info::get_nft_info()?.chain_id;
-            if chain_id != contract_chain_id {
-                return Err(ParserError::InvalidAssetCall.into());
+        #[cfg(feature = "erc721")]
+        {
+            let data = unsafe { &*data_out.as_ptr() };
+            if matches!(data, EthData::Erc721(..)) {
+                let chain_id = super::bytes_to_u64(id_bytes)?;
+                let contract_chain_id = crate::parser::ERC721Info::get_nft_info()?.chain_id;
+                if chain_id != contract_chain_id {
+                    return Err(ParserError::InvalidAssetCall.into());
+                }
             }
         }
 
@@ -153,9 +156,9 @@ impl<'b> Eip1559<'b> {
     fn fee(&self) -> Result<u256, ParserError> {
         let f = u256::pic_from_big_endian();
 
-        let priority_fee = f(&*self.priority_fee);
-        let max_fee = f(&*self.max_fee);
-        let gas_limit = f(&*self.gas_limit);
+        let priority_fee = f(&self.priority_fee);
+        let max_fee = f(&self.max_fee);
+        let gas_limit = f(&self.gas_limit);
 
         let fee = priority_fee
             .checked_add(max_fee)
@@ -312,6 +315,7 @@ impl<'b> Eip1559<'b> {
     }
 
     #[inline(never)]
+    #[cfg(feature = "erc20")]
     fn render_erc20_call(
         &self,
         item_n: u8,
@@ -350,6 +354,7 @@ impl<'b> Eip1559<'b> {
     }
 
     #[inline(never)]
+    #[cfg(feature = "erc721")]
     fn render_erc721_call(
         &self,
         item_n: u8,
@@ -414,8 +419,10 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             // description amount, address, fee and contract_data
             EthData::ContractCall(d) => 1 + 1 + 1 + 1 + d.num_items(),
             // address, fee
+            #[cfg(feature = "erc20")]
             EthData::Erc20(d) => 1 + 1 + d.num_items(),
             // address, fee
+            #[cfg(feature = "erc721")]
             EthData::Erc721(d) => 1 + 1 + d.num_items(),
         }
     }
@@ -432,7 +439,9 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             EthData::Deploy(..) => self.render_deploy(item_n, title, message, page),
             EthData::AssetCall(..) => self.render_asset_call(item_n, title, message, page),
             EthData::ContractCall(..) => self.render_contract_call(item_n, title, message, page),
+            #[cfg(feature = "erc20")]
             EthData::Erc20(..) => self.render_erc20_call(item_n, title, message, page),
+            #[cfg(feature = "erc721")]
             EthData::Erc721(..) => self.render_erc721_call(item_n, title, message, page),
         }
     }

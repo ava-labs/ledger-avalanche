@@ -49,7 +49,7 @@ where
     type Target = O::Target;
 
     fn deref(&self) -> &Self::Target {
-        &*self.output
+        &self.output
     }
 }
 
@@ -58,7 +58,7 @@ where
     O: FromBytes<'b> + DisplayableItem + Deref<Target = Output<'b>> + 'b,
 {
     pub fn amount(&self) -> Option<u64> {
-        (&*self.output).amount()
+        (*self.output).amount()
     }
 
     pub fn assert_id(&self) -> &AssetId<'b> {
@@ -66,7 +66,7 @@ where
     }
 
     pub fn output(&self) -> &Output<'b> {
-        &*self.output
+        &self.output
     }
 
     pub fn num_addresses(&self) -> usize {

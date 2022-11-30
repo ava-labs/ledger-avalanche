@@ -53,8 +53,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         const app = new AvalancheApp(sim.getTransport())
         const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
 
-        await sim.waitScreenChange();
-
+        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
         await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr`);
 
         const resp = await respReq;
@@ -80,8 +79,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         const respReq = app.getAddressAndPubKey(APP_DERIVATION, true,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))
 
-        await sim.waitScreenChange();
-
+        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
         await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`);
 
         const resp = await respReq;

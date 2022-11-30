@@ -141,7 +141,7 @@ impl EthTransaction__Type {
             return Err(ParserError::UnexpectedBufferEnd);
         }
 
-        let tx_type = input.get(0).ok_or(ParserError::UnexpectedBufferEnd)?;
+        let tx_type = input.first().ok_or(ParserError::UnexpectedBufferEnd)?;
 
         match *tx_type {
             EIP1559_TX => Ok((&input[1..], Self::Eip1559)),
@@ -154,7 +154,7 @@ impl EthTransaction__Type {
 }
 
 #[avalanche_app_derive::enum_init]
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 // DO not change the representation
 // as it would cause unalignment issues
 // with the OutputType tag
@@ -166,11 +166,19 @@ pub enum EthTransaction<'b> {
 }
 
 impl<'b> EthTransaction<'b> {
-    pub fn chain_id_low_byte(&self) -> u8 {
+    pub fn raw_tx_type(&self) -> Option<u8> {
         match self {
-            Self::Legacy(t) => t.chain_id_low_byte(),
-            Self::Eip1559(t) => t.chain_id_low_byte(),
-            Self::Eip2930(t) => t.chain_id_low_byte(),
+            EthTransaction::Eip1559(_) => EIP1559_TX.into(),
+            EthTransaction::Eip2930(_) => EIP2930_TX.into(),
+            _ => None,
+        }
+    }
+
+    pub fn chain_id(&self) -> &'b [u8] {
+        match self {
+            Self::Legacy(t) => t.chain_id(),
+            Self::Eip1559(t) => t.chain_id(),
+            Self::Eip2930(t) => t.chain_id(),
         }
     }
 }
@@ -277,10 +285,8 @@ mod tests {
     use std::prelude::v1::*;
 
     use zemu_sys::Viewable;
-    use zuit::MockDriver;
 
     use super::*;
-    use crate::parser::snapshots_common::{with_leaked, ReducedPage};
 
     impl Viewable for EthTransaction<'static> {
         fn num_items(&mut self) -> Result<u8, zemu_sys::ViewError> {
@@ -307,6 +313,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "full")]
     //isolation is enabled by defalt in miri
     // and this prevents opening files, amonst other things
     // we could either disable isolation or have miri
@@ -316,6 +323,8 @@ mod tests {
     // we can just avoid having it run in miri directly
     #[cfg_attr(miri, ignore)]
     fn tx_eth_ui() {
+        use crate::parser::snapshots_common::{with_leaked, ReducedPage};
+
         insta::glob!("eth_testvectors/*.json", |path| {
             let file = std::fs::File::open(path)
                 .unwrap_or_else(|e| panic!("Unable to open file {:?}: {:?}", path, e));
@@ -325,7 +334,7 @@ mod tests {
             let test = |data| {
                 let (_, tx) = EthTransaction::from_bytes(data).expect("parse tx from data");
 
-                let mut driver = MockDriver::<_, 18, 1024>::new(tx);
+                let mut driver = zuit::MockDriver::<_, 18, 1024>::new(tx);
                 driver.drive();
 
                 let ui = driver.out_ui();

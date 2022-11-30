@@ -220,7 +220,7 @@ impl AddrUI {
             }
             Err(_) => {
                 //not found in alias list, compute CB58 representation
-                bs58_encode(&self.chain_id_with_checksum, &mut out[..])
+                bs58_encode(self.chain_id_with_checksum, &mut out[..])
                     .apdu_expect("encoded in base58 is not of the right length")
             }
         }
@@ -380,7 +380,7 @@ mod tests {
             let mut tmp = [0; bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN)];
             let len = bech32::encode(
                 &hrp,
-                &ui.hash(&ui.pkey(None).unwrap()).unwrap(),
+                ui.hash(&ui.pkey(None).unwrap()).unwrap(),
                 &mut tmp,
                 bech32::Variant::Bech32,
             )
