@@ -15,7 +15,7 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions, models, enableBlindSigning } from './common'
+import { ETH_DERIVATION, defaultOptions, models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { ledgerService } from "@ledgerhq/hw-app-eth"
@@ -184,7 +184,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
       const app = new Eth(sim.getTransport())
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
-      await sim.waitScreenChange()
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-eth-addr`)
 
       const resp = await respReq

@@ -11,5 +11,5 @@ panic = "abort"
 [profile.release]
 lto = false
 codegen-units = 1
-debug = true
+debug = false
 opt-level = "z"

@@ -55,7 +55,7 @@ impl ERC721Info {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct BaseTransfer<'b> {
     to: Address<'b>,
     from: Address<'b>,
@@ -141,7 +141,7 @@ impl<'b> FromBytes<'b> for BaseTransfer<'b> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct TransferFrom<'b> {
     base: BaseTransfer<'b>,
 }
@@ -171,7 +171,7 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
 // SafeTrasnferFrom is an overloaded method,
 // one variant holds a data field that is passed in the call.
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct SafeTransferFrom<'b> {
     base: BaseTransfer<'b>,
     data: &'b [u8],
@@ -207,7 +207,7 @@ impl<'b> FromBytes<'b> for SafeTransferFrom<'b> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct Approve<'b> {
     controller: Address<'b>,
     asset_id: AssetId<'b>,
@@ -242,7 +242,7 @@ impl<'b> FromBytes<'b> for Approve<'b> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct ApprovalForAll<'b> {
     controller: Address<'b>,
     approve: bool,
@@ -300,7 +300,7 @@ impl<'b> FromBytes<'b> for ApprovalForAll<'b> {
 /// # Exclusions
 /// `public view` methods are excluded as those don't make sense to be called via a transaction
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 #[avalanche_app_derive::enum_init]
 pub enum ERC721<'b> {
     TransferFrom(TransferFrom<'b>),

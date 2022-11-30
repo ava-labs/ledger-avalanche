@@ -161,7 +161,7 @@ impl<'b> FromBytes<'b> for OperationTx<'b> {
         let rem = Header::from_bytes_into(rem, tx_header)?;
 
         // This transaction is only valid if comes from XChain
-        let chain_id = unsafe { (&*tx_header.as_ptr()).chain_id()? };
+        let chain_id = unsafe { (*tx_header.as_ptr()).chain_id()? };
         if !matches!(chain_id, ChainId::XChain) {
             return Err(ParserError::InvalidChainId.into());
         }

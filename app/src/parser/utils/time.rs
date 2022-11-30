@@ -63,8 +63,8 @@ pub enum TimeError {
     BufferTooSmall,
 }
 
-impl From<CapacityError> for TimeError {
-    fn from(_: CapacityError) -> Self {
+impl<T> From<CapacityError<T>> for TimeError {
+    fn from(_: CapacityError<T>) -> Self {
         TimeError::BufferTooSmall
     }
 }
@@ -77,12 +77,12 @@ impl From<CapacityError> for TimeError {
 macro_rules! add_padding {
     ($num:expr, $string:expr) => {
         if $num < 10 {
-            $string.push(b'0');
+            $string.try_push(b'0')?;
         }
     };
 }
 
-#[derive(Debug)]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct Date {
     day: u8,
     month: u8,
@@ -174,35 +174,35 @@ pub fn timestamp_to_str_date(
     let num =
         u64_to_str(date.year as _, &mut num_buff[..]).map_err(|_| TimeError::BufferTooSmall)?;
     date_str.try_extend_from_slice(num)?;
-    date_str.push(dash);
+    date_str.try_push(dash)?;
     // month
     add_padding!(date.month, date_str);
     let num =
         u8_to_str(date.month as _, &mut num_buff[..]).map_err(|_| TimeError::BufferTooSmall)?;
     date_str.try_extend_from_slice(num)?;
-    date_str.push(dash);
+    date_str.try_push(dash)?;
     // day
     add_padding!(date.day, date_str);
     let num = u8_to_str(date.day, &mut num_buff[..]).map_err(|_| TimeError::BufferTooSmall)?;
     date_str.try_extend_from_slice(num)?;
-    date_str.push(space);
+    date_str.try_push(space)?;
 
     // time
     // hour
     add_padding!(date.hour, date_str);
     let num = u8_to_str(date.hour, &mut num_buff[..]).map_err(|_| TimeError::BufferTooSmall)?;
     date_str.try_extend_from_slice(num)?;
-    date_str.push(colon);
+    date_str.try_push(colon)?;
     // min
     add_padding!(date.min, date_str);
     let num = u8_to_str(date.min, &mut num_buff[..]).map_err(|_| TimeError::BufferTooSmall)?;
     date_str.try_extend_from_slice(num)?;
-    date_str.push(colon);
+    date_str.try_push(colon)?;
     // seconds
     add_padding!(date.sec, date_str);
     let num = u8_to_str(date.sec, &mut num_buff[..]).map_err(|_| TimeError::BufferTooSmall)?;
     date_str.try_extend_from_slice(num)?;
-    date_str.push(space);
+    date_str.try_push(space)?;
 
     // it is redundant to have Utc appended at the end
     // as by definition unix-timestamp is Utc, but this

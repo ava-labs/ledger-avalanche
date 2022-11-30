@@ -152,7 +152,7 @@ impl Viewable for WalletIdUI {
 
             //TODO: use proper encoding
             let mut mex = [0; WalletId::LEN * 2];
-            let len = hex_encode(&self.id, &mut mex).map_err(|_| ViewError::Unknown)?;
+            let len = hex_encode(self.id, &mut mex).map_err(|_| ViewError::Unknown)?;
 
             handle_ui_message(&mex[..len], message, page)
         } else {
@@ -163,7 +163,7 @@ impl Viewable for WalletIdUI {
     fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
         let mut tx = 0;
 
-        out[tx..tx + self.id.len()].copy_from_slice(&self.id);
+        out[tx..][..self.id.len()].copy_from_slice(&self.id);
         tx += self.id.len();
 
         (tx, Error::Success as _)
