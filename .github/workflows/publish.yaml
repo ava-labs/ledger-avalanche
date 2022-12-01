@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '14.17.0'
           registry-url: "https://registry.npmjs.org"
-          scope: "@zondax"
+          scope: "@avalabs"
       - name: Install yarn
         run: npm install -g yarn
       - name: Build package
