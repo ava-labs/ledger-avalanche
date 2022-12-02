@@ -167,35 +167,31 @@ fn retrieve_data(path: impl AsRef<Path>, path_span: Span) -> Result<Vec<ReducedI
         }
     };
 
-    match std::fs::File::open(&data_path) {
-        Ok(file) => match serde_json::from_reader::<_, Vec<KnownChain>>(file) {
-            Ok(data) => {
-                let data: Result<Vec<_>, _> = data
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, item)| item.try_into().map_err(|e| (i, e)))
-                    .collect();
-
-                data.map_err(|(i, e)| {
-                    Error::new(
-                        path_span,
-                        format!("Entry #{}'s chainID was not valid base58; err={:?}", i, e),
-                    )
-                })
-                .map(|mut v| {
-                    v.dedup();
-                    v.sort();
-                    v
-                })
-            }
-            Err(err) => Err(Error::new(
-                path_span,
-                format!("File was not valid JSON. err={:?}", err),
-            )),
-        },
-        Err(err) => Err(Error::new(
+    let data = std::fs::read_to_string(data_path.as_path()).map_err(|err| {
+        Error::new(
             path_span,
             format!("Could not read file. Path: {:?}; err={:?}", data_path, err),
-        )),
-    }
+        )
+    })?;
+
+    let chains: Vec<KnownChain> = serde_json::from_str(&data)
+        .map_err(|err| Error::new(path_span, format!("File was not valid JSON. err={:?}", err)))?;
+
+    let data: Result<Vec<_>, _> = chains
+        .into_iter()
+        .enumerate()
+        .map(|(i, item)| item.try_into().map_err(|e| (i, e)))
+        .collect();
+
+    data.map_err(|(i, e)| {
+        Error::new(
+            path_span,
+            format!("Entry #{}'s chainID was not valid base58; err={:?}", i, e),
+        )
+    })
+    .map(|mut v| {
+        v.dedup();
+        v.sort();
+        v
+    })
 }
