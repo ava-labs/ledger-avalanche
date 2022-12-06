@@ -19,13 +19,12 @@ jobs:
           node-version: "14.17.0"
           registry-url: "https://registry.npmjs.org"
           scope: "@zondax"
-      - name: CD Into Js package
-        run: cd js
       - name: Install yarn
         run: npm install -g yarn
-      - name: Yarn Install
-        run: yarn install
-      - name: Build Js
-        run: yarn build
+      - name: Build package
+        run: |
+          cd js
+          yarn install
+          yarn build
       - name: release
         run: npx semantic-release
