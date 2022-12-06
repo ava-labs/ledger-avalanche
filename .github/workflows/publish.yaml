@@ -21,6 +21,8 @@ jobs:
           scope: "@zondax"
       - name: Install yarn
         run: npm install -g yarn
+      - name: Create .npmrc
+        run: echo '//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}' >> .npmrc
       - name: Build package
         run: |
           cd js
