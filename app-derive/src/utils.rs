@@ -182,6 +182,16 @@ pub fn remove_doc_comment_attributes(attrs: Vec<Attribute>) -> Vec<Attribute> {
         .collect()
 }
 
+/// Keep all attributes that the macro supports being above variants
+///
+/// These attributes will be propagated on top of all generated items
+pub fn cfg_variant_attributes(attrs: Vec<Attribute>) -> Vec<Attribute> {
+    attrs
+        .into_iter()
+        .filter(|a| a.path.is_ident("cfg"))
+        .collect()
+}
+
 /// Collect idents
 #[derive(Default, Clone)]
 pub struct IdentsCollector<'ast> {

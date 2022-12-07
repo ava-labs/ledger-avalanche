@@ -57,7 +57,7 @@ dkms.conf
 \.idea
 .vscode/*.log
 .DS_Store
-node_modules/.yarn-integrity
+node_modules
 
 # Rust
 

@@ -30,7 +30,6 @@ pub mod resources {
     use crate::constants::MAX_BIP32_PATH_DEPTH;
 
     use super::lock::Lock;
-    use crate::parser::NftInfo;
     use bolos::{
         crypto::bip32::BIP32Path, hash::Sha256, lazy_static, new_swapping_buffer, pic::PIC,
         SwappingBuffer,
@@ -47,8 +46,10 @@ pub mod resources {
     #[lazy_static]
     pub static mut HASH: Lock<Option<[u8; Sha256::DIGEST_LEN]>, HASHAccessors> = Lock::new(None);
 
+    #[cfg(feature = "erc721")]
     #[lazy_static]
-    pub static mut NFT_INFO: Lock<Option<NftInfo>, NFTInfoAccessors> = Lock::new(None);
+    pub static mut NFT_INFO: Lock<Option<crate::parser::NftInfo>, NFTInfoAccessors> =
+        Lock::new(None);
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum BUFFERAccessors {
@@ -56,10 +57,6 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
-        #[cfg(feature = "blind-sign")]
-        BlindSign,
-        #[cfg(feature = "blind-sign")]
-        EthBlindSign,
         #[cfg(feature = "dev")]
         Debug,
     }
@@ -70,10 +67,6 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
-        #[cfg(feature = "blind-sign")]
-        BlindSign,
-        #[cfg(feature = "blind-sign")]
-        EthBlindSign,
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
@@ -84,18 +77,12 @@ pub mod resources {
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
+    #[cfg(feature = "erc721")]
     pub enum NFTInfoAccessors {
         NftInfo,
         EthSign,
         // The subparser for ERC721 transactions
         ERC721Parser,
-    }
-
-    #[cfg(feature = "blind-sign")]
-    impl From<super::avax::blind_signing::BlindSign> for BUFFERAccessors {
-        fn from(_: super::avax::blind_signing::BlindSign) -> Self {
-            Self::BlindSign
-        }
     }
 
     impl From<super::avax::signing::Sign> for BUFFERAccessors {
@@ -116,25 +103,20 @@ pub mod resources {
         }
     }
 
-    #[cfg(feature = "blind-sign")]
-    impl From<super::eth::blind_signing::BlindSign> for BUFFERAccessors {
-        fn from(_: super::eth::blind_signing::BlindSign) -> Self {
-            Self::EthBlindSign
-        }
-    }
-
     impl From<super::eth::signing::Sign> for BUFFERAccessors {
         fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
         }
     }
 
+    #[cfg(feature = "erc721")]
     impl From<super::eth::provide_nft_info::Info> for NFTInfoAccessors {
         fn from(_: super::eth::provide_nft_info::Info) -> Self {
             Self::NftInfo
         }
     }
 
+    #[cfg(feature = "erc721")]
     impl From<super::eth::signing::Sign> for NFTInfoAccessors {
         fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
@@ -145,6 +127,7 @@ pub mod resources {
     // get the information it needs. otherwise we would
     // need to pass the NftInfo object all the way down
     // modifying the EthTransaction parser.
+    #[cfg(feature = "erc721")]
     impl From<crate::parser::ERC721Info> for NFTInfoAccessors {
         fn from(_: crate::parser::ERC721Info) -> Self {
             Self::ERC721Parser
@@ -158,13 +141,6 @@ pub mod resources {
         }
     }
 
-    #[cfg(feature = "blind-sign")]
-    impl From<super::avax::blind_signing::BlindSign> for PATHAccessors {
-        fn from(_: super::avax::blind_signing::BlindSign) -> Self {
-            Self::BlindSign
-        }
-    }
-
     impl From<super::avax::signing::Sign> for PATHAccessors {
         fn from(_: super::avax::signing::Sign) -> Self {
             Self::Sign
@@ -174,13 +150,6 @@ pub mod resources {
     impl From<super::avax::message::Sign> for PATHAccessors {
         fn from(_: super::avax::message::Sign) -> Self {
             Self::SignMsg
-        }
-    }
-
-    #[cfg(feature = "blind-sign")]
-    impl From<super::eth::blind_signing::BlindSign> for PATHAccessors {
-        fn from(_: super::eth::blind_signing::BlindSign) -> Self {
-            Self::EthBlindSign
         }
     }
 

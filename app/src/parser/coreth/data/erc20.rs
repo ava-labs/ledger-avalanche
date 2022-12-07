@@ -52,7 +52,7 @@ function allowance(address _owner, address _spender) public view returns (uint25
 /// `public view` methods are excluded as those don't make sense to be called via a transaction
 #[avalanche_app_derive::enum_init]
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum ERC20<'b> {
     Transfer {
         to: Address<'b>,
@@ -208,18 +208,15 @@ impl<'b> ERC20<'b> {
 
         match ty {
             ERC20__Type::Transfer => {
-                Self::init_as_transfer(|item| Transfer::from_bytes_into(rem, item), output)?;
+                Self::init_as_transfer(|item| Transfer::from_bytes_into(rem, item), output)
             }
             ERC20__Type::TransferFrom => {
-                Self::init_as_transfer_from(
-                    |item| TransferFrom::from_bytes_into(rem, item),
-                    output,
-                )?;
+                Self::init_as_transfer_from(|item| TransferFrom::from_bytes_into(rem, item), output)
             }
             ERC20__Type::Approve => {
-                Self::init_as_approve(|item| Approve::from_bytes_into(rem, item), output)?;
+                Self::init_as_approve(|item| Approve::from_bytes_into(rem, item), output)
             }
-        }
+        }?;
 
         Ok(())
     }

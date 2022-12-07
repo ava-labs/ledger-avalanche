@@ -14,8 +14,6 @@
 *  limitations under the License.
 ********************************************************************************/
 
-#[cfg(feature = "blind-sign")]
-pub mod blind_signing;
 pub mod get_app_configuration;
 pub mod provide_erc20;
 pub mod provide_nft_info;
@@ -73,7 +71,7 @@ mod utils {
             _ => {}
         }
 
-        let marker = *data.get(0).ok_or(Error::DataInvalid)?;
+        let marker = *data.first().ok_or(Error::DataInvalid)?;
 
         match marker {
             slist @ 0xC0..=0xF7 => Ok((read + 1, slist as u64 - 0xC0)),

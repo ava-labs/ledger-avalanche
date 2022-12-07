@@ -35,7 +35,7 @@ use bolos::PIC;
 /// and instead store just a slice (2 * usize), but still enforce in the type system
 /// to read such memory as a u256
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct BorrowedU256<'b>(&'b [u8]);
 
 impl<'b> BorrowedU256<'b> {
@@ -254,18 +254,6 @@ impl u256 {
 
         for i in 0..4 {
             BigEndian::write_u64(&mut bytes[8 * i..], self.0[4 - i - 1]);
-        }
-    }
-
-    /// Write to the slice in little-endian format.
-    #[inline]
-    pub fn as_little_endian(&self, bytes: &mut [u8]) {
-        use byteorder::{ByteOrder, LittleEndian};
-        if 4 * 8 != bytes.len() {
-            panic!("assertion failed: 4 * 8 == bytes.len()")
-        }
-        for i in 0..4 {
-            LittleEndian::write_u64(&mut bytes[8 * i..], self.0[i]);
         }
     }
 
@@ -1200,7 +1188,6 @@ impl u256 {
     /// Converts from big endian representation bytes in memory.
     #[inline(never)]
     fn from_big_endian(slice: &[u8]) -> Self {
-        use byteorder::{BigEndian, ByteOrder};
         if 4 * 8 < slice.len() {
             panic!("assertion failed: 4 * 8 >= slice.len()")
         };
@@ -1208,7 +1195,8 @@ impl u256 {
         padded[4 * 8 - slice.len()..4 * 8].copy_from_slice(slice);
         let mut ret = [0; 4];
         for i in 0..4 {
-            ret[4 - i - 1] = BigEndian::read_u64(&padded[8 * i..]);
+            let buf = arrayref::array_ref!(padded, i * 8, 8);
+            ret[4 - i - 1] = u64::from_be_bytes(*buf);
         }
         u256(ret)
     }
@@ -1221,21 +1209,6 @@ impl u256 {
         let picced = unsafe { PIC::manual(to_pic) } as *const ();
 
         unsafe { core::mem::transmute(picced) }
-    }
-
-    /// Converts from little endian representation bytes in memory.
-    pub fn from_little_endian(slice: &[u8]) -> Self {
-        use byteorder::{ByteOrder, LittleEndian};
-        if 4 * 8 < slice.len() {
-            panic!("assertion failed: 4 * 8 >= slice.len()")
-        };
-        let mut padded = [0u8; 4 * 8];
-        padded[0..slice.len()].copy_from_slice(slice);
-        let mut ret = [0; 4];
-        for i in 0..4 {
-            ret[i] = LittleEndian::read_u64(&padded[8 * i..]);
-        }
-        u256(ret)
     }
 }
 

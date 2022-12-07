@@ -23,14 +23,11 @@
 
 extern crate no_std_compat as std;
 
-pub mod constants;
-pub mod dispatcher;
+mod constants;
+mod dispatcher;
 mod handlers;
 mod parser;
 mod sys;
-
-pub use handlers::ZPacketType as PacketType;
-pub use parser::Transaction;
 
 #[cfg(not(fuzzing))]
 sys::panic_handler! {}
@@ -39,7 +36,9 @@ sys::panic_handler! {}
 mod utils;
 use utils::ApduPanic;
 
-pub mod crypto;
+#[cfg(test)]
+use {handlers::ZPacketType as PacketType, parser::Transaction};
+mod crypto;
 
 cfg_if::cfg_if! {
     if #[cfg(fuzzing)] {
@@ -89,3 +88,6 @@ pub fn handle_apdu_raw(bytes: &[u8]) -> (u32, u32, std::vec::Vec<u8>) {
 
     (flags, tx, out)
 }
+
+#[cfg(test)]
+mod integration_tests;

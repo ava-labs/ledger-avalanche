@@ -47,8 +47,8 @@ impl<'b> BaseLegacy<'b> {
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
         let f = u256::pic_from_big_endian();
-        let gas_price = f(&*self.gas_price);
-        let gas_limit = f(&*self.gas_limit);
+        let gas_price = f(&self.gas_price);
+        let gas_limit = f(&self.gas_limit);
 
         gas_price
             .checked_mul(gas_limit)
@@ -205,6 +205,7 @@ impl<'b> BaseLegacy<'b> {
     }
 
     #[inline(never)]
+    #[cfg(feature = "erc20")]
     fn render_erc20_call(
         &self,
         item_n: u8,
@@ -243,6 +244,7 @@ impl<'b> BaseLegacy<'b> {
     }
 
     #[inline(never)]
+    #[cfg(feature = "erc721")]
     fn render_erc721_call(
         &self,
         item_n: u8,
@@ -369,8 +371,10 @@ impl<'b> DisplayableItem for BaseLegacy<'b> {
             // description amount, address, fee and contract_data
             EthData::ContractCall(d) => 1 + 1 + 1 + 1 + d.num_items(),
             // address, fee
+            #[cfg(feature = "erc20")]
             EthData::Erc20(d) => 1 + 1 + d.num_items(),
             // contract address, fee
+            #[cfg(feature = "erc721")]
             EthData::Erc721(d) => 1 + 1 + d.num_items(),
         }
     }
@@ -387,7 +391,9 @@ impl<'b> DisplayableItem for BaseLegacy<'b> {
             EthData::Deploy(..) => self.render_deploy(item_n, title, message, page),
             EthData::AssetCall(..) => self.render_asset_call(item_n, title, message, page),
             EthData::ContractCall(..) => self.render_contract_call(item_n, title, message, page),
+            #[cfg(feature = "erc20")]
             EthData::Erc20(..) => self.render_erc20_call(item_n, title, message, page),
+            #[cfg(feature = "erc721")]
             EthData::Erc721(..) => self.render_erc721_call(item_n, title, message, page),
         }
     }

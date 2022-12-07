@@ -22,9 +22,10 @@ use crate::{
     handlers::handle_ui_message,
     sys::{
         crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
+        hash::{Hasher, Keccak},
         ViewError, Viewable, PIC,
     },
-    utils::{hex_encode, KHasher, Keccak},
+    utils::hex_encode,
 };
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
@@ -76,12 +77,20 @@ impl<'ui> AddrUIInitializer<'ui> {
     }
 
     /// Produce the closure to initialize the pubkey hash
+    #[inline(never)]
     pub fn hash_initializer() -> impl FnOnce(
         &crypto::PublicKey,
         &mut [u8; Keccak::<32>::DIGEST_LEN],
     ) -> Result<(), AddrUIInitError> {
         |key, hash| {
-            let mut k = Keccak::<32>::new();
+            crate::sys::zemu_log_stack("keccak hash init\x00");
+            let mut k = {
+                let mut k = MaybeUninit::uninit();
+                Keccak::<32>::new_gce(&mut k).map_err(|_| AddrUIInitError::HashInitError)?;
+
+                //safe, just initialized
+                unsafe { k.assume_init() }
+            };
 
             //for eth the hash of the pkey
             // is the hash of the uncompressed pbkey (64 bytes)
@@ -92,8 +101,9 @@ impl<'ui> AddrUIInitializer<'ui> {
                 .as_ref()
                 .get(1..)
                 .ok_or(AddrUIInitError::HashInitError)?;
-            k.update(key);
-            k.finalize(&mut hash[..]);
+            k.update(key).map_err(|_| AddrUIInitError::HashInitError)?;
+            k.finalize_into(hash)
+                .map_err(|_| AddrUIInitError::HashInitError)?;
             Ok(())
         }
     }
@@ -163,12 +173,15 @@ impl AddrUI {
     }
 
     /// Compute the pkey hash
-    pub fn hash(&self, key: &crypto::PublicKey) -> Result<[u8; Keccak::<32>::DIGEST_LEN], Error> {
-        let mut out = [0; Keccak::<32>::DIGEST_LEN];
+    #[inline(never)]
+    pub fn hash_into(
+        &self,
+        key: &crypto::PublicKey,
+        out: &mut [u8; Keccak::<32>::DIGEST_LEN],
+    ) -> Result<(), Error> {
+        crate::sys::zemu_log_stack("AddrUI hash\x00");
 
-        AddrUIInitializer::hash_initializer()(key, &mut out)
-            .map_err(|_| Error::ExecutionError)
-            .map(|_| out)
+        AddrUIInitializer::hash_initializer()(key, out).map_err(|_| Error::ExecutionError)
     }
 
     /// Compute the address
@@ -177,9 +190,14 @@ impl AddrUI {
     /// of the last 20 bytes
     /// of the Keccak256 hash of the public key
     pub fn address(&self, key: &crypto::PublicKey, out: &mut [u8; 20 * 2]) -> Result<(), Error> {
-        let hash = self.hash(key)?;
+        crate::sys::zemu_log_stack("AddrUI address\x00");
+        //skip 8 bytes to align the hash at the end of the buffer
+        let hash_out = array_mut_ref![out, 8, 32];
+        self.hash_into(key, hash_out)?;
 
-        hex_encode(&hash[hash.len() - 20..], out).map_err(|_| Error::ExecutionError)?;
+        //copy the last 20 bytes of the hash
+        let hash = *arrayref::array_ref![out, 20, 20];
+        hex_encode(&hash[..], out).map_err(|_| Error::ExecutionError)?;
 
         Ok(())
     }
@@ -237,7 +255,7 @@ impl Viewable for AddrUI {
         out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
         tx += pkey_bytes.len();
 
-        //etereum address is 40 bytes
+        //ethereum address is 40 bytes
         out[tx] = 40;
         tx += 1;
 

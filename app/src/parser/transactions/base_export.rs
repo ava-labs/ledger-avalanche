@@ -72,7 +72,7 @@ where
 
         // get chains info
         let header = tx_header.as_ptr();
-        let base_chain_id = unsafe { (&*header).chain_id()? };
+        let base_chain_id = unsafe { (*header).chain_id()? };
         let dest_chain_id = ChainId::try_from(destination_chain)?;
 
         // Exporting to the same chain is an error
@@ -287,10 +287,11 @@ where
         let mut export_str: ArrayVec<u8, EXPORT_TX_DESCRIPTION_LEN> = ArrayVec::new();
 
         match self.tx_header.chain_id().map_err(|_| ViewError::Unknown)? {
-            ChainId::PChain => export_str.push(b'P'),
-            ChainId::XChain => export_str.push(b'X'),
-            ChainId::CChain => export_str.push(b'C'),
+            ChainId::PChain => export_str.try_push(b'P'),
+            ChainId::XChain => export_str.try_push(b'X'),
+            ChainId::CChain => export_str.try_push(b'C'),
         }
+        .map_err(|_| ViewError::Unknown)?;
 
         let to_alias = chain_alias_lookup(self.destination_chain)
             .map(|a| a.as_bytes())

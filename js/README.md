@@ -10,3 +10,7 @@ We recommend using the npmjs package in order to receive updates/fixes.
 ## Notes
 
 Use `yarn install` to avoid issues.
+
+## Release
+
+Push to main branch and a release will be automatic. Release versions are based on commitizen commit messages.

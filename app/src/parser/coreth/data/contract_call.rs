@@ -29,7 +29,7 @@ use crate::{
 /// contract call. There are contract calls that we need to support
 /// as ERC20, ERC721.
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct ContractCall<'b>(&'b [u8]);
 
 impl<'b> ContractCall<'b> {

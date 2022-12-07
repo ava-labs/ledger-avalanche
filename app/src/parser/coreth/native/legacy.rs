@@ -19,10 +19,10 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
-use crate::{
-    parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError},
-    utils::ApduPanic,
-};
+use crate::parser::U64_SIZE;
+use crate::parser::{DisplayableItem, FromBytes, ParserError};
+
+const MAX_CHAIN_LEN: usize = U64_SIZE as usize;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -36,8 +36,8 @@ pub struct Legacy<'b> {
 }
 
 impl<'b> Legacy<'b> {
-    pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id.last().copied().apdu_unwrap()
+    pub fn chain_id(&self) -> &'b [u8] {
+        self.chain_id
     }
 }
 
@@ -54,9 +54,22 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         let data_out = unsafe { &mut *addr_of_mut!((*out).base).cast() };
         let rem = BaseLegacy::from_bytes_into(input, data_out)?;
 
-        // chainID
+        // two cases:
+        // - legacy no EIP155 compliant which should be supported
+        // - legacy EIP155 in which case should come with empty r and s values
+        if rem.is_empty() {
+            unsafe {
+                // write an empty chain-id as it is used to compute the right V component
+                // when transaction is signed
+                addr_of_mut!((*out).chain_id).write(&[]);
+            }
+
+            return Ok(&[]);
+        }
+
+        // Transaction comes with a chainID so it is EIP155 compliant
         let (rem, id_bytes) = parse_rlp_item(rem)?;
-        if id_bytes.len() < 1 {
+        if id_bytes.is_empty() {
             return Err(ParserError::InvalidChainId.into());
         }
 
@@ -64,12 +77,15 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         let (rem, s) = parse_rlp_item(rem)?;
 
         // check for erc721 call and chainID
-        let base = unsafe { &*data_out.as_ptr() };
-        if matches!(base.data, EthData::Erc721(..)) {
-            let chain_id = super::bytes_to_u64(id_bytes)?;
-            let contract_chain_id = ERC721Info::get_nft_info()?.chain_id;
-            if chain_id != contract_chain_id {
-                return Err(ParserError::InvalidAssetCall.into());
+        #[cfg(feature = "erc721")]
+        {
+            let base = unsafe { &*data_out.as_ptr() };
+            if matches!(base.data, crate::parser::EthData::Erc721(..)) {
+                let chain_id = super::bytes_to_u64(id_bytes)?;
+                let contract_chain_id = crate::parser::ERC721Info::get_nft_info()?.chain_id;
+                if chain_id != contract_chain_id {
+                    return Err(ParserError::InvalidAssetCall.into());
+                }
             }
         }
 
@@ -81,6 +97,11 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
                 crate::sys::zemu_log_stack("Legacy::invalid_r_s\x00");
                 return Err(ParserError::UnexpectedData.into());
             }
+        }
+
+        // to align with ledger's original ethereum app
+        if id_bytes.len() > MAX_CHAIN_LEN {
+            return Err(ParserError::InvalidChainId.into());
         }
 
         unsafe {

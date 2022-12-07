@@ -33,7 +33,7 @@ const AMOUNT_SIZE: usize = u256::BITS as usize / 8;
 /// An asset call according to the documentation
 /// in https://docs.avax.network/specs/coreth-arc20s
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct AssetCall<'b> {
     pub address: Address<'b>,
     pub asset_id: AssetId<'b>,

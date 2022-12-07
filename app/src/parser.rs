@@ -46,11 +46,10 @@ pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
 pub use constants::*;
 pub use coreth::{
-    data::{ERC721Info, EthData},
+    data::EthData,
     export_tx::ExportTx,
     import_tx::ImportTx,
-    native::EthTransaction,
-    nft_info::NftInfo,
+    native::{bytes_to_u64, EthTransaction},
 };
 pub use error::ParserError;
 pub use initial_state::{FxId, InitialState};
@@ -70,6 +69,9 @@ pub use transactions::*;
 pub use utils::*;
 pub use utxo_id::UtxoId;
 pub use validator::*;
+
+#[cfg(feature = "erc721")]
+pub use coreth::{data::ERC721Info, nft_info::NftInfo};
 
 ///This trait defines the interface useful in the UI context
 /// so that all the different OperationTypes or other items can handle their own UI
