@@ -26,7 +26,6 @@ use crate::{
     constants::{
         ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
     },
-    crypto::PublicKey,
     dispatcher::ApduHandler,
     handlers::{
         avax::sign_hash::Sign as SignHash,

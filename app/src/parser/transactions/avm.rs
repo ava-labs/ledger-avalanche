@@ -1,9 +1,14 @@
-mod create_asset;
 mod export_tx;
 mod import_tx;
 mod operation_tx;
 
-pub use create_asset::*;
 pub use export_tx::*;
 pub use import_tx::*;
 pub use operation_tx::*;
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "create-asset")] {
+        mod create_asset;
+        pub use create_asset::*;
+    }
+}

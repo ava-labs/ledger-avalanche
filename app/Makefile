@@ -80,6 +80,7 @@ OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_s.elf
 OUTPUT_INSTALLER := $(ARTIFACT_OUTPUT_PATH)/pkg/installer_s.sh
 RUST_TARGET:=thumbv6m-none-eabi
 APP_LOAD_PARAMS += --appFlags 0x000
+APP_FULL:=1
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
@@ -88,6 +89,7 @@ OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_x.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_x.sh
 RUST_TARGET:=thumbv6m-none-eabi
 APP_LOAD_PARAMS += --appFlags 0x200
+APP_FULL:=1
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOS2)
@@ -97,12 +99,16 @@ OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_sp.sh
 #RUST_TARGET:=thumbv8m.main-none-eabi
 RUST_TARGET:=thumbv6m-none-eabi
 APP_LOAD_PARAMS += --appFlags 0x000
+APP_FULL:=1
 endif
 
-RUST_FEATURES:=--features "blind-sign-toggle"
-DEFINES += BLIND_SIGN_TOGGLE
 ifeq ($(APP_TESTING),1)
-RUST_FEATURES:=$(RUST_FEATURES),"dev"
+RUST_FEATURES+=--features "dev"
+endif
+ifeq ($(APP_FULL),1)
+RUST_FEATURES+=--features "full"
+else
+RUST_FEATURES+=--features "lite"
 endif
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
@@ -215,7 +221,9 @@ SDK_SOURCE_PATH += lib_ux
 
 .PHONY: rust
 rust:
-	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) cargo build --target $(RUST_TARGET) --release --no-default-features $(RUST_FEATURES)
+	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cargo build --release --target $(RUST_TARGET) \
+	--no-default-features $(RUST_FEATURES)
 
 .PHONY: rust_clean
 rust_clean:

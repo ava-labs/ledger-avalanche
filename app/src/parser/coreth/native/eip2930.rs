@@ -18,16 +18,13 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
-use crate::{
-    parser::{DisplayableItem, ERC721Info, EthData, FromBytes, ParserError},
-    utils::ApduPanic,
-};
+use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip2930<'b> {
     // it is not clear if chainID
-    // is an u32, u8, u32,
+    // is an u32, u8, u64
     // considering this might
     // come from an avax C-Chain
     chain_id: &'b [u8],
@@ -40,8 +37,8 @@ pub struct Eip2930<'b> {
 }
 
 impl<'b> Eip2930<'b> {
-    pub fn chain_id_low_byte(&self) -> u8 {
-        self.chain_id.last().copied().apdu_unwrap()
+    pub fn chain_id(&self) -> &'b [u8] {
+        self.chain_id
     }
 }
 
@@ -57,7 +54,7 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
 
         // chainID
         let (rem, id_bytes) = parse_rlp_item(input)?;
-        if id_bytes.len() < 1 {
+        if id_bytes.is_empty() {
             return Err(ParserError::InvalidChainId.into());
         }
 
@@ -68,12 +65,15 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
         let (rem, access_list) = parse_rlp_item(rem)?;
 
         // check for erc721 call and chainID
-        let base = unsafe { &*data_out.as_ptr() };
-        if matches!(base.data, EthData::Erc721(..)) {
-            let chain_id = super::bytes_to_u64(id_bytes)?;
-            let contract_chain_id = ERC721Info::get_nft_info()?.chain_id;
-            if chain_id != contract_chain_id {
-                return Err(ParserError::InvalidAssetCall.into());
+        #[cfg(feature = "erc721")]
+        {
+            let base = unsafe { &*data_out.as_ptr() };
+            if matches!(base.data, crate::parser::EthData::Erc721(..)) {
+                let chain_id = super::bytes_to_u64(id_bytes)?;
+                let contract_chain_id = crate::parser::ERC721Info::get_nft_info()?.chain_id;
+                if chain_id != contract_chain_id {
+                    return Err(ParserError::InvalidAssetCall.into());
+                }
             }
         }
 

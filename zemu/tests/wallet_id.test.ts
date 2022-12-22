@@ -48,8 +48,7 @@ describe.each(models)('Standard [%s] - wallet id', function (m) {
         const app = new AvalancheApp(sim.getTransport())
         const respReq = app.showWalletId()
 
-        await sim.waitScreenChange();
-
+        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
         await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-wallet-id`)
 
         const resp = await respReq;

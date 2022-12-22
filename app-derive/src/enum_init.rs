@@ -35,15 +35,26 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input as ItemEnum);
 
-    let type_enum = create_type_enum(&ident, variants.iter().map(|variant| &variant.ident));
+    let type_enum = create_type_enum(
+        &ident,
+        variants.iter().map(|variant| {
+            (
+                &variant.ident,
+                cfg_variant_attributes(variant.attrs.clone()),
+            )
+        }),
+    );
 
     let items = variants.iter().map(|variant| match &variant.fields {
         syn::Fields::Named(named) => {
+            let cfg_attrs = cfg_variant_attributes(variant.attrs.clone());
+
             // create the struct definition containing the fields
             // so later we can treat it as an "unnamed" field
             let def = create_data_struct_for_named(
                 &variant.ident,
-                remove_doc_comment_attributes(attrs.clone()),
+                &remove_doc_comment_attributes(attrs.clone()),
+                &cfg_attrs,
                 named.named.clone(),
                 &GenericParamsCollector::traverse_generics(&generics).idents,
             );
@@ -59,6 +70,7 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
             let variant_struct = create_variant_struct_for_unnamed(
                 &type_enum.ident,
                 &variant.ident,
+                &cfg_attrs,
                 &Field {
                     attrs: variant.attrs.clone(),
                     vis: Visibility::Inherited,
@@ -80,21 +92,30 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                     .unwrap(),
                 GenericArgumentsCollector::traverse_type(&inner, None).generics,
                 &variant_struct.ident,
+                &cfg_attrs,
             );
 
             quote! { #def #variant_struct #block }
         }
         syn::Fields::Unit => {
-            create_variant_struct_for_unit(&type_enum.ident, &variant.ident).to_token_stream()
+            let cfg_attrs = cfg_variant_attributes(variant.attrs.clone());
+            create_variant_struct_for_unit(&type_enum.ident, &variant.ident, &cfg_attrs)
+                .to_token_stream()
         }
         syn::Fields::Unnamed(unnamed) => {
+            let cfg_attrs = cfg_variant_attributes(variant.attrs.clone());
+
             let unnamed = &unnamed.unnamed;
             if unnamed.len() != 1 {
                 abort!(variant.ident.span(), "only 1 item in field supported")
             } else {
                 let field = unnamed.first().unwrap();
-                let variant_struct =
-                    create_variant_struct_for_unnamed(&type_enum.ident, &variant.ident, field);
+                let variant_struct = create_variant_struct_for_unnamed(
+                    &type_enum.ident,
+                    &variant.ident,
+                    &cfg_attrs,
+                    field,
+                );
 
                 //create the initializer helper
                 let block = impl_initializer(
@@ -108,6 +129,7 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                         .unwrap(),
                     GenericArgumentsCollector::traverse_type(&field.ty, None).generics,
                     &variant_struct.ident,
+                    &cfg_attrs,
                 );
 
                 quote! { #variant_struct #block }
@@ -132,8 +154,11 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Creates an enum that only contains unit variants with the given names
-fn create_type_enum<'a>(name: &Ident, variants: impl Iterator<Item = &'a Ident>) -> ItemEnum {
+/// Creates an enum that only contains unit variants with the given names and attributes for the variants
+fn create_type_enum<'a>(
+    name: &Ident,
+    variants: impl Iterator<Item = (&'a Ident, Vec<Attribute>)>,
+) -> ItemEnum {
     let name = Ident::new(&format!("{}__Type", name), name.span());
 
     //simple way to retrieve some items,
@@ -152,9 +177,9 @@ fn create_type_enum<'a>(name: &Ident, variants: impl Iterator<Item = &'a Ident>)
         enum Foo {}
     };
 
-    let variants = variants.cloned().map(|ident| Variant {
-        attrs: vec![],
-        ident,
+    let variants = variants.map(|(ident, attrs)| Variant {
+        attrs,
+        ident: ident.clone(),
         fields: syn::Fields::Unit,
         discriminant: None,
     });
@@ -171,7 +196,12 @@ fn create_type_enum<'a>(name: &Ident, variants: impl Iterator<Item = &'a Ident>)
 }
 
 ///Create a struct for the specific enum variant with unnamed field
-fn create_variant_struct_for_unnamed(type_enum: &Ident, name: &Ident, inner: &Field) -> ItemStruct {
+fn create_variant_struct_for_unnamed(
+    type_enum: &Ident,
+    name: &Ident,
+    extra_attrs: &[Attribute],
+    inner: &Field,
+) -> ItemStruct {
     let Field {
         attrs: inner_attrs,
         ty: inner_ty,
@@ -188,17 +218,23 @@ fn create_variant_struct_for_unnamed(type_enum: &Ident, name: &Ident, inner: &Fi
     parse_quote_spanned! { name.span() =>
         #[allow(non_camel_case_types)]
         #[repr(C)]
+        #(#extra_attrs)*
         pub struct #name<#generics>(#type_enum, #(#inner_attrs)* #inner_ty);
     }
 }
 
 ///Create a struct for the specific enum variant with no fields
-fn create_variant_struct_for_unit(type_enum: &Ident, name: &Ident) -> ItemStruct {
+fn create_variant_struct_for_unit(
+    type_enum: &Ident,
+    name: &Ident,
+    extra_attrs: &[Attribute],
+) -> ItemStruct {
     let name = Ident::new(&format!("{}__Variant", name), name.span());
 
     parse_quote_spanned! { name.span() =>
         #[allow(non_camel_case_types)]
         #[repr(C)]
+        #(#extra_attrs)*
         struct #name(#type_enum);
     }
 }
@@ -206,9 +242,10 @@ fn create_variant_struct_for_unit(type_enum: &Ident, name: &Ident) -> ItemStruct
 ///Create a struct for the specific enum variant with named fields
 fn create_data_struct_for_named(
     name: &Ident,
+    variant_attrs: &[Attribute],
     //attributes that we want on top of the struct definition
     // NOT the variant attributes
-    extra_attrs: Vec<Attribute>,
+    extra_attrs: &[Attribute],
     fields: Punctuated<Field, Comma>,
     //the list of generics that are valid
     filter_generics: &[&Ident],
@@ -229,6 +266,8 @@ fn create_data_struct_for_named(
 
     parse_quote_spanned! { name.span() =>
         #(#extra_attrs)*
+        #(#variant_attrs)*
+        #[repr(C)]
         pub struct #name <#generics> {
             #fields
         }
@@ -242,6 +281,7 @@ fn create_data_struct_for_named(
 /// and using the given `type_enum` to construct the discriminator
 ///
 /// Doesn't make sense to be used for unit variants, so we have the generation there instead
+#[allow(clippy::too_many_arguments)]
 pub fn impl_initializer(
     name: &Ident,
     generics: &Generics,
@@ -250,6 +290,7 @@ pub fn impl_initializer(
     inner_name: &Ident,
     variant_generics: Vec<&GenericArgument>,
     variant_struct: &Ident,
+    block_attrs: &[Attribute],
 ) -> ItemImpl {
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
 
@@ -280,11 +321,12 @@ pub fn impl_initializer(
     let variant_generics = variant_generics.iter().fold_punctuate::<Token![,]>();
 
     parse_quote! {
-        #[doc = "Initialize #name::#variant with the given closure"]
-        ///
-        #[doc = "The closure accepts a mutable reference to `MaybeUninit<#variant_struct>`"]
-        /// which is supposed to be written to
+        #(#block_attrs)*
         impl #impl_generics #name #type_generics #where_clause {
+            #[doc = "Initialize #name::#variant with the given closure"]
+            #[doc = ""]
+            #[doc = "The closure accepts a mutable reference to `MaybeUninit<#variant_struct>`"]
+            #[doc = "which is supposed to be written to"]
             pub fn #variant_method_name <__T, __F, #extra_generics> (mut init: __F, out: &mut ::core::mem::MaybeUninit<Self>) -> __T
             where
                 __F: FnMut(&mut ::core::mem::MaybeUninit<#inner_name<#variant_generics>>) -> __T

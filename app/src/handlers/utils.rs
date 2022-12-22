@@ -65,6 +65,9 @@ impl ZPacketType {
 pub fn handle_ui_message(item: &[u8], out: &mut [u8], page: u8) -> Result<u8, ViewError> {
     crate::sys::zemu_log_stack("handle_ui_message\x00");
     let m_len = out.len() - 1; //null byte terminator
+    if m_len < 1 {
+        return Err(ViewError::Unknown);
+    }
     if m_len <= item.len() {
         let chunk = item
             .chunks(m_len) //divide in non-overlapping chunks

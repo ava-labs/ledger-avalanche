@@ -67,7 +67,7 @@ impl<'b> FromBytes<'b> for ImportTx<'b> {
         let source_chain = arrayref::array_ref!(source_chain_id, 0, SOURCE_CHAIN_LEN);
         // get chains info
         let header = tx_header.as_ptr();
-        let blockchain_id = unsafe { (&*header).chain_id()? };
+        let blockchain_id = unsafe { (*header).chain_id()? };
         let src_id = ChainId::try_from(source_chain)?;
 
         // Importing from the same chain is an error
@@ -115,7 +115,7 @@ impl<'b> ImportTx<'b> {
         self.outputs.iterate_with(|o| {
             // The 99.99% of the outputs contain only one address(best case),
             // In the worse case we just show every output.
-            if o.address().raw_address() == address {
+            if o.address().raw_address().as_slice() == address {
                 render ^= 1 << idx;
             }
             idx += 1;
@@ -252,8 +252,12 @@ impl<'b> ImportTx<'b> {
         let mut export_str: ArrayString<IMPORT_DESCRIPTION_LEN> = ArrayString::new();
         let from_alias = chain_alias_lookup(self.source_chain).map_err(|_| ViewError::Unknown)?;
 
-        export_str.push_str(from_alias);
-        export_str.push_str(pic_str!(" Chain"));
+        export_str
+            .try_push_str(from_alias)
+            .map_err(|_| ViewError::Unknown)?;
+        export_str
+            .try_push_str(pic_str!(" Chain"))
+            .map_err(|_| ViewError::Unknown)?;
 
         handle_ui_message(export_str.as_bytes(), message, page)
     }

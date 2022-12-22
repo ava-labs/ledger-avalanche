@@ -28,7 +28,7 @@ use crate::{
 // the UI only shows it and a section of the
 // data as an hex string.
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct Deploy<'b>(&'b [u8]);
 
 impl<'b> Deploy<'b> {

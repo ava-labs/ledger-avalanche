@@ -1,4 +1,4 @@
-export MIRIFLAGS := "-Zmiri-symbolic-alignment-check"
+export MIRIFLAGS := "-Zmiri-symbolic-alignment-check -Zmiri-permissive-provenance -Zmiri-backtrace=full"
 export RUST_BACKTRACE := "full"
 
 # Show this menu
@@ -7,7 +7,7 @@ export RUST_BACKTRACE := "full"
 
 # Run tests with miri
 miri *args='':
-    cargo +nightly miri test {{args}}
+    cargo +nightly miri test --features "full" {{args}}
 
 # Run rust tests first and zemu_test afterwards
 tests: build-elfs

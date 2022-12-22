@@ -21,7 +21,7 @@ extern "C" {
 
     #define MENU_MAIN_APP_LINE1             "Avalanche"
     #define MENU_MAIN_APP_LINE2             "Ready"
-    #define APPVERSION_LINE1                "Ready"
+    #define APPVERSION_LINE1                "Avalanche"
     #define APPVERSION_LINE2                ("v" APPVERSION)
 
 #ifdef __cplusplus
