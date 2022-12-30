@@ -18,7 +18,6 @@ import Zemu from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions, models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
-import { ledgerService } from "@ledgerhq/hw-app-eth"
 import { ec } from 'elliptic'
 
 type NftInfo = {
