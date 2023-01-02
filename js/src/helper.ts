@@ -117,7 +117,7 @@ export function serializeChainID(chainid?: string): Buffer {
       throw Error('ChainID was not 32 bytes long (encoded with base58)')
     }
 
-    return Buffer.concat([Buffer.alloc(1, decoded.length), decoded])
+    return Buffer.concat([Buffer.alloc(1, decoded.length), Buffer.from(decoded)])
   } else {
     return Buffer.alloc(1, 0)
   }
