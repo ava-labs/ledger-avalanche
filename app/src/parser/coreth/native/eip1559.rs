@@ -177,8 +177,12 @@ impl<'b> Eip1559<'b> {
     ) -> Result<u8, ViewError> {
         match item_n {
             0 => {
-                let label = pic_str!(b"Transfer(AVAX)");
+                let label = pic_str!(b"Transfer");
                 title[..label.len()].copy_from_slice(label);
+
+                let curr = pic_str!(b"AVAX "!);
+                let (prefix, message) = message.split_at_mut(curr.len());
+                prefix.copy_from_slice(curr);
 
                 render_u256(&self.value, WEI_AVAX_DIGITS, message, page)
             }
@@ -286,8 +290,12 @@ impl<'b> Eip1559<'b> {
                 handle_ui_message(content, message, page)
             }
             1 => {
-                let label = pic_str!(b"Transfer(AVAX)");
+                let label = pic_str!(b"Transfer");
                 title[..label.len()].copy_from_slice(label);
+
+                let curr = pic_str!(b"AVAX "!);
+                let (prefix, message) = message.split_at_mut(curr.len());
+                prefix.copy_from_slice(curr);
 
                 render_u256(&self.value, WEI_AVAX_DIGITS, message, page)
             }
