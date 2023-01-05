@@ -19,9 +19,10 @@ package ledger_avalanche_go
 import (
 	"errors"
 	"fmt"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
-	"github.com/zondax/ledger-go"
+	ledger_go "github.com/zondax/ledger-go"
 )
 
 // FindLedgerAvalancheApp FindLedgerAvalancheUserApp finds a Avax user app running in a ledger device
@@ -126,7 +127,6 @@ func (ledger *LedgerAvalanche) GetPubKey(path string, show bool, hrp string, cha
 	message[4] = byte(len(message) - len(header)) // update length
 
 	response, err := ledger.api.Exchange(message)
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +138,7 @@ func (ledger *LedgerAvalanche) GetPubKey(path string, show bool, hrp string, cha
 	// [publicKeyLen | publicKey | hash | errorCode]
 	publicKeyLen := response[0]
 	publicKey = response[1 : publicKeyLen+1]
-	hash = response[publicKeyLen+1 : len(response)]
+	hash = response[publicKeyLen+1:]
 
 	return publicKey, hash, err
 }
