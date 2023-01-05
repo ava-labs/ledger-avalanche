@@ -21,11 +21,16 @@ This project contains the Avalanche app for Ledger Nano S, S+ and X.
 
 ## ATTENTION
 
-Please:
+The releases of this repository and the binaries you can build yourself with this repo
+are considered unvetted development releases, use with caution.
 
-- **Do not use in production**
-- **Do not use a Ledger device with funds for development purposes.**
-- **Have a separate and marked device that is used ONLY for development and testing**
+The releases provided by Ledger via Ledger Live have undergone Ledger's security assessment
+and thus are safe to use with real funds.
+
+If you wish to use a development release, we recommend the following:
+- Do not use in production
+- Do not use a Ledger device with funds for development purposes
+- Do use a separate and marked device that is used ONLY for development and testing
 
 ## Download and install
 
