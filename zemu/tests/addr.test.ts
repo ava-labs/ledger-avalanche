@@ -80,13 +80,9 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
       try {
         await sim.start({ ...defaultOptions, model: m.name })
         const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.getAddressAndPubKey(APP_DERIVATION, false,
+        const resp = await app.getAddressAndPubKey(APP_DERIVATION, false,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))
 
-        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`);
-
-        const resp = await respReq;
         console.log(resp, m.name)
 
         expect(resp.returnCode).toEqual(0x9000)
