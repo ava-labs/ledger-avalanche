@@ -37,7 +37,7 @@ mod utils;
 use utils::ApduPanic;
 
 #[cfg(test)]
-use {handlers::ZPacketType as PacketType, parser::Transaction};
+use {handlers::ZPacketType as PacketType};
 mod crypto;
 
 cfg_if::cfg_if! {
