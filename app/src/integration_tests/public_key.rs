@@ -14,7 +14,9 @@
 *  limitations under the License.
 ********************************************************************************/
 use super::prelude::*;
+use crate::{constants::CHAIN_ID_CHECKSUM_SIZE, utils::bs58_encode};
 
+use bolos::hash::{Hasher, Sha256};
 use constants::INS_GET_PUBLIC_KEY as INS;
 
 fn addr_len(hrp: Option<&[u8]>, chain_id: Option<&[u8]>) -> usize {
@@ -26,7 +28,20 @@ fn addr_len(hrp: Option<&[u8]>, chain_id: Option<&[u8]>) -> usize {
         match chain_alias_lookup(chain_id.try_into().expect("chain id to be 32 bytes long")) {
             Ok(alias) => alias.len(),
             //not found, so needs to be cb58 encoded
-            Err(_) => AddrUI::MAX_CHAIN_CB58_LEN,
+            Err(_) => {
+                let checksum = Sha256::digest(chain_id).unwrap();
+                let chain_id = {
+                    let mut arr = [0; 36];
+                    arr[..32].copy_from_slice(chain_id);
+                    arr[32..].copy_from_slice(&checksum[checksum.len() - CHAIN_ID_CHECKSUM_SIZE..]);
+                    arr
+                };
+                let mut out = [0; AddrUI::MAX_CHAIN_CB58_LEN];
+                match bs58_encode(chain_id, &mut out) {
+                    Ok(len) => len,
+                    Err(_) => unreachable!(),
+                }
+            }
         };
 
     //chain id + '-' separator + bech32 address
