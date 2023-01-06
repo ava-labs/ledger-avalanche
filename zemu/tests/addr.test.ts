@@ -20,7 +20,6 @@ import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { encode as bs58_encode } from 'bs58'
 
 const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4';
-const EXPECTED_BECH32_PUBKEY = 'tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e'
 
 describe.each(models)('Standard [%s] - pubkey', function (m) {
   test(
@@ -40,7 +39,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         expect(resp).toHaveProperty('hash')
         expect(resp).toHaveProperty('address')
         expect(resp.publicKey.toString('hex')).toEqual(EXPECTED_PUBLIC_KEY)
-        expect(resp.address).toEqual('P-avax1' + EXPECTED_BECH32_PUBKEY)
+        expect(resp.address).toEqual('P-avax1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e')
       } finally {
         await sim.close()
       }
@@ -91,7 +90,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         expect(resp).toHaveProperty('hash')
         expect(resp).toHaveProperty('address')
         expect(resp.address).toEqual('Ka3NKcnfs8d67EZYU5mbTCVY7Znnd2YQAYjbBfb4XmeWJuCGa'
-          + '-zemu1' + EXPECTED_BECH32_PUBKEY)
+          + '-zemu1tlq4m9js4ckqvz9umfz7tjxna3yysm79zy94y7')
       } finally {
         await sim.close()
       }
