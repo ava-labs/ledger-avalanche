@@ -58,11 +58,17 @@ function processGetAddrResponse(response: Buffer) {
   //"advance" buffer
   partialResponse = partialResponse.slice(1 + PKLEN)
 
-  const hash = Buffer.from(partialResponse.slice(0, -2))
+  const hash = Buffer.from(partialResponse.slice(0, 20))
+
+  //"advance" buffer
+  partialResponse = partialResponse.slice(20)
+
+  const address = Buffer.from(partialResponse.subarray(0, -2)).toString()
 
   return {
     publicKey,
     hash,
+    address,
     returnCode,
     errorMessage: errorCodeToString(returnCode),
   }

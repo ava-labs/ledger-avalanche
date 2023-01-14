@@ -110,3 +110,9 @@ type ResponseSign struct {
 	Hash      []byte
 	Signature map[string][]byte
 }
+
+type ResponseAddr struct {
+	publicKey []byte
+	hash      []byte
+	address   string
+}

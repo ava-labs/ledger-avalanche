@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2018 - 2022 ZondaX AG
+*   (c) 2018 - 2023 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ func (ledger *LedgerAvalanche) CheckVersion(ver VersionInfo) error {
 		return err
 	}
 
-	return CheckVersion(*version, VersionInfo{0, 0, 6, 5})
+	return CheckVersion(*version, ver)
 }
 
 // GetVersion returns the current version of the Avalanche user app
@@ -93,24 +93,24 @@ func (ledger *LedgerAvalanche) GetVersion() (*VersionInfo, error) {
 }
 
 // GetPubKey returns the pubkey and hash
-func (ledger *LedgerAvalanche) GetPubKey(path string, show bool, hrp string, chainid string) (publicKey []byte, hash []byte, err error) {
+func (ledger *LedgerAvalanche) GetPubKey(path string, show bool, hrp string, chainid string) (*ResponseAddr, error) {
 	if len(hrp) > 83 {
-		return nil, nil, errors.New("hrp len should be < 83 chars")
+		return nil, errors.New("hrp len should be < 83 chars")
 	}
 
 	serializedHRP, err := SerializeHrp(hrp)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	serializedPath, err := SerializePath(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	serializedChainID, err := SerializeChainID(chainid)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	p1 := byte(P1_ONLY_RETRIEVE)
@@ -128,19 +128,20 @@ func (ledger *LedgerAvalanche) GetPubKey(path string, show bool, hrp string, cha
 	response, err := ledger.api.Exchange(message)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if len(response) < 35+len(hrp) {
-		return nil, nil, errors.New("Invalid response")
+		return nil, errors.New("Invalid response")
 	}
 
-	// [publicKeyLen | publicKey | hash | errorCode]
+	// [publicKeyLen | publicKey | hash | address | errorCode]
 	publicKeyLen := response[0]
-	publicKey = response[1 : publicKeyLen+1]
-	hash = response[publicKeyLen+1 : len(response)]
+	publicKey := response[1 : publicKeyLen+1]
+	hash := response[publicKeyLen+1 : publicKeyLen+1+20]
+	address := string(response[publicKeyLen+1+20:])
 
-	return publicKey, hash, err
+	return &ResponseAddr{publicKey, hash, address}, nil
 }
 
 func (ledger *LedgerAvalanche) Sign(pathPrefix string, signingPaths []string, message []byte, changePaths []string) (*ResponseSign, error) {
@@ -262,16 +263,16 @@ func (ledger *LedgerAvalanche) VerifyMultipleSignatures(response ResponseSign, m
 	for _, suffix := range signingPaths {
 		path := fmt.Sprintf("%s/%s", rootPath, suffix)
 
-		publicKeyBytes, _, err := ledger.GetPubKey(path, false, hrp, chainID)
+		addr, err := ledger.GetPubKey(path, false, hrp, chainID)
 		if err != nil {
 			return errors.New("error getting the pubkey")
 		}
 
-		hexString := fmt.Sprintf("%x", publicKeyBytes)
+		hexString := fmt.Sprintf("%x", addr.publicKey)
 		fmt.Println(hexString)
 
 		sigLen := len(response.Signature[suffix])
-		verified := VerifySignature(publicKeyBytes, messageHash, response.Signature[suffix][:sigLen-1])
+		verified := VerifySignature(addr.publicKey, messageHash, response.Signature[suffix][:sigLen-1])
 
 		if !verified {
 			return errors.New("[VerifySig] Error verifying signature: ")

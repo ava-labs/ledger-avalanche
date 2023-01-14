@@ -26,7 +26,7 @@ pub(self) mod prelude {
     pub use std::prelude::v1::*;
 
     pub(super) use crate::{
-        constants::{self, ApduError, CLA, CLA_ETH},
+        constants::{self, chain_alias_lookup, ApduError, CLA, CLA_ETH},
         crypto, rs_handle_apdu, PacketType,
     };
     pub use std::convert::TryInto;
