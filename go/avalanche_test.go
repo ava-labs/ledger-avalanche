@@ -57,8 +57,8 @@ func Test_UserGetVersion(t *testing.T) {
 
 	assert.Equal(t, uint8(0x0), version.AppMode, "TESTING MODE ENABLED!!")
 	assert.Equal(t, uint8(0x0), version.Major, "Wrong Major version")
-	assert.Equal(t, uint8(0x6), version.Minor, "Wrong Minor version")
-	assert.Equal(t, uint8(0x5), version.Patch, "Wrong Patch version")
+	assert.Equal(t, uint8(0x7), version.Minor, "Wrong Minor version")
+	assert.Equal(t, uint8(0x0), version.Patch, "Wrong Patch version")
 }
 
 func Test_UserGetPublicKey(t *testing.T) {
