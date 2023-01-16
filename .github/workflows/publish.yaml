@@ -16,6 +16,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v3
         with:
+          node-version: "lts/*"
           registry-url: "https://registry.npmjs.org"
           scope: "@avalabs"
       - name: Install yarn
@@ -29,5 +30,6 @@ jobs:
           yarn build
       - name: release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_PUBLISH_AUTO }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN_PUBLISH_AUTO }}
         run: npx semantic-release
