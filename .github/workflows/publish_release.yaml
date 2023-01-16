@@ -16,7 +16,7 @@ jobs:
 
       - name: Download installers
         #we use this since it allows us to get artifacts from other workflows
-        uses: dawidd6/action-download-artifact@v2
+        uses: dawidd6/action-download-artifact@v3
         with:
           workflow: main.yaml
           commit: ${{ github.event.push.head.sha }}
@@ -25,7 +25,7 @@ jobs:
 
       - name: Retrieve version
         id: vars
-        run: echo ::set-output name=version::$(bash ./build/pkg/installer_s.sh version)
+        run: echo "version=$(bash ./build/pkg/installer_s.sh version)" >> $GITHUB_OUTPUT
 
       - name: Create release
         id: create_release
