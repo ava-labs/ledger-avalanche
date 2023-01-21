@@ -16,7 +16,7 @@ jobs:
 
       - name: Download installers
         #we use this since it allows us to get artifacts from other workflows
-        uses: dawidd6/action-download-artifact@v3
+        uses: dawidd6/action-download-artifact@v2
         with:
           workflow: main.yaml
           commit: ${{ github.event.push.head.sha }}
