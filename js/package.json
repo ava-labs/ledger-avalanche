@@ -2,7 +2,7 @@
   "name": "@avalabs/hw-app-avalanche",
   "author": "Zondax AG",
   "license": "Apache-2.0",
-  "version": "0.1.0",
+  "version": "0.6.8",
   "description": "Node API for Avalanche App (Ledger Nano S/X/S+)",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",

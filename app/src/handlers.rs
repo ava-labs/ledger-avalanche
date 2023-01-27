@@ -57,6 +57,7 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
+        EthSignMsg,
         #[cfg(feature = "dev")]
         Debug,
     }
@@ -67,6 +68,7 @@ pub mod resources {
         EthSign,
         SignHash,
         SignMsg,
+        EthSignMsg,
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
@@ -106,6 +108,12 @@ pub mod resources {
     impl From<super::eth::signing::Sign> for BUFFERAccessors {
         fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
+        }
+    }
+
+    impl From<super::eth::personal_msg::Sign> for BUFFERAccessors {
+        fn from(_: super::eth::personal_msg::Sign) -> Self {
+            Self::EthSignMsg
         }
     }
 
@@ -156,6 +164,12 @@ pub mod resources {
     impl From<super::eth::signing::Sign> for PATHAccessors {
         fn from(_: super::eth::signing::Sign) -> Self {
             Self::EthSign
+        }
+    }
+
+    impl From<super::eth::personal_msg::Sign> for PATHAccessors {
+        fn from(_: super::eth::personal_msg::Sign) -> Self {
+            Self::EthSignMsg
         }
     }
 

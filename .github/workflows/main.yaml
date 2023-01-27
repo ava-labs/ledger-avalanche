@@ -9,7 +9,7 @@ jobs:
       uid_gid: ${{ steps.get-user.outputs.uid_gid }}
     steps:
       - id: get-user
-        run: echo "::set-output name=uid_gid::$(id -u):$(id -g)"
+        run: echo "uid_gid=$(id -u):$(id -g)" >> $GITHUB_OUTPUT
 
   checks:
     runs-on: ubuntu-latest
@@ -17,7 +17,7 @@ jobs:
       image: zondax/rust-ci:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Install Miri
@@ -39,10 +39,10 @@ jobs:
         run: |
           cargo fmt --version
           cargo fmt -- --check
-      #- name: clippy
         #run: |
-          #cargo clippy --version
-          #cargo clippy --all-targets --features "full","derive-debug"
+        #cargo clippy --version
+        #cargo clippy --all-targets --features "full","derive-debug"
+      #- name: clippy
 
   build:
     runs-on: ubuntu-latest
@@ -50,7 +50,7 @@ jobs:
       image: zondax/rust-ci:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Cache/restore Cargo dependencies
@@ -72,7 +72,7 @@ jobs:
       HOME: /home/zondax_circle
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -107,31 +107,31 @@ jobs:
           make
 
       - name: Upload elfs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: app-elfs
           path: build/output/*.elf
           if-no-files-found: error
 
       - name: Upload installers
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: app-installers
           path: build/pkg/*.sh
           if-no-files-found: error
 
   test_zemu:
-    needs: [ build_ledger ]
+    needs: [build_ledger]
     if: ${{! contains(toJSON(github.event.commits.*.message), '[skip-zemu]')}}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
       - name: Download app elfs
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: app-elfs
           path: build/output
@@ -139,9 +139,7 @@ jobs:
       - run: sudo apt-get update -y && sudo apt-get install -y libusb-1.0.0 libudev-dev
 
       - name: Install node
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14.17.0'
+        uses: actions/setup-node@v3
 
       - name: Install yarn
         run: npm install -g yarn
@@ -160,7 +158,7 @@ jobs:
         run: tar -cvf snapshots_tmp.tar ./zemu/snapshots-tmp
       - name: Upload tmp snapshots
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: snapshots-tmp
           path: snapshots_tmp.tar

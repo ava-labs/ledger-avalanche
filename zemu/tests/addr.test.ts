@@ -37,7 +37,9 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         expect(resp.errorMessage).toEqual('No errors')
         expect(resp).toHaveProperty('publicKey')
         expect(resp).toHaveProperty('hash')
+        expect(resp).toHaveProperty('address')
         expect(resp.publicKey.toString('hex')).toEqual(EXPECTED_PUBLIC_KEY)
+        expect(resp.address).toEqual('P-avax1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e')
       } finally {
         await sim.close()
       }
@@ -63,6 +65,32 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         expect(resp.errorMessage).toEqual('No errors')
         expect(resp).toHaveProperty('publicKey')
         expect(resp).toHaveProperty('hash')
+        expect(resp).toHaveProperty('address')
+      } finally {
+        await sim.close()
+      }
+    },
+  );
+
+  test(
+    'get addr with custom hrp & chainID addr',
+    async function () {
+      const sim = new Zemu(m.path)
+      try {
+        await sim.start({ ...defaultOptions, model: m.name })
+        const app = new AvalancheApp(sim.getTransport())
+        const resp = await app.getAddressAndPubKey(APP_DERIVATION, false,
+          "zemu", bs58_encode(Buffer.alloc(32, 42)))
+
+        console.log(resp, m.name)
+
+        expect(resp.returnCode).toEqual(0x9000)
+        expect(resp.errorMessage).toEqual('No errors')
+        expect(resp).toHaveProperty('publicKey')
+        expect(resp).toHaveProperty('hash')
+        expect(resp).toHaveProperty('address')
+        expect(resp.address).toEqual('Ka3NKcnfs8d67EZYU5mbTCVY7Znnd2YQAYjbBfb4XmeWJuCGa'
+          + '-zemu1tlq4m9js4ckqvz9umfz7tjxna3yysm79zy94y7')
       } finally {
         await sim.close()
       }
@@ -89,6 +117,7 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
         expect(resp.errorMessage).toEqual('No errors')
         expect(resp).toHaveProperty('publicKey')
         expect(resp).toHaveProperty('hash')
+        expect(resp).toHaveProperty('address')
       } finally {
         await sim.close()
       }

@@ -249,6 +249,30 @@ impl AddrUI {
             .map_err(|_| Error::ExecutionError)
             .map(|_| out)
     }
+
+    pub const MAX_ADDR_SIZE: usize = Self::MAX_CHAIN_CB58_LEN
+        + 1
+        + bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN);
+
+    /// Will write the formatted address to `out` and return the length written
+    pub fn addr(&self, out: &mut [u8; AddrUI::MAX_ADDR_SIZE]) -> Result<usize, Error> {
+        let mut len =
+            self.chain_id_into(arrayref::array_mut_ref![out, 0, AddrUI::MAX_CHAIN_CB58_LEN]);
+
+        out[len] = b'-';
+        len += 1;
+
+        let hash = self.pkey(None).and_then(|pk| self.hash(&pk))?;
+        len += bech32::encode(
+            self.hrp_as_str(),
+            &hash[..],
+            &mut out[len..],
+            bech32::Variant::Bech32,
+        )
+        .apdu_unwrap();
+
+        Ok(len)
+    }
 }
 
 impl Viewable for AddrUI {
@@ -269,27 +293,8 @@ impl Viewable for AddrUI {
             let title_content = pic_str!(b"Address");
             title[..title_content.len()].copy_from_slice(title_content);
 
-            const MEX_MAX_SIZE: usize = AddrUI::MAX_CHAIN_CB58_LEN
-                + 1 // the '-' separator
-                + bech32::estimate_size(ASCII_HRP_MAX_SIZE, Ripemd160::DIGEST_LEN);
-
-            let mut mex = [0; MEX_MAX_SIZE];
-            let mut len =
-                self.chain_id_into(arrayref::array_mut_ref![mex, 0, AddrUI::MAX_CHAIN_CB58_LEN]);
-            mex[len] = b'-';
-            len += 1;
-
-            let hash = self
-                .pkey(None)
-                .and_then(|pkey| self.hash(&pkey))
-                .map_err(|_| ViewError::Unknown)?;
-            len += bech32::encode(
-                self.hrp_as_str(),
-                &hash[..],
-                &mut mex[len..],
-                bech32::Variant::Bech32,
-            )
-            .map_err(|_| ViewError::Unknown)?;
+            let mut mex = [0; Self::MAX_ADDR_SIZE];
+            let len = self.addr(&mut mex).map_err(|_| ViewError::Unknown)?;
 
             handle_ui_message(&mex[..len], message, page)
         } else {
@@ -316,6 +321,12 @@ impl Viewable for AddrUI {
                 out[tx..][..hash.len()].copy_from_slice(&hash[..]);
                 tx += hash.len();
             }
+            Err(e) => return (0, e as _),
+        }
+
+        let addr = arrayref::array_mut_ref![out, tx, AddrUI::MAX_ADDR_SIZE];
+        match self.addr(addr) {
+            Ok(len) => tx += len,
             Err(e) => return (0, e as _),
         }
 
