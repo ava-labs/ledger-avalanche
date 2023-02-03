@@ -528,11 +528,11 @@ export default class AvalancheApp {
   }
 
   getAppConfiguration(): Promise<{
-    arbitraryDataEnabled: number;
-    erc20ProvisioningNecessary: number;
-    starkEnabled: number;
-    starkv2Supported: number;
-    version: string;
+    arbitraryDataEnabled: number
+    erc20ProvisioningNecessary: number
+    starkEnabled: number
+    starkv2Supported: number
+    version: string
   }> {
     return this.eth.getAppConfiguration()
   }
