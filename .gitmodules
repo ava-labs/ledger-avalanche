@@ -7,3 +7,6 @@
 [submodule "deps/nanosplus-secure-sdk"]
 	path = deps/nanosplus-secure-sdk
 	url = https://github.com/LedgerHQ/nanosplus-secure-sdk
+[submodule "deps/ledger-secure-sdk"]
+	path = deps/ledger-secure-sdk
+	url = https://github.com/LedgerHQ/ledger-secure-sdk
