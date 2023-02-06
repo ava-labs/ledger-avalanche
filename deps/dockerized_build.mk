@@ -27,6 +27,7 @@ DOCKER_APP_BIN=$(DOCKER_APP_SRC)/app/bin/app.elf
 DOCKER_BOLOS_SDKS=/project/deps/nanos-secure-sdk
 DOCKER_BOLOS_SDKX=/project/deps/nanox-secure-sdk
 DOCKER_BOLOS_SDKSP=/project/deps/nanosplus-secure-sdk
+DOCKER_BOLOS_SDKFS=/project/deps/ledger-secure-sdk
 
 
 # Note: This is not an SSH key, and being public represents no risk
@@ -67,6 +68,7 @@ define run_docker
 	-v $(shell pwd):/project \
 	-e COIN=$(COIN) \
 	-e APP_TESTING=$(APP_TESTING) \
+	-e TARGET=$(TARGET) \
 	$(DOCKER_IMAGE) "$(2)"
 endef
 
@@ -77,6 +79,8 @@ all:
 	@$(MAKE) buildX
 	@$(MAKE) clean_build
 	@$(MAKE) buildSP
+	@$(MAKE) clean_build
+	@$(MAKE) buildFS
 
 .PHONY: check_python
 check_python:
@@ -106,6 +110,10 @@ build_rustX:
 build_rustSP:
 	$(call run_docker,$(DOCKER_BOLOS_SDKSP),make -C $(DOCKER_APP_SRC) rust)
 
+.PHONY: build_rustFS
+build_rustFS:
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS),make -C $(DOCKER_APP_SRC) rust)
+
 .PHONY: generate_rustS generate_rustX generate_rustSP
 generate_rustS:
 	$(MAKE) -C $(CURDIR) TARGET_NAME=TARGET_NANOS BOLOS_SDK=$(CURDIR)/deps/nanos-secure-sdk generate
@@ -116,22 +124,33 @@ generate_rustX:
 generate_rustSP:
 	$(MAKE) -C $(CURDIR) TARGET_NAME=TARGET_NANOS2 BOLOS_SDK=$(CURDIR)/deps/nanosplus-secure-sdk generate
 
+generate_rustFS:
+	$(MAKE) -C $(CURDIR) TARGET_NAME=TARGET_STAX BOLOS_SDK=$(CURDIR)/deps/ledger-secure-sdk generate
+
 .PHONY: convert_icon
 convert_icon:
 	@convert $(LEDGER_SRC)/tmp.gif -monochrome -size 16x16 -depth 1 $(LEDGER_SRC)/nanos_icon.gif
 	@convert $(LEDGER_SRC)/nanos_icon.gif -crop 14x14+1+1 +repage -negate $(LEDGER_SRC)/nanox_icon.gif
 
 .PHONY: buildS
+TARGET=nanos
 buildS: build_rustS
 	$(call run_docker,$(DOCKER_BOLOS_SDKS),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
 .PHONY: buildX
+TARGET=nanox
 buildX: build_rustX
 	$(call run_docker,$(DOCKER_BOLOS_SDKX),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
 .PHONY: buildSP
+TARGET=nanos2
 buildSP: build_rustSP
 	$(call run_docker,$(DOCKER_BOLOS_SDKSP),make -j $(NPROC) -C $(DOCKER_APP_SRC))
+
+.PHONY: buildFS
+TARGET=stax
+buildFS: build_rustFS
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
 .PHONY: clean_output
 clean_output:
@@ -141,7 +160,6 @@ clean_output:
 .PHONY: clean
 clean_build:
 	$(call run_docker,$(DOCKER_BOLOS_SDKS),make -C $(DOCKER_APP_SRC) clean)
-
 .PHONY: clean
 clean: clean_output clean_build
 
@@ -164,6 +182,10 @@ shellX:
 .PHONY: shellSP
 shellSP:
 	$(call run_docker,$(DOCKER_BOLOS_SDKSP) -t,bash)
+
+.PHONY: shellFS
+shellFSs:
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS) -t,bash)
 
 .PHONY: load
 load:
@@ -188,6 +210,14 @@ loadSP:
 .PHONY: deleteSP
 deleteSP:
 	${CURDIR}/build/pkg/installer_sp.sh delete
+
+.PHONY: loadFS
+loadFS:
+	${LEDGER_SRC}/pkg/installer_fs.sh load
+
+.PHONY: deleteFS
+deleteFS:
+	${LEDGER_SRC}/pkg/installer_fs.sh delete
 
 .PHONY: show_info_recovery_mode
 show_info_recovery_mode:

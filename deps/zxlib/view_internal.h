@@ -72,6 +72,28 @@ typedef struct NanoSPBackend {
 
 extern struct NanoSPBackend BACKEND_LAZY;
 
+#elif defined(TARGET_STAX)
+
+#define KEY_SIZE 63
+#define MESSAGE_SIZE 4095
+
+#define FIELDS_PER_PAGE 4
+#define MAX_LINES_PER_FIELD 8
+
+typedef struct StaxBackend {
+  // uint8_t key[KEY_SIZE + 1];
+  // uint8_t message[MESSAGE_SIZE + 1];
+  char* key;
+  char* message;
+  char keys[FIELDS_PER_PAGE][MAX_CHARS_PER_KEY_LINE];
+  char messages[FIELDS_PER_PAGE][MAX_CHARS_PER_VALUE1_LINE];
+  uintptr_t viewable_size;
+  bool expert;
+  bool flow_inside_loop;
+} StaxBackend;
+
+extern struct StaxBackend BACKEND_LAZY;
+
 #endif
 
 #if defined(BLIND_SIGN_TOGGLE)
