@@ -28,12 +28,16 @@ unsigned char io_event(unsigned char channel) {
             break;
 
         case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT: // for Nano S
+#ifdef HAVE_BAGL
             UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
+#endif
             break;
 
         case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
+#ifdef HAVE_BAGL
             if (!UX_DISPLAYED())
                 UX_DISPLAYED_EVENT();
+#endif
             break;
 
         case SEPROXYHAL_TAG_TICKER_EVENT: { //

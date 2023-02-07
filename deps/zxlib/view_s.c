@@ -15,6 +15,7 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#if defined(TARGET_NANOS)
 #include "app_mode.h"
 #include "bagl.h"
 #include "ux.h"
@@ -26,7 +27,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(TARGET_NANOS)
 
 void rs_h_expert_toggle();
 void rs_h_expert_update();

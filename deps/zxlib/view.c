@@ -21,9 +21,13 @@
 
 #include "actions.h"
 #include "app_mode.h"
+
+#if defined(TARGET_NANOS) || defined(TARGET_NANOS2) || defined(TARGET_NANOX)
 #include "bagl.h"
 #include "ux.h"
 #include "view_templates.h"
+#endif
+
 #include "zxerror.h"
 #include "zxmacros.h"
 
@@ -34,9 +38,12 @@
 ///////////////////////////////////
 // General
 
+#if defined(TARGET_NANOS) || defined(TARGET_NANOS2) || defined(TARGET_NANOX)
 void io_seproxyhal_display(const bagl_element_t *element) {
   io_seproxyhal_display_default((bagl_element_t *)element);
 }
+#endif
+
 void view_init(void) {
 #if defined(BLIND_SIGN_TOGGLE)
   blind_sign.toggle = false;

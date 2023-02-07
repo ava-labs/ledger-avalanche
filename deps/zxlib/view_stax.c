@@ -125,7 +125,7 @@ static void confirm_transaction_callback(bool confirm) {
             break;
 
         default:
-            ZEMU_LOGF(50, "Error unrecognize review option\n")
+            //ZEMU_LOGF(50, "Error unrecognize review option\n")
             view_error_show();
             return;
         }
@@ -144,64 +144,64 @@ static void confirm_transaction_callback(bool confirm) {
 }
 
 static void confirm_setting(bool confirm) {
-    if (confirm && viewdata.viewfuncAccept != NULL) {
-        viewdata.viewfuncAccept();
+    if (confirm && BACKEND_LAZY.viewfuncAccept != NULL) {
+        BACKEND_LAZY.viewfuncAccept();
         return;
     }
     confirm_callback(confirm);
 }
 
 void view_error_show() {
-    viewdata.key = viewdata.keys[0];
-    viewdata.value = viewdata.messages[0];
-    snprintf(viewdata.key, MAX_CHARS_PER_KEY_LINE, "ERROR");
-    snprintf(viewdata.value, MAX_CHARS_PER_VALUE1_LINE, "SHOWING DATA");
+    BACKEND_LAZY.key = BACKEND_LAZY.keys[0];
+    BACKEND_LAZY.message = BACKEND_LAZY.messages[0];
+    snprintf(BACKEND_LAZY.key, MAX_CHARS_PER_KEY_LINE, "ERROR");
+    snprintf(BACKEND_LAZY.message, MAX_CHARS_PER_VALUE1_LINE, "SHOWING DATA");
     view_error_show_impl();
 }
 
 void view_error_show_impl() {
-    viewdata.key = viewdata.keys[0];
-    viewdata.value = viewdata.messages[0];
+    BACKEND_LAZY.key = BACKEND_LAZY.keys[0];
+    BACKEND_LAZY.message = BACKEND_LAZY.messages[0];
     const zxerr_t err = h_review_update_data();
     if (err != zxerr_ok)
     {
-        ZEMU_LOGF(50, "Config screen error\n")
+        //ZEMU_LOGF(50, "Config screen error\n")
         view_idle_show(0, NULL);
     }
 
-    nbgl_useCaseChoice(&C_icon_warning, viewdata.key, viewdata.value, "Ok", NULL, confirm_setting);
+    nbgl_useCaseChoice(&C_icon_warning, BACKEND_LAZY.key, BACKEND_LAZY.message, "Ok", NULL, confirm_setting);
 }
 
 zxerr_t h_review_update_data() {
-    if (viewdata.viewfuncGetNumItems == NULL) {
-        ZEMU_LOGF(50, "h_review_update_data - GetNumItems == NULL\n")
+    if (BACKEND_LAZY.viewfuncGetNumItems == NULL) {
+        //ZEMU_LOGF(50, "h_review_update_data - GetNumItems == NULL\n")
         return zxerr_no_data;
     }
-    if (viewdata.viewfuncGetItem == NULL) {
-        ZEMU_LOGF(50, "h_review_update_data - GetItems == NULL\n")
-        return zxerr_no_data;
-    }
-
-    if (viewdata.viewfuncAccept == NULL) {
-        ZEMU_LOGF(50, "h_review_update_data - Function Accept == NULL\n")
+    if (BACKEND_LAZY.viewfuncGetItem == NULL) {
+        //ZEMU_LOGF(50, "h_review_update_data - GetItems == NULL\n")
         return zxerr_no_data;
     }
 
-    if (viewdata.key == NULL || viewdata.value == NULL) {
+    if (BACKEND_LAZY.viewfuncAccept == NULL) {
+        //ZEMU_LOGF(50, "h_review_update_data - Function Accept == NULL\n")
+        return zxerr_no_data;
+    }
+
+    if (BACKEND_LAZY.key == NULL || BACKEND_LAZY.message == NULL) {
         return zxerr_unknown;
     }
 
-    CHECK_ZXERR(viewdata.viewfuncGetNumItems(&viewdata.itemCount))
+    CHECK_ZXERR(BACKEND_LAZY.viewfuncGetNumItems(&BACKEND_LAZY.itemCount))
 
-    if (viewdata.itemIdx  >= viewdata.itemCount) {
+    if (BACKEND_LAZY.itemIdx  >= BACKEND_LAZY.itemCount) {
         return zxerr_no_data;
     }
 
-    CHECK_ZXERR(viewdata.viewfuncGetItem(
-            viewdata.itemIdx,
-            viewdata.key, MAX_CHARS_PER_KEY_LINE,
-            viewdata.value, MAX_CHARS_PER_VALUE1_LINE,
-            viewdata.pageIdx, &viewdata.pageCount))
+    CHECK_ZXERR(BACKEND_LAZY.viewfuncGetItem(
+            BACKEND_LAZY.itemIdx,
+            BACKEND_LAZY.key, MAX_CHARS_PER_KEY_LINE,
+            BACKEND_LAZY.message, MAX_CHARS_PER_VALUE1_LINE,
+            BACKEND_LAZY.pageIdx, &BACKEND_LAZY.pageCount))
 
     return zxerr_ok;
 }
@@ -213,7 +213,7 @@ void h_review_update() {
         case zxerr_no_data:
             break;
         default:
-            ZEMU_LOGF(50, "View error show\n")
+            //ZEMU_LOGF(50, "View error show\n")
             view_error_show();
             break;
     }
@@ -274,7 +274,7 @@ static bool settings_screen_callback(uint8_t page, nbgl_pageContent_t* content) 
         }
 
         default:
-            ZEMU_LOGF(50, "Incorrect settings page: %d\n", page)
+            //ZEMU_LOGF(50, "Incorrect settings page: %d\n", page)
             return false;
     }
 
@@ -307,7 +307,7 @@ static void settings_toggle_callback(int token, uint8_t index) {
 #endif
 
         default:
-            ZEMU_LOGF(50, "Toggling setting not found\n")
+            //ZEMU_LOGF(50, "Toggling setting not found\n")
             break;
     }
 }
@@ -322,20 +322,20 @@ void setting_screen() {
 }
 
 void view_idle_show_impl(__Z_UNUSED uint8_t item_idx, char *statusString) {
-    viewdata.key = viewdata.keys[0];
+    BACKEND_LAZY.key = BACKEND_LAZY.keys[0];
     if (statusString == NULL ) {
-        snprintf(viewdata.key, MAX_CHARS_PER_KEY_LINE, "%s", MENU_MAIN_APP_LINE2);
+        snprintf(BACKEND_LAZY.key, MAX_CHARS_PER_KEY_LINE, "%s", MENU_MAIN_APP_LINE2);
 #ifdef APP_SECRET_MODE_ENABLED
         if (app_mode_secret()) {
-            snprintf(viewdata.key, MAX_CHARS_PER_KEY_LINE, "%s", MENU_MAIN_APP_LINE2_SECRET);
+            snprintf(BACKEND_LAZY.key, MAX_CHARS_PER_KEY_LINE, "%s", MENU_MAIN_APP_LINE2_SECRET);
         }
 #endif
     } else {
-        snprintf(viewdata.key, MAX_CHARS_PER_KEY_LINE, "%s", statusString);
+        snprintf(BACKEND_LAZY.key, MAX_CHARS_PER_KEY_LINE, "%s", statusString);
     }
 
     const bool settings_icon = false;
-    nbgl_useCaseHome(MENU_MAIN_APP_LINE1, &C_icon_app, viewdata.key, settings_icon, setting_screen, app_quit);
+    nbgl_useCaseHome(MENU_MAIN_APP_LINE1, &C_icon_app, BACKEND_LAZY.key, settings_icon, setting_screen, app_quit);
 }
 
 static uint16_t computeTextLines(const char* text) {
@@ -349,16 +349,16 @@ zxerr_t navigate_pages(uint8_t initialPage, uint8_t finalPage, uint8_t *countedP
     uint8_t pages = 0;
     uint8_t accumLines = 0;
     uint8_t itemsPerPage = 0;
-    viewdata.key = viewdata.keys[0];
-    viewdata.value = viewdata.messages[0];
+    BACKEND_LAZY.key = BACKEND_LAZY.keys[0];
+    BACKEND_LAZY.message = BACKEND_LAZY.messages[0];
 
-    for (viewdata.itemIdx = 0; viewdata.itemIdx < viewdata.itemCount; viewdata.itemIdx++) {
+    for (BACKEND_LAZY.itemIdx = 0; BACKEND_LAZY.itemIdx < BACKEND_LAZY.itemCount; BACKEND_LAZY.itemIdx++) {
         if (pages == finalPage) {
             break;
         }
 
         CHECK_ZXERR(h_review_update_data())
-        const uint16_t currentValueLines = computeTextLines(viewdata.value);
+        const uint16_t currentValueLines = computeTextLines(BACKEND_LAZY.message);
 
         const uint8_t totalLines = accumLines + currentValueLines;
         const bool addItemToCurrentPage =      (totalLines <= 6 && itemsPerPage <= 3)     // Display 6 lines limiting items to 4
@@ -396,19 +396,19 @@ static zxerr_t update_data_page(uint8_t page, uint8_t *elementsPerPage) {
     // Navigate until current page
     CHECK_ZXERR(navigate_pages(0, page, NULL))
 
-    if (viewdata.itemIdx > 0) {
-        viewdata.itemIdx--;
+    if (BACKEND_LAZY.itemIdx > 0) {
+        BACKEND_LAZY.itemIdx--;
     }
 
-    for (viewdata.itemIdx; viewdata.itemIdx < viewdata.itemCount; viewdata.itemIdx++) {
+    for (BACKEND_LAZY.itemIdx; BACKEND_LAZY.itemIdx < BACKEND_LAZY.itemCount; BACKEND_LAZY.itemIdx++) {
         if (itemsPerPage >= FIELDS_PER_PAGE) {
             break;
         }
-        viewdata.key = viewdata.keys[itemsPerPage];
-        viewdata.value = viewdata.messages[itemsPerPage];
+        BACKEND_LAZY.key = BACKEND_LAZY.keys[itemsPerPage];
+        BACKEND_LAZY.message = BACKEND_LAZY.messages[itemsPerPage];
         CHECK_ZXERR(h_review_update_data())
 
-        const uint16_t currentValueLines = computeTextLines(viewdata.value);
+        const uint16_t currentValueLines = computeTextLines(BACKEND_LAZY.message);
         const uint8_t totalLines = accumLines + currentValueLines;
 
         const bool addItemToCurrentPage =      (totalLines <= 6 && itemsPerPage <= 3)     // Display 6 lines limiting items to 4
@@ -439,8 +439,8 @@ static bool transaction_screen_callback(uint8_t page, nbgl_pageContent_t *conten
             content->tagValueList.nbMaxLinesForValue = MAX_LINES_PER_FIELD;
 
             for (uint8_t i = 0; i < content->tagValueList.nbPairs; i++) {
-                pairs[i].item = viewdata.keys[i];
-                pairs[i].value = viewdata.messages[i];
+                pairs[i].item = BACKEND_LAZY.keys[i];
+                pairs[i].value = BACKEND_LAZY.messages[i];
             }
             break;
         }
@@ -452,7 +452,7 @@ static bool transaction_screen_callback(uint8_t page, nbgl_pageContent_t *conten
             break;
         }
         default:
-            ZEMU_LOGF(50, "View error show\n")
+            //ZEMU_LOGF(50, "View error show\n")
             view_error_show();
             break;
     }
@@ -480,28 +480,28 @@ static void review_transaction_shortcut() {
 }
 
 static void review_configuration() {
-    viewdata.key = viewdata.keys[0];
-    viewdata.value = viewdata.messages[0];
+    BACKEND_LAZY.key = BACKEND_LAZY.keys[0];
+    BACKEND_LAZY.message = BACKEND_LAZY.messages[0];
     const zxerr_t err = h_review_update_data();
     if (err != zxerr_ok)
     {
-        ZEMU_LOGF(50, "Config screen error\n")
+        //ZEMU_LOGF(50, "Config screen error\n")
         view_idle_show(0, NULL);
     }
 
-    nbgl_useCaseChoice(&C_Eye_48px, viewdata.key, viewdata.value, "Accept", "Reject", confirm_setting);
+    nbgl_useCaseChoice(&C_Eye_48px, BACKEND_LAZY.key, BACKEND_LAZY.message, "Accept", "Reject", confirm_setting);
 }
 
 static void review_address() {
     nbgl_layoutTagValueList_t* extraPagesPtr = NULL;
 
     if (app_mode_expert()) {
-        pairs[0].item = viewdata.keys[1];
-        pairs[0].value = viewdata.messages[1];
+        pairs[0].item = BACKEND_LAZY.keys[1];
+        pairs[0].value = BACKEND_LAZY.messages[1];
 
-        viewdata.itemIdx = 1;
-        viewdata.key = viewdata.keys[1];
-        viewdata.value = viewdata.messages[1];
+        BACKEND_LAZY.itemIdx = 1;
+        BACKEND_LAZY.key = BACKEND_LAZY.keys[1];
+        BACKEND_LAZY.message = BACKEND_LAZY.messages[1];
         h_review_update_data();
 
         pairList.nbMaxLinesForValue = 0;
@@ -511,23 +511,23 @@ static void review_address() {
         extraPagesPtr = &pairList;
     }
 
-    viewdata.itemIdx = 0;
-    viewdata.key = viewdata.keys[0];
-    viewdata.value = viewdata.messages[0];
+    BACKEND_LAZY.itemIdx = 0;
+    BACKEND_LAZY.key = BACKEND_LAZY.keys[0];
+    BACKEND_LAZY.message = BACKEND_LAZY.messages[0];
     h_review_update_data();
 
-    nbgl_useCaseAddressConfirmationExt(viewdata.value, confirm_transaction_callback, extraPagesPtr);
+    nbgl_useCaseAddressConfirmationExt(BACKEND_LAZY.message, confirm_transaction_callback, extraPagesPtr);
 }
 
 void view_review_show_impl(unsigned int requireReply){
     review_type = (review_type_e) requireReply;
     h_paging_init();
 
-    viewdata.key = viewdata.keys[0];
-    viewdata.value = viewdata.messages[0];
+    BACKEND_LAZY.key = BACKEND_LAZY.keys[0];
+    BACKEND_LAZY.message = BACKEND_LAZY.messages[0];
     zxerr_t err = h_review_update_data();
     if (err != zxerr_ok) {
-        ZEMU_LOGF(50, "Error updating data\n")
+        //ZEMU_LOGF(50, "Error updating data\n")
         return;
     }
 

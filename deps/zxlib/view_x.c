@@ -15,6 +15,7 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 #include "actions.h"
 #include "app_mode.h"
 #include "bagl.h"
@@ -27,7 +28,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 
 void rs_h_expert_toggle();
 void rs_h_expert_update();

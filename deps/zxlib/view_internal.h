@@ -79,10 +79,11 @@ extern struct NanoSPBackend BACKEND_LAZY;
 
 #define FIELDS_PER_PAGE 4
 #define MAX_LINES_PER_FIELD 8
+#define MAX_CHARS_PER_KEY_LINE      64
+#define MAX_CHARS_PER_VALUE1_LINE   180
+#define MAX_CHARS_HEXMESSAGE        160
 
 typedef struct StaxBackend {
-  // uint8_t key[KEY_SIZE + 1];
-  // uint8_t message[MESSAGE_SIZE + 1];
   char* key;
   char* message;
   char keys[FIELDS_PER_PAGE][MAX_CHARS_PER_KEY_LINE];
