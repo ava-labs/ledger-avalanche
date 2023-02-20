@@ -132,6 +132,13 @@ int main(void) {
                 rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
                 check_canary();
             }
+            CATCH(EXCEPTION_IO_RESET)
+            {
+            	// reset IO and UX before continuing
+                io_app_init();
+                view_idle_show(0, MENU_MAIN_APP_LINE2);
+                continue;
+            }
             CATCH_OTHER(e)
             {
                 if (!app_init_done) {
