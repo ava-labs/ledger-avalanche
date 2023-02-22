@@ -76,6 +76,8 @@ jobs:
         with:
           submodules: true
 
+      - run: cd deps; sh get_sdk.sh
+
       - name: Cache/restore Cargo dependencies
         uses: actions/cache@v1
         with:
