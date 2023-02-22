@@ -1,9 +1,16 @@
 [workspace]
+resolver = "2"
 members = [ "app", "app-derive" ]
-
 exclude = [ "hfuzz" ]
 
-resolver = "2"
+[workspace.package]
+edition = "2018"
+authors = ["Zondax <hello@zondax.ch>"]
+
+[workspace.dependencies]
+bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "7eaddc9" }
+zemu-sys = { git = "https://github.com/Zondax/ledger-rust", rev = "7eaddc9" }
+zuit = { git = "https://github.com/Zondax/ledger-rust", rev = "7eaddc9" }
 
 [profile.dev]
 panic = "abort"
