@@ -54,34 +54,35 @@ then run:
 
 # Development
 
-## Preconditions
+## Dependencies
 
-- Be sure you checkout submodules too:
-
+- Required libraries
+  - If you are using Ubuntu: 
+    ```sh
+    sudo apt update && apt-get -y install build-essential git wget cmake \
+    libssl-dev libgmp-dev autoconf libtool
     ```
-    git submodule update --init --recursive
+   
+- Docker CE for building
+  - Instructions can be found here: https://docs.docker.com/install/
+
+- `node > v14.0` for integration tests
+  - We typically recommend using `n` or `nvm`
+
+- A valid `rust` toolchain for unit tests
+  - Automatic CI tests against 1.63
+
+- Python 3 to sideload on your device
+
+- Be sure you get the SDK and other dependencies:
+  - If you have `just` installed you can use it (recommended):
+    ```sh
+    just init 
     ```
-
-- Install Docker CE
-    - Instructions can be found here: https://docs.docker.com/install/
-
-- We only officially support Ubuntu. Install the following packages:
-
-   ```
-   sudo apt update && apt-get -y install build-essential git wget cmake \
-  libssl-dev libgmp-dev autoconf libtool
-   ```
-
-- Install `node > v14.0`. We typically recommend using `n` or `nvm`
-
-- For running unit tests you need to install a valid `rust` toolchain.
-  We normally use stable 1.53 for this project
-
-- You will need python 3 and then run
-    - `make deps`
-
-- This project requires Ledger firmware 2.0.0
-    - The current repository keeps track of Ledger's SDK but it is possible to override it by changing the git submodule.
+  - If not, you can use `make`:
+    ```sh
+    make init
+    ```
 
 ## How to build ?
 
@@ -91,7 +92,7 @@ then run:
 - Building the app itself
 
   If you installed what is described above, just run:
-    ```bash
+    ```sh
     make
     ```
 
@@ -100,14 +101,14 @@ then run:
 - Running rust tests (x64)
 
     If you just wish to run the rust unit and integration tests, just run:
-    ```bash
+    ```sh
     make rust_test
     ```
     ** Requires a rust toolchain available **
 
 - Running device emulation+integration tests!!
 
-   ```bash
+   ```sh
     Use Zemu! Explained below!
     ```
 
@@ -136,13 +137,13 @@ then run:
 
 Let's go! First install everything:
 
-```bash
+```sh
 make zemu_install
 ```
 
 Then you can run our Typescript based tests:
 
-```bash
+```sh
 make zemu_test
 ```
 
@@ -180,7 +181,7 @@ There are a few things to take into account when enabling Ledger App debugging:
 
 1. Build your app
 
-    ```bash
+    ```sh
     make
     ```
 
@@ -188,7 +189,7 @@ There are a few things to take into account when enabling Ledger App debugging:
 
     Open `tests/zemu/tools/debug.mjs` and look for the line:
 
-    ```bash
+    ```sh
     /// TIP you can use zemu commands here to take the app ...
     ```
 
@@ -200,7 +201,7 @@ There are a few things to take into account when enabling Ledger App debugging:
 
     > If you didnt install Zemu yet (previous section), then run `make zemu_install`
 
-    ```bash
+    ```sh
     make zemu_debug
     ```
 
