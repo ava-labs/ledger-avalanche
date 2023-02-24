@@ -40,7 +40,7 @@ $(info TESTS_ZEMU_DIR        : $(TESTS_ZEMU_DIR))
 $(info TESTS_JS_DIR          : $(TESTS_JS_DIR))
 $(info TESTS_JS_PACKAGE      : $(TESTS_JS_PACKAGE))
 
-DOCKER_IMAGE=zondax/builder-bolos:sha256:ae8698be4cf475dbf990f6114e6137306369b9a3ece2a2e44ce9f5db8a31cd2e
+DOCKER_IMAGE=zondax/builder-bolos:latest
 
 ifdef INTERACTIVE
 INTERACTIVE_SETTING:="-i"
