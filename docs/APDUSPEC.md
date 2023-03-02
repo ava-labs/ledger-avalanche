@@ -125,6 +125,7 @@ If the ChainIDLen is 0, then the default ChainID of 32 zero bytes (P-Chain's)
 | PK_LEN    | byte (1)  | Bytes in PKEY    |                          |
 | PKEY      | byte (??) | Public key bytes | Compressed public key    |
 | PKEY_HASH | byte (20) | Public key hash  | Ripemd160(Sha256(PKEY))  |
+| ADDR      | byte (??) | Address          | CB58 encoded address     |
 | SW1-SW2   | byte (2)  | Return code      | see list of return codes |
 
 ### INS_GET_EXTENDED_PUBLIC_KEY

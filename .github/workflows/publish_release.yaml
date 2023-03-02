@@ -25,7 +25,7 @@ jobs:
 
       - name: Retrieve version
         id: vars
-        run: echo ::set-output name=version::$(bash ./build/pkg/installer_s.sh version)
+        run: echo "version=$(bash ./build/pkg/installer_s.sh version)" >> $GITHUB_OUTPUT
 
       - name: Create release
         id: create_release
