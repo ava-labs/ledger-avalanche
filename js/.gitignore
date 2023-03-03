@@ -1,4 +1,3 @@
-yarn.lock
 # Logs
 logs
 *.log
@@ -69,4 +68,5 @@ typings/
 TODO\.md
 
 \dist
+\esm
 \tests/snapshots-tmp
