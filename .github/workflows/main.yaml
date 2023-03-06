@@ -65,7 +65,7 @@ jobs:
     needs: configure
     runs-on: ubuntu-latest
     container:
-      image: zondax/builder-bolos@sha256:ae8698be4cf475dbf990f6114e6137306369b9a3ece2a2e44ce9f5db8a31cd2e
+      image: zondax/builder-bolos:latest
       options: --user ${{ needs.configure.outputs.uid_gid }}
     env:
       BOLOS_ENV: /opt/bolos
