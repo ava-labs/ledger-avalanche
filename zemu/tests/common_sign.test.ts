@@ -49,7 +49,7 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
-      const currentScreen = sim.snapshot();
+      const currentScreen = await sim.snapshot();
       const signers = ["0/0", "5/8"];
       let change_path = undefined
       if (filter === true) {
