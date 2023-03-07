@@ -1,4 +1,4 @@
-import Zemu, { DEFAULT_START_OPTIONS, DeviceModel } from '@zondax/zemu'
+import Zemu, { DEFAULT_START_OPTIONS, IDeviceModel } from '@zondax/zemu'
 
 const Resolve = require('path').resolve
 
@@ -8,7 +8,7 @@ const APP_PATH_S = Resolve('../build/output/app_s.elf')
 const APP_PATH_X = Resolve('../build/output/app_x.elf')
 const APP_PATH_SP = Resolve('../build/output/app_sp.elf')
 
-export const models: DeviceModel[] = [
+export const models: IDeviceModel[] = [
   { name: 'nanos', prefix: 'S', path: APP_PATH_S },
   { name: 'nanox', prefix: 'X', path: APP_PATH_X },
   { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
