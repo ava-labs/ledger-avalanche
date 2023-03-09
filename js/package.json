@@ -5,6 +5,7 @@
   "version": "0.6.8",
   "description": "Node API for Avalanche App (Ledger Nano S/X/S+)",
   "main": "./dist/index.js",
+  "module": "./esm/index.js",
   "typings": "./dist/index.d.ts",
   "types": "./dist/index.d.ts",
   "homepage": "https://github.com/ava-labs/ledger-avalanche",
