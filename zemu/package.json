@@ -5,7 +5,10 @@
   "version": "1.0.0",
   "description": "",
   "types": "./dist/index.d.ts",
-  "keywords": ["Zondax", "Ledger"],
+  "keywords": [
+    "Zondax",
+    "Ledger"
+  ],
   "scripts": {
     "test": "jest --detectOpenHandles --testPathIgnorePatterns='dev.*|testvectors.*'",
     "test_dev": "jest --detectOpenHandles",
@@ -19,7 +22,9 @@
   },
   "devDependencies": {
     "@ethereumjs/common": "^3.1.1",
+    "@ethereumjs/rlp": "^4.0.1",
     "@ethereumjs/tx": "^4.1.1",
+    "@ethereumjs/util": "^8.0.5",
     "@ledgerhq/hw-app-eth": "^6.32.0",
     "@ledgerhq/hw-transport-node-hid": "^6.27.2",
     "@ledgerhq/logs": "^6.10.0",

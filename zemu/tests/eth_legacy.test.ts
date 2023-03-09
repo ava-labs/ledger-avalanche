@@ -16,14 +16,13 @@
 
 import Zemu from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions, models } from './common'
-import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
-import { Transaction, FeeMarketEIP1559Transaction } from "@ethereumjs/tx";
-import Common from '@ethereumjs/common'
-import { bnToRlp, rlp, bufArrToArr } from "ethereumjs-util";
-import { ec } from 'elliptic'
-const BN = require('bn.js');
 
+import { Transaction } from "@ethereumjs/tx";
+import { Common } from '@ethereumjs/common'
+import { bufArrToArr } from "@ethereumjs/util";
+import { RLP } from "@ethereumjs/rlp";
+import { ec } from 'elliptic'
 
 type NftInfo = {
   token_address: string,
@@ -125,7 +124,7 @@ const rawUnsignedLegacyTransaction = (params: any, chainId: number | undefined) 
     data: params.data !== undefined ? '0x' + params.data : undefined,
   }
 
-  const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId })
+  const chain = Common.custom({ name: 'avalanche', networkId: 1, chainId }, { baseChain: 1 })
   const options = chainId !== undefined ? { common: chain } : undefined
 
   // legacy
@@ -133,7 +132,7 @@ const rawUnsignedLegacyTransaction = (params: any, chainId: number | undefined) 
 
   let unsignedTx: Buffer[] | Buffer
   unsignedTx = tx.getMessageToSign(false)
-  unsignedTx = Buffer.from(rlp.encode(bufArrToArr(unsignedTx)))
+  unsignedTx = Buffer.from(RLP.encode(bufArrToArr(unsignedTx)))
 
   return unsignedTx
 
@@ -144,10 +143,10 @@ const rawUnsignedLegacyTransaction = (params: any, chainId: number | undefined) 
 function check_legacy_signature(hexTx: string, signature: any, chainId: number | undefined) {
   const ethTx = Buffer.from(hexTx, 'hex');
 
-  const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId })
+  const chain = Common.custom({ name: 'avalanche', networkId: 1, chainId }, { baseChain: 1 })
   const tx_options = chainId !== undefined ? { common: chain } : undefined
 
-  const txnBufsDecoded: any = rlp.decode(ethTx).slice(0, 6);
+  const txnBufsDecoded: any = RLP.decode(ethTx).slice(0, 6);
   const txnBufsMap = [signature.v, signature.r, signature.s].map(a => Buffer.from(((a.length % 2 == 1) ? '0' + a : a), 'hex'));
 
   const txnBufs = txnBufsDecoded.concat(txnBufsMap);
@@ -204,7 +203,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       expect(signatureOK).toEqual(true)
 
       // alternative verification to be safe
-      const test = await check_legacy_signature(msg.toString('hex'), resp, data.chainId)
+      const test = check_legacy_signature(msg.toString('hex'), resp, data.chainId)
       expect(test).toEqual(true)
     } finally {
       await sim.close()
