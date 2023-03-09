@@ -68,4 +68,5 @@ typings/
 TODO\.md
 
 \dist
+\esm
 \tests/snapshots-tmp
