@@ -185,12 +185,10 @@ func (ledger *LedgerAvalanche) Sign(pathPrefix string, signingPaths []string, me
 		if err != nil {
 			if err.Error() == "[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect" {
 				// In this special case, we can extract additional info
-				errorMsg := string(response)
-				return nil, errors.New(errorMsg)
+				return nil, fmt.Errorf("%w extra_info=(%s)", err, string(response))
 			}
 			if err.Error() == "[APDU_CODE_DATA_INVALID] Referenced data reversibly blocked (invalidated)" {
-				errorMsg := string(response)
-				return nil, errors.New(errorMsg)
+				return nil, fmt.Errorf("%w extra_info=(%s)", err, string(response))
 			}
 			return nil, err
 		}
