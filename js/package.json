@@ -20,7 +20,7 @@
     "Javascript"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c && tsc -m commonjs",
     "prettier": "prettier --write ./"
   },
   "bugs": {
