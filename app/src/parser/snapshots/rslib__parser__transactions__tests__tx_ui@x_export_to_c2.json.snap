@@ -6,7 +6,7 @@ input_file: app/src/parser/testvectors/x_export_to_c2.json
 [
     "ImportTx": "Importing in C-Chain",
     "Amount": "0.268435456",
-    "Address": "local1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqljssag",
+    "To": "0x0000000000000000000000000000000000000000",
     "From ": "X Chain",
     "Fee": "0",
 ]
