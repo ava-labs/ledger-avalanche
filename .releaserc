@@ -1,7 +1,8 @@
 {
   "branches": [
-    "main"
+    "main", { name: "dev", prerelease: true }
   ],
+  "tagFormat": "npm_v${version}",
   "plugins": [
     [
       "@semantic-release/npm",
