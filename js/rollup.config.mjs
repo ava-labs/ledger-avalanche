@@ -12,10 +12,6 @@ const config = [
         format: 'esm',
         preserveModules: true,
       },
-      {
-        file: 'dist/index.js',
-        format: 'cjs',
-      },
     ],
   },
   {
@@ -26,10 +22,6 @@ const config = [
         dir: 'esm',
         format: 'esm',
         preserveModules: true,
-      },
-      {
-        file: 'dist/index.d.ts',
-        format: 'cjs',
       },
     ],
   },
