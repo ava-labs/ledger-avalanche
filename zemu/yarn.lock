@@ -997,7 +997,7 @@
     node-hid "^2.1.2"
     usb "^1.7.0"
 
-"@ledgerhq/hw-transport@^6.27.5", "@ledgerhq/hw-transport@^6.28.1":
+"@ledgerhq/hw-transport@6.28.1", "@ledgerhq/hw-transport@^6.28.1":
   version "6.28.1"
   resolved "https://registry.yarnpkg.com/@ledgerhq/hw-transport/-/hw-transport-6.28.1.tgz#cb22fe9bc23af4682c30f2aac7fe6f7ab13ed65a"
   integrity sha512-RaZe+abn0zBIz82cE9tp7Y7aZkHWWbEaE2yJpfxT8AhFz3fx+BU0kLYzuRN9fmA7vKueNJ1MTVUCY+Ex9/CHSQ==
