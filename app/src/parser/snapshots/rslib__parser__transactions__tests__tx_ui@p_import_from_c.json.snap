@@ -6,7 +6,7 @@ input_file: app/src/parser/testvectors/p_import_from_c.json
 [
     "ImportTx": "Importing in C-Chain",
     "Amount": "27473249",
-    "Address": "local13kuhcl8vufyu9wvtmspzdnzv9ftm75hunmtqe9",
+    "To": "0x8db97c7cece249c2b98bdc0226cc4c2a57bf52fc",
     "From ": "P Chain",
     "Fee": "2526750",
 ]
