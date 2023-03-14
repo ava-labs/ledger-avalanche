@@ -40,7 +40,7 @@ const SIGN_TEST_DATA = [
 ]
 
 describe.each(models)('Transfer [%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign basic transactions', async function ({ name, op, filter }) {
+  test.concurrent.each(SIGN_TEST_DATA)('sign basic transactions', async function ({ name, op, filter }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
