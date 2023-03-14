@@ -50,7 +50,7 @@ byteorder = { version = "1.4.3", default-features = false }
 [dev-dependencies]
 zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }
 no-std-compat = { version = "0.4", features = ["std"] }
-serial_test = "0.5"
+serial_test = "1.0"
 zuit = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580" }
 bolos = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580", features = ["derive-debug"] }
 bolos-common = { git = "http://github.com/Zondax/ledger-rust", rev = "cb36580", features = ["bip32-display"] }
