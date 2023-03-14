@@ -43,7 +43,7 @@ arrayvec = { version = "0.7", default-features = false }
 arrayref = "0.3.6"
 nom = { version = "7.1.1", default-features = false}
 bytemuck = { version = "1" }
-lexical-core = { version = "0.7", features = ["libm"], default-features = false }
+lexical-core = { version = "0.8", features = ["libm"], default-features = false }
 educe = "0.4.19"
 byteorder = { version = "1.4.3", default-features = false }
 
