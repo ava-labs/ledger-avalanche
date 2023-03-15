@@ -68,6 +68,7 @@ node_modules
 
 # Workspace specific
 
+app/build
 app/debug
 app/bin
 app/dep
