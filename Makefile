@@ -24,6 +24,12 @@ TESTS_JS_DIR = $(CURDIR)/js
 ifeq ($(BOLOS_SDK),)
 	include $(CURDIR)/deps/dockerized_build.mk
 
+.PHONY: init
+init:
+	cd deps; sh get_sdk.sh
+	$(MAKE) deps
+	$(MAKE) zemu_install
+
 build:
 	$(MAKE)
 .PHONY: build
