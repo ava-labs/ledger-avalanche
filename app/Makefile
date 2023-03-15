@@ -51,16 +51,16 @@ $(info ************ LOGGING ENABLED ************)
 endif
 
 ifndef COIN
-COIN=AVAX
+COIN=AVAX_NANOS
 endif
 
 include $(CURDIR)/Makefile.version
 
 $(info COIN  = [$(COIN)])
-ifeq ($(COIN),AVAX)
+ifeq ($(COIN),AVAX_NANOS)
 # Main app configuration
 DEFINES += APP_STANDARD
-APPNAME = "Avalanche"
+APPNAME = "Avalanche-NanoS"
 APPPATH = "44'/9000'" --path "44'/60'"
 else
 define error_message
@@ -258,7 +258,7 @@ dep/%.d: %.c Makefile
 
 .PHONY: listvariants
 listvariants:
-	@echo VARIANTS COIN AVAX
+	@echo VARIANTS COIN AVAX_NANOS
 
 .PHONY: version
 version:
