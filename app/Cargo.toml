@@ -48,7 +48,7 @@ educe = "0.4.19"
 byteorder = { version = "1.4.3", default-features = false }
 
 [dev-dependencies]
-zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }
+zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Nullus157/bs58-rs", rev = "f4584c6", package = "bs58" }
 no-std-compat = { version = "0.4", features = ["std"] }
 serial_test = "0.5"
 zuit = { git = "https://github.com/Zondax/ledger-rust", rev = "cb36580" }
