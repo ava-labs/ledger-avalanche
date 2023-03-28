@@ -4,19 +4,22 @@ import Eth from '@ledgerhq/hw-app-eth'
 import path from 'path'
 import * as readline from 'node:readline/promises'
 
-const APP_PATH = path.resolve('../build/output/app_s.elf')
+const APP_PATH = path.resolve('../build/output/app_fs.elf')
 const CLA = 0x80
 const APP_DERIVATION = "m/44'/9000'/0'/0/0"
 const ETH_DERIVATION = "m/44'/60'/0'/0/0"
 
 const seed = 'equip will roof matter pink blind book anxiety banner elbow sun young'
+const model = 'stax'
 const SIM_OPTIONS = {
   logging: true,
   // startDelay: 400000,
   startTimeout: 400000,
   startText: "Ready",
   custom: `-s "${seed}" --color LAGOON_BLUE`,
-  model: 'nanos',
+  model: model,
+  approveKeyword: model === 'stax' ? 'Cancel' : '',
+  approveAction: 10, //ApproveTapButton
 }
 
 async function beforeStart() {
@@ -54,6 +57,8 @@ async function interactiveZemu(sim) {
       case 'jk':
         await sim.clickBoth(undefined, false)
         break
+      case 'c':
+        await sim.fingerTouch({ x: 200, y: 250, delay: 1 })
       default:
         break
     }
@@ -63,7 +68,8 @@ async function interactiveZemu(sim) {
 }
 
 async function callTestFunction(sim, app) {
-  let responseReq = app.signTransaction(ETH_DERIVATION, '02f5018402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0')
+  let responseReq = app.signTransaction(APP_DERIVATION, '02f5018402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0', null)
+
   await sim.waitScreenChange(100000000)
 
   await interactiveZemu(sim)

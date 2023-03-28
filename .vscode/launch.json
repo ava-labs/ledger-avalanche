@@ -46,6 +46,32 @@
         "b rslib::dispatcher::apdu_dispatch",
         "b rslib::__panic_handler::panic"
       ]
+    },
+    {
+      "name": "Zemu Attach Stax",
+      "type": "gdb",
+      "request": "attach",
+      "executable": "${workspaceFolder}/build/output/app_fs.elf",
+      "target": ":1234",
+      "remote": true,
+      "cwd": "${workspaceFolder}",
+      "valuesFormatting": "parseText",
+      "gdbpath": "gdb-multiarch",
+      "stopOnEntry": true,
+      "autorun": [
+        "set substitute-path /project ${workspaceFolder}",
+        "set substitute-path /cargo ${env:HOME}/.cargo",
+        "set substitute-path /rustc/db9d1b20bba1968c1ec1fc49616d4742c1725b4b ${env:HOME}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust",
+        "set architecture arm",
+        "set backtrace limit 15",
+        "handle SIGILL nostop pass noprint",
+        "add-symbol-file ${workspaceFolder}/build/output/app_fs.elf 0x40000000",
+        "b zemu_sys::ui_toolkit::backends::stax::{impl#6}::update_review",
+        "b zemu_sys::ui_toolkit::backends::stax::{impl#6}::message_buf",
+        "b zemu_sys::ui_toolkit::backends::stax::continuations::review_transaction",
+        //"b rslib::dispatcher::apdu_dispatch",
+        "b rslib::__panic_handler::panic"
+      ]
     }
   ]
 }
