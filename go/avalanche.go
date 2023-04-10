@@ -266,11 +266,11 @@ func (ledger *LedgerAvalanche) VerifyMultipleSignatures(response ResponseSign, m
 			return errors.New("error getting the pubkey")
 		}
 
-		hexString := fmt.Sprintf("%x", addr.publicKey)
+		hexString := fmt.Sprintf("%x", addr.PublicKey)
 		fmt.Println(hexString)
 
 		sigLen := len(response.Signature[suffix])
-		verified := VerifySignature(addr.publicKey, messageHash, response.Signature[suffix][:sigLen-1])
+		verified := VerifySignature(addr.PublicKey, messageHash, response.Signature[suffix][:sigLen-1])
 
 		if !verified {
 			return errors.New("[VerifySig] Error verifying signature: ")
