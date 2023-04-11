@@ -18,7 +18,8 @@ package ledger_avalanche_go
 
 import (
 	"fmt"
-	"github.com/zondax/ledger-go"
+
+	ledger_go "github.com/zondax/ledger-go"
 )
 
 const (
@@ -112,7 +113,7 @@ type ResponseSign struct {
 }
 
 type ResponseAddr struct {
-	publicKey []byte
-	hash      []byte
-	address   string
+	PublicKey []byte
+	Hash      []byte
+	Address   string
 }
