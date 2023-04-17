@@ -41,7 +41,7 @@
     "bip39": "^3.0.4",
     "core-js": "^3.11.1",
     "crypto-js": "4.1.1",
-    "esbuild": "0.16.3",
+    "esbuild": "0.17.19",
     "eslint": "^8.24.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.20.2",
@@ -52,8 +52,8 @@
     "rollup": "^3.7.0",
     "rollup-plugin-dts": "^5.0.0",
     "rollup-plugin-esbuild": "^5.0.0",
-    "semantic-release": "^20.1.1",
-    "typescript": "^4.2.4"
+    "semantic-release": "^21.0.2",
+    "typescript": "^5.0.4"
   },
   "moduleDirectories": [
     "node_modules",
