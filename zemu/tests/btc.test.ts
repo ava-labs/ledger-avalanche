@@ -38,11 +38,11 @@ const BTC_DATA = [
     // this is not multisig, which is not supported but the number of
     // partial signatures which is related to the number of inputs.
     num_signatures: 1,
-    navigation: [3, 0],
+    navigation: [3, 0, 2, 0],
     // we split into 2 the snapshots navigation and comparision
     // this start valuo tells the navigateAndCompareUntilText method
     // from which image to start
-    start: 4,
+    last: 6,
     hash: ["8B6298B27F823219C62EDD33A03665EC51BBD470D27BAFF5F600E98188C075C3"]
   },
   {
@@ -53,11 +53,11 @@ const BTC_DATA = [
     ),
     num_signatures: 4,
     // output 1 is marked as change, so only review 2.
-    navigation: [3, 0, 3, 0],
+    navigation: [3, 0, 3, 0, 2, 0],
     // we split into 2 the snapshots navigation and comparision
     // this start valuo tells the navigateAndCompareUntilText method
     // from which image to start
-    start: 8,
+    last: 10,
     hash: ["35AAE46FEF20A1175F35FCA2EC8CF947EF62DF9A4C0250DEF75F64F7BA436E02", "CE93F084BB8AD26273336D91E072CCED7DAA338116FC8F2E6861B104F6B9D67F", "2D01156B58C2E09A65B1518F03380FBF42A0E23353138380192387F114DE699E", "81055AB3375636DB0CB9630BD282E15E1A64708E61E5117FBACF4DC1E7C6767B"]
   },
 ]
@@ -174,8 +174,12 @@ describe.each(btc_models)('Psbt_[%s]; sign', function (m) {
       // takes to communicate and process data.
       await sim.waitForText("Review");
 
-      await sim.navigateAndCompareSnapshots(".", testcase, obj.navigation);
-      await sim.navigateAndCompareUntilText(".", testcase, "Accept", true, obj.start);
+      await sim.navigate(".", testcase, obj.navigation);
+      // It might happen that the last image is an Processing...
+      // instead of Ready. so skip comparing the last image.
+      // that does not mean something went wrong it is just how btc
+      // app is designed.
+      await sim.compareSnapshots(".", testcase, obj.last);
 
       const resp = await result
 
