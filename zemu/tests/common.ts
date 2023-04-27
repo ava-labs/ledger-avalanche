@@ -14,6 +14,11 @@ export const models: IDeviceModel[] = [
   { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
 ]
 
+export const btc_models: IDeviceModel[] = [
+  { name: 'nanox', prefix: 'X', path: APP_PATH_X },
+  { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
+]
+
 export const defaultOptions = {
   ...DEFAULT_START_OPTIONS,
   logging: true,
@@ -24,6 +29,7 @@ export const defaultOptions = {
 export const ROOT_PATH = "m/44'/9000'/0'"
 export const APP_DERIVATION = "m/44'/9000'/0'/0/0"
 export const ETH_DERIVATION = "m/44'/60'/0'/0'"
+export const BTC_PATH = "m/44'/60'/0'"
 
 type MapCartesian<T extends any[][]> = {
   [P in keyof T]: T[P] extends Array<infer U> ? U : never
