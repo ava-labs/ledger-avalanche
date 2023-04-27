@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@ledgerhq/hw-app-eth": "6.33.6",
+    "ledger-bitcoin": "^0.2.1",
     "@ledgerhq/hw-transport": "6.28.5",
     "bs58": "5.0.0",
     "sha3": "2.1.4"
