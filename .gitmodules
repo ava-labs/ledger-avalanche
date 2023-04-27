@@ -1,3 +1,6 @@
 [submodule "deps/ledger-rust"]
 	path = deps/ledger-rust
 	url = https://github.com/Zondax/ledger-rust
+[submodule "deps/btc"]
+	path = deps/btc
+	url = https://github.com/Zondax/app-bitcoin-new.git
