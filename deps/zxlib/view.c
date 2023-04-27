@@ -34,9 +34,12 @@
 ///////////////////////////////////
 // General
 
+// Other targets will use btc declarations
+#if defined(TARGET_NANOS)
 void io_seproxyhal_display(const bagl_element_t *element) {
   io_seproxyhal_display_default((bagl_element_t *)element);
 }
+#endif
 void view_init(void) {
 #if defined(BLIND_SIGN_TOGGLE)
   blind_sign.toggle = false;

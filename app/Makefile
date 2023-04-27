@@ -210,7 +210,11 @@ LDLIBS   += -L../target/$(RUST_TARGET)/release
 
 ##########################
 GLYPH_SRC_DIR = glyphs
+BTC_GLYPHS = $(MY_DIR)/../deps/btc/glyphs
 INCLUDES_PATH += $(MY_DIR)/glyphs
+APP_SOURCE_PATH += $(MY_DIR)/glyphs
+GLYPH_FILES += $(addprefix $(BTC_GLYPHS)/,$(sort $(notdir $(shell find $(BTC_GLYPHS)/))))
+
 include $(BOLOS_SDK)/Makefile.glyphs
 
 APP_SOURCE_PATH += $(MY_DIR)/c
@@ -218,6 +222,44 @@ APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib
 
 SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
 SDK_SOURCE_PATH += lib_ux
+
+# Do not compile btc app if target is nanos
+ifneq ($(TARGET_NAME),TARGET_NANOS)
+
+	# Bitcoin mainnet, no legacy support
+	# TODO: the new-bitcoin-app's defines distinguishes
+	# between mainnet and testnet assigning different 
+	# values to the defines bellow. lets pick 
+	# the ones for mainnet for now
+	DEFINES   += BIP32_PUBKEY_VERSION=0x0488B21E
+	DEFINES   += BIP44_COIN_TYPE=0
+	DEFINES   += BIP44_COIN_TYPE_2=0
+	# The coin type bellow is not part of the btc app,
+	# but this is necesary here as avax wants support for 
+	# coin_type = 60''
+	DEFINES   += BIP44_COIN_TYPE_3=60
+	DEFINES   += COIN_P2PKH_VERSION=0
+	DEFINES   += COIN_P2SH_VERSION=5
+	DEFINES   += COIN_NATIVE_SEGWIT_PREFIX=\"bc\"
+	DEFINES   += COIN_COINID_SHORT=\"BTC\"
+
+	# Needed to be able to include the definition of G_cx
+	INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/boilerplate/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/common/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/handler/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/swap/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/ui/
+
+	APP_SOURCE_PATH += $(MY_DIR)/../deps/btc/src
+	DEFINES   += HAVE_BOLOS_APP_STACK_CANARY
+
+	ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX))
+		DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+		DEFINES       += HAVE_BLE_APDU
+	endif
+endif #NO TARGET_NANOS
 
 .PHONY: rust
 rust:

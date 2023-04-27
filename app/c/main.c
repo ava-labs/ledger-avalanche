@@ -17,10 +17,22 @@
 #include "rslib.h"
 #include <os_io_seproxyhal.h>
 #include <os.h>
+
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#include "globals.h"
+#include "handler.h"
+#else 
 #include "ux.h"
+#endif
 
-unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+// taken from btc
+#define BTC_CLA 0xE1
+#define BTC_FRAMEWORK 0xF8
+#define OFFSET_CLA 0
 
+uint8_t G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+
+#ifdef TARGET_NANOS
 unsigned char io_event(unsigned char channel) {
     switch (G_io_seproxyhal_spi_buffer[0]) {
         case SEPROXYHAL_TAG_FINGER_EVENT: //
@@ -80,6 +92,7 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
     }
     return 0;
 }
+#endif
 
 void io_app_init() {
     io_seproxyhal_init();
@@ -109,8 +122,16 @@ int main(void) {
     volatile uint32_t rx = 0, tx = 0, flags = 0;
     volatile uint16_t sw = 0;
     zemu_log_stack("main");
+    #if !defined(TARGET_NANOS)
+        initialize_app_globals();
+    #endif /* ifndef TARGET_NANOS */
 
     for (;;) {
+        #if !defined(TARGET_NANOS)
+            // Reset length of APDU response
+            G_output_len = 0;
+        #endif
+
         BEGIN_TRY
         {
             TRY
@@ -129,7 +150,20 @@ int main(void) {
                 flags = 0;
                 check_canary();
 
-                rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+                uint8_t cla = G_io_apdu_buffer[OFFSET_CLA];
+                if (cla == BTC_CLA || cla == BTC_FRAMEWORK ) {
+                    // Btc apdu commands are not supported by nanos
+                    #if defined (TARGET_NANOS)
+                        THROW(INVALID_PARAMETER);
+                    #endif
+
+                    // call btc handler 
+                    handle_btc_apdu( &flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+                } else {
+                    rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+
+                }
+
                 check_canary();
             }
             CATCH(EXCEPTION_IO_RESET)
