@@ -44,7 +44,9 @@ echo -e "${APPHEX}" > ${BIN_HEX_FILE}
 case "$1" in
   'load')
   cd "$TMP_HEX_DIR" || exit
-  python3 -m ledgerblue.loadApp "${LOAD_PARAMS[@]}" --path ${APPPATH} --path "44'/1'"
+  # path was commented due to a crash when trying to sign BTC transactions, App needs to be allowed to 
+  # use generic paths, instead of being limited to  --path ${APPPATH} --path "44'/1'"
+  python3 -m ledgerblue.loadApp "${LOAD_PARAMS[@]}"
   ;;
   'delete')
   python3 -m ledgerblue.deleteApp ${DELETE_PARAMS}
