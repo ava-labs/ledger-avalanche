@@ -29,6 +29,7 @@
 #define OFFSET_CLA 0
 
 void app_exit();
+void btc_state_reset();
 
 unsigned char handle_event(unsigned char channel);
 void handle_btc_apdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx,  const uint8_t *buffer, uint16_t bufferLen);

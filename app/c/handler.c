@@ -79,6 +79,11 @@ const command_descriptor_t COMMAND_DESCRIPTORS[] = {
 // clang-format on
 
 
+void btc_state_reset() {
+     // Reset dispatcher state
+    explicit_bzero(&G_dispatcher_context, sizeof(G_dispatcher_context));
+}
+
 /**
  * Exit the application and go back to the dashboard.
  */
