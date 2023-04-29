@@ -92,7 +92,7 @@ OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_x.sh
 RUST_TARGET:=thumbv6m-none-eabi
 # for BTC we need to remove the 0x200 flag and 
 # replace it with 0xa50
-# otherwise the app will crash
+# otherwise, app crashes
 APP_LOAD_PARAMS += --appFlags 0xa50
 APP_FULL:=1
 endif
@@ -105,7 +105,7 @@ OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_sp.sh
 RUST_TARGET:=thumbv6m-none-eabi
 # for BTC we need to remove the 0x000 flag and 
 # replace it with 0xa50
-# otherwise the app will crash
+# otherwise, app crashes
 APP_LOAD_PARAMS += --appFlags 0xa50
 APP_FULL:=1
 endif
@@ -256,16 +256,16 @@ APP_CUSTOM_LINK_DEPENDENCIES := rust
 ifneq ($(TARGET_NAME),TARGET_NANOS)
 
 	# Bitcoin mainnet, no legacy support
-	# TODO: the new-bitcoin-app's defines distinguishes
-	# between mainnet and testnet assigning different 
-	# values to the defines bellow. lets pick 
+	# TODO: the new-bitcoin-app's assigns different 
+	# values for the variables bellow depending on
+	# mainnet or testnet. lets pick 
 	# the ones for mainnet for now
 	DEFINES   += BIP32_PUBKEY_VERSION=0x0488B21E
 	DEFINES   += BIP44_COIN_TYPE=0
 	DEFINES   += BIP44_COIN_TYPE_2=0
 	# The coin type bellow is not part of the btc app,
 	# but this is necesary here as avax wants support for 
-	# coin_type = 60''
+	# coin_type = 60'
 	DEFINES   += BIP44_COIN_TYPE_3=60
 	DEFINES   += COIN_P2PKH_VERSION=0
 	DEFINES   += COIN_P2SH_VERSION=5

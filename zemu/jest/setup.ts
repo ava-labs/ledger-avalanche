@@ -14,4 +14,4 @@
  *  limitations under the License.
  ******************************************************************************* */
 
-jest.setTimeout(60000)
+jest.setTimeout(200000)

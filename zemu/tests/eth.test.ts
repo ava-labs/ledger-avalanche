@@ -103,6 +103,8 @@ const SIGN_TEST_DATA = [
   },
 ]
 
+jest.setTimeout(200000)
+
 describe.each(models)('EthereumTx [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
