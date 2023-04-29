@@ -124,6 +124,7 @@ int main(void) {
     zemu_log_stack("main");
     #if !defined(TARGET_NANOS)
         initialize_app_globals();
+        btc_state_reset();
     #endif /* ifndef TARGET_NANOS */
 
     for (;;) {
