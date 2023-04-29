@@ -55,7 +55,7 @@ bolos-common = { workspace = true, features = ["bip32-display"] }
 no-std-compat = { version = "0.4", features = ["std"] }
 
 zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }
-serial_test = "0.5"
+serial_test = "2.0.0"
 hex = "0.4.3"
 arrayvec = { version = "0.7"}
 time = { version = "0.3.15", features = ["formatting"]}
