@@ -28,7 +28,7 @@ use crate::{
     parser::{
         coreth::outputs::EVMOutput, nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes,
         Header, ObjectList, OutputIdx, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN,
-        EVM_IMPORT_TX, MAX_ADDRESS_ENCODED_LEN,
+        EVM_IMPORT_TX,
     },
 };
 

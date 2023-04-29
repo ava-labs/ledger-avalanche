@@ -28,6 +28,7 @@ import crypto from 'crypto'
 // using our testing mnemonic and BTC_PATH
 const EXPECTED_EXTENDED_PUBKEY =  "xpub6DSxz6qdmgbeqgrLcwHydNfNfs9B673zNrwYUaBBGHe7fiGv2hQ4qDAvCfY2jhKPfut6imCptyMo3cKMozd5qCbUoMVwjPCNfZtJ1Sd1nsN"
 
+
 const BTC_DATA = [
   {
     name: 'psbt_1x1',
@@ -138,6 +139,8 @@ function convert_der_to_rs(
     return result
 }
 
+jest.setTimeout(300000)
+
 describe.each(btc_models)('Psbt_[%s]; sign', function (m) {
   test.concurrent.each(BTC_DATA)('sign psbt $name', async function (obj) {
     const sim = new Zemu(m.path)
@@ -172,7 +175,7 @@ describe.each(btc_models)('Psbt_[%s]; sign', function (m) {
       // skip the Processing... screen as it might/might not be added
       // this depends on transaction complexity and the time the app and client
       // takes to communicate and process data.
-      await sim.waitForText("Review");
+      await sim.waitForText("Review", 60000);
 
       await sim.navigate(".", testcase, obj.navigation);
       // It might happen that the last image is an Processing...

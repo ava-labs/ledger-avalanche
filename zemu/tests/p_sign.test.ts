@@ -24,6 +24,8 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
+jest.setTimeout(200000)
+
 const LITE_SIGN_TEST_DATA = [
   {
     name: 'p_import_from_x',

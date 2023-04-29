@@ -25,11 +25,6 @@
 #include "ux.h"
 #endif
 
-// taken from btc
-#define BTC_CLA 0xE1
-#define BTC_FRAMEWORK 0xF8
-#define OFFSET_CLA 0
-
 uint8_t G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
 #ifdef TARGET_NANOS
@@ -151,19 +146,16 @@ int main(void) {
                 flags = 0;
                 check_canary();
 
-                uint8_t cla = G_io_apdu_buffer[OFFSET_CLA];
-                if (cla == BTC_CLA || cla == BTC_FRAMEWORK ) {
-                    // Btc apdu commands are not supported by nanos
-                    #if defined (TARGET_NANOS)
-                        THROW(INVALID_PARAMETER);
-                    #endif
-
-                    // call btc handler 
-                    handle_btc_apdu( &flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-                } else {
+                #if defined(TARGET_NANOS)
                     rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-
-                }
+                #else
+                    if (G_io_apdu_buffer[OFFSET_CLA] == CLA_APP || G_io_apdu_buffer[OFFSET_CLA] == CLA_FRAMEWORK ) {
+                        // call btc handler 
+                        handle_btc_apdu( &flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+                    } else {
+                        rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+                    }
+                #endif
 
                 check_canary();
             }

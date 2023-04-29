@@ -28,7 +28,6 @@
 #define APDU_INDEX_CLA 0
 #define OFFSET_CLA 0
 
-void app_exit();
 void btc_state_reset();
 
 unsigned char handle_event(unsigned char channel);

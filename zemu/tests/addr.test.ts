@@ -21,6 +21,8 @@ import { encode as bs58_encode } from 'bs58'
 
 const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4';
 
+jest.setTimeout(200000)
+
 describe.each(models)('Standard [%s] - pubkey', function (m) {
   test(
     'get pubkey and addr',

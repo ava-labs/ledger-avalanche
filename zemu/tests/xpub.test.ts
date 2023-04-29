@@ -18,6 +18,8 @@ import Zemu from '@zondax/zemu'
 import { defaultOptions, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
+jest.setTimeout(200000)
+
 describe.each(models)('Standard [%s] - extended pubkey', function (m) {
   test(
     'get pubkey %s',

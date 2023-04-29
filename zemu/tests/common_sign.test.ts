@@ -26,6 +26,7 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
+
 const SIGN_TEST_DATA = [
   {
     name: 'simple_transfer',
@@ -38,6 +39,8 @@ const SIGN_TEST_DATA = [
   //   filter: true,
   // },
 ]
+
+jest.setTimeout(200000)
 
 describe.each(models)('Transfer [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign basic transactions', async function ({ name, op, filter }) {

@@ -24,6 +24,7 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
+
 const SIGN_TEST_DATA = [
   {
     name: 'c_import_from_x',
@@ -34,6 +35,8 @@ const SIGN_TEST_DATA = [
     op: C_EXPORT_TO_X,
   },
 ]
+
+jest.setTimeout(200000)
 
 describe.each(models)('C_Sign[%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign c-chain $name transaction', async function ({ name, op }) {

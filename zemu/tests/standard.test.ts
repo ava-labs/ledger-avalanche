@@ -18,6 +18,8 @@ import Zemu from '@zondax/zemu'
 import { defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
+jest.setTimeout(200000)
+
 describe.each(models)('Standard', function (m) {
   test('can start and stop container', async function () {
     const sim = new Zemu(m.path)

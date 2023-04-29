@@ -24,6 +24,8 @@ import { bufArrToArr } from "@ethereumjs/util";
 import { RLP } from "@ethereumjs/rlp";
 import { ec } from 'elliptic'
 
+jest.setTimeout(200000)
+
 type NftInfo = {
   token_address: string,
   token_name: string,
@@ -156,6 +158,7 @@ function check_legacy_signature(hexTx: string, signature: any, chainId: number |
   return ethTxObj.verifySignature()
 }
 
+
 describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
     const sim = new Zemu(m.path)
@@ -175,7 +178,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       }
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen, 60000)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq

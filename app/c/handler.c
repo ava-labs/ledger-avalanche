@@ -32,7 +32,6 @@
 
 #include "common/wallet.h"
 
-// common declarations between legacy and new code; will refactor it out later
 #include "swap/swap_lib_calls.h"
 #include "swap/swap_globals.h"
 #include "swap/handle_swap_sign_transaction.h"
@@ -83,21 +82,6 @@ void btc_state_reset() {
      // Reset dispatcher state
     explicit_bzero(&G_dispatcher_context, sizeof(G_dispatcher_context));
 }
-
-/**
- * Exit the application and go back to the dashboard.
- */
-void app_exit() {
-    BEGIN_TRY_L(exit) {
-        TRY_L(exit) {
-            os_sched_exit(-1);
-        }
-        FINALLY_L(exit) {
-        }
-    }
-    END_TRY_L(exit);
-}
-
 
 void handle_btc_apdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx,  const uint8_t *buffer, uint16_t bufferLen) {
     UNUSED(flags);
