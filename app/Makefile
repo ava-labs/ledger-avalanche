@@ -26,7 +26,9 @@ all: bin/app.elf
 	@echo "#!/usr/bin/env bash" > $(OUTPUT_INSTALLER)
 	@echo "APPNAME=\"${APPNAME}\"" >> $(OUTPUT_INSTALLER)
 	@echo "APPVERSION=\"${APPVERSION}\"" >> $(OUTPUT_INSTALLER)
-	@echo "APPPATH=\""${APPPATH}"\"" >> $(OUTPUT_INSTALLER)
+	# Commented due to a crash when trying to sign BTC transactions, it needs to be allowed to 
+	# use generic paths, instead of being limited to the paths passed bellow.
+	# @echo "APPPATH=\""${APPPATH}"\"" >> $(OUTPUT_INSTALLER)
 	@echo "LOAD_PARAMS=($$(echo "${APP_LOAD_PARAMS}" | sed -e "s|"${APPNAME}"|\""${APPNAME}"\"|"))" >> $(OUTPUT_INSTALLER)
 	@echo "DELETE_PARAMS=($$(echo "${COMMON_DELETE_PARAMS}" | sed -e "s|"${APPNAME}"|\""${APPNAME}"\"|"))" >> $(OUTPUT_INSTALLER)
 	@echo "APPHEX=\"" >> $(OUTPUT_INSTALLER)
@@ -69,7 +71,8 @@ endef
 $(error "$(error_message)")
 endif
 
-APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --path $(APPPATH)
+# BTC app requires setting appFlags to 0xa50
+APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1
 
 ARTIFACT_OUTPUT_PATH := $(CURDIR)/../build
 
@@ -88,7 +91,10 @@ ICONNAME:=$(CURDIR)/../nanox_icon.gif
 OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_x.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_x.sh
 RUST_TARGET:=thumbv6m-none-eabi
-APP_LOAD_PARAMS += --appFlags 0x200
+# for BTC we need to remove the 0x200 flag and 
+# replace it with 0xa50
+# otherwise the app will crash
+APP_LOAD_PARAMS += --appFlags 0xa50
 APP_FULL:=1
 endif
 
@@ -98,7 +104,10 @@ OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_sp.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_sp.sh
 #RUST_TARGET:=thumbv8m.main-none-eabi
 RUST_TARGET:=thumbv6m-none-eabi
-APP_LOAD_PARAMS += --appFlags 0x000
+# for BTC we need to remove the 0x000 flag and 
+# replace it with 0xa50
+# otherwise the app will crash
+APP_LOAD_PARAMS += --appFlags 0xa50
 APP_FULL:=1
 endif
 
