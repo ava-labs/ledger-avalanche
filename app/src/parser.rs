@@ -39,6 +39,9 @@ mod utils;
 mod utxo_id;
 mod validator;
 
+#[cfg(feature = "banff")]
+mod proof_of_possession;
+
 #[cfg(test)]
 mod snapshots_common;
 

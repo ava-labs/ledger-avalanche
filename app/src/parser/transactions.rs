@@ -66,6 +66,7 @@ cfg_if! {
     if #[cfg(feature = "banff")] {
         pub use pvm::{
             RemoveSubnetValidatorTx,
+            AddPermissionlessValidatorTx,
             AddPermissionlessDelegatorTx,
         };
     }
@@ -140,6 +141,8 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
             #[cfg(feature = "banff")]
             PVM_REMOVE_SUBNET_VALIDATOR => Transaction__Type::RemoveSubnetValidator,
             #[cfg(feature = "banff")]
+            PVM_ADD_PERMISSIONLESS_VALIDATOR => Transaction__Type::PermissionlessValidator,
+            #[cfg(feature = "banff")]
             PVM_ADD_PERMISSIONLESS_DELEGATOR => Transaction__Type::PermissionlessDelegator,
             _ => return Err(ParserError::InvalidTransactionType),
         };
@@ -174,6 +177,8 @@ pub enum Transaction<'b> {
     SubnetValidator(AddSubnetValidatorTx<'b>),
     #[cfg(feature = "banff")]
     RemoveSubnetValidator(RemoveSubnetValidatorTx<'b>),
+    #[cfg(feature = "banff")]
+    PermissionlessValidator(AddPermissionlessValidatorTx<'b>),
     #[cfg(feature = "banff")]
     PermissionlessDelegator(AddPermissionlessDelegatorTx<'b>),
 }
