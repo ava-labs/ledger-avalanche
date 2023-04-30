@@ -295,7 +295,7 @@ impl AvaxSign {
         let pkey_len = response[0] as usize;
         let point = EncodedPoint::from_bytes(&response[1..][..pkey_len]).expect("valid point");
 
-        PublicKey::from_encoded_point(&point).unwrap_or_else(|| {
+        Option::from(PublicKey::from_encoded_point(&point)).unwrap_or_else(|| {
             panic!(
                 "not a valid publickey (0x{}) for path {:?}",
                 hex::encode(&response[1..][..64]),
