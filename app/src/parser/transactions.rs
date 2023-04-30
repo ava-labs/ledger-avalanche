@@ -13,6 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use cfg_if::cfg_if;
 use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::take,
@@ -61,6 +62,15 @@ pub use pvm::AddDelegatorTx;
 #[cfg(feature = "add-validator")]
 pub use pvm::AddValidatorTx;
 
+cfg_if! {
+    if #[cfg(feature = "banff")] {
+        pub use pvm::{
+            RemoveSubnetValidatorTx,
+            AddPermissionlessDelegatorTx,
+        };
+    }
+}
+
 use super::{
     ChainId, FromBytes, NetworkInfo, ParserError, AVM_EXPORT_TX, AVM_IMPORT_TX, AVM_OPERATION_TX,
     EVM_EXPORT_TX, TRANSFER_TX,
@@ -83,6 +93,14 @@ use super::PVM_ADD_VALIDATOR;
 
 #[cfg(feature = "add-delegator")]
 use super::PVM_ADD_DELEGATOR;
+
+cfg_if! {
+    if #[cfg(feature = "banff")] {
+        use super::{
+            PVM_ADD_PERMISSIONLESS_DELEGATOR, PVM_ADD_PERMISSIONLESS_VALIDATOR, PVM_TRANSFORM_SUBNET, PVM_REMOVE_SUBNET_VALIDATOR
+        };
+    }
+}
 
 impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
     type Error = ParserError;
@@ -119,6 +137,10 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
             PVM_ADD_VALIDATOR => Transaction__Type::Validator,
             #[cfg(feature = "add-subnet-validator")]
             PVM_ADD_SUBNET_VALIDATOR => Transaction__Type::SubnetValidator,
+            #[cfg(feature = "banff")]
+            PVM_REMOVE_SUBNET_VALIDATOR => Transaction__Type::RemoveSubnetValidator,
+            #[cfg(feature = "banff")]
+            PVM_ADD_PERMISSIONLESS_DELEGATOR => Transaction__Type::PermissionlessDelegator,
             _ => return Err(ParserError::InvalidTransactionType),
         };
 
@@ -150,6 +172,10 @@ pub enum Transaction<'b> {
     CreateSubnet(CreateSubnetTx<'b>),
     #[cfg(feature = "add-subnet-validator")]
     SubnetValidator(AddSubnetValidatorTx<'b>),
+    #[cfg(feature = "banff")]
+    RemoveSubnetValidator(RemoveSubnetValidatorTx<'b>),
+    #[cfg(feature = "banff")]
+    PermissionlessDelegator(AddPermissionlessDelegatorTx<'b>),
 }
 
 impl<'b> Transaction<'b> {
