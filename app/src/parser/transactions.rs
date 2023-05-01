@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 use cfg_if::cfg_if;
-use core::{convert::TryFrom, mem::MaybeUninit, ptr::addr_of_mut};
+use core::{convert::TryFrom, mem::MaybeUninit};
 use nom::{
     bytes::complete::take,
     combinator::peek,

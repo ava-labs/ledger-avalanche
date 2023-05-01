@@ -117,7 +117,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
         // fee, fee_delegation, rewards_to and stake items
         1 + self.base_tx.base_outputs_num_items()
             + self.validator.num_items()
-            + self.rewards_owner.addresses.len()
+            + self.rewards_owner.num_addresses()
             + self.num_stake_items()
             + 1
             + 1
@@ -145,7 +145,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
 
         // when to start rendering staked outputs
         let render_stake_outputs_at = validator_items + base_outputs_items;
-        let render_last_items_at = base_outputs_items + validator_items + stake_outputs_items;
+        let render_last_items_at = render_stake_outputs_at + stake_outputs_items;
         let total_items = self.num_items() as u8;
 
         match item_n {
@@ -159,9 +159,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
             }
 
             // render stake items
-            x if x >= render_stake_outputs_at
-                && x < (render_stake_outputs_at + stake_outputs_items) =>
-            {
+            x if x >= render_stake_outputs_at && x < render_last_items_at => {
                 let new_idx = x - render_stake_outputs_at;
                 self.render_stake_outputs(new_idx, title, message, page)
             }
@@ -169,7 +167,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
             // render rewards to, delegate fee and fee
             x if x >= render_last_items_at && x < total_items - 1 => {
                 // normalize index to zero
-                let new_idx = x - (base_outputs_items + stake_outputs_items + validator_items);
+                let new_idx = x - render_last_items_at;
                 self.render_last_items(new_idx, title, message, page)
             }
             _ => Err(ViewError::NoData),
