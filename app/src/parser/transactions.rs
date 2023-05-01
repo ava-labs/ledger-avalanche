@@ -66,6 +66,7 @@ cfg_if! {
     if #[cfg(feature = "banff")] {
         pub use pvm::{
             RemoveSubnetValidatorTx,
+            TransformSubnetTx,
             AddPermissionlessValidatorTx,
             AddPermissionlessDelegatorTx,
         };
@@ -141,6 +142,8 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
             #[cfg(feature = "banff")]
             PVM_REMOVE_SUBNET_VALIDATOR => Transaction__Type::RemoveSubnetValidator,
             #[cfg(feature = "banff")]
+            PVM_TRANSFORM_SUBNET => Transaction__Type::TransformSubnet,
+            #[cfg(feature = "banff")]
             PVM_ADD_PERMISSIONLESS_VALIDATOR => Transaction__Type::PermissionlessValidator,
             #[cfg(feature = "banff")]
             PVM_ADD_PERMISSIONLESS_DELEGATOR => Transaction__Type::PermissionlessDelegator,
@@ -177,6 +180,8 @@ pub enum Transaction<'b> {
     SubnetValidator(AddSubnetValidatorTx<'b>),
     #[cfg(feature = "banff")]
     RemoveSubnetValidator(RemoveSubnetValidatorTx<'b>),
+    #[cfg(feature = "banff")]
+    TransformSubnet(TransformSubnetTx<'b>),
     #[cfg(feature = "banff")]
     PermissionlessValidator(AddPermissionlessValidatorTx<'b>),
     #[cfg(feature = "banff")]
@@ -297,6 +302,11 @@ impl<'b> Transaction<'b> {
                 out,
             ),
             #[cfg(feature = "banff")]
+            Transaction__Type::TransformSubnet => Self::init_as_transform_subnet(
+                |out| TransformSubnetTx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
             Transaction__Type::PermissionlessValidator => Self::init_as_permissionless_validator(
                 |out| AddPermissionlessValidatorTx::from_bytes_into(input, out),
                 out,
@@ -341,6 +351,8 @@ impl<'b> DisplayableItem for Transaction<'b> {
             #[cfg(feature = "banff")]
             Self::RemoveSubnetValidator(tx) => tx.num_items(),
             #[cfg(feature = "banff")]
+            Self::TransformSubnet(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
             Self::PermissionlessValidator(tx) => tx.num_items(),
             #[cfg(feature = "banff")]
             Self::PermissionlessDelegator(tx) => tx.num_items(),
@@ -377,6 +389,8 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::CreateSubnet(tx) => tx.render_item(item_n, title, message, page),
             #[cfg(feature = "banff")]
             Self::RemoveSubnetValidator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::TransformSubnet(tx) => tx.render_item(item_n, title, message, page),
             #[cfg(feature = "banff")]
             Self::PermissionlessValidator(tx) => tx.render_item(item_n, title, message, page),
             #[cfg(feature = "banff")]
