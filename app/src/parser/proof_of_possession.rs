@@ -58,7 +58,7 @@ impl<'b> FromBytes<'b> for ProofOfPossession<'b> {
         let (rem, public_key) = take(BLS_PUBKEY_LEN)(input)?;
         let public_key = arrayref::array_ref![public_key, 0, BLS_PUBKEY_LEN];
 
-        let (rem, signature) = take(BLS_SIGNATURE_LEN)(input)?;
+        let (rem, signature) = take(BLS_SIGNATURE_LEN)(rem)?;
         let signature = arrayref::array_ref![signature, 0, BLS_SIGNATURE_LEN];
 
         let out = out.as_mut_ptr();
@@ -81,8 +81,8 @@ pub enum BLSSigner<'b> {
 }
 
 impl<'b> BLSSigner<'b> {
-    const SIGNER_TYTPE_ID: u32 = 0x1B;
-    const EMPTY_TYTPE_ID: u32 = 0x1C;
+    const EMPTY_TYTPE_ID: u32 = 0x1B;
+    const SIGNER_TYTPE_ID: u32 = 0x1C;
 }
 
 impl BLSSigner__Type {
@@ -128,7 +128,7 @@ impl<'b> DisplayableItem for BLSSigner<'b> {
 
     fn render_item(
         &self,
-        item_n: u8,
+        _: u8,
         title: &mut [u8],
         message: &mut [u8],
         page: u8,

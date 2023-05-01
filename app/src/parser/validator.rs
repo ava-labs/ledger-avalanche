@@ -41,6 +41,8 @@ impl<'b> FromBytes<'b> for Validator<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("Validator::from_bytes_into\x00");
 
+        let out = out.as_mut_ptr();
+
         let node_id = unsafe { &mut *addr_of_mut!((*out).node_id).cast() };
         let rem = NodeId::from_bytes_into(input, node_id)?;
 
@@ -51,7 +53,6 @@ impl<'b> FromBytes<'b> for Validator<'b> {
             return Err(ParserError::InvalidTimestamp.into());
         }
 
-        let out = out.as_mut_ptr();
         unsafe {
             addr_of_mut!((*out).start_time).write(start_time);
             addr_of_mut!((*out).endtime).write(endtime);
