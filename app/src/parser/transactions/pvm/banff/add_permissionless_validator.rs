@@ -77,7 +77,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
 
         // BLS signer
         let signer = unsafe { &mut *addr_of_mut!((*out).signer).cast() };
-        let rem = BLSSigner::from_bytes_into(rem, signer);
+        let rem = BLSSigner::from_bytes_into(rem, signer)?;
 
         // stake
         // check for the number of stake-outputs before parsing then as now
@@ -373,7 +373,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let render_addr = |addr: Address| {
+        let mut render_addr = |addr: Address| {
             let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
 
             let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
@@ -490,7 +490,7 @@ mod tests {
     use super::*;
 
     const DATA: &[u8] = &[
-        0x00, 0x00, 0x00, 0x1a, 0x00, 0x00, 0x30, 0x39, 0xe9, 0x02, 0xa9, 0xa8, 0x66, 0x40, 0xbf,
+        0x00, 0x00, 0x00, 0x19, 0x00, 0x00, 0x30, 0x39, 0xe9, 0x02, 0xa9, 0xa8, 0x66, 0x40, 0xbf,
         0xdb, 0x1c, 0xd0, 0xe3, 0x6c, 0x0c, 0xc9, 0x82, 0xb8, 0x3e, 0x57, 0x65, 0xfa, 0xd5, 0xf6,
         0xbb, 0xe6, 0xab, 0xdc, 0xce, 0x7b, 0x5a, 0xe7, 0xd7, 0xc7, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x01, 0x4a, 0x17, 0x72, 0x05, 0xdf, 0x5c, 0x29, 0x92, 0x9d, 0x06, 0xdb, 0x9d,
@@ -532,7 +532,7 @@ mod tests {
     fn parse_add_permissionless_validator_tx() {
         let (_, tx) = AddPermissionlessValidatorTx::from_bytes(DATA).unwrap();
         assert_eq!(tx.shares, 20_000);
-        assert_eq!(tx.validator.weight, 1000000000);
+        assert_eq!(tx.validator.weight, 2000000000000);
         assert!(matches!(tx.signer, BLSSigner::Proof(_)))
     }
 

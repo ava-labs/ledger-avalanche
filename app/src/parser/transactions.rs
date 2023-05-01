@@ -226,6 +226,10 @@ impl<'b> Transaction<'b> {
             Self::Validator(tx) => tx.disable_output_if(address),
             #[cfg(feature = "add-delegator")]
             Self::Delegator(tx) => tx.disable_output_if(address),
+            #[cfg(feature = "banff")]
+            Self::PermissionlessValidator(tx) => tx.disable_output_if(address),
+            #[cfg(feature = "banff")]
+            Self::PermissionlessDelegator(tx) => tx.disable_output_if(address),
             _ => {}
         }
     }
@@ -475,6 +479,12 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::CreateChain(tx) => tx.num_items(),
             #[cfg(feature = "create-subnet")]
             Self::CreateSubnet(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::RemoveSubnetValidator(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::PermissionlessValidator(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::PermissionlessDelegator(tx) => tx.num_items(),
         }
     }
 
@@ -506,6 +516,12 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::CreateChain(tx) => tx.render_item(item_n, title, message, page),
             #[cfg(feature = "create-subnet")]
             Self::CreateSubnet(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::RemoveSubnetValidator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::PermissionlessValidator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::PermissionlessDelegator(tx) => tx.render_item(item_n, title, message, page),
         }
     }
 }
