@@ -16,6 +16,9 @@
 mod remove_subnet_validator;
 pub use remove_subnet_validator::*;
 
+mod transform_subnet;
+pub use transform_subnet::*;
+
 mod add_permissionless_validator;
 pub use add_permissionless_validator::*;
 
