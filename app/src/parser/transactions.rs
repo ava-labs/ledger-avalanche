@@ -241,213 +241,72 @@ impl<'b> Transaction<'b> {
         let info = Self::peek_transaction_info(input)?;
         let transaction_type = Transaction__Type::try_from(info)?;
 
-        let rem = match transaction_type {
+        match transaction_type {
             Transaction__Type::PImport => {
-                let out = out.as_mut_ptr() as *mut PImport__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = PvmImportTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::PImport);
-                }
-
-                rem
+                Self::init_as_p_import(|out| PvmImportTx::from_bytes_into(input, out), out)
             }
             Transaction__Type::PExport => {
-                let out = out.as_mut_ptr() as *mut PExport__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = PvmExportTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::PExport);
-                }
-
-                rem
+                Self::init_as_p_export(|out| PvmExportTx::from_bytes_into(input, out), out)
             }
             Transaction__Type::XImport => {
-                let out = out.as_mut_ptr() as *mut XImport__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AvmImportTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::XImport);
-                }
-
-                rem
+                Self::init_as_x_import(|out| AvmImportTx::from_bytes_into(input, out), out)
             }
             Transaction__Type::XExport => {
-                let out = out.as_mut_ptr() as *mut XExport__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AvmExportTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::XExport);
-                }
-
-                rem
+                Self::init_as_x_export(|out| AvmExportTx::from_bytes_into(input, out), out)
             }
             Transaction__Type::XOperation => {
-                let out = out.as_mut_ptr() as *mut XOperation__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = OperationTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(transaction_type);
-                }
-
-                rem
+                Self::init_as_x_operation(|out| OperationTx::from_bytes_into(input, out), out)
             }
             Transaction__Type::CExport => {
-                let out = out.as_mut_ptr() as *mut CExport__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = EvmExport::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::CExport);
-                }
-
-                rem
+                Self::init_as_c_export(|out| EvmExport::from_bytes_into(input, out), out)
             }
             Transaction__Type::CImport => {
-                let out = out.as_mut_ptr() as *mut CImport__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = EvmImport::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::CImport);
-                }
-
-                rem
+                Self::init_as_c_import(|out| EvmImport::from_bytes_into(input, out), out)
             }
             Transaction__Type::Transfer => {
-                let out = out.as_mut_ptr() as *mut Transfer__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = Transfer::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::Transfer);
-                }
-
-                rem
+                Self::init_as_transfer(|out| Transfer::from_bytes_into(input, out), out)
             }
             #[cfg(feature = "create-asset")]
             Transaction__Type::XAsset => {
-                let out = out.as_mut_ptr() as *mut XAsset__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = CreateAssetTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(transaction_type);
-                }
-
-                rem
+                Self::init_as_x_asset(|out| CreateAssetTx::from_bytes_into(input, out), out)
             }
             #[cfg(feature = "create-chain")]
             Transaction__Type::CreateChain => {
-                let out = out.as_mut_ptr() as *mut CreateChain__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = CreateChainTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::CreateChain);
-                }
-
-                rem
+                Self::init_as_create_chain(|out| CreateChainTx::from_bytes_into(input, out), out)
             }
             #[cfg(feature = "create-subnet")]
             Transaction__Type::CreateSubnet => {
-                let out = out.as_mut_ptr() as *mut CreateSubnet__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = CreateSubnetTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::CreateSubnet);
-                }
-
-                rem
+                Self::init_as_create_subnet(|out| CreateSubnetTx::from_bytes_into(input, out), out)
             }
             #[cfg(feature = "add-validator")]
             Transaction__Type::Validator => {
-                let out = out.as_mut_ptr() as *mut Validator__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AddValidatorTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::Validator);
-                }
-
-                rem
+                Self::init_as_validator(|out| AddValidatorTx::from_bytes_into(input, out), out)
             }
             #[cfg(feature = "add-delegator")]
             Transaction__Type::Delegator => {
-                let out = out.as_mut_ptr() as *mut Delegator__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AddDelegatorTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::Delegator);
-                }
-
-                rem
+                Self::init_as_delegator(|out| AddDelegatorTx::from_bytes_into(input, out), out)
             }
             #[cfg(feature = "add-subnet-validator")]
-            Transaction__Type::SubnetValidator => {
-                let out = out.as_mut_ptr() as *mut SubnetValidator__Variant;
-                //valid pointer
-                let data = unsafe { &mut *addr_of_mut!((*out).1).cast() };
-
-                let rem = AddSubnetValidatorTx::from_bytes_into(input, data)?;
-
-                //pointer is valid
-                unsafe {
-                    addr_of_mut!((*out).0).write(Transaction__Type::SubnetValidator);
-                }
-
-                rem
-            }
-        };
-
-        // check rem is empty??
-        Ok(rem)
+            Transaction__Type::SubnetValidator => Self::init_as_subnet_validator(
+                |out| AddSubnetValidatorTx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::RemoveSubnetValidator => Self::init_as_remove_subnet_validator(
+                |out| RemoveSubnetValidatorTx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::PermissionlessValidator => Self::init_as_permissionless_validator(
+                |out| AddPermissionlessValidatorTx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::PermissionlessDelegator => Self::init_as_permissionless_delegator(
+                |out| AddPermissionlessDelegatorTx::from_bytes_into(input, out),
+                out,
+            ),
+        }
     }
 
     // Returns True if transaction is one of the supported coreth transactions.
