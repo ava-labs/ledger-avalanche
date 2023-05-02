@@ -10,7 +10,7 @@
     "Ledger"
   ],
   "scripts": {
-    "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*'",
+    "test": "jest --maxConcurrency 2 --testPathIgnorePatterns='dev.*|testvectors.*'",
     "test_dev": "jest",
     "try": "node try.mjs",
     "debug": "node debug/debug.mjs debug"
