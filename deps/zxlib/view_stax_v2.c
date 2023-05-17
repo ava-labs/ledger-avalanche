@@ -23,11 +23,18 @@
 #include "ux.h"
 #include "view_internal.h"
 
+#define APPROVE_LABEL_STAX "Sign transaction?"
+#define REJECT_LABEL_STAX "Reject transaction"
+#define CANCEL_LABEL "Cancel"
+#define HOLD_TO_APPROVE_MSG "Hold to sign"
+
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 
 void rs_h_reject(unsigned int);
 bool rs_transaction_screen(uint8_t, nbgl_pageContent_t *);
+bool rs_update_static_item(uint8_t);
+void rs_action_callback(bool);
 
 void app_quit(void) { os_sched_exit(-1); }
 
@@ -60,8 +67,8 @@ void crapoline_show_confirmation(nbgl_pageContent_t *content) {
   content->type = INFO_LONG_PRESS;
   /* content->infoLongPress.icon = &C_badge_transaction_56; */
   content->infoLongPress.icon = NULL;
-  content->infoLongPress.text = APPROVE_LABEL;
-  content->infoLongPress.longPressText = "Hold to approve";
+  content->infoLongPress.text = APPROVE_LABEL_STAX;
+  content->infoLongPress.longPressText = HOLD_TO_APPROVE_MSG;
 }
 
 void crapoline_show_items(nbgl_pageContent_t *content, uint8_t nbPairs) {
@@ -83,19 +90,50 @@ void crapoline_show_items(nbgl_pageContent_t *content, uint8_t nbPairs) {
   content->tagValueList.nbPairs = nbPairs;
 }
 
+static nbgl_layoutTagValue_t *update_static_items(uint8_t index) {
+  static nbgl_layoutTagValue_t pair;
+
+  if (!rs_update_static_item(index)) {
+    return NULL;
+  }
+
+  pair = (nbgl_layoutTagValue_t){.item = BACKEND_LAZY.items[0].title,
+                                 .value = BACKEND_LAZY.items[0].message};
+
+  return &pair;
+}
+
 /********* NBGL Specific *************/
 
 void crapoline_useCaseReviewStart(char *title, char *subtitle,
                                   nbgl_callback_t continuation,
                                   nbgl_callback_t reject) {
-  nbgl_useCaseReviewStart(NULL, title, subtitle, REJECT_LABEL, continuation,
-                          reject);
+  nbgl_useCaseReviewStart(NULL /* &C_icon_stax_64 */, title, subtitle,
+                          REJECT_LABEL_STAX, continuation, reject);
 }
 
 void crapoline_useCaseRegularReview(uint8_t initPage, uint8_t nbPages) {
-  nbgl_useCaseRegularReview(initPage, nbPages, REJECT_LABEL,
+  nbgl_useCaseRegularReview(initPage, nbPages, REJECT_LABEL_STAX,
                             /* button callback */ NULL, rs_transaction_screen,
                             rs_h_reject);
 }
 
+void crapoline_useCaseStaticReview(uint8_t nbPages) {
+  static nbgl_layoutTagValueList_t pairList;
+  static nbgl_pageInfoLongPress_t infoLongPress;
+
+  /* infoLongPress.icon = &C_icon_stax_64; */
+  infoLongPress.icon = NULL;
+  infoLongPress.text = APPROVE_LABEL_STAX;
+  infoLongPress.longPressText = HOLD_TO_APPROVE_MSG;
+
+  pairList.nbMaxLinesForValue = NB_MAX_LINES_IN_REVIEW;
+  pairList.nbPairs = nbPages;
+  pairList.pairs = NULL; // make use of callback
+  pairList.callback = update_static_items;
+  pairList.startIndex = 0;
+
+  nbgl_useCaseStaticReview(&pairList, &infoLongPress, REJECT_LABEL_STAX,
+                           rs_action_callback);
+}
 #endif
