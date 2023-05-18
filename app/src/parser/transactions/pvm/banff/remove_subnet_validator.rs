@@ -141,20 +141,68 @@ impl<'b> RemoveSubnetValidatorTx<'b> {
 mod tests {
     use super::*;
 
-    const DATA: &[u8] = &[
-        0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x30, 0x39, 0x3d, 0x0a, 0xd1, 0x2b, 0x8e, 0xe8, 0x92,
-        0x8e, 0xdf, 0x24, 0x8c, 0xa9, 0x1c, 0xa5, 0x56, 0x00, 0xfb, 0x38, 0x3f, 0x07, 0xc3, 0x2b,
-        0xff, 0x1d, 0x6d, 0xec, 0x47, 0x2b, 0x25, 0xcf, 0x59, 0xa7, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe9, 0x02, 0xa9, 0xa8, 0x66, 0x40, 0xbf, 0xdb,
-        0x1c, 0xd0, 0xe3, 0x6c, 0x0c, 0xc9, 0x82, 0xb8, 0x3e, 0x57, 0x65, 0xfa, 0x4a, 0x17, 0x72,
-        0x05, 0xdf, 0x5c, 0x29, 0x92, 0x9d, 0x06, 0xdb, 0x9d, 0x94, 0x1f, 0x83, 0xd5, 0xea, 0x98,
-        0x5d, 0xe3, 0x02, 0x01, 0x5e, 0x99, 0x25, 0x2d, 0x16, 0x46, 0x9a, 0x66, 0x10, 0xdb, 0x00,
-        0x00, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-    ];
+    include!("testvectors/remove_subnet_validator.rs");
 
     #[test]
     fn parse_remove_subnet_validator() {
-        let (_, tx) = RemoveSubnetValidatorTx::from_bytes(DATA).unwrap();
+        let (_, tx) = RemoveSubnetValidatorTx::from_bytes(SAMPLE).unwrap();
         assert_eq!(tx.subnet_auth.sig_indices.len(), 1);
+
+        let subnet_id = SubnetId::new(&[
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+            0x17, 0x18, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x31, 0x32, 0x33, 0x34,
+            0x35, 0x36, 0x37, 0x38,
+        ]);
+
+        let (_, tx) = RemoveSubnetValidatorTx::from_bytes(SIMPLE_REMOVE_SUBNET_VALIDATOR).unwrap();
+        assert_eq!(tx.subnet_id, subnet_id);
+        assert_eq!(tx.subnet_auth.sig_indices.len(), 1);
+
+        let (_, tx) = RemoveSubnetValidatorTx::from_bytes(COMPLEX_REMOVE_SUBNET_VALIDATOR).unwrap();
+        assert_eq!(
+            tx.base_tx
+                .outputs()
+                .iter()
+                .nth(1)
+                .expect("2 outputs")
+                .secp_transfer()
+                .expect("secp transfer")
+                .threshold,
+            1
+        );
+        assert_eq!(tx.subnet_id, subnet_id);
+        assert_eq!(tx.subnet_auth.sig_indices.len(), 0);
+    }
+
+    #[test]
+    fn ui_remove_subnet_validator() {
+        for (i, data) in [
+            SAMPLE,
+            SIMPLE_REMOVE_SUBNET_VALIDATOR,
+            // COMPLEX_REMOVE_SUBNET_VALIDATOR, //sum of inputs overflows u64
+        ]
+        .iter()
+        .enumerate()
+        {
+            std::println!(
+                "-------------------- Remove Subnet Validator TX #{i} ------------------------"
+            );
+            let (_, tx) = RemoveSubnetValidatorTx::from_bytes(data).unwrap();
+
+            for i in 0..tx.num_items() {
+                let mut title = [0; 100];
+                let mut value = [0; 100];
+
+                tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
+                    .unwrap();
+                let t = std::string::String::from_utf8_lossy(&title).into_owned();
+                let t = t.trim_end_matches(|c| (c as u8) == 0);
+                let v = std::string::String::from_utf8_lossy(&value).into_owned();
+                let v = v.trim_end_matches(|c| (c as u8) == 0);
+
+                std::println!("{}:", t);
+                std::println!("     {}", v);
+            }
+        }
     }
 }
