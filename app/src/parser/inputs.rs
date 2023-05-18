@@ -64,6 +64,10 @@ impl<'b> TransferableInput<'b> {
     pub fn locktime(&self) -> Option<u64> {
         self.locktime
     }
+
+    pub fn asset_id(&self) -> &AssetId<'b> {
+        &self.asset_id
+    }
 }
 
 impl<'b> FromBytes<'b> for TransferableInput<'b> {
