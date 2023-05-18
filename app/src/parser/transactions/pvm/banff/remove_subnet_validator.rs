@@ -180,6 +180,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn ui_remove_subnet_validator() {
         for (i, data) in [
             SAMPLE,

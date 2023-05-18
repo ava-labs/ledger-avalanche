@@ -579,6 +579,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn ui_permissionless_validator() {
         for (i, data) in [
             SAMPLE,

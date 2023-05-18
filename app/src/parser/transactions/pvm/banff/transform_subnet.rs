@@ -360,6 +360,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn ui_transform_subnet() {
         for (i, data) in [
             SAMPLE,

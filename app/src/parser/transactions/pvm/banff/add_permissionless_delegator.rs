@@ -457,6 +457,7 @@ mod tests {
     include!("testvectors/add_permissionless_delegator.rs");
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn ui_permissionless_delegator() {
         for (i, data) in [
             SAMPLE,
