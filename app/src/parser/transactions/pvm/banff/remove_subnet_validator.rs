@@ -139,6 +139,11 @@ impl<'b> RemoveSubnetValidatorTx<'b> {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::v1::*;
+
+    use crate::parser::snapshots_common::ReducedPage;
+    use zuit::Page;
+
     use super::*;
 
     include!("testvectors/remove_subnet_validator.rs");
@@ -175,6 +180,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn ui_remove_subnet_validator() {
         for (i, data) in [
             SAMPLE,
@@ -184,25 +190,25 @@ mod tests {
         .iter()
         .enumerate()
         {
-            std::println!(
+            println!(
                 "-------------------- Remove Subnet Validator TX #{i} ------------------------"
             );
             let (_, tx) = RemoveSubnetValidatorTx::from_bytes(data).unwrap();
 
-            for i in 0..tx.num_items() {
-                let mut title = [0; 100];
-                let mut value = [0; 100];
+            let items = tx.num_items();
 
-                tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            for i in 0..items {
+                let mut page = Page::default();
+
+                tx.render_item(i as _, &mut page.title, &mut page.message, 0)
                     .unwrap();
-                let t = std::string::String::from_utf8_lossy(&title).into_owned();
-                let t = t.trim_end_matches(|c| (c as u8) == 0);
-                let v = std::string::String::from_utf8_lossy(&value).into_owned();
-                let v = v.trim_end_matches(|c| (c as u8) == 0);
 
-                std::println!("{}:", t);
-                std::println!("     {}", v);
+                pages.push(page);
             }
+
+            let reduced = pages.iter().map(ReducedPage::from).collect::<Vec<_>>();
+            insta::assert_debug_snapshot!(reduced);
         }
     }
 }
