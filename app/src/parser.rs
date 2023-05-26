@@ -27,6 +27,7 @@ mod initial_state;
 mod inputs;
 mod message;
 mod network_info;
+mod node_id;
 mod object_list;
 mod operations;
 mod outputs;
@@ -37,6 +38,9 @@ mod transactions;
 mod utils;
 mod utxo_id;
 mod validator;
+
+#[cfg(feature = "banff")]
+mod proof_of_possession;
 
 #[cfg(test)]
 mod snapshots_common;
@@ -54,6 +58,7 @@ pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use message::{AvaxMessage, Message};
 pub use network_info::*;
+pub use node_id::*;
 pub use object_list::ObjectList;
 pub use operations::{Operation, TransferableOp};
 pub use outputs::{

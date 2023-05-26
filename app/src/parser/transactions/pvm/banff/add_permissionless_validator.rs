@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2023 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -21,38 +21,41 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
-        DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput,
-        SECPOutputOwners, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
-        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_VALIDATOR,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
+        Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList, OutputIdx,
+        ParserError, PvmOutput, SECPOutputOwners, SubnetId, TransferableOutput, Validator,
+        DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_VALIDATOR,
     },
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
-pub struct AddValidatorTx<'b> {
+pub struct AddPermissionlessValidatorTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     pub validator: Validator<'b>,
+    pub subnet_id: SubnetId<'b>,
+    pub signer: BLSSigner<'b>,
     // a bit-wise idx that tells what stake outputs could be displayed
     // in the ui stage.
     // this is set during the parsing stage
     renderable_out: OutputIdx,
     pub stake: ObjectList<'b, TransferableOutput<'b, PvmOutput<'b>>>,
-    pub rewards_owner: SECPOutputOwners<'b>,
+    pub validator_rewards_owner: SECPOutputOwners<'b>,
+    pub delegator_rewards_owner: SECPOutputOwners<'b>,
     pub shares: u32,
 }
 
-impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
+impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
     #[inline(never)]
     fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("AddValidatorTx::from_bytes_into\x00");
+        crate::sys::zemu_log_stack("AddPermissionlessValidatorTx::from_bytes_into\x00");
 
-        let (rem, _) = tag(PVM_ADD_VALIDATOR.to_be_bytes())(input)?;
+        let (rem, _) = tag(PVM_ADD_PERMISSIONLESS_VALIDATOR.to_be_bytes())(input)?;
 
         let out = out.as_mut_ptr();
 
@@ -67,6 +70,14 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
         let rem = Validator::from_bytes_into(rem, validator)?;
+
+        // SubnetId
+        let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
+        let rem = SubnetId::from_bytes_into(rem, subnet_id)?;
+
+        // BLS signer
+        let signer = unsafe { &mut *addr_of_mut!((*out).signer).cast() };
+        let rem = BLSSigner::from_bytes_into(rem, signer)?;
 
         // stake
         // check for the number of stake-outputs before parsing then as now
@@ -93,9 +104,15 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
             return Err(ParserError::InvalidStakingAmount.into());
         }
 
-        // rewards_owner
-        let rewards_owner = unsafe { &mut *addr_of_mut!((*out).rewards_owner).cast() };
-        let rem = SECPOutputOwners::from_bytes_into(rem, rewards_owner)?;
+        // validator rewards_owner
+        let validator_rewards_owner =
+            unsafe { &mut *addr_of_mut!((*out).validator_rewards_owner).cast() };
+        let rem = SECPOutputOwners::from_bytes_into(rem, validator_rewards_owner)?;
+
+        // delegator rewards_owner
+        let delegator_rewards_owner =
+            unsafe { &mut *addr_of_mut!((*out).delegator_rewards_owner).cast() };
+        let rem = SECPOutputOwners::from_bytes_into(rem, delegator_rewards_owner)?;
 
         // shares
         let (rem, shares) = be_u32(rem)?;
@@ -111,13 +128,16 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AddValidatorTx<'b> {
+impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
     fn num_items(&self) -> usize {
         // tx_info, base_tx items, validator_items(4),
-        // fee, fee_delegation, rewards_to and stake items
+        // fee, fee_delegation, validator_rewards_to, delegator_rewards_to,
+        // and stake items
         1 + self.base_tx.base_outputs_num_items()
             + self.validator.num_items()
-            + self.rewards_owner.num_addresses()
+            + self.signer.num_items()
+            + self.validator_rewards_owner.num_addresses()
+            + self.delegator_rewards_owner.num_addresses()
             + self.num_stake_items()
             + 1
             + 1
@@ -130,6 +150,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
+        let signer_items = self.signer.num_items() as u8;
         let validator_items = self.validator.num_items() as u8;
         let base_outputs_items = self.base_tx.base_outputs_num_items() as u8;
         let stake_outputs_items = self.num_stake_items() as u8;
@@ -144,7 +165,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
         let item_n = item_n - 1;
 
         // when to start rendering staked outputs
-        let render_stake_outputs_at = validator_items + base_outputs_items;
+        let render_stake_outputs_at = validator_items + base_outputs_items + signer_items;
         let render_last_items_at = render_stake_outputs_at + stake_outputs_items;
         let total_items = self.num_items() as u8;
 
@@ -153,9 +174,15 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
             x @ 0.. if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
 
             // render validator items
-            x if x >= base_outputs_items && x < render_stake_outputs_at => {
+            x if x >= base_outputs_items && x < render_stake_outputs_at - signer_items => {
                 let new_idx = x - base_outputs_items;
                 self.validator.render_item(new_idx, title, message, page)
+            }
+
+            //if signer_items is 0 this will be skipped already but let's make the check
+            // explicit
+            x if x >= base_outputs_items && x < render_stake_outputs_at && signer_items != 0 => {
+                self.signer.render_item(0, title, message, page)
             }
 
             // render stake items
@@ -175,7 +202,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
     }
 }
 
-impl<'b> AddValidatorTx<'b> {
+impl<'b> AddPermissionlessValidatorTx<'b> {
     pub fn disable_output_if(&mut self, address: &[u8]) {
         // for this stake transaction, transfer information
         // is not important so even if there is only one
@@ -344,28 +371,38 @@ impl<'b> AddValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let label = pic_str!(b"Rewards to");
-        title[..label.len()].copy_from_slice(label);
-
-        // render owner addresses
-        if let Some(addr) = self.rewards_owner.addresses.get(addr_idx) {
+        let mut render_addr = |addr: Address| {
             let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
 
-            let mut address = MaybeUninit::uninit();
-            Address::from_bytes_into(addr, &mut address).map_err(|_| ViewError::Unknown)?;
-
             let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
-            // valid read as memory was initialized
-            let address = unsafe { address.assume_init() };
 
-            let len = address
+            let len = addr
                 .encode_into(hrp, &mut encoded[..])
                 .map_err(|_| ViewError::Unknown)?;
 
             return handle_ui_message(&encoded[..len], message, page);
-        }
+        };
 
-        Err(ViewError::NoData)
+        //look for validator address first
+        if let Some(addr) = self.validator_rewards_owner.get_address_at(addr_idx) {
+            // FIXME: title truncated
+            let label = pic_str!(b"Valida rewards to");
+            title[..label.len()].copy_from_slice(label);
+            render_addr(addr)
+        }
+        //if no address found then look into the delegeators
+        else if let Some(addr) = self
+            .delegator_rewards_owner
+            // with an offset
+            .get_address_at(addr_idx - self.validator_rewards_owner.num_addresses())
+        {
+            // FIXME: title truncated
+            let label = pic_str!(b"Delega rewards to");
+            title[..label.len()].copy_from_slice(label);
+            render_addr(addr)
+        } else {
+            Err(ViewError::NoData)
+        }
     }
 
     fn render_last_items(
@@ -378,7 +415,8 @@ impl<'b> AddValidatorTx<'b> {
         use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-        let num_addresses = self.rewards_owner.addresses.len() as u8;
+        let num_addresses = (self.validator_rewards_owner.num_addresses()
+            + self.delegator_rewards_owner.num_addresses()) as u8;
 
         match item_n {
             // render rewards
@@ -447,74 +485,129 @@ impl<'b> AddValidatorTx<'b> {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::v1::*;
+
+    use crate::parser::snapshots_common::ReducedPage;
+    use zuit::Page;
+
     use super::*;
 
-    const DATA: &[u8] = &[
-        0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x3D,
-        0x9B, 0xDA, 0xC0, 0xED, 0x1D, 0x76, 0x13, 0x30, 0xCF, 0x68, 0x0E, 0xFD, 0xEB, 0x1A, 0x42,
-        0x15, 0x9E, 0xB3, 0x87, 0xD6, 0xD2, 0x95, 0x0C, 0x96, 0xF7, 0xD2, 0x8F, 0x61, 0xBB, 0xE2,
-        0xAA, // StakeableLockOut
-        0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x60, 0xB5, 0x54, 0xE0,
-        // Nested Output
-        0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0xEC, 0x0C,
-        0xD0, 0xA6, 0x1B, 0xED, 0xCE, 0xE0, 0x0F, 0x5B, 0x39, 0x36, 0x97, 0x43, 0x34, 0xCD, 0x43,
-        0xD2, 0xA5, 0xD3, // Inputs
-        0x00, 0x00, 0x00, 0x01, 0x3D, 0x43, 0x9C, 0xCE, 0x13, 0x78, 0xC6, 0x7A, 0x3E, 0x7A, 0x81,
-        0x20, 0x82, 0x45, 0x06, 0xC5, 0x39, 0x41, 0x2B, 0x24, 0x29, 0x02, 0xED, 0xE4, 0x5E, 0x7D,
-        0x4E, 0xCF, 0x6E, 0x10, 0xA6, 0xB6, 0x00, 0x00, 0x00, 0x00, 0x3D, 0x9B, 0xDA, 0xC0, 0xED,
-        0x1D, 0x76, 0x13, 0x30, 0xCF, 0x68, 0x0E, 0xFD, 0xEB, 0x1A, 0x42, 0x15, 0x9E, 0xB3, 0x87,
-        0xD6, 0xD2, 0x95, 0x0C, 0x96, 0xF7, 0xD2, 0x8F, 0x61, 0xBB, 0xE2, 0xAA,
-        // StakeableLockIn
-        0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00, 0x00, 0x60, 0xB5, 0x54, 0xE0,
-        // Nested input
-        0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x59, 0x68, 0x2F, 0x00, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00,
-        // Node ID
-        0xDE, 0x31, 0xB4, 0xD8, 0xB2, 0x29, 0x91, 0xD5, 0x1A, 0xA6, 0xAA, 0x1F, 0xC7, 0x33, 0xF2,
-        0x3A, 0x85, 0x1A, 0x8C, 0x94, // Start time
-        0x00, 0x00, 0x00, 0x00, 0x60, 0x4F, 0xBE, 0x07, // End time
-        0x00, 0x00, 0x00, 0x00, 0x62, 0x30, 0xEF, 0x2F, // Weight
-        0x00, 0x00, 0x00, 0x00, 0x3B, 0x9A, 0xCA, 0x00, // Stake:
-        0x00, 0x00, 0x00, 0x01, 0x3D, 0x9B, 0xDA, 0xC0, 0xED, 0x1D, 0x76, 0x13, 0x30, 0xCF, 0x68,
-        0x0E, 0xFD, 0xEB, 0x1A, 0x42, 0x15, 0x9E, 0xB3, 0x87, 0xD6, 0xD2, 0x95, 0x0C, 0x96, 0xF7,
-        0xD2, 0x8F, 0x61, 0xBB, 0xE2, 0xAA, // StakeableLockOut
-        0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x60, 0xB5, 0x54, 0xE0,
-        // Nested output
-        0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x3B, 0x9A, 0xCA, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0xEC, 0x0C,
-        0xD0, 0xA6, 0x1B, 0xED, 0xCE, 0xE0, 0x0F, 0x5B, 0x39, 0x36, 0x97, 0x43, 0x34, 0xCD, 0x43,
-        0xD2, 0xA5, 0xD3, // Rewards owner
-        0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x00, 0x00, 0x01, 0xB6, 0x6C, 0x0D, 0x31, 0x28, 0xA6, 0x81, 0x2A, 0x30, 0xC9,
-        0xBF, 0xDC, 0x2D, 0xA0, 0x99, 0x92, 0x4D, 0x0C, 0x08, 0x1F, // Shares
-        0x00, 0x00, 0x4E, 0x20,
-    ];
+    include!("testvectors/add_permissionless_validator.rs");
 
     #[test]
-    fn parse_add_validator_tx() {
-        let (_, tx) = AddValidatorTx::from_bytes(DATA).unwrap();
+    fn parse_add_permissionless_validator_tx() {
+        let (_, tx) = AddPermissionlessValidatorTx::from_bytes(SAMPLE).unwrap();
         assert_eq!(tx.shares, 20_000);
-        assert_eq!(tx.validator.weight, 1000000000);
+        assert_eq!(tx.validator.weight, 2000000000000);
+        assert!(matches!(tx.signer, BLSSigner::Proof(_)));
+
+        let (_, tx) =
+            AddPermissionlessValidatorTx::from_bytes(SIMPLE_ADD_PERMISSIONLESS_VALIDATOR).unwrap();
+        assert_eq!(tx.shares, 1_000_000);
+        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
+        assert!(matches!(tx.signer, BLSSigner::Proof(_)));
+
+        let (_, tx) =
+            AddPermissionlessValidatorTx::from_bytes(COMPLEX_ADD_PERMISSIONLESS_VALIDATOR).unwrap();
+        assert_eq!(tx.shares, 1_000_000);
+        assert_eq!(tx.validator.weight, 5000000000000);
+        assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
+        assert_eq!(
+            tx.stake
+                .iter()
+                .nth(1)
+                .expect("2 stake outs")
+                .output
+                .output
+                .secp_transfer()
+                .expect("secp transfer")
+                .locktime,
+            87654321
+        );
+        assert_eq!(tx.delegator_rewards_owner.threshold, 0);
+        assert_eq!(tx.validator_rewards_owner.threshold, 1);
+        assert!(matches!(tx.signer, BLSSigner::Proof(_)));
+
+        let subnet_id = SubnetId::new(&[
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+            0x17, 0x18, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x31, 0x32, 0x33, 0x34,
+            0x35, 0x36, 0x37, 0x38,
+        ]);
+
+        let asset_id = &[
+            0x99, 0x77, 0x55, 0x77, 0x11, 0x33, 0x55, 0x31, 0x99, 0x77, 0x55, 0x77, 0x11, 0x33,
+            0x55, 0x31, 0x99, 0x77, 0x55, 0x77, 0x11, 0x33, 0x55, 0x31, 0x99, 0x77, 0x55, 0x77,
+            0x11, 0x33, 0x55, 0x31,
+        ];
+
+        let (_, tx) =
+            AddPermissionlessValidatorTx::from_bytes(SIMPLE_ADD_SUBNET_PERMISSIONLESS_VALIDATOR)
+                .unwrap();
+        assert_eq!(tx.shares, 1_000_000);
+        assert_eq!(tx.validator.weight, 1);
+        assert_eq!(tx.subnet_id, subnet_id);
+        assert_eq!(
+            tx.base_tx
+                .inputs()
+                .iter()
+                .nth(1)
+                .expect("2 inputs")
+                .asset_id()
+                .id(),
+            asset_id
+        );
+        assert!(matches!(tx.signer, BLSSigner::EmptyProof));
+
+        let (_, tx) =
+            AddPermissionlessValidatorTx::from_bytes(COMPLEX_ADD_SUBNET_PERMISSIONLESS_VALIDATOR)
+                .unwrap();
+        assert_eq!(tx.shares, 1_000_000);
+        assert_eq!(tx.validator.weight, 9);
+        assert_eq!(tx.subnet_id, subnet_id);
+        assert_eq!(
+            tx.base_tx
+                .inputs()
+                .iter()
+                .nth(2)
+                .expect("3 inputs")
+                .asset_id()
+                .id(),
+            asset_id
+        );
+        assert!(matches!(tx.signer, BLSSigner::EmptyProof));
     }
 
     #[test]
-    fn ui_validator() {
-        let (_, tx) = AddValidatorTx::from_bytes(DATA).unwrap();
-        let mut title = [0; 100];
-        let mut value = [0; 100];
+    #[cfg_attr(miri, ignore)]
+    fn ui_permissionless_validator() {
+        for (i, data) in [
+            SAMPLE,
+            SIMPLE_ADD_PERMISSIONLESS_VALIDATOR,
+            // COMPLEX_ADD_PERMISSIONLESS_VALIDATOR, // sum of inputs overflows u64
+            SIMPLE_ADD_SUBNET_PERMISSIONLESS_VALIDATOR,
+            // COMPLEX_ADD_SUBNET_PERMISSIONLESS_VALIDATOR, // sum of inputs overflows u64
+        ]
+        .iter()
+        .enumerate()
+        {
+            println!("-------------------- Add Permissionless Validator TX #{i} ------------------------");
+            let (_, tx) = AddPermissionlessValidatorTx::from_bytes(data).unwrap();
 
-        for i in 0..tx.num_items() {
-            tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
-                .unwrap();
-            let t = std::string::String::from_utf8_lossy(&title);
-            let v = std::string::String::from_utf8_lossy(&value);
-            std::println!("{}:", t);
-            std::println!("     {}", v);
-            title.iter_mut().for_each(|b| *b = 0);
-            value.iter_mut().for_each(|b| *b = 0);
+            let items = tx.num_items();
+
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            for i in 0..items {
+                let mut page = Page::default();
+
+                tx.render_item(i as _, &mut page.title, &mut page.message, 0)
+                    .unwrap();
+
+                pages.push(page);
+            }
+
+            let reduced = pages.iter().map(ReducedPage::from).collect::<Vec<_>>();
+            insta::assert_debug_snapshot!(reduced);
         }
     }
 }

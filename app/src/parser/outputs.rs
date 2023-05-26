@@ -61,7 +61,7 @@ where
         (*self.output).amount()
     }
 
-    pub fn assert_id(&self) -> &AssetId<'b> {
+    pub fn asset_id(&self) -> &AssetId<'b> {
         &self.asset_id
     }
 
