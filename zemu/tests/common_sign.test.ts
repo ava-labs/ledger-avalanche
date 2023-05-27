@@ -57,7 +57,7 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
       }
       const respReq = app.sign(ROOT_PATH, signers, msg, change_path);
 
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen)
 
       await sim.compareSnapshotsAndApprove('.', testcase)
 
