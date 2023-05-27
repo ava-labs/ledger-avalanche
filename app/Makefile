@@ -209,8 +209,6 @@ LDLIBS   += -lm -lgcc -lc
 LDLIBS   += -L../target/$(RUST_TARGET)/release
 
 ##########################
-GLYPH_SRC_DIR = glyphs
-INCLUDES_PATH += $(MY_DIR)/glyphs
 include $(BOLOS_SDK)/Makefile.glyphs
 
 APP_SOURCE_PATH += $(MY_DIR)/c
