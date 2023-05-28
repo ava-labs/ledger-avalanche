@@ -90,15 +90,15 @@ void crapoline_show_items(nbgl_pageContent_t *content, uint8_t nbPairs) {
   content->tagValueList.nbPairs = nbPairs;
 }
 
+static nbgl_layoutTagValue_t pair;
 static nbgl_layoutTagValue_t *update_static_items(uint8_t index) {
-  static nbgl_layoutTagValue_t pair;
-
   if (!rs_update_static_item(index)) {
     return NULL;
   }
 
-  pair = (nbgl_layoutTagValue_t){.item = BACKEND_LAZY.items[0].title,
-                                 .value = BACKEND_LAZY.items[0].message};
+  pair = (nbgl_layoutTagValue_t){
+      .item = (const char *)BACKEND_LAZY.items[0].title,
+      .value = (const char *)BACKEND_LAZY.items[0].message};
 
   return &pair;
 }
@@ -118,10 +118,9 @@ void crapoline_useCaseRegularReview(uint8_t initPage, uint8_t nbPages) {
                             rs_h_reject);
 }
 
+static nbgl_layoutTagValueList_t pairList;
+static nbgl_pageInfoLongPress_t infoLongPress;
 void crapoline_useCaseStaticReview(uint8_t nbPages) {
-  static nbgl_layoutTagValueList_t pairList;
-  static nbgl_pageInfoLongPress_t infoLongPress;
-
   /* infoLongPress.icon = &C_icon_stax_64; */
   infoLongPress.icon = NULL;
   infoLongPress.text = APPROVE_LABEL_STAX;

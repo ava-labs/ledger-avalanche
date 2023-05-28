@@ -84,8 +84,8 @@ extern struct NanoSPBackend BACKEND_LAZY;
 /* #define MAX_CHARS_HEXMESSAGE        160 */
 
 typedef struct UIItem {
-  char *title[KEY_SIZE];
-  char *message[MESSAGE_SIZE];
+  uint8_t title[KEY_SIZE];
+  uint8_t message[MESSAGE_SIZE];
 } UIItem;
 
 typedef struct StaxBackend {
