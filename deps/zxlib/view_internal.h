@@ -93,8 +93,6 @@ typedef struct StaxBackend {
   uintptr_t items_len;
 
   uintptr_t viewable_size;
-
-  void *nbgl_page_content;
 } StaxBackend;
 
 extern struct StaxBackend BACKEND_LAZY;
