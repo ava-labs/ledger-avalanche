@@ -92,4 +92,16 @@ void crapoline_useCaseStaticReview(uint8_t nbPages) {
   nbgl_useCaseStaticReview(&pairList, &infoLongPress, REJECT_LABEL_STAX,
                            rs_action_callback);
 }
+
+void crapoline_useCaseAddressConfirmationExt(uint8_t nbPages) {
+  nbgl_layoutTagValueList_t *extraPagesPtr = NULL;
+  if (nbPages > 1) {
+    // TODO: initialize extra pages
+    extraPagesPtr = &pairList;
+  }
+
+  nbgl_useCaseAddressConfirmationExt(
+      (const char *)BACKEND_LAZY.items[0].message, rs_action_callback,
+      extraPagesPtr);
+}
 #endif
