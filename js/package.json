@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@ledgerhq/hw-app-eth": "6.32.1",
-    "@ledgerhq/hw-transport": "6.28.1",
+    "@ledgerhq/hw-transport": "6.28.4",
     "bs58": "5.0.0",
     "sha3": "2.1.4"
   },
