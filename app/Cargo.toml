@@ -14,7 +14,7 @@ crate-type = ["staticlib"]
 default = ["full"]
 lite = ["erc20", "erc721", "add-validator", "add-delegator"]
 full = ["lite", "create-asset", "create-chain", "create-subnet",
-        "add-subnet-validator"]
+        "add-subnet-validator", "banff"]
 
 #features
 create-asset = []
@@ -25,6 +25,7 @@ add-delegator = []
 add-validator = []
 erc20 = []
 erc721 = []
+banff = []
 
 #debugging features
 dev = []
@@ -55,13 +56,13 @@ bolos-common = { workspace = true, features = ["bip32-display"] }
 no-std-compat = { version = "0.4", features = ["std"] }
 
 zbs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }
-serial_test = "0.5"
+serial_test = "2.0.0"
 hex = "0.4.3"
 arrayvec = { version = "0.7"}
 time = { version = "0.3.15", features = ["formatting"]}
-k256 = { version = "0.9.6", features = ["ecdsa", "keccak256"] }
+k256 = { version = "0.13.0", features = ["ecdsa"] }
 rand = "0.8.5"
 insta = { version = "1", features = ["glob"] }
 serde_json = "1.0.85"
 itertools = "0.10.4"
-proptest = "1.0.*"
+proptest = "1.1.0"

@@ -41,8 +41,8 @@ impl<'b> Header<'b> {
     }
 
     pub fn hrp(&self) -> Result<&'static str, ParserError> {
-        let info = self.network_info()?;
-        Ok(info.network_id.hrp())
+        let info = self.network_id()?;
+        Ok(info.hrp())
     }
 }
 

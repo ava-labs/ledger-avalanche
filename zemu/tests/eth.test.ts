@@ -123,7 +123,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'))
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
@@ -249,7 +249,7 @@ describe.each(models)('Ethereum [%s] - misc', function (m) {
 
 
       const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq

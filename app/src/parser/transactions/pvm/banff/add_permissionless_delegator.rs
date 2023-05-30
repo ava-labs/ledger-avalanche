@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2023 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -15,44 +15,45 @@
 ********************************************************************************/
 use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::tag, number::complete::be_u32};
+use nom::bytes::complete::tag;
+use nom::number::complete::be_u32;
 use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
-        DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput,
-        SECPOutputOwners, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
-        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_VALIDATOR,
+        nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
+        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, SubnetId, TransferableOutput,
+        Validator, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_DELEGATOR,
     },
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
-pub struct AddValidatorTx<'b> {
+pub struct AddPermissionlessDelegatorTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     pub validator: Validator<'b>,
+    pub subnet_id: SubnetId<'b>,
+
+    pub stake: ObjectList<'b, TransferableOutput<'b, PvmOutput<'b>>>,
     // a bit-wise idx that tells what stake outputs could be displayed
     // in the ui stage.
     // this is set during the parsing stage
     renderable_out: OutputIdx,
-    pub stake: ObjectList<'b, TransferableOutput<'b, PvmOutput<'b>>>,
     pub rewards_owner: SECPOutputOwners<'b>,
-    pub shares: u32,
 }
 
-impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
+impl<'b> FromBytes<'b> for AddPermissionlessDelegatorTx<'b> {
     #[inline(never)]
     fn from_bytes_into(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("AddValidatorTx::from_bytes_into\x00");
+        crate::sys::zemu_log_stack("AddPermissionlessDelegatorTx::from_bytes_into\x00");
 
-        let (rem, _) = tag(PVM_ADD_VALIDATOR.to_be_bytes())(input)?;
+        let (rem, _) = tag(PVM_ADD_PERMISSIONLESS_DELEGATOR.to_be_bytes())(input)?;
 
         let out = out.as_mut_ptr();
 
@@ -68,6 +69,10 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
         let rem = Validator::from_bytes_into(rem, validator)?;
 
+        // SubnetId
+        let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
+        let rem = SubnetId::from_bytes_into(rem, subnet_id)?;
+
         // stake
         // check for the number of stake-outputs before parsing then as now
         // it has to be checked for the outputIdx capacity which is used
@@ -76,7 +81,6 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         if num_outputs > OutputIdx::BITS {
             return Err(ParserError::TooManyOutputs.into());
         }
-
         let stake = unsafe { &mut *addr_of_mut!((*out).stake).cast() };
         let rem = ObjectList::<TransferableOutput<PvmOutput>>::new_into(rem, stake)?;
 
@@ -96,13 +100,7 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         // rewards_owner
         let rewards_owner = unsafe { &mut *addr_of_mut!((*out).rewards_owner).cast() };
         let rem = SECPOutputOwners::from_bytes_into(rem, rewards_owner)?;
-
-        // shares
-        let (rem, shares) = be_u32(rem)?;
-
-        //good ptr and no uninit reads
         unsafe {
-            addr_of_mut!((*out).shares).write(shares);
             // by default all outputs are renderable
             addr_of_mut!((*out).renderable_out).write(OutputIdx::MAX);
         }
@@ -111,15 +109,16 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AddValidatorTx<'b> {
+impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
     fn num_items(&self) -> usize {
         // tx_info, base_tx items, validator_items(4),
-        // fee, fee_delegation, rewards_to and stake items
+        // subnet id, rewards_to,
+        // stake items and fee
         1 + self.base_tx.base_outputs_num_items()
             + self.validator.num_items()
-            + self.rewards_owner.num_addresses()
-            + self.num_stake_items()
             + 1
+            + self.rewards_owner.addresses.len()
+            + self.num_stake_items()
             + 1
     }
 
@@ -135,7 +134,8 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
         let stake_outputs_items = self.num_stake_items() as u8;
 
         if item_n == 0 {
-            let label = pic_str!(b"AddValidator");
+            // FIXME: truncated due to NanoS 17 character limit
+            let label = pic_str!(b"AddPermlessDelega");
             title[..label.len()].copy_from_slice(label);
             let content = pic_str!(b"Transaction");
             return handle_ui_message(content, message, page);
@@ -144,8 +144,8 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
         let item_n = item_n - 1;
 
         // when to start rendering staked outputs
-        let render_stake_outputs_at = validator_items + base_outputs_items;
-        let render_last_items_at = render_stake_outputs_at + stake_outputs_items;
+        let render_stake_outputs_at = validator_items + base_outputs_items + 1;
+        let render_last_items_at = base_outputs_items + validator_items + stake_outputs_items;
         let total_items = self.num_items() as u8;
 
         match item_n {
@@ -153,13 +153,20 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
             x @ 0.. if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
 
             // render validator items
-            x if x >= base_outputs_items && x < render_stake_outputs_at => {
+            x if x >= base_outputs_items && x < render_stake_outputs_at - 1 => {
                 let new_idx = x - base_outputs_items;
                 self.validator.render_item(new_idx, title, message, page)
             }
 
+            // render subnet id
+            x if x >= base_outputs_items && x < render_stake_outputs_at => {
+                self.subnet_id.render_item(0, title, message, page)
+            }
+
             // render stake items
-            x if x >= render_stake_outputs_at && x < render_last_items_at => {
+            x if x >= render_stake_outputs_at
+                && x < (render_stake_outputs_at + stake_outputs_items) =>
+            {
                 let new_idx = x - render_stake_outputs_at;
                 self.render_stake_outputs(new_idx, title, message, page)
             }
@@ -167,7 +174,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
             // render rewards to, delegate fee and fee
             x if x >= render_last_items_at && x < total_items - 1 => {
                 // normalize index to zero
-                let new_idx = x - render_last_items_at;
+                let new_idx = x - (base_outputs_items + stake_outputs_items + validator_items + 1);
                 self.render_last_items(new_idx, title, message, page)
             }
             _ => Err(ViewError::NoData),
@@ -175,7 +182,7 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
     }
 }
 
-impl<'b> AddValidatorTx<'b> {
+impl<'b> AddPermissionlessDelegatorTx<'b> {
     pub fn disable_output_if(&mut self, address: &[u8]) {
         // for this stake transaction, transfer information
         // is not important so even if there is only one
@@ -185,7 +192,6 @@ impl<'b> AddValidatorTx<'b> {
 
         let mut idx = 0;
         let mut render = self.renderable_out;
-
         self.stake.iterate_with(|o| {
             // The 99.99% of the outputs contain only one address(best case),
             // In the worse case we just show every output.
@@ -255,7 +261,7 @@ impl<'b> AddValidatorTx<'b> {
             .stake_output_with_item(item_n)
             .map_err(|_| ViewError::NoData)?;
 
-        // for base_outputs the header is Transfer
+        // for staking the header is Stake
         let header = pic_str!(b"Stake");
 
         self.render_output_with_header(&obj, item_idx, title, message, page, header)
@@ -264,7 +270,7 @@ impl<'b> AddValidatorTx<'b> {
     // helper function to render any TransferableOutput<PvmOutput>,
     // either locked or normal(comming as part of base_tx_fields)
     // the rendering is the same, the only difference is that
-    // locked outputs uses a Stake label as the first item
+    // locked outputs are labeled with Stake
     fn render_output_with_header(
         &'b self,
         &obj: &TransferableOutput<'b, PvmOutput<'b>>,
@@ -385,17 +391,7 @@ impl<'b> AddValidatorTx<'b> {
             x @ 0.. if x < num_addresses => {
                 self.render_rewards_to(x as usize, title, message, page)
             }
-            x if x >= num_addresses && x < (num_addresses + 1) => {
-                let label = pic_str!(b"Delegate fee(%)");
-                title[..label.len()].copy_from_slice(label);
-                u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-
-                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
-                    .map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(buffer, message, page)
-            }
-            x if x == (num_addresses + 1) => {
+            x if x == num_addresses => {
                 let label = pic_str!(b"Fee(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
@@ -416,6 +412,10 @@ impl<'b> AddValidatorTx<'b> {
     ) -> Result<(TransferableOutput<PvmOutput>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
+        // index to check for renderable outputs.
+        // we can omit this and be "fancy" with iterators but
+        // they consume a lot of stack.
+        // causing stack overflows in nanos
         let mut idx = 0;
         // gets the output that contains item_n
         // and its corresponding index
@@ -447,74 +447,133 @@ impl<'b> AddValidatorTx<'b> {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::v1::*;
+
+    use crate::parser::snapshots_common::ReducedPage;
+    use zuit::Page;
+
     use super::*;
 
-    const DATA: &[u8] = &[
-        0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x3D,
-        0x9B, 0xDA, 0xC0, 0xED, 0x1D, 0x76, 0x13, 0x30, 0xCF, 0x68, 0x0E, 0xFD, 0xEB, 0x1A, 0x42,
-        0x15, 0x9E, 0xB3, 0x87, 0xD6, 0xD2, 0x95, 0x0C, 0x96, 0xF7, 0xD2, 0x8F, 0x61, 0xBB, 0xE2,
-        0xAA, // StakeableLockOut
-        0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x60, 0xB5, 0x54, 0xE0,
-        // Nested Output
-        0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0xEC, 0x0C,
-        0xD0, 0xA6, 0x1B, 0xED, 0xCE, 0xE0, 0x0F, 0x5B, 0x39, 0x36, 0x97, 0x43, 0x34, 0xCD, 0x43,
-        0xD2, 0xA5, 0xD3, // Inputs
-        0x00, 0x00, 0x00, 0x01, 0x3D, 0x43, 0x9C, 0xCE, 0x13, 0x78, 0xC6, 0x7A, 0x3E, 0x7A, 0x81,
-        0x20, 0x82, 0x45, 0x06, 0xC5, 0x39, 0x41, 0x2B, 0x24, 0x29, 0x02, 0xED, 0xE4, 0x5E, 0x7D,
-        0x4E, 0xCF, 0x6E, 0x10, 0xA6, 0xB6, 0x00, 0x00, 0x00, 0x00, 0x3D, 0x9B, 0xDA, 0xC0, 0xED,
-        0x1D, 0x76, 0x13, 0x30, 0xCF, 0x68, 0x0E, 0xFD, 0xEB, 0x1A, 0x42, 0x15, 0x9E, 0xB3, 0x87,
-        0xD6, 0xD2, 0x95, 0x0C, 0x96, 0xF7, 0xD2, 0x8F, 0x61, 0xBB, 0xE2, 0xAA,
-        // StakeableLockIn
-        0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00, 0x00, 0x60, 0xB5, 0x54, 0xE0,
-        // Nested input
-        0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x59, 0x68, 0x2F, 0x00, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00,
-        // Node ID
-        0xDE, 0x31, 0xB4, 0xD8, 0xB2, 0x29, 0x91, 0xD5, 0x1A, 0xA6, 0xAA, 0x1F, 0xC7, 0x33, 0xF2,
-        0x3A, 0x85, 0x1A, 0x8C, 0x94, // Start time
-        0x00, 0x00, 0x00, 0x00, 0x60, 0x4F, 0xBE, 0x07, // End time
-        0x00, 0x00, 0x00, 0x00, 0x62, 0x30, 0xEF, 0x2F, // Weight
-        0x00, 0x00, 0x00, 0x00, 0x3B, 0x9A, 0xCA, 0x00, // Stake:
-        0x00, 0x00, 0x00, 0x01, 0x3D, 0x9B, 0xDA, 0xC0, 0xED, 0x1D, 0x76, 0x13, 0x30, 0xCF, 0x68,
-        0x0E, 0xFD, 0xEB, 0x1A, 0x42, 0x15, 0x9E, 0xB3, 0x87, 0xD6, 0xD2, 0x95, 0x0C, 0x96, 0xF7,
-        0xD2, 0x8F, 0x61, 0xBB, 0xE2, 0xAA, // StakeableLockOut
-        0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x60, 0xB5, 0x54, 0xE0,
-        // Nested output
-        0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x3B, 0x9A, 0xCA, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0xEC, 0x0C,
-        0xD0, 0xA6, 0x1B, 0xED, 0xCE, 0xE0, 0x0F, 0x5B, 0x39, 0x36, 0x97, 0x43, 0x34, 0xCD, 0x43,
-        0xD2, 0xA5, 0xD3, // Rewards owner
-        0x00, 0x00, 0x00, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x00, 0x00, 0x01, 0xB6, 0x6C, 0x0D, 0x31, 0x28, 0xA6, 0x81, 0x2A, 0x30, 0xC9,
-        0xBF, 0xDC, 0x2D, 0xA0, 0x99, 0x92, 0x4D, 0x0C, 0x08, 0x1F, // Shares
-        0x00, 0x00, 0x4E, 0x20,
-    ];
+    include!("testvectors/add_permissionless_delegator.rs");
 
     #[test]
-    fn parse_add_validator_tx() {
-        let (_, tx) = AddValidatorTx::from_bytes(DATA).unwrap();
-        assert_eq!(tx.shares, 20_000);
-        assert_eq!(tx.validator.weight, 1000000000);
+    #[cfg_attr(miri, ignore)]
+    fn ui_permissionless_delegator() {
+        for (i, data) in [
+            SAMPLE,
+            SIMPLE_ADD_PERMISSIONLESS_DELEGATOR,
+            // COMPLEX_ADD_PERMISSIONLESS_DELEGATOR, // sum of inputs overflows u64
+            SIMPLE_ADD_SUBNET_PERMISSIONLESS_DELEGATOR,
+            // COMPLEX_ADD_SUBNET_PERMISSIONLESS_DELEGATOR, // sum of inputs overflows u64
+        ]
+        .iter()
+        .enumerate()
+        {
+            println!("-------------------- Add Permissionless Delegator TX #{i} ------------------------");
+            let (_, tx) = AddPermissionlessDelegatorTx::from_bytes(data).unwrap();
+
+            let items = tx.num_items();
+
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            for i in 0..items {
+                let mut page = Page::default();
+
+                tx.render_item(i as _, &mut page.title, &mut page.message, 0)
+                    .unwrap();
+
+                pages.push(page);
+            }
+
+            let reduced = pages.iter().map(ReducedPage::from).collect::<Vec<_>>();
+            insta::assert_debug_snapshot!(reduced);
+        }
     }
 
     #[test]
-    fn ui_validator() {
-        let (_, tx) = AddValidatorTx::from_bytes(DATA).unwrap();
-        let mut title = [0; 100];
-        let mut value = [0; 100];
+    fn parse_add_permissionless_delegator() {
+        let (_, tx) = AddPermissionlessDelegatorTx::from_bytes(SAMPLE).unwrap();
+        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(
+            tx.subnet_id,
+            SubnetId::new(&[
+                243, 8, 109, 123, 252, 53, 190, 28, 104, 219, 102, 75, 169, 206, 97, 162, 6, 1, 38,
+                176, 214, 180, 191, 176, 159, 215, 165, 251, 118, 120, 202, 218
+            ])
+        );
 
-        for i in 0..tx.num_items() {
-            tx.render_item(i as _, title.as_mut(), value.as_mut(), 0)
+        let (_, tx) =
+            AddPermissionlessDelegatorTx::from_bytes(SIMPLE_ADD_PERMISSIONLESS_DELEGATOR).unwrap();
+        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
+        assert_eq!(tx.rewards_owner.locktime, 0);
+
+        let (_, tx) =
+            AddPermissionlessDelegatorTx::from_bytes(COMPLEX_ADD_PERMISSIONLESS_DELEGATOR).unwrap();
+        assert_eq!(tx.validator.weight, 5000000000000);
+        assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
+        assert_eq!(
+            tx.stake
+                .iter()
+                .nth(1)
+                .expect("2 stake outs")
+                .output
+                .output
+                .secp_transfer()
+                .expect("SECP transfer")
+                .locktime,
+            87654321
+        );
+
+        let subnet_id = SubnetId::new(&[
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+            0x17, 0x18, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x31, 0x32, 0x33, 0x34,
+            0x35, 0x36, 0x37, 0x38,
+        ]);
+
+        let asset_id = &[
+            0x99, 0x77, 0x55, 0x77, 0x11, 0x33, 0x55, 0x31, 0x99, 0x77, 0x55, 0x77, 0x11, 0x33,
+            0x55, 0x31, 0x99, 0x77, 0x55, 0x77, 0x11, 0x33, 0x55, 0x31, 0x99, 0x77, 0x55, 0x77,
+            0x11, 0x33, 0x55, 0x31,
+        ];
+
+        let (_, tx) =
+            AddPermissionlessDelegatorTx::from_bytes(SIMPLE_ADD_SUBNET_PERMISSIONLESS_DELEGATOR)
                 .unwrap();
-            let t = std::string::String::from_utf8_lossy(&title);
-            let v = std::string::String::from_utf8_lossy(&value);
-            std::println!("{}:", t);
-            std::println!("     {}", v);
-            title.iter_mut().for_each(|b| *b = 0);
-            value.iter_mut().for_each(|b| *b = 0);
-        }
+        assert_eq!(tx.validator.weight, 1);
+        assert_eq!(tx.subnet_id, subnet_id);
+        assert_eq!(
+            tx.stake.iter().next().expect("1 stake out").asset_id().id(),
+            asset_id
+        );
+        assert_eq!(tx.rewards_owner.locktime, 0);
+
+        let (_, tx) =
+            AddPermissionlessDelegatorTx::from_bytes(COMPLEX_ADD_SUBNET_PERMISSIONLESS_DELEGATOR)
+                .unwrap();
+        assert_eq!(tx.validator.weight, 9);
+        assert_eq!(tx.subnet_id, subnet_id);
+        assert_eq!(
+            tx.base_tx
+                .outputs()
+                .iter()
+                .nth(2)
+                .expect("3 outputs")
+                .output
+                .output
+                .secp_transfer()
+                .expect("secp transfer")
+                .amount,
+            0xfffffffffffffff0
+        );
+        assert_eq!(
+            tx.stake
+                .iter()
+                .nth(1)
+                .expect("2 stake outs")
+                .asset_id()
+                .id(),
+            asset_id
+        );
+        assert_eq!(tx.rewards_owner.locktime, 0);
     }
 }

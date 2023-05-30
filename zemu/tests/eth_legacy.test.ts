@@ -175,7 +175,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       }
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq

@@ -65,11 +65,6 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
 
         let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
         // Check for invariants
-        // owner list of address must contain at least one address
-        if addr_len == 0 {
-            return Err(ParserError::InvalidAddressLength.into());
-        }
-
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
 
