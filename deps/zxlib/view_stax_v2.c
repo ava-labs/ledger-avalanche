@@ -168,10 +168,7 @@ void crapoline_error() {
 }
 
 void crapoline_message() {
-  nbgl_useCaseChoice(NULL /* &C_round_warning_64px */,
-                     (const char *)BACKEND_LAZY.items[0].title,
-                     (const char *)BACKEND_LAZY.items[0].message, "Accept",
-                     "Reject", rs_action_callback)
+  nbgl_useCaseSpinner((const char *)BACKEND_LAZY.items[0].message);
 }
 
 /********* NBGL Specific *************/
