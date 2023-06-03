@@ -48,6 +48,8 @@ bolos_ux_params_t G_ux_params;
 void rs_h_reject(unsigned int);
 bool rs_update_static_item(uint8_t, uint8_t);
 void rs_action_callback(bool);
+void rs_confirm_txn(bool);
+void rs_confirm_address(bool);
 bool rs_h_expert();
 bool rs_h_toggle_expert();
 
@@ -172,13 +174,14 @@ void crapoline_message() {
 }
 
 /********* NBGL Specific *************/
-void crapoline_useCaseReviewStart(char *, char *, nbgl_callback_t,
+void crapoline_useCaseReviewStart(const char *, const char *, nbgl_callback_t,
                                   nbgl_callback_t);
 void crapoline_useCaseStaticReview(uint8_t);
 void crapoline_useCaseAddressConfirmationExt(uint8_t);
+void crapoline_useCaseStatus(const char *, bool, nbgl_callback_t);
 
 /*** IMPLS ****/
-void crapoline_useCaseReviewStart(char *title, char *subtitle,
+void crapoline_useCaseReviewStart(const char *title, const char *subtitle,
                                   nbgl_callback_t continuation,
                                   nbgl_callback_t reject) {
   nbgl_useCaseReviewStart(NULL /* &C_icon_stax_64 */, title, subtitle,
@@ -200,7 +203,7 @@ void crapoline_useCaseStaticReview(uint8_t nbPages) {
   pairList.startIndex = 0;
 
   nbgl_useCaseStaticReview(&pairList, &infoLongPress, REJECT_LABEL_STAX,
-                           rs_action_callback);
+                           rs_confirm_txn);
 }
 
 void crapoline_useCaseAddressConfirmationExt(uint8_t nbPages) {
@@ -220,7 +223,12 @@ void crapoline_useCaseAddressConfirmationExt(uint8_t nbPages) {
   }
 
   nbgl_useCaseAddressConfirmationExt(
-      (const char *)BACKEND_LAZY.items[0].message, rs_action_callback,
+      (const char *)BACKEND_LAZY.items[0].message, rs_confirm_address,
       extraPagesPtr);
+}
+
+void crapoline_useCaseStatus(const char *message, bool isSuccess,
+                             nbgl_callback_t continuation) {
+  nbgl_useCaseStatus(message, isSuccess, continuation);
 }
 #endif
