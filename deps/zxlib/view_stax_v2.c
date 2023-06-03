@@ -151,11 +151,27 @@ static nbgl_layoutTagValue_t *update_static_items(uint8_t index) {
 //////////////////////////
 //////////////////////////
 /****** CRAPOLINES ******** */
+void crapoline_error();
+void crapoline_message();
 
 void crapoline_home() {
   nbgl_useCaseHome(MENU_MAIN_APP_LINE1, NULL,
                    (const char *)BACKEND_LAZY.items[0].title, true,
                    settings_screen, app_quit);
+}
+
+void crapoline_error() {
+  nbgl_useCaseChoice(NULL /* &C_round_warning_64px */,
+                     (const char *)BACKEND_LAZY.items[0].title,
+                     (const char *)BACKEND_LAZY.items[0].message, "Ok", NULL,
+                     rs_action_callback);
+}
+
+void crapoline_message() {
+  nbgl_useCaseChoice(NULL /* &C_round_warning_64px */,
+                     (const char *)BACKEND_LAZY.items[0].title,
+                     (const char *)BACKEND_LAZY.items[0].message, "Accept",
+                     "Reject", rs_action_callback)
 }
 
 /********* NBGL Specific *************/
