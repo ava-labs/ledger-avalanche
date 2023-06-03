@@ -1,0 +1,16 @@
+---
+source: app/src/parser/transactions/pvm/banff/add_permissionless_delegator.rs
+expression: reduced
+---
+[
+    "AddPermlessDelega": "Transaction",
+    "Validator": "NodeID-9ig1HmgE4hECbPAugbAbb283e9PdGeji5",
+    "Start time": "2022-12-12 17:15:03 UTC",
+    "End time": "2023-01-11 17:15:03 UTC",
+    "Total stake(AVAX)": "2000",
+    "SubnetID": "2r2x62v3WxP6xs7rZhoakaTK3hxpf1L6q8bqs6FZ83dTcKFwRA",
+    "Stake": "2000 AVAX to ",
+    "Address": "local1x0h0l3j8sh8emq88wvwe7v0k00grch8sh4entf",
+    "Rewards to": "local1wte7hxh2lq5rqywwdephlhkdvh4var6jtuu57r",
+    "Fee(AVAX)": "0",
+]

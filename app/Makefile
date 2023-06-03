@@ -224,8 +224,6 @@ LDLIBS   += -lm -lgcc -lc
 LDLIBS   += -L../target/$(RUST_TARGET)/release
 
 ##########################
-GLYPH_SRC_DIR = glyphs
-INCLUDES_PATH += $(MY_DIR)/glyphs
 include $(BOLOS_SDK)/Makefile.glyphs
 
 APP_SOURCE_PATH += $(MY_DIR)/c
@@ -242,7 +240,7 @@ endif
 
 .PHONY: rust
 rust:
-	CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
 	cargo build --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
 

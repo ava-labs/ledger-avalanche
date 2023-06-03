@@ -1,12 +1,3 @@
-[submodule "deps/nanos-secure-sdk"]
-	path = deps/nanos-secure-sdk
-	url = https://github.com/LedgerHQ/nanos-secure-sdk
-[submodule "deps/nanox-secure-sdk"]
-	path = deps/nanox-secure-sdk
-	url = https://github.com/LedgerHQ/nanox-secure-sdk
-[submodule "deps/nanosplus-secure-sdk"]
-	path = deps/nanosplus-secure-sdk
-	url = https://github.com/LedgerHQ/nanosplus-secure-sdk
-[submodule "deps/ledger-secure-sdk"]
-	path = deps/ledger-secure-sdk
-	url = https://github.com/LedgerHQ/ledger-secure-sdk
+[submodule "deps/ledger-rust"]
+	path = deps/ledger-rust
+	url = https://github.com/Zondax/ledger-rust

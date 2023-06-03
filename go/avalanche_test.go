@@ -81,32 +81,32 @@ func Test_UserGetPublicKey(t *testing.T) {
 		t.Fatalf("Detected error, err: %s\n", err.Error())
 	}
 
-	assert.Equal(t, 33, len(addr.publicKey),
-		"Public key has wrong length: %x, expected length: %x\n", addr.publicKey, 66)
-	fmt.Printf("PUBLIC KEY: %x\n", addr.publicKey)
+	assert.Equal(t, 33, len(addr.PublicKey),
+		"Public key has wrong length: %x, expected length: %x\n", addr.PublicKey, 66)
+	fmt.Printf("PUBLIC KEY: %x\n", addr.PublicKey)
 
-	assert.Equal(t, 20, len(addr.hash),
-		"Public key hash has wrong length: %x, expected length: %x\n", addr.hash, 40)
-	fmt.Printf("HASH: %x\n", addr.hash)
+	assert.Equal(t, 20, len(addr.Hash),
+		"Public key hash has wrong length: %x, expected length: %x\n", addr.Hash, 40)
+	fmt.Printf("HASH: %x\n", addr.Hash)
 
 	assert.Equal(t, len("P-avax1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e"),
-		len(addr.address),
-		"Address has wrong length: %x, expected length: %x\n", addr.address, 43)
-	fmt.Printf("ADDRESS: %x\n", addr.address)
+		len(addr.Address),
+		"Address has wrong length: %x, expected length: %x\n", addr.Address, 43)
+	fmt.Printf("ADDRESS: %x\n", addr.Address)
 
 	assert.Equal(t,
 		"02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4",
-		hex.EncodeToString(addr.publicKey),
+		hex.EncodeToString(addr.PublicKey),
 		"Unexpected publicKey")
 
 	assert.Equal(t,
 		"5fc15d9650ae2c0608bcda45e5c8d3ec48486fc5",
-		hex.EncodeToString(addr.hash),
+		hex.EncodeToString(addr.Hash),
 		"Unexpected hash")
 
 	assert.Equal(t,
 		"P-avax1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e",
-		addr.address,
+		addr.Address,
 		"Unexpected address")
 }
 
@@ -130,23 +130,23 @@ func Test_UserGetPublicKeyETH(t *testing.T) {
 		t.Fatalf("Detected error, err: %s\n", err.Error())
 	}
 
-	assert.Equal(t, 33, len(addr.publicKey),
-		"Public key has wrong length: %x, expected length: %x\n", addr.publicKey, 33)
-	fmt.Printf("PUBLIC KEY: %x\n", addr.publicKey)
+	assert.Equal(t, 33, len(addr.PublicKey),
+		"Public key has wrong length: %x, expected length: %x\n", addr.PublicKey, 33)
+	fmt.Printf("PUBLIC KEY: %x\n", addr.PublicKey)
 
-	assert.Equal(t, 20, len(addr.hash),
-		"Public key has wrong length: %x, expected length: %x\n", addr.hash, 20)
-	fmt.Printf("HASH: %x\n", addr.hash)
+	assert.Equal(t, 20, len(addr.Hash),
+		"Public key has wrong length: %x, expected length: %x\n", addr.Hash, 20)
+	fmt.Printf("HASH: %x\n", addr.Hash)
 
 	//FIXME: use proper test values
 	assert.Equal(t,
 		"03cb5a33c61595206294140c45efa8a817533e31aa05ea18343033a0732a677005",
-		hex.EncodeToString(addr.publicKey),
+		hex.EncodeToString(addr.PublicKey),
 		"Unexpected publicKey")
 
 	assert.Equal(t,
 		"62bcd95fccdfa668eb12be771a557d3595950799",
-		hex.EncodeToString(addr.hash),
+		hex.EncodeToString(addr.Hash),
 		"Unexpected hash")
 }
 
@@ -184,8 +184,8 @@ func Test_UserPK_HDPaths(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Detected error, err: %s\n", err.Error())
 		}
-		publicKey := addr.publicKey
-		hash := addr.hash
+		publicKey := addr.PublicKey
+		hash := addr.Hash
 
 		assert.Equal(
 			t,

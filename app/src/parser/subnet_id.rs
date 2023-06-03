@@ -27,6 +27,15 @@ pub const SUBNET_ID_LEN: usize = 32;
 #[cfg_attr(test, derive(Debug))]
 pub struct SubnetId<'b>(&'b [u8; SUBNET_ID_LEN]);
 
+impl<'b> SubnetId<'b> {
+    pub const PRIMARY_NETWORK: SubnetId<'static> = SubnetId(&[0; SUBNET_ID_LEN]);
+    pub const PLATFORM_CHAIN: SubnetId<'static> = SubnetId(&[0; SUBNET_ID_LEN]);
+
+    pub fn new(id: &'b [u8; SUBNET_ID_LEN]) -> Self {
+        Self(id)
+    }
+}
+
 impl<'b> FromBytes<'b> for SubnetId<'b> {
     #[inline(never)]
     fn from_bytes_into(

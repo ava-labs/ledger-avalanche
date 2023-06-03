@@ -104,7 +104,7 @@ const SIGN_TEST_DATA = [
 ]
 
 describe.each(models)('EthereumTx [%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
+  test.concurrent.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
@@ -113,7 +113,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
 
-      const currentScreen = sim.snapshot()
+      const currentScreen = await sim.snapshot()
 
       const nft = data.nft_info
       if (nft !== undefined) {
@@ -123,7 +123,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'))
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
@@ -216,77 +216,77 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
 })
 
 describe.each(models)('Ethereum [%s] - misc', function (m) {
-    test('get app configuration', async function () {
-        const sim = new Zemu(m.path)
-        try {
-            await sim.start({ ...defaultOptions, model: m.name })
-            const app = new Eth(sim.getTransport())
+  test('get app configuration', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new Eth(sim.getTransport())
 
-            const resp = await app.getAppConfiguration()
+      const resp = await app.getAppConfiguration()
 
-            console.log(resp, m.name)
+      console.log(resp, m.name)
 
-            expect(resp.arbitraryDataEnabled).toBeFalsy()
-            expect(resp.erc20ProvisioningNecessary).toBeTruthy()
-            expect(resp.starkEnabled).toBeFalsy()
-            expect(resp.starkv2Supported).toBeFalsy()
-        } finally {
-            await sim.close()
-        }
-    })
+      expect(resp.arbitraryDataEnabled).toBeFalsy()
+      expect(resp.erc20ProvisioningNecessary).toBeTruthy()
+      expect(resp.starkEnabled).toBeFalsy()
+      expect(resp.starkv2Supported).toBeFalsy()
+    } finally {
+      await sim.close()
+    }
+  })
 
-    test('Ethereum Sign PersonalMessage%s', async function () {
-        const sim = new Zemu(m.path)
-        try {
-            await sim.start({ ...defaultOptions, model: m.name })
-            const app = new Eth(sim.getTransport())
+  test('Ethereum Sign PersonalMessage%s', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start({ ...defaultOptions, model: m.name })
+      const app = new Eth(sim.getTransport())
 
-            let msgData = Buffer.from('Hello World', 'utf8')
+      let msgData = Buffer.from('Hello World', 'utf8')
 
-            const testcase = `${m.prefix.toLowerCase()}-eth-sign-message`
+      const testcase = `${m.prefix.toLowerCase()}-eth-sign-message`
 
-            const currentScreen = sim.snapshot()
+      const currentScreen = await sim.snapshot()
 
 
-            const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
-            await sim.waitUntilScreenIsNot(currentScreen, 20000)
-            await sim.compareSnapshotsAndApprove('.', testcase)
+      const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
+      await sim.waitUntilScreenIsNot(currentScreen)
+      await sim.compareSnapshotsAndApprove('.', testcase)
 
-            const resp = await respReq
+      const resp = await respReq
 
-            console.log(resp, m.name, msgData)
+      console.log(resp, m.name, msgData)
 
-            expect(resp).toHaveProperty('s')
-            expect(resp).toHaveProperty('r')
-            expect(resp).toHaveProperty('v')
+      expect(resp).toHaveProperty('s')
+      expect(resp).toHaveProperty('r')
+      expect(resp).toHaveProperty('v')
 
-            //Verify signature
-            const resp_addr = await app.getAddress(ETH_DERIVATION, false, false)
+      //Verify signature
+      const resp_addr = await app.getAddress(ETH_DERIVATION, false, false)
 
-            const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
-            // recreate data buffer:
-            // header + msg.len() + msg
-            let data = Buffer.alloc(4 + msgData.length)
-            let msg = Buffer.alloc(data.length + header.length)
-            data.writeInt32BE(msgData.length)
-            msgData.copy(data, 4)
-            header.copy(msg)
-            data.copy(msg, header.length)
+      const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
+      // recreate data buffer:
+      // header + msg.len() + msg
+      let data = Buffer.alloc(4 + msgData.length)
+      let msg = Buffer.alloc(data.length + header.length)
+      data.writeInt32BE(msgData.length)
+      msgData.copy(data, 4)
+      header.copy(msg)
+      data.copy(msg, header.length)
 
-            const EC = new ec("secp256k1");
-            const sha3 = require('js-sha3');
-            const msgHash = sha3.keccak256(msg);
+      const EC = new ec("secp256k1");
+      const sha3 = require('js-sha3');
+      const msgHash = sha3.keccak256(msg);
 
-            const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
-            const signature_obj = {
-                r: Buffer.from(resp.r, 'hex'),
-                s: Buffer.from(resp.s, 'hex'),
-            }
+      const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
+      const signature_obj = {
+        r: Buffer.from(resp.r, 'hex'),
+        s: Buffer.from(resp.s, 'hex'),
+      }
 
-            const signatureOK = EC.verify(msgHash, signature_obj, pubKey, 'hex')
-            expect(signatureOK).toEqual(true)
-        } finally {
-            await sim.close()
-        }
-    })
+      const signatureOK = EC.verify(msgHash, signature_obj, pubKey, 'hex')
+      expect(signatureOK).toEqual(true)
+    } finally {
+      await sim.close()
+    }
+  })
 })

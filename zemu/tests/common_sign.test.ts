@@ -40,7 +40,7 @@ const SIGN_TEST_DATA = [
 ]
 
 describe.each(models)('Transfer [%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign basic transactions', async function ({ name, op, filter }) {
+  test.concurrent.each(SIGN_TEST_DATA)('sign basic transactions', async function ({ name, op, filter }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })
@@ -49,7 +49,7 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
-      const currentScreen = sim.snapshot();
+      const currentScreen = await sim.snapshot();
       const signers = ["0/0", "5/8"];
       let change_path = undefined
       if (filter === true) {
@@ -57,7 +57,7 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
       }
       const respReq = app.sign(ROOT_PATH, signers, msg, change_path);
 
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen)
 
       await sim.compareSnapshotsAndApprove('.', testcase)
 

@@ -5,6 +5,12 @@ export RUST_BACKTRACE := "full"
 @help:
     just --list --unsorted
 
+# Initialize project: fetch dependencies (SDK etc...)
+init:
+    just deps/sdk true
+    just make deps
+    just make zemu_install
+
 # Run tests with miri
 miri *args='':
     cargo +nightly miri test --features "full" {{args}}

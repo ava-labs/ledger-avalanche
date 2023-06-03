@@ -36,7 +36,7 @@ const SIGN_TEST_DATA = [
 ]
 
 describe.each(models)('C_Sign[%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign c-chain $name transaction', async function ({ name, op }) {
+  test.concurrent.each(SIGN_TEST_DATA)('sign c-chain $name transaction', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start({ ...defaultOptions, model: m.name })

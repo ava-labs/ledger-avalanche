@@ -28,7 +28,7 @@ use crate::{
     parser::{
         coreth::outputs::EVMOutput, nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes,
         Header, ObjectList, OutputIdx, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN,
-        EVM_IMPORT_TX, MAX_ADDRESS_ENCODED_LEN,
+        EVM_IMPORT_TX,
     },
 };
 
@@ -198,7 +198,7 @@ impl<'b> ImportTx<'b> {
                 return false;
             }
 
-            let n = o.num_items();
+            let n = o.num_items() as u8;
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -210,31 +210,7 @@ impl<'b> ImportTx<'b> {
         };
 
         let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
-
-        // do a custom rendering of the first base_output_items
-        match obj_item_n {
-            0 => {
-                // render amount
-                obj.render_item(0, title, message, page)
-            }
-            // render output's address
-            1 => {
-                let address = obj.address();
-                // render encoded address with proper hrp,
-                let t = pic_str!(b"Address");
-                title[..t.len()].copy_from_slice(t);
-
-                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
-                let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
-
-                let addr_len = address
-                    .encode_into(hrp, &mut encoded[..])
-                    .map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(&encoded[..addr_len], message, page)
-            }
-            _ => Err(ViewError::NoData),
-        }
+        obj.render_item(obj_item_n, title, message, page)
     }
 
     fn render_import_description(
