@@ -79,9 +79,6 @@ extern struct NanoSPBackend BACKEND_LAZY;
 
 #define MAX_ITEMS 4
 #define MAX_LINES_PER_FIELD 8
-/* #define MAX_CHARS_PER_KEY_LINE      64 */
-/* #define MAX_CHARS_PER_VALUE1_LINE   180 */
-/* #define MAX_CHARS_HEXMESSAGE        160 */
 
 typedef struct UIItem {
   uint8_t title[KEY_SIZE];
@@ -93,6 +90,7 @@ typedef struct StaxBackend {
   uintptr_t items_len;
 
   uintptr_t viewable_size;
+  bool expert_mode;
 } StaxBackend;
 
 extern struct StaxBackend BACKEND_LAZY;
