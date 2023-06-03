@@ -51,7 +51,7 @@ void crapoline_home() {
                    NULL /* TODO settings screen */, app_quit);
 }
 
-static nbgl_layoutTagValue_t pair;
+static nbgl_layoutTagValue_t pairs[NB_MAX_DISPLAYED_PAIRS_IN_REVIEW];
 static nbgl_layoutTagValue_t *update_static_items(uint8_t index) {
   uint8_t internalIndex = index % MAX_ITEMS;
 
@@ -59,11 +59,11 @@ static nbgl_layoutTagValue_t *update_static_items(uint8_t index) {
     return NULL;
   }
 
-  pair = (nbgl_layoutTagValue_t){
+  pairs[0] = (nbgl_layoutTagValue_t){
       .item = (const char *)BACKEND_LAZY.items[internalIndex].title,
       .value = (const char *)BACKEND_LAZY.items[internalIndex].message};
 
-  return &pair;
+  return &pairs[0];
 }
 
 /********* NBGL Specific *************/
@@ -96,7 +96,16 @@ void crapoline_useCaseStaticReview(uint8_t nbPages) {
 void crapoline_useCaseAddressConfirmationExt(uint8_t nbPages) {
   nbgl_layoutTagValueList_t *extraPagesPtr = NULL;
   if (nbPages > 1) {
-    // TODO: initialize extra pages
+    nbPages--;
+    for (uint8_t idx = 0; idx < nbPages; idx++) {
+      pairs[idx].item = (const char *)BACKEND_LAZY.items[idx + 1].title;
+      pairs[idx].value = (const char *)BACKEND_LAZY.items[idx + 1].message;
+    }
+
+    pairList.nbMaxLinesForValue = 0;
+    pairList.nbPairs = nbPages;
+    pairList.pairs = pairs;
+
     extraPagesPtr = &pairList;
   }
 

@@ -182,6 +182,8 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
 }
 
 impl Viewable for ExtendedPubkeyUI {
+    const IS_ADDRESS: bool = true;
+
     fn num_items(&mut self) -> Result<u8, ViewError> {
         Ok(2)
     }
