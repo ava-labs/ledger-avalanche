@@ -66,10 +66,7 @@
         "set backtrace limit 15",
         "handle SIGILL nostop pass noprint",
         "add-symbol-file ${workspaceFolder}/build/output/app_fs.elf 0x40000000",
-        "b zemu_sys::ui_toolkit::backends::stax::{impl#6}::update_review",
-        "b zemu_sys::ui_toolkit::backends::stax::{impl#6}::message_buf",
-        "b zemu_sys::ui_toolkit::backends::stax::continuations::review_transaction",
-        //"b rslib::dispatcher::apdu_dispatch",
+        "b rslib::dispatcher::apdu_dispatch",
         "b rslib::__panic_handler::panic"
       ]
     }

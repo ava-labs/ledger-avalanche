@@ -15,11 +15,11 @@
  ********************************************************************************/
 
 #include "bolos_target.h"
-#include "coin.h"
 
 #if defined(TARGET_STAX)
 
 #include "app_mode.h"
+#include "coin.h"
 #include "nbgl_use_case.h"
 #include "ux.h"
 #include "view_internal.h"

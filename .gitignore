@@ -55,7 +55,7 @@ dkms.conf
 
 # Others
 \.idea
-.vscode/*
+.vscode/*.log
 .DS_Store
 node_modules
 

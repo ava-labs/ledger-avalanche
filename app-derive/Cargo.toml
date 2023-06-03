@@ -15,5 +15,5 @@ quote = "1.0"
 proc-macro2 = { version = "1.0.29" }
 serde_json = "1.0.79"
 serde = { version = "1.0.136", features = ["derive"] }
-bs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Nullus157/bs58-rs", rev = "f4584c6" }
+bs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58" }
 convert_case = "0.6"
