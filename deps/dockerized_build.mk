@@ -27,8 +27,7 @@ DOCKER_APP_BIN=$(DOCKER_APP_SRC)/app/bin/app.elf
 DOCKER_BOLOS_SDKS=/project/deps/nanos-secure-sdk
 DOCKER_BOLOS_SDKX=/project/deps/nanox-secure-sdk
 DOCKER_BOLOS_SDKSP=/project/deps/nanosplus-secure-sdk
-DOCKER_BOLOS_SDKFS=/project/deps/ledger-secure-sdk
-
+DOCKER_BOLOS_SDKFS=/project/deps/stax-secure-sdk
 
 # Note: This is not an SSH key, and being public represents no risk
 SCP_PUBKEY=049bc79d139c70c83a4b19e8922e5ee3e0080bb14a2e8b0752aa42cda90a1463f689b0fa68c1c0246845c2074787b649d0d8a6c0b97d4607065eee3057bdf16b83
@@ -41,7 +40,7 @@ $(info TESTS_ZEMU_DIR        : $(TESTS_ZEMU_DIR))
 $(info TESTS_JS_DIR          : $(TESTS_JS_DIR))
 $(info TESTS_JS_PACKAGE      : $(TESTS_JS_PACKAGE))
 
-DOCKER_IMAGE=zondax/builder-bolos:latest
+DOCKER_IMAGE=zondax/ledger-app-builder:latest
 
 ifdef INTERACTIVE
 INTERACTIVE_SETTING:="-i"
@@ -68,7 +67,6 @@ define run_docker
 	-v $(shell pwd):/project \
 	-e COIN=$(COIN) \
 	-e APP_TESTING=$(APP_TESTING) \
-	-e TARGET=$(TARGET) \
 	$(DOCKER_IMAGE) "$(2)"
 endef
 
@@ -133,22 +131,18 @@ convert_icon:
 	@convert $(LEDGER_SRC)/nanos_icon.gif -crop 14x14+1+1 +repage -negate $(LEDGER_SRC)/nanox_icon.gif
 
 .PHONY: buildS
-TARGET=nanos
 buildS: build_rustS
 	$(call run_docker,$(DOCKER_BOLOS_SDKS),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
 .PHONY: buildX
-TARGET=nanox
 buildX: build_rustX
 	$(call run_docker,$(DOCKER_BOLOS_SDKX),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
 .PHONY: buildSP
-TARGET=nanos2
 buildSP: build_rustSP
 	$(call run_docker,$(DOCKER_BOLOS_SDKSP),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
 .PHONY: buildFS
-TARGET=stax
 buildFS: build_rustFS
 	$(call run_docker,$(DOCKER_BOLOS_SDKFS),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
