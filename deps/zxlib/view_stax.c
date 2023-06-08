@@ -34,6 +34,9 @@ static const char *const INFO_KEYS[] = {"Version", "Developed by", "Website",
 static const char *const INFO_VALUES[] = {APPVERSION, "Zondax AG",
                                           "https://zondax.ch", "Apache 2.0"};
 
+const char HOME_TEXT[] = "This application enables\nsigning transactions on "
+                         "the\n" MENU_MAIN_APP_LINE1 " network";
+
 typedef enum {
   EXPERT_MODE_TOKEN = FIRST_USER_TOKEN,
 #ifdef BLIND_SIGN_TOGGLE
@@ -157,13 +160,12 @@ void crapoline_error();
 void crapoline_message();
 
 void crapoline_home() {
-  nbgl_useCaseHome(MENU_MAIN_APP_LINE1, NULL,
-                   (const char *)BACKEND_LAZY.items[0].title, true,
+  nbgl_useCaseHome(MENU_MAIN_APP_LINE1, &C_icon_stax_64, HOME_TEXT, true,
                    settings_screen, app_quit);
 }
 
 void crapoline_error() {
-  nbgl_useCaseChoice(NULL /* &C_round_warning_64px */,
+  nbgl_useCaseChoice(&C_round_warning_64px,
                      (const char *)BACKEND_LAZY.items[0].title,
                      (const char *)BACKEND_LAZY.items[0].message, "Ok", NULL,
                      rs_action_callback);
@@ -184,15 +186,14 @@ void crapoline_useCaseStatus(const char *, bool, nbgl_callback_t);
 void crapoline_useCaseReviewStart(const char *title, const char *subtitle,
                                   nbgl_callback_t continuation,
                                   nbgl_callback_t reject) {
-  nbgl_useCaseReviewStart(NULL /* &C_icon_stax_64 */, title, subtitle,
-                          REJECT_LABEL_STAX, continuation, reject);
+  nbgl_useCaseReviewStart(&C_icon_stax_64, title, subtitle, REJECT_LABEL_STAX,
+                          continuation, reject);
 }
 
 static nbgl_layoutTagValueList_t pairList;
 static nbgl_pageInfoLongPress_t infoLongPress;
 void crapoline_useCaseStaticReview(uint8_t nbPages) {
-  /* infoLongPress.icon = &C_icon_stax_64; */
-  infoLongPress.icon = NULL;
+  infoLongPress.icon = &C_icon_stax_64;
   infoLongPress.text = APPROVE_LABEL_STAX;
   infoLongPress.longPressText = HOLD_TO_APPROVE_MSG;
 
