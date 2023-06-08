@@ -19,12 +19,12 @@ import { defaultOptions, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 describe.each(models)('Standard [%s] - extended pubkey', function (m) {
-  test(
+  test.concurrent(
     'get pubkey %s',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const resp = await app.getExtendedPubKey(ROOT_PATH, false)
 
@@ -40,12 +40,12 @@ describe.each(models)('Standard [%s] - extended pubkey', function (m) {
     },
   );
 
-  test(
+  test.concurrent(
     'show addr',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const respReq = app.getExtendedPubKey(ROOT_PATH, true)
 

@@ -63,7 +63,7 @@ describe.each(models)('P_Sign[$name]; sign', function (m) {
     const sim = new Zemu(m.path)
 
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = op
 
@@ -109,7 +109,7 @@ describe.each(models)('P_Sign[$name]; sign', function (m) {
   test.concurrent.each(LITE_SIGN_TEST_DATA)('sign p-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = op
 

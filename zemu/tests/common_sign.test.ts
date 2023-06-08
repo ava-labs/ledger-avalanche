@@ -43,7 +43,7 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign basic transactions', async function ({ name, op, filter }) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = op
 
@@ -89,10 +89,10 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
 })
 
 describe.each(models)('signHash [%s]', function (m) {
-  test('sign hash', async function () {
+  test.concurrent('sign hash', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const message = "AvalancheApp"
       const msg = Buffer.from(sha256(message), "hex");
@@ -130,10 +130,10 @@ describe.each(models)('signHash [%s]', function (m) {
     }
   })
 
-  test('signMsg', async function () {
+  test.concurrent('signMsg', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const message = "Welcome to OpenSea!\n\nClick to sign in and accept the OpenSea Terms of Service: https://opensea.io/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n0x9858effd232b4033e47d90003d41ec34ecaeda94\n\nNonce:\n2b02c8a0-f74f-4554-9821-a28054dc9121";
 

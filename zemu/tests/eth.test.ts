@@ -107,7 +107,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = data.op
 
@@ -156,10 +156,10 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 })
 
 describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
-  test('get pubkey and addr %s', async function () {
+  test.concurrent('get pubkey and addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
 
       const ETH_PATH = "m/44'/60'/0'/0'/5"
@@ -176,10 +176,10 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     }
   })
 
-  test('show addr %s', async function () {
+  test.concurrent('show addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
@@ -196,10 +196,10 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     }
   })
 
-  test('get xpub and addr %s', async function () {
+  test.concurrent('get xpub and addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
       const resp = await app.getAddress(ETH_DERIVATION, false, true)
 
@@ -216,10 +216,10 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
 })
 
 describe.each(models)('Ethereum [%s] - misc', function (m) {
-  test('get app configuration', async function () {
+  test.concurrent('get app configuration', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
 
       const resp = await app.getAppConfiguration()
@@ -235,10 +235,10 @@ describe.each(models)('Ethereum [%s] - misc', function (m) {
     }
   })
 
-  test('Ethereum Sign PersonalMessage%s', async function () {
+  test.concurrent('Ethereum Sign PersonalMessage%s', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
 
       let msgData = Buffer.from('Hello World', 'utf8')

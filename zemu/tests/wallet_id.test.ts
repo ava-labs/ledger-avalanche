@@ -19,12 +19,12 @@ import { defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 describe.each(models)('Standard [%s] - wallet id', function (m) {
-  test(
+  test.concurrent(
     'get wallet id',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const resp = await app.getWalletId()
 
@@ -39,12 +39,12 @@ describe.each(models)('Standard [%s] - wallet id', function (m) {
     },
   );
 
-  test(
+  test.concurrent(
     'show wallet id',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const respReq = app.showWalletId()
 
