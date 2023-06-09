@@ -215,7 +215,16 @@ impl Viewable for SignUI {
 
         //write signature as VRS
         //write V, which is the LSB of the firsts byte
-        out[tx] = flags.contains(ECCInfo::ParityOdd) as u8;
+        // follow app-ethereum
+        out[tx] = 27;
+        if flags.contains(ECCInfo::ParityOdd) {
+            out[tx] += 1;
+        }
+
+        if flags.contains(ECCInfo::XGTn) {
+            out[tx] += 2;
+        }
+
         tx += 1;
 
         //set to 0x30 for the conversion
