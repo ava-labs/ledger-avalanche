@@ -82,14 +82,14 @@ jobs:
           path: ./app/.cargo
           key: ${{ runner.os }}-${{ hashFiles('./rust/Cargo.lock') }}
 
-      - name: Build Nano S apps
+      - name: Build Nano S app
         shell: bash -l {0}
         env:
           BOLOS_SDK: ${{ github.workspace }}/deps/nanos-secure-sdk
         run: |
           source $HOME/.cargo/env
           make
-      - name: Build Nano X apps
+      - name: Build Nano X app
         shell: bash -l {0}
         env:
           BOLOS_SDK: ${{ github.workspace }}/deps/nanox-secure-sdk
@@ -97,7 +97,7 @@ jobs:
           source $HOME/.cargo/env
           make clean
           make
-      - name: Build Nano S+ apps
+      - name: Build Nano S+ app
         shell: bash -l {0}
         env:
           BOLOS_SDK: ${{ github.workspace }}/deps/nanosplus-secure-sdk
@@ -105,7 +105,14 @@ jobs:
           source $HOME/.cargo/env
           make clean
           make
-
+      - name: Build Stax app
+        shell: bash -l {0}
+        env:
+          BOLOS_SDK: ${{ github.workspace }}/deps/stax-secure-sdk
+        run: |
+          source $HOME/.cargo/env
+          make clean
+          make
       - name: Upload elfs
         uses: actions/upload-artifact@v3
         with:
