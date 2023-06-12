@@ -103,7 +103,7 @@ APP_FULL:=1
 endif
 
 ifeq ($(TARGET_NAME),TARGET_STAX)
-ICONNAME:=$(CURDIR)/../nanox_icon.gif
+ICONNAME:=$(CURDIR)/../stax_icon.gif
 OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_fs.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_fs.sh
 RUST_TARGET:=thumbv6m-none-eabi
