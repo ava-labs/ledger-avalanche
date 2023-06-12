@@ -131,8 +131,7 @@ jobs:
     if: ${{! contains(toJSON(github.event.commits.*.message), '[skip-zemu]')}}
     runs-on: ubuntu-latest
     outputs:
-      test-files: ${{ steps.get-tests.outputs.files }}
-      ids: ${{ steps.get-tests.outputs.ids }}
+      tests: ${{ steps.get-tests.outputs.tests }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -152,20 +151,17 @@ jobs:
         id: get-tests
         run: |
           cd zemu
-          FILES=`yarn test --listTests --json | head -n 3 | tail -n 1`
-          echo "files=$FILES" >> "$GITHUB_OUTPUT"
-
-          IDS=`echo $FILES | jq -cM 'to_entries | map(.key)'`
-          echo "ids=$IDS" >> "$GITHUB_OUTPUT"
+          TESTS=`yarn test --listTests --json | head -n 3 | tail -n 1 | jq -cM 'to_entries | map({id: .key, file: .value})'`
+          echo "tests=$TESTS" >> "$GITHUB_OUTPUT"
 
   test_zemu:
     needs: [build_ledger, tests_zemu_setup]
     if: ${{! contains(toJSON(github.event.commits.*.message), '[skip-zemu]')}}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        test-file: ${{ fromJson(needs.tests_zemu_setup.outputs['test-files']) }}
-        test-id: ${{ fromJson(needs.tests_zemu_setup.outputs['ids']) }}
+        test: ${{ fromJson(needs.tests_zemu_setup.outputs['tests']) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -192,7 +188,7 @@ jobs:
         run: |
           export PATH=~/.cargo/bin:$PATH
           cd zemu
-          yarn jest ${{ matrix.test-file }}
+          yarn jest ${{ matrix.test.file }}
 
       - name: Tar Zemu snapshots
         if: always()
@@ -201,7 +197,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: snapshots-tmp_${{ matrix.test_id }}
+          name: snapshots-tmp_${{ matrix.test.id }}
           path: snapshots_tmp.tar
           #we don't need these snapshots for very long
           retention-days: 3
