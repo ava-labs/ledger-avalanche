@@ -188,7 +188,7 @@ jobs:
         run: |
           export PATH=~/.cargo/bin:$PATH
           cd zemu
-          yarn jest ${{ matrix.test.file }}
+          yarn jest ${{ matrix.test.file }} --maxConcurrency 2
 
       - name: Tar Zemu snapshots
         if: always()
