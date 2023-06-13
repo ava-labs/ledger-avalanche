@@ -19,7 +19,7 @@ import { defaultOptions as commonOpts, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 const defaultOptions = (model: any) => {
-  return { ...commonOpts(model, true), approveKeyword: "Path" }
+  return { ...commonOpts(model, true), approveKeyword: model.name == 'stax' ? "Path" : "" }
 }
 
 describe.each(models)('Standard [%s] - extended pubkey', function (m) {
