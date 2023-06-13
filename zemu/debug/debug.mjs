@@ -1,26 +1,24 @@
-import Zemu from '@zondax/zemu'
+import Zemu, { DEFAULT_START_OPTIONS } from '@zondax/zemu'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import Eth from '@ledgerhq/hw-app-eth'
+
 import path from 'path'
 import * as readline from 'node:readline/promises'
+import assert from 'assert'
 
-const APP_PATH = path.resolve('../build/output/app_fs.elf')
+const MODELS = {
+  nanos: { name: 'nanos', prefix: 'S', path: path.resolve('../build/output/app_s.elf') },
+  nanox: { name: 'nanox', prefix: 'X', path: path.resolve('../build/output/app_x.elf') },
+  nanosp: { name: 'nanosp', prefix: 'SP', path: path.resolve('../build/output/app_sp.elf') },
+  stax: { name: 'stax', prefix: 'ST', path: path.resolve('../build/output/app_fs.elf') }
+}
+
+const MODEL = MODELS["stax"];
 const CLA = 0x80
 const APP_DERIVATION = "m/44'/9000'/0'/0/0"
 const ETH_DERIVATION = "m/44'/60'/0'/0/0"
 
 const seed = 'equip will roof matter pink blind book anxiety banner elbow sun young'
-const model = 'stax'
-const SIM_OPTIONS = {
-  logging: true,
-  // startDelay: 400000,
-  startTimeout: 400000,
-  startText: "Ready",
-  custom: `-s "${seed}" --color LAGOON_BLUE`,
-  model: model,
-  approveKeyword: model === 'stax' ? 'Cancel' : '',
-  approveAction: 10, //ApproveTapButton
-}
 
 async function beforeStart() {
   process.on('SIGINT', () => {
@@ -66,31 +64,40 @@ async function interactiveZemu(sim) {
 
   await rl.close()
 }
-
 async function callTestFunction(sim, app) {
-  let responseReq = app.signTransaction(APP_DERIVATION, '02f5018402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0', null)
+  const responseReq = app.showWalletId();
 
-  await sim.waitScreenChange(100000000)
+  await sim.waitForScreenChanges([], 100000000000)
 
   await interactiveZemu(sim)
 
   const response = await responseReq;
-
   console.log(response)
 }
 
 async function main() {
   await beforeStart()
 
+  let model = MODELS["stax"];
+  let sim_options = {
+    ...DEFAULT_START_OPTIONS,
+    logging: true,
+    startTimeout: 400000000,
+    custom: `-s "${seed}" --color LAGOON_BLUE`,
+    model: model.name,
+    approveKeyword: model.name === 'stax' ? 'Cancel' : '',
+    approveAction: 10, //ApproveTapButton
+  };
+
   if (process.argv.length > 2 && process.argv[2] === 'debug') {
-    SIM_OPTIONS['custom'] = SIM_OPTIONS['custom'] + ' --debug'
+    sim_options['custom'] = sim_options['custom'] + ' --debug'
   }
 
-  const sim = new Zemu.default(APP_PATH)
+  const sim = new Zemu.default(model.path)
 
   try {
-    await sim.start(SIM_OPTIONS)
-    const app = new Eth.default(sim.getTransport())
+    await sim.start(sim_options)
+    const app = new AvalancheApp.default(sim.getTransport())
 
     ////////////
     /// TIP you can use zemu commands here to take the app to the point where you trigger a breakpoint
