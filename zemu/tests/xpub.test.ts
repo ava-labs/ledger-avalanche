@@ -15,8 +15,12 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { defaultOptions, models, ROOT_PATH } from './common'
+import { defaultOptions as commonOpts, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
+
+const defaultOptions = (model: any) => {
+  return { ...commonOpts(model, true), approveKeyword: "Path" }
+}
 
 describe.each(models)('Standard [%s] - extended pubkey', function (m) {
   test.concurrent(

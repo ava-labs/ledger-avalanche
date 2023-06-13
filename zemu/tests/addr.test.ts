@@ -15,9 +15,13 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, defaultOptions, models } from './common'
+import { APP_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { encode as bs58_encode } from 'bs58'
+
+const defaultOptions = (model: any) => {
+  return commonOpts(model, true)
+}
 
 const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4';
 

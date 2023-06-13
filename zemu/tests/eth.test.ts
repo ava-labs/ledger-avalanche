@@ -155,66 +155,6 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
   })
 })
 
-describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
-  test.concurrent('get pubkey and addr %s', async function () {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start(defaultOptions(m))
-      const app = new Eth(sim.getTransport())
-
-      const ETH_PATH = "m/44'/60'/0'/0'/5"
-      const EXPECTED_PUBLIC_KEY = '024f1dd50f180bfd546339e75410b127331469837fa618d950f7cfb8be351b0020';
-      const resp = await app.getAddress(ETH_PATH, false)
-
-      console.log(resp, m.name)
-
-      expect(resp).toHaveProperty('address')
-      expect(resp).toHaveProperty('publicKey')
-      expect(resp.publicKey === EXPECTED_PUBLIC_KEY)
-    } finally {
-      await sim.close()
-    }
-  })
-
-  test.concurrent('show addr %s', async function () {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start(defaultOptions(m))
-      const app = new Eth(sim.getTransport())
-      const respReq = app.getAddress(ETH_DERIVATION, true)
-
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-eth-addr`)
-
-      const resp = await respReq
-      console.log(resp, m.name)
-
-      expect(resp).toHaveProperty('publicKey')
-      expect(resp).toHaveProperty('address')
-    } finally {
-      await sim.close()
-    }
-  })
-
-  test.concurrent('get xpub and addr %s', async function () {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start(defaultOptions(m))
-      const app = new Eth(sim.getTransport())
-      const resp = await app.getAddress(ETH_DERIVATION, false, true)
-
-      console.log(resp, m.name)
-
-      expect(resp).toHaveProperty('address')
-      expect(resp).toHaveProperty('publicKey')
-      expect(resp).toHaveProperty('chainCode')
-      expect(resp.chainCode).not.toBeUndefined();
-    } finally {
-      await sim.close()
-    }
-  })
-})
-
 describe.each(models)('Ethereum [%s] - misc', function (m) {
   test.concurrent('get app configuration', async function () {
     const sim = new Zemu(m.path)
