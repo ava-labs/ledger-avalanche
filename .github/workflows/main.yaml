@@ -147,6 +147,11 @@ jobs:
       - name: Build/Install build js deps
         run: |
           export PATH=~/.cargo/bin:$PATH
+          cd js
+          npm install rollup --global
+          yarn install
+          npm run build
+          cd ..
           make zemu_install
       - name: Run zemu tests
         run: |
@@ -155,7 +160,7 @@ jobs:
 
       - name: Tar Zemu snapshots
         if: always()
-        run: tar -cvf snapshots_tmp.tar ./zemu/snapshots-tmp
+        run: tar -cvf snapshots_tmp.tar ./tests_zemu/snapshots-tmp
       - name: Upload tmp snapshots
         if: always()
         uses: actions/upload-artifact@v3
