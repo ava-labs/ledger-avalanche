@@ -122,7 +122,14 @@ impl<'b> DisplayableItem for EVMInput<'b> {
 
                 handle_ui_message(buffer, message, page)
             }
-            3 if expert => self.address.render_item(0, title, message, page),
+            3 if expert => {
+                //does it make sense to render all EVM input addrs
+                // as hex? I think so
+                let label = pic_str!(b"From");
+                title[..label.len()].copy_from_slice(label);
+
+                self.address.render_eth_address(message, page)
+            }
             4 if expert => {
                 let title_content = pic_str!(b"Nonce");
                 title[..title_content.len()].copy_from_slice(title_content);

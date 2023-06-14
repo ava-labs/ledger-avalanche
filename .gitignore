@@ -68,6 +68,7 @@ node_modules
 
 # Workspace specific
 
+app/build
 app/debug
 app/bin
 app/dep
@@ -80,3 +81,10 @@ app/glyphs/glyphs.*
 hfuzz/hfuzz_workspace
 
 zemu/snapshots-tmp
+
+# SDK
+deps/ledger-rust
+deps/ledger-secure-sdk
+deps/nanosplus-secure-sdk
+deps/nanos-secure-sdk
+deps/nanox-secure-sdk

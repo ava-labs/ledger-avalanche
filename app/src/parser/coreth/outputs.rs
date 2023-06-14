@@ -97,7 +97,7 @@ impl<'b> DisplayableItem for EOutput<'b> {
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct EVMOutput<'b> {
-    /// EVM address from which to transfer funds
+    /// EVM destination address
     address: Address<'b>,
     /// Amount of the asset to be transferred,
     /// in the smallest denomination possible
@@ -174,7 +174,14 @@ impl<'b> DisplayableItem for EVMOutput<'b> {
 
                 handle_ui_message(buffer, message, page)
             }
-            1 => self.address.render_item(0, title, message, page),
+            1 => {
+                //does it make sense to render all EVM outputs addrs
+                // as hex? I think so
+                let label = pic_str!(b"To");
+                title[..label.len()].copy_from_slice(label);
+
+                self.address.render_eth_address(message, page)
+            }
             _ => Err(ViewError::NoData),
         }
     }
