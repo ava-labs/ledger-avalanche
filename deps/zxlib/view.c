@@ -53,6 +53,6 @@ void view_init(void) {
   UX_INIT();
 }
 
-void view_idle_show(uint8_t item_idx, char *statusString) {
+void view_idle_show(uint8_t item_idx, const char *statusString) {
   view_idle_show_impl(item_idx, statusString);
 }
