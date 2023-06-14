@@ -38,6 +38,8 @@ void rs_h_review_button_both();
 bool rs_h_paging_can_decrease(void);
 bool rs_h_paging_can_increase(void);
 
+void rs_h_error_accept(unsigned int);
+
 ux_state_t ux;
 
 void os_exit(uint32_t id) {
@@ -47,9 +49,10 @@ void os_exit(uint32_t id) {
 
 // Referenced in crapoline_ux_menu_display
 const ux_menu_entry_t menu_main[] = {
-    {NULL, NULL, 0, &C_icon_app, MENU_MAIN_APP_LINE1, BACKEND_LAZY.key, 33, 12},
+    {NULL, NULL, 0, &C_icon_app, MENU_MAIN_APP_LINE1,
+     (const char *)BACKEND_LAZY.key, 33, 12},
     {NULL, rs_h_expert_toggle, 0, &C_icon_app,
-     "Expert mode:", BACKEND_LAZY.value, 33, 12},
+     "Expert mode:", (const char *)BACKEND_LAZY.value, 33, 12},
 #if defined(BLIND_SIGN_TOGGLE)
     {NULL, h_blind_sign_toggle, 0, &C_icon_app,
      "Signing mode:", blind_sign.message, 33, 12},
@@ -66,11 +69,11 @@ const ux_menu_entry_t menu_main[] = {
 static const bagl_element_t view_review[] = {
     UI_BACKGROUND_LEFT_RIGHT_ICONS,
     UI_LabelLine(UIID_LABEL + 0, 0, 8, UI_SCREEN_WIDTH, UI_11PX, UI_WHITE,
-                 UI_BLACK, BACKEND_LAZY.key),
+                 UI_BLACK, (const char *)BACKEND_LAZY.key),
     UI_LabelLine(UIID_LABEL + 1, 0, 19, UI_SCREEN_WIDTH, UI_11PX, UI_WHITE,
-                 UI_BLACK, BACKEND_LAZY.value),
+                 UI_BLACK, (const char *)BACKEND_LAZY.value),
     UI_LabelLine(UIID_LABEL + 2, 0, 30, UI_SCREEN_WIDTH, UI_11PX, UI_WHITE,
-                 UI_BLACK, BACKEND_LAZY.value2),
+                 UI_BLACK, (const char *)BACKEND_LAZY.value2),
 };
 
 // Referenced in crapoline_ux_display_view_error
@@ -79,11 +82,11 @@ static const bagl_element_t view_error[] = {
                      0xFFFFFF),
     UI_Icon(0, 128 - 7, 0, 7, 7, BAGL_GLYPH_ICON_CHECK),
     UI_LabelLine(UIID_LABEL + 0, 0, 8, UI_SCREEN_WIDTH, UI_11PX, UI_WHITE,
-                 UI_BLACK, BACKEND_LAZY.key),
+                 UI_BLACK, (const char *)BACKEND_LAZY.key),
     UI_LabelLine(UIID_LABEL + 0, 0, 19, UI_SCREEN_WIDTH, UI_11PX, UI_WHITE,
-                 UI_BLACK, BACKEND_LAZY.value),
+                 UI_BLACK, (const char *)BACKEND_LAZY.value),
     UI_LabelLineScrolling(UIID_LABELSCROLL, 0, 30, 128, UI_11PX, UI_WHITE,
-                          UI_BLACK, BACKEND_LAZY.value2),
+                          UI_BLACK, (const char *)BACKEND_LAZY.value2),
 };
 
 // Referenced by crapoline_ux_display_view_error macro call
@@ -164,9 +167,9 @@ const bagl_element_t *view_prepro_idle(const bagl_element_t *element) {
 static const bagl_element_t view_message[] = {
     UI_BACKGROUND,
     UI_LabelLine(UIID_LABEL + 0, 0, 8, UI_SCREEN_WIDTH, UI_11PX, UI_WHITE,
-                 UI_BLACK, BACKEND_LAZY.key),
+                 UI_BLACK, (const char *)BACKEND_LAZY.key),
     UI_LabelLine(UIID_LABEL + 1, 0, 19, UI_SCREEN_WIDTH, UI_11PX, UI_WHITE,
-                 UI_BLACK, BACKEND_LAZY.value),
+                 UI_BLACK, (const char *)BACKEND_LAZY.value),
 };
 
 static unsigned int view_message_button(unsigned int button_mask,
