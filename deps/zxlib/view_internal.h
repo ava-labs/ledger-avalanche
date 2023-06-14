@@ -118,4 +118,4 @@ void h_blind_sign_update();
 ///////////////////////////////////////////////
 
 void view_idle_show_impl(uint8_t item_idx, const char *statusString);
-void view_init_impl(uint8_t *msg);
+void view_init_impl(const char *msg);

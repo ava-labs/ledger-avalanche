@@ -49,7 +49,7 @@ void view_init(void) {
   blind_sign.toggle = false;
   h_blind_sign_update();
 #endif
-  view_init_impl(MENU_MAIN_APP_LINE2);
+  view_init_impl((const char *)MENU_MAIN_APP_LINE2);
   UX_INIT();
 }
 
