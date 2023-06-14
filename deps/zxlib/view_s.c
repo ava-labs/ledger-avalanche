@@ -15,6 +15,8 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#include "bolos_target.h"
+
 #if defined(TARGET_NANOS)
 #include "app_mode.h"
 #include "bagl.h"
@@ -26,7 +28,6 @@
 
 #include <stdio.h>
 #include <string.h>
-
 
 void rs_h_expert_toggle();
 void rs_h_expert_update();

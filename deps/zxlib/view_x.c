@@ -14,6 +14,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
+#include "bolos_target.h"
 
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 #include "actions.h"
@@ -27,7 +28,6 @@
 
 #include <stdio.h>
 #include <string.h>
-
 
 void rs_h_expert_toggle();
 void rs_h_expert_update();
