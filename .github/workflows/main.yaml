@@ -147,11 +147,6 @@ jobs:
       - name: Build/Install build js deps
         run: |
           export PATH=~/.cargo/bin:$PATH
-          cd js
-          npm install rollup --global
-          yarn install
-          npm run build
-          cd ..
           make zemu_install
       - name: Run zemu tests
         run: |

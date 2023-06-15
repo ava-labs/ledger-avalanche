@@ -16,7 +16,7 @@
 
 .PHONY: all deps build clean load delete check_python show_info_recovery_mode
 
-TESTS_ZEMU_DIR?=$(CURDIR)/tests_zemu
+TESTS_ZEMU_DIR?=$(CURDIR)/zemu
 TESTS_JS_PACKAGE?=
 TESTS_JS_DIR?=
 
@@ -45,7 +45,7 @@ $(info TESTS_ZEMU_DIR        : $(TESTS_ZEMU_DIR))
 $(info TESTS_JS_DIR          : $(TESTS_JS_DIR))
 $(info TESTS_JS_PACKAGE      : $(TESTS_JS_PACKAGE))
 
-DOCKER_IMAGE_ZONDAX=zondax/ledger-app-builder:ledger-eb27b9eb2917620b95f5df03a16ea61d62ef2032
+DOCKER_IMAGE_ZONDAX=zondax/ledger-app-builder:latest
 DOCKER_IMAGE_LEDGER=ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
 ifdef INTERACTIVE
@@ -69,7 +69,6 @@ define run_docker
 	-e SCP_PRIVKEY=$(SCP_PRIVKEY) \
 	-e SDK_VARNAME=$(1) \
 	-e TARGET=$(2) \
-	-u $(USERID):$(GROUPID) \
 	-v $(shell realpath .):/app \
 	-e COIN=$(COIN) \
 	-e APP_TESTING=$(APP_TESTING) \
@@ -226,6 +225,7 @@ dev_ca_deleteS2: check_python
 
 .PHONY: zemu_install
 zemu_install:
+	cd $(TESTS_JS_DIR) && yarn install && yarn build
 	cd $(TESTS_ZEMU_DIR) && yarn install
 
 ########################## TEST Section ###############################
