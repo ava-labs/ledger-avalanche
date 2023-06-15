@@ -155,7 +155,7 @@ jobs:
 
       - name: Tar Zemu snapshots
         if: always()
-        run: tar -cvf snapshots_tmp.tar ./tests_zemu/snapshots-tmp
+        run: tar -cvf snapshots_tmp.tar ./zemu/snapshots-tmp
       - name: Upload tmp snapshots
         if: always()
         uses: actions/upload-artifact@v3
