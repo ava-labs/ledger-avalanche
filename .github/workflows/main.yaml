@@ -22,7 +22,7 @@ jobs:
           submodules: true
       - name: Install Miri
         run: |
-          rustup toolchain install nightly --component miri
+          rustup toolchain install nightly --component miri rustfmt
           cargo +nightly miri --version
       - name: Test with Miri
         env:
