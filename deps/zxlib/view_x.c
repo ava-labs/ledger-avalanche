@@ -14,7 +14,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
+#include "bolos_target.h"
 
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 #include "actions.h"
 #include "app_mode.h"
 #include "bagl.h"
@@ -27,8 +29,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
-
 void rs_h_expert_toggle();
 void rs_h_expert_update();
 
@@ -38,6 +38,7 @@ void rs_h_review_loop_end();
 
 void rs_h_approve(unsigned int);
 void rs_h_reject(unsigned int);
+void rs_h_error_accept(unsigned int);
 
 #include "ux.h"
 ux_state_t G_ux;
@@ -48,13 +49,13 @@ UX_STEP_NOCB(ux_idle_flow_1_step, pbb,
              {
                  &C_icon_app,
                  MENU_MAIN_APP_LINE1,
-                 BACKEND_LAZY.key,
+                 (const char *)BACKEND_LAZY.key,
              });
 UX_STEP_CB_INIT(ux_idle_flow_2_step, bn, rs_h_expert_update(),
                 rs_h_expert_toggle(),
                 {
                     "Expert mode:",
-                    BACKEND_LAZY.message,
+                    (const char *)BACKEND_LAZY.message,
                 });
 #if defined(BLIND_SIGN_TOGGLE)
 UX_STEP_CB_INIT(ux_idle_flow_blind_toggle_step, bn, h_blind_sign_update(),
@@ -118,8 +119,8 @@ void h_blind_sign_update() {
 
 UX_STEP_NOCB(ux_error_flow_1_step, bnnn_paging,
              {
-                 .title = BACKEND_LAZY.key,
-                 .text = BACKEND_LAZY.message,
+                 .title = (const char *)BACKEND_LAZY.key,
+                 .text = (const char *)BACKEND_LAZY.message,
              });
 UX_STEP_VALID(ux_error_flow_2_step, pb, rs_h_error_accept(0),
               {&C_icon_validate_14, "Ok"});
@@ -139,8 +140,8 @@ UX_STEP_INIT(ux_review_flow_2_start_step, NULL, NULL,
 UX_STEP_NOCB_INIT(ux_review_flow_2_step, bnnn_paging,
                   { rs_h_review_loop_inside(); },
                   {
-                      .title = BACKEND_LAZY.key,
-                      .text = BACKEND_LAZY.message,
+                      .title = (const char *)BACKEND_LAZY.key,
+                      .text = (const char *)BACKEND_LAZY.message,
                   });
 UX_STEP_INIT(ux_review_flow_2_end_step, NULL, NULL,
              { rs_h_review_loop_end(); });

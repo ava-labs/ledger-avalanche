@@ -52,8 +52,6 @@ where
         Ok((rem, list))
     }
 
-    ///
-    #[inline(never)]
     /// Attempt to parse the provided input as an [`ObjectList`] of the given `Obj` type.
     /// The number of elements in the list should be provided. This is useful in cases
     /// where the number of elements has an arbitrary type or is not part of the input
@@ -61,6 +59,7 @@ where
     ///
     /// Will fail if the input bytes are not properly encoded for the list or if any of the objects inside fail to parse.
     /// This also means accessing any inner objects shouldn't fail to parse
+    #[inline(never)]
     pub fn new_into_with_len(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,

@@ -15,19 +15,19 @@
 ********************************************************************************/
 #pragma once
 
-#if defined (TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#if defined (TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
 
 #include "os.h"
 #include "cx.h"
+#include "os_io_seproxyhal.h"
+#include "ux.h"
 
 #define MEMCPY_NV nvm_write
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
-    #include "ux.h"
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
     #define NV_CONST const
     #define NV_VOLATILE volatile
 #else
-    #include "os_io_seproxyhal.h"
     #define NV_CONST
     #define NV_VOLATILE
 #endif
@@ -37,10 +37,14 @@ extern unsigned int app_stack_canary;
 
 #define WAIT_EVENT() io_seproxyhal_spi_recv(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer), 0)
 
+#if defined(TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 #define UX_WAIT()  \
     while (!UX_DISPLAYED()) {  WAIT_EVENT();  UX_DISPLAY_NEXT_ELEMENT(); } \
     WAIT_EVENT(); \
     io_seproxyhal_general_status(); \
     WAIT_EVENT()
+#else
+#define UX_WAIT(){}
+#endif
 
 #endif

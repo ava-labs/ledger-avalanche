@@ -88,3 +88,4 @@ deps/ledger-secure-sdk
 deps/nanosplus-secure-sdk
 deps/nanos-secure-sdk
 deps/nanox-secure-sdk
+deps/stax-secure-sdk

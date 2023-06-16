@@ -276,6 +276,8 @@ impl AddrUI {
 }
 
 impl Viewable for AddrUI {
+    const IS_ADDRESS: bool = true;
+
     fn num_items(&mut self) -> Result<u8, ViewError> {
         Ok(1)
     }

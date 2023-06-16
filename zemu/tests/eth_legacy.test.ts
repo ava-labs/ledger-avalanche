@@ -160,7 +160,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`

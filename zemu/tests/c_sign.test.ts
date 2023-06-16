@@ -39,7 +39,7 @@ describe.each(models)('C_Sign[%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign c-chain $name transaction', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = op
 

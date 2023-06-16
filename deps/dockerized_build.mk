@@ -27,7 +27,7 @@ DOCKER_APP_BIN=$(DOCKER_APP_SRC)/app/bin/app.elf
 DOCKER_BOLOS_SDKS=/project/deps/nanos-secure-sdk
 DOCKER_BOLOS_SDKX=/project/deps/nanox-secure-sdk
 DOCKER_BOLOS_SDKSP=/project/deps/nanosplus-secure-sdk
-
+DOCKER_BOLOS_SDKFS=/project/deps/stax-secure-sdk
 
 # Note: This is not an SSH key, and being public represents no risk
 SCP_PUBKEY=049bc79d139c70c83a4b19e8922e5ee3e0080bb14a2e8b0752aa42cda90a1463f689b0fa68c1c0246845c2074787b649d0d8a6c0b97d4607065eee3057bdf16b83
@@ -40,7 +40,7 @@ $(info TESTS_ZEMU_DIR        : $(TESTS_ZEMU_DIR))
 $(info TESTS_JS_DIR          : $(TESTS_JS_DIR))
 $(info TESTS_JS_PACKAGE      : $(TESTS_JS_PACKAGE))
 
-DOCKER_IMAGE=zondax/builder-bolos:latest
+DOCKER_IMAGE=zondax/ledger-app-builder:latest
 
 ifdef INTERACTIVE
 INTERACTIVE_SETTING:="-i"
@@ -77,6 +77,8 @@ all:
 	@$(MAKE) buildX
 	@$(MAKE) clean_build
 	@$(MAKE) buildSP
+	@$(MAKE) clean_build
+	@$(MAKE) buildFS
 
 .PHONY: check_python
 check_python:
@@ -106,6 +108,10 @@ build_rustX:
 build_rustSP:
 	$(call run_docker,$(DOCKER_BOLOS_SDKSP),make -C $(DOCKER_APP_SRC) rust)
 
+.PHONY: build_rustFS
+build_rustFS:
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS),make -C $(DOCKER_APP_SRC) rust)
+
 .PHONY: generate_rustS generate_rustX generate_rustSP
 generate_rustS:
 	$(MAKE) -C $(CURDIR) TARGET_NAME=TARGET_NANOS BOLOS_SDK=$(CURDIR)/deps/nanos-secure-sdk generate
@@ -115,6 +121,9 @@ generate_rustX:
 
 generate_rustSP:
 	$(MAKE) -C $(CURDIR) TARGET_NAME=TARGET_NANOS2 BOLOS_SDK=$(CURDIR)/deps/nanosplus-secure-sdk generate
+
+generate_rustFS:
+	$(MAKE) -C $(CURDIR) TARGET_NAME=TARGET_STAX BOLOS_SDK=$(CURDIR)/deps/ledger-secure-sdk generate
 
 .PHONY: convert_icon
 convert_icon:
@@ -133,6 +142,10 @@ buildX: build_rustX
 buildSP: build_rustSP
 	$(call run_docker,$(DOCKER_BOLOS_SDKSP),make -j $(NPROC) -C $(DOCKER_APP_SRC))
 
+.PHONY: buildFS
+buildFS: build_rustFS
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS),make -j $(NPROC) -C $(DOCKER_APP_SRC))
+
 .PHONY: clean_output
 clean_output:
 	@echo "Removing output files"
@@ -141,7 +154,6 @@ clean_output:
 .PHONY: clean
 clean_build:
 	$(call run_docker,$(DOCKER_BOLOS_SDKS),make -C $(DOCKER_APP_SRC) clean)
-
 .PHONY: clean
 clean: clean_output clean_build
 
@@ -164,6 +176,10 @@ shellX:
 .PHONY: shellSP
 shellSP:
 	$(call run_docker,$(DOCKER_BOLOS_SDKSP) -t,bash)
+
+.PHONY: shellFS
+shellFSs:
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS) -t,bash)
 
 .PHONY: load
 load:
@@ -188,6 +204,14 @@ loadSP:
 .PHONY: deleteSP
 deleteSP:
 	${CURDIR}/build/pkg/installer_sp.sh delete
+
+.PHONY: loadFS
+loadFS:
+	${LEDGER_SRC}/pkg/installer_fs.sh load
+
+.PHONY: deleteFS
+deleteFS:
+	${LEDGER_SRC}/pkg/installer_fs.sh delete
 
 .PHONY: show_info_recovery_mode
 show_info_recovery_mode:
