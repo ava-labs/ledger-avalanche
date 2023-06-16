@@ -237,6 +237,10 @@ create_output_folders:
 	- mkdir -p $(ARTIFACT_OUTPUT_PATH)/pkg
 	- mkdir -p $(ARTIFACT_OUTPUT_PATH)/output
 
+# Before linking, we need to be sure rust lib is there
+# this appends `create_output_folders` to the list of prerequisites
+bin/app.elf: create_output_folders
+
 # load, delete and listvariants are provided to comply with Ledger requirements
 .PHONY: load
 load:
