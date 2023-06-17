@@ -67,11 +67,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        SDK_VARNAME: ['nanos', 'nanox', 'nanos2', 'stax']
+        sdk:
+          - varname: NANOS_SDK
+            target: nanos
+          - varname: NANOX_SDK
+            target: nanox
+          - varname: NANOSP_SDK
+            target: nanosp
+          - varname: STAX_SDK
+            target: stax
     container:
       image: zondax/ledger-app-builder:latest
       env:
-        SDK_VARNAME: ${{ matrix.SDK_VARNAME }}
+        SDK_VARNAME: ${{ matrix.sdk.varname }}
       options: --user ${{ needs.configure.outputs.uid_gid }}
     env:
       HOME: /home/zondax_circle
@@ -91,17 +99,17 @@ jobs:
         shell: bash -l {0}
         run: make
 
-      - name: Upload elfs
+      - name: Upload elf
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.SDK_VARNAME }}-app
+          name: ${{ matrix.sdk.target }}-app
           path: build/output/*.elf
           if-no-files-found: error
 
-      - name: Upload installers
+      - name: Upload installer
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.SDK_VARNAME }}-installer
+          name: ${{ matrix.sdk.target }}-installer
           path: build/pkg/*.sh
           if-no-files-found: error
 
