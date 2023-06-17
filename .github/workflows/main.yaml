@@ -160,7 +160,9 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           path: /tmp/artifacts
-      - run: find /tmp/artifacts -type f -name "*.elf" -exec mv {} build/output/ \;
+      - run: |
+          mkdir -p build/output
+          find /tmp/artifacts -type f -name "*.elf" -exec mv {} build/output/ \;
 
       - run: sudo apt-get update -y && sudo apt-get install -y libusb-1.0.0 libudev-dev
       - name: Install node
