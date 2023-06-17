@@ -54,10 +54,12 @@ jobs:
         with:
           submodules: true
       - name: Cache/restore Cargo dependencies
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ./app/.cargo
-          key: ${{ runner.os }}-${{ hashFiles('./rust/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ hashFiles('./Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ github.sha }}
       - name: run rust tests
         run: make rust_test
 
@@ -90,10 +92,12 @@ jobs:
           submodules: true
 
       - name: Cache/restore Cargo dependencies
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ./app/.cargo
           key: ${{ runner.os }}-${{ hashFiles('./Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ github.sha }}
 
       - name: Build app
         shell: bash -l {0}
