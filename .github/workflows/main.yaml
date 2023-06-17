@@ -84,6 +84,8 @@ jobs:
     env:
       HOME: /home/zondax_circle
     steps:
+      - run: echo "BOLOS_SDK=${!SDK_VARNAME}" >> "$GITHUB_ENV"
+        shell: bash -l {0}
       - name: Checkout
         uses: actions/checkout@v3
         with:
