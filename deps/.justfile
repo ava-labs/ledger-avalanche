@@ -12,6 +12,5 @@ clone-rust-sdk target revision=revision force="false":
         echo 'SDK_GIT_REVISION="{{revision}}"' > .env
     fi
 
-# Fetches the app SDK, cloning it if necessary and preparing the required symlinks
+# Fetches the app SDK, cloning it if necessary
 sdk force="false" revision=revision: (clone-rust-sdk "ledger-rust" revision force)
-    just ledger-rust/link-ledger-sdk "./ledger-rust" $(pwd) {{force}}
