@@ -20,7 +20,8 @@ jobs:
         with:
           workflow: main.yaml
           commit: ${{ github.event.push.head.sha }}
-          name: app-installers
+          name: .*-installer
+          name_is_regexp: true
           path: build/pkg
 
       - name: Retrieve version

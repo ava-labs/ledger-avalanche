@@ -203,10 +203,9 @@ AS := $(GCCPATH)arm-none-eabi-gcc
 AFLAGS +=
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
-LDFLAGS  += -O3 -Os
-LDLIBS   += -lrslib
+LDFLAGS  += -z muldefs
 LDLIBS   += -lm -lgcc -lc
-LDLIBS   += -L../target/$(RUST_TARGET)/release
+LDLIBS   += -L$(CURDIR)/../target/$(RUST_TARGET)/release -lrslib
 
 ##########################
 include $(BOLOS_SDK)/Makefile.glyphs
@@ -216,6 +215,8 @@ APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib
 
 SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
 SDK_SOURCE_PATH += lib_ux
+
+APP_CUSTOM_LINK_DEPENDENCIES := rust
 
 .PHONY: rust
 rust:
@@ -237,7 +238,8 @@ create_output_folders:
 	- mkdir -p $(ARTIFACT_OUTPUT_PATH)/output
 
 # Before linking, we need to be sure rust lib is there
-bin/app.elf: create_output_folders rust
+# this appends `create_output_folders` to the list of prerequisites
+bin/app.elf: create_output_folders
 
 # load, delete and listvariants are provided to comply with Ledger requirements
 .PHONY: load
