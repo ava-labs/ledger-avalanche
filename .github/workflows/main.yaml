@@ -3,14 +3,6 @@ on:
   - push
 
 jobs:
-  configure:
-    runs-on: ubuntu-latest
-    outputs:
-      uid_gid: ${{ steps.get-user.outputs.uid_gid }}
-    steps:
-      - id: get-user
-        run: echo "uid_gid=$(id -u):$(id -g)" >> $GITHUB_OUTPUT
-
   checks:
     runs-on: ubuntu-latest
     container:
@@ -64,7 +56,6 @@ jobs:
         run: make rust_test
 
   build_ledger:
-    needs: configure
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -80,9 +71,6 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
       env:
         SDK_VARNAME: ${{ matrix.sdk.varname }}
-      options: --user ${{ needs.configure.outputs.uid_gid }}
-    env:
-      HOME: /home/zondax_circle
     steps:
       - run: echo "BOLOS_SDK=${!SDK_VARNAME}" >> "$GITHUB_ENV"
         shell: bash -l {0}

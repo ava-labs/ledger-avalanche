@@ -69,6 +69,7 @@ define run_docker
 	-e SCP_PRIVKEY=$(SCP_PRIVKEY) \
 	-e SDK_VARNAME=$(1) \
 	-e TARGET=$(2) \
+	-u $(USERID):$(GROUPID) \
 	-v $(shell realpath .):/app \
 	-e COIN=$(COIN) \
 	-e APP_TESTING=$(APP_TESTING) \
