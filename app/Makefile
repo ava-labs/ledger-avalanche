@@ -69,7 +69,7 @@ endef
 $(error "$(error_message)")
 endif
 
-APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --path $(APPPATH)
+APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --path $(APPPATH) --curve secp256k1
 
 ARTIFACT_OUTPUT_PATH := $(CURDIR)/../build
 
