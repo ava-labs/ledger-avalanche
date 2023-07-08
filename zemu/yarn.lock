@@ -1383,8 +1383,12 @@
     eslint-visitor-keys "^3.3.0"
 
 "@zondax/ledger-avalanche-app@link:../js":
-  version "0.0.0"
-  uid ""
+  version "0.6.8"
+  dependencies:
+    "@ledgerhq/hw-app-eth" "6.32.1"
+    "@ledgerhq/hw-transport" "6.28.1"
+    bs58 "5.0.0"
+    sha3 "2.1.4"
 
 "@zondax/zemu@^0.36.0":
   version "0.36.0"
@@ -3958,9 +3962,9 @@ prompts@^2.0.1:
     sisteransi "^1.0.5"
 
 protobufjs@^7.0.0:
-  version "7.2.2"
-  resolved "https://registry.yarnpkg.com/protobufjs/-/protobufjs-7.2.2.tgz#2af401d8c547b9476fb37ffc65782cf302342ca3"
-  integrity sha512-++PrQIjrom+bFDPpfmqXfAGSQs40116JRrqqyf53dymUMvvb5d/LMRyicRoF1AUKoXVS1/IgJXlEgcpr4gTF3Q==
+  version "7.2.4"
+  resolved "https://registry.yarnpkg.com/protobufjs/-/protobufjs-7.2.4.tgz#3fc1ec0cdc89dd91aef9ba6037ba07408485c3ae"
+  integrity sha512-AT+RJgD2sH8phPmCf7OUZR8xGdcJRga4+1cOaXJ64hvcSkVhNcRHOwIxUatPH15+nj59WAGTDv3LSGZPEQbJaQ==
   dependencies:
     "@protobufjs/aspromise" "^1.1.2"
     "@protobufjs/base64" "^1.1.2"
