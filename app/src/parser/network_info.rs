@@ -28,6 +28,7 @@ pub enum NetworkId {
     Mainnet,
     Fuji,
     Local,
+    Custom,
 }
 
 impl NetworkId {
@@ -38,6 +39,7 @@ impl NetworkId {
             Self::Mainnet => PIC::new(HRP_MAINNET).into_inner(),
             Self::Fuji => PIC::new(HRP_TESTNET).into_inner(),
             Self::Local => PIC::new(HRP_LOCAL).into_inner(),
+            Self::Custom => PIC::new(HRP_CUSTOM).into_inner(),
         }
     }
 }
@@ -50,6 +52,7 @@ impl TryFrom<u32> for NetworkId {
             NETWORK_ID_MAINNET => Ok(Self::Mainnet),
             NETWORK_ID_FUJI => Ok(Self::Fuji),
             NETWORK_ID_LOCAL => Ok(Self::Local),
+            NETWORK_ID_CUSTOM => Ok(Self::Custom),
             _ => Err(ParserError::InvalidNetworkId),
         }
     }
