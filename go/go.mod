@@ -6,7 +6,7 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
-	github.com/zondax/ledger-go v0.14.1
+	github.com/zondax/ledger-go v0.14.2
 )
 
 require (
