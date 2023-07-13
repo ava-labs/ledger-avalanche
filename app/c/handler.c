@@ -17,7 +17,7 @@
 
 #include "bolos_target.h"
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 #include "globals.h"
 // #include "io.h"
 #include "boilerplate/apdu_parser.h"

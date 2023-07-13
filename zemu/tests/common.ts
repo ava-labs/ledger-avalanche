@@ -16,7 +16,7 @@ export const models: IDeviceModel[] = [
   { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
 ]
 
-export const btc_models: IDeviceModel[] = models.filter((m) => m.name != 'nanos')
+export const btc_models: IDeviceModel[] = models.filter((m) => m.name != 'nanos' && m.name != 'stax')
 
 export const defaultOptions = (m: IDeviceModel, is_address = false) => {
   let approveAction = ButtonKind.ApproveHoldButton;

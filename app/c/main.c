@@ -18,7 +18,7 @@
 #include <os.h>
 #include <os_io_seproxyhal.h>
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 #include "globals.h"
 #include "handler.h"
 #else
@@ -27,7 +27,7 @@
 
 uint8_t G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-#ifdef TARGET_NANOS
+#if defined(TARGET_NANOS) || defined(TARGET_STAX)
 unsigned char io_event(unsigned char channel) {
   switch (G_io_seproxyhal_spi_buffer[0]) {
   case SEPROXYHAL_TAG_FINGER_EVENT: //
@@ -35,12 +35,16 @@ unsigned char io_event(unsigned char channel) {
     break;
 
   case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT: // for Nano S
+#ifdef HAVE_BAGL
     UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
+#endif
     break;
 
   case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
+#ifdef HAVE_BAGL
     if (!UX_DISPLAYED())
       UX_DISPLAYED_EVENT();
+#endif
     break;
 
   case SEPROXYHAL_TAG_TICKER_EVENT: { //
@@ -117,13 +121,13 @@ __attribute__((section(".boot"))) int main(void) {
   volatile uint32_t rx = 0, tx = 0, flags = 0;
   volatile uint16_t sw = 0;
   zemu_log_stack("main");
-#if !defined(TARGET_NANOS)
+#if !defined(TARGET_NANOS) && !defined(TARGET_STAX)
   initialize_app_globals();
   btc_state_reset();
 #endif /* ifndef TARGET_NANOS */
 
   for (;;) {
-#if !defined(TARGET_NANOS)
+#if !defined(TARGET_NANOS) && !defined(TARGET_STAX)
     // Reset length of APDU response
     G_output_len = 0;
 #endif
@@ -145,7 +149,7 @@ __attribute__((section(".boot"))) int main(void) {
         check_canary();
 
 // Btc apdu commands are not supported by nanos
-#if defined(TARGET_NANOS)
+#if defined(TARGET_NANOS) || defined(TARGET_STAX)
         rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 #else
         if (G_io_apdu_buffer[OFFSET_CLA] == CLA_APP ||

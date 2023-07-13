@@ -118,6 +118,8 @@ RUST_TARGET:=thumbv6m-none-eabi
 # for BTC we need to remove the 0x200 flag and
 # replace it with 0xa50
 # otherwise the app will crash
+# - BTC for stax is disabled temporarily, but it will be enabled soon
+# - so let's keep these flags
 APP_LOAD_PARAMS += --appFlags 0xa50
 APP_FULL:=1
 endif
@@ -252,8 +254,8 @@ endif
 
 APP_CUSTOM_LINK_DEPENDENCIES := rust
 
-# Do not compile btc app if target is nanos
-ifneq ($(TARGET_NAME),TARGET_NANOS)
+# Do not compile btc app if target is nanos or stax
+ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS TARGET_STAX))
 
 	# Bitcoin mainnet, no legacy support
 	# TODO: the new-bitcoin-app's assigns different 
@@ -284,11 +286,11 @@ ifneq ($(TARGET_NAME),TARGET_NANOS)
 	APP_SOURCE_PATH += $(MY_DIR)/../deps/btc/src
 	DEFINES   += HAVE_BOLOS_APP_STACK_CANARY
 
-	ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX))
+	ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX))
 		DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
 		DEFINES       += HAVE_BLE_APDU
 	endif
-endif #NO TARGET_NANOS
+endif #NO TARGET_NANOS OR TARGET_STAX
 
 .PHONY: rust
 rust:
