@@ -102,7 +102,7 @@ impl<'ui> AddrUIInitializer<'ui> {
     /// Initialie the path with the given one
     pub fn with_path(&mut self, path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> &mut Self {
         unsafe {
-            PATH.lock(super::GetPublicKey).apdu_unwrap().replace(path);
+            PATH.lock(super::GetPublicKey).replace(path);
         }
 
         self.path_init = true;
