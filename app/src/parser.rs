@@ -22,6 +22,7 @@ mod asset_id;
 mod avm_output;
 mod constants;
 mod coreth;
+mod defer;
 mod error;
 mod initial_state;
 mod inputs;
@@ -53,6 +54,7 @@ pub use coreth::{
     bytes_to_u64, data::EthData, export_tx::ExportTx, import_tx::ImportTx, native::EthTransaction,
     PersonalMsg,
 };
+pub use defer::Defer;
 pub use error::ParserError;
 pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};

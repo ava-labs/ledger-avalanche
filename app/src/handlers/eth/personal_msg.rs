@@ -131,13 +131,13 @@ impl ApduHandler for Sign {
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
 
                 unsafe {
-                    PATH.lock(Self)?.replace(bip32_path);
+                    PATH.lock(Self).replace(bip32_path);
                 }
 
                 let (msg, len) = be_u32::<_, ParserError>(rest).map_err(|_| Error::WrongLength)?;
 
                 //write( msg.len and msg) to the swapping buffer so we persist this data
-                let buffer = unsafe { BUFFER.lock(Self)? };
+                let buffer = unsafe { BUFFER.lock(Self) };
                 buffer.reset();
 
                 buffer.write(&rest[..]).map_err(|_| Error::ExecutionError)?;

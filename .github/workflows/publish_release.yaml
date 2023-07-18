@@ -20,8 +20,19 @@ jobs:
         with:
           workflow: main.yaml
           commit: ${{ github.event.push.head.sha }}
-          name: app-installers
+          name: .*-installer
+          name_is_regexp: true
           path: build/pkg
+
+      - name: Download elfs
+        #we use this since it allows us to get artifacts from other workflows
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: main.yaml
+          commit: ${{ github.event.push.head.sha }}
+          name: .*-app
+          name_is_regexp: true
+          path: build/output
 
       - name: Retrieve version
         id: vars
@@ -33,7 +44,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: build/pkg/*
+          files: |
+            build/pkg/*
+            build/output/*
           tag_name: ${{ steps.vars.outputs.version }}
           draft: false
           prerelease: false

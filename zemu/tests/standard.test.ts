@@ -14,34 +14,37 @@
  *  limitations under the License.
  ******************************************************************************* */
 
-import Zemu from '@zondax/zemu'
+import Zemu, { zondaxMainmenuNavigation, ButtonKind } from '@zondax/zemu'
 import { defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
+jest.setTimeout(200000)
+
 describe.each(models)('Standard', function (m) {
-  test('can start and stop container', async function () {
+  test.concurrent('can start and stop container', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
     } finally {
       await sim.close()
     }
   })
 
-  test('main menu', async function () {
+  test.concurrent('main menu', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
-      await sim.navigateAndCompareSnapshots('.', `${m.prefix.toLowerCase()}-mainmenu`, [1, 0, 0, 4, -5])
+      await sim.start(defaultOptions(m))
+      const nav = zondaxMainmenuNavigation(m.name, [1, 0, 0, 4, -5]);
+      await sim.navigateAndCompareSnapshots('.', `${m.prefix.toLowerCase()}-mainmenu`, nav.schedule)
     } finally {
       await sim.close()
     }
   })
 
-  test('get app version', async function () {
+  test.concurrent('get app version', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const resp = await app.getVersion()
 

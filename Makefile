@@ -42,11 +42,6 @@ clippy:
 	cargo clippy --all-targets
 .PHONY: clippy
 
-
-.PHONY: zemu_test
-zemu_test:
-	cd $(TESTS_ZEMU_DIR) && yarn test$(COIN)
-
 .PHONY: zemu_debug
 zemu_debug:
 	cd $(TESTS_ZEMU_DIR) && yarn run debug

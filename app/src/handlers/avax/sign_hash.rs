@@ -85,7 +85,7 @@ impl Sign {
         }
 
         unsafe {
-            PATH.lock(Self)?.replace(root_path);
+            PATH.lock(Self).replace(root_path);
         }
 
         if rem.len() != Self::SIGN_HASH_SIZE {
@@ -169,12 +169,7 @@ impl Viewable for SignUI {
         // In this step the msg has not been signed
         // so store the hash for the next steps
         unsafe {
-            match HASH.lock(Sign) {
-                Ok(hash) => {
-                    hash.replace(self.hash);
-                }
-                Err(_) => return (0, Error::ExecutionError as _),
-            }
+            HASH.lock(Sign).replace(self.hash);
         }
 
         (tx, Error::Success as _)

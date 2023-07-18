@@ -18,23 +18,21 @@ jobs:
     needs: configure
     runs-on: ubuntu-latest
     container:
-      image: zondax/builder-bolos:latest
+      image: zondax/ledger-app-builder:latest
       options: --user ${{ needs.configure.outputs.uid_gid }}
     env:
-      BOLOS_ENV: /opt/bolos
+      BOLOS_SDK: /opt/nanosplus-secure-sdk
       HOME: /home/zondax_circle
     outputs:
       version: ${{ steps.store-version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - run: cd deps; sh get_sdk.sh
+        with:
+          submodules: true
 
       - name: Invoke `version`
         shell: bash -l {0}
-        env:
-          BOLOS_SDK: ${{ github.workspace }}/deps/nanos-secure-sdk
         run: make version
 
       - id: store-version

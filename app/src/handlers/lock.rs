@@ -34,15 +34,15 @@ impl<T, A> Lock<T, A> {
 }
 
 impl<T, A: Eq> Lock<T, A> {
-    ///Locks the resource (if available) and retrieve it
-    pub fn lock(&mut self, acquirer: impl Into<A>) -> Result<&mut T, LockError> {
+    ///Locks the resource and retrieve it
+    pub fn lock(&mut self, acquirer: impl Into<A>) -> &mut T {
         let acq = acquirer.into();
         match self.lock {
-            Some(ref a) if a == &acq => Ok(&mut self.item),
+            Some(ref a) if a == &acq => &mut self.item,
             //if it's busy we forcefully acquire the lock
             Some(_) | None => {
                 self.lock = Some(acq);
-                Ok(&mut self.item)
+                &mut self.item
             }
         }
     }
@@ -92,7 +92,7 @@ mod tests {
     fn nominal_use() {
         let mut lock = build_lock(0);
 
-        *lock.lock(0).unwrap() += 1;
+        *lock.lock(0) += 1;
 
         assert_eq!(1, *lock.acquire(0).unwrap());
 
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn bad_accessors() {
         let mut lock = build_lock(32);
-        lock.lock(32).unwrap();
+        lock.lock(32);
 
         lock.acquire(0).unwrap_err();
         lock.release(0).unwrap_err();
@@ -111,17 +111,17 @@ mod tests {
     #[test]
     fn lock_released() {
         let mut lock = build_lock(42);
-        lock.lock(0).unwrap();
+        lock.lock(0);
         lock.release(0).unwrap();
 
-        lock.lock(1).unwrap();
+        lock.lock(1);
     }
 
     #[test]
     fn force_lock() {
         let mut lock = build_lock(2);
-        lock.lock(0).unwrap();
-        lock.lock(1).unwrap();
+        lock.lock(0);
+        lock.lock(1);
 
         lock.acquire(0).unwrap_err();
         lock.acquire(1).unwrap();

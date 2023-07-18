@@ -27,8 +27,9 @@
     "url": "https://github.com/ava-labs/ledger-avalanche/issues"
   },
   "dependencies": {
-    "@ledgerhq/hw-app-eth": "6.32.1",
-    "@ledgerhq/hw-transport": "6.28.1",
+    "@ledgerhq/hw-app-eth": "6.33.6",
+    "ledger-bitcoin": "^0.2.1",
+    "@ledgerhq/hw-transport": "6.28.5",
     "bs58": "5.0.0",
     "sha3": "2.1.4"
   },
@@ -41,7 +42,7 @@
     "bip39": "^3.0.4",
     "core-js": "^3.11.1",
     "crypto-js": "4.1.1",
-    "esbuild": "0.17.19",
+    "esbuild": "0.18.11",
     "eslint": "^8.24.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.20.2",

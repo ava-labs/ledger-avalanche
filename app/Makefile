@@ -26,7 +26,9 @@ all: bin/app.elf
 	@echo "#!/usr/bin/env bash" > $(OUTPUT_INSTALLER)
 	@echo "APPNAME=\"${APPNAME}\"" >> $(OUTPUT_INSTALLER)
 	@echo "APPVERSION=\"${APPVERSION}\"" >> $(OUTPUT_INSTALLER)
-	@echo "APPPATH=\""${APPPATH}"\"" >> $(OUTPUT_INSTALLER)
+	# Commented due to a crash when trying to sign BTC transactions, it needs to be allowed to 
+	# use generic paths, instead of being limited to the paths passed bellow.
+	# @echo "APPPATH=\""${APPPATH}"\"" >> $(OUTPUT_INSTALLER)
 	@echo "LOAD_PARAMS=($$(echo "${APP_LOAD_PARAMS}" | sed -e "s|"${APPNAME}"|\""${APPNAME}"\"|"))" >> $(OUTPUT_INSTALLER)
 	@echo "DELETE_PARAMS=($$(echo "${COMMON_DELETE_PARAMS}" | sed -e "s|"${APPNAME}"|\""${APPNAME}"\"|"))" >> $(OUTPUT_INSTALLER)
 	@echo "APPHEX=\"" >> $(OUTPUT_INSTALLER)
@@ -69,7 +71,7 @@ endef
 $(error "$(error_message)")
 endif
 
-APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --path $(APPPATH)
+APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1
 
 ARTIFACT_OUTPUT_PATH := $(CURDIR)/../build
 
@@ -88,7 +90,10 @@ ICONNAME:=$(CURDIR)/../nanox_icon.gif
 OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_x.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_x.sh
 RUST_TARGET:=thumbv6m-none-eabi
-APP_LOAD_PARAMS += --appFlags 0x200
+# for BTC we need to remove the 0x200 flag and 
+# replace it with 0xa50
+# otherwise, app crashes
+APP_LOAD_PARAMS += --appFlags 0xa50
 APP_FULL:=1
 endif
 
@@ -98,7 +103,24 @@ OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_sp.elf
 OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_sp.sh
 #RUST_TARGET:=thumbv8m.main-none-eabi
 RUST_TARGET:=thumbv6m-none-eabi
-APP_LOAD_PARAMS += --appFlags 0x000
+# for BTC we need to remove the 0x000 flag and 
+# replace it with 0xa50
+# otherwise, app crashes
+APP_LOAD_PARAMS += --appFlags 0xa50
+APP_FULL:=1
+endif
+
+ifeq ($(TARGET_NAME),TARGET_STAX)
+ICONNAME:=$(CURDIR)/../stax_icon.gif
+OUTPUT_ELF ?= $(ARTIFACT_OUTPUT_PATH)/output/app_fs.elf
+OUTPUT_INSTALLER:= $(ARTIFACT_OUTPUT_PATH)/pkg/installer_fs.sh
+RUST_TARGET:=thumbv6m-none-eabi
+# for BTC we need to remove the 0x200 flag and
+# replace it with 0xa50
+# otherwise the app will crash
+# - BTC for stax is disabled temporarily, but it will be enabled soon
+# - so let's keep these flags
+APP_LOAD_PARAMS += --appFlags 0xa50
 APP_FULL:=1
 endif
 
@@ -130,11 +152,10 @@ APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 DEFINES       += APPVERSION=\"$(APPVERSION)\"
 
 DEFINES       += OS_IO_SEPROXYHAL
-DEFINES       += HAVE_BAGL HAVE_SPRINTF
+DEFINES       += HAVE_SPRINTF
 DEFINES       += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=7 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
 
 DEFINES       += LEDGER_MAJOR_VERSION=$(APPVERSION_M) LEDGER_MINOR_VERSION=$(APPVERSION_N) LEDGER_PATCH_VERSION=$(APPVERSION_P)
-DEFINES       += $(TARGET_NAME)
 
 DEFINES       += USB_SEGMENT_SIZE=64
 DEFINES       += HAVE_BOLOS_APP_STACK_CANARY
@@ -146,13 +167,19 @@ DEFINES		  += HAVE_ECDSA
 DEFINES		  += HAVE_HASH HAVE_SHA256 HAVE_SHA3
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
-DEFINES       += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+# Nano S
+	DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+	DEFINES += HAVE_BAGL
+else ifeq ($(TARGET_NAME),TARGET_STAX)
+# Stax
+    DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
+	DEFINES += HAVE_UX_FLOW
+	DEFINES += NBGL_QRCODE
 
-DEFINES		  += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=32
-DEFINES		  += BAGL_WIDTH_MARGIN=0
+#	Required by SDK
+	DEFINES += UNUSED\(x\)=\(void\)x
 else
-# Assume Nano S+/X
-
+# Nano X/S+
 DEFINES       += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 
 DEFINES       += HAVE_GLO096
@@ -161,12 +188,12 @@ DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-
 DEFINES       += HAVE_UX_FLOW
 endif
 
-# X specific
-ifeq ($(TARGET_NAME),TARGET_NANOX)
+BLE_TARGETS := TARGET_STAX TARGET_NANOX
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(BLE_TARGETS)))
+# X/Stax specific
 DEFINES       += HAVE_BLE
 DEFINES       += HAVE_BLE_APDU BLE_COMMAND_TIMEOUT_MS=2000
 
@@ -203,19 +230,67 @@ AS := $(GCCPATH)arm-none-eabi-gcc
 AFLAGS +=
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
-LDFLAGS  += -O3 -Os
-LDLIBS   += -lrslib
+LDFLAGS  += -z muldefs
 LDLIBS   += -lm -lgcc -lc
-LDLIBS   += -L../target/$(RUST_TARGET)/release
+LDLIBS   += -L$(CURDIR)/../target/$(RUST_TARGET)/release -lrslib
 
 ##########################
+BTC_GLYPHS = $(MY_DIR)/../deps/btc/glyphs
+GLYPH_FILES += $(addprefix $(BTC_GLYPHS)/,$(sort $(notdir $(shell find $(BTC_GLYPHS)/))))
+
 include $(BOLOS_SDK)/Makefile.glyphs
 
 APP_SOURCE_PATH += $(MY_DIR)/c
 APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib
 
 SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
-SDK_SOURCE_PATH += lib_ux
+
+ifeq ($(TARGET_NAME),TARGET_STAX)
+	SDK_SOURCE_PATH += lib_nbgl/src
+	SDK_SOURCE_PATH += lib_ux_stax
+else
+	SDK_SOURCE_PATH += lib_ux
+endif
+
+APP_CUSTOM_LINK_DEPENDENCIES := rust
+
+# Do not compile btc app if target is nanos or stax
+ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS TARGET_STAX))
+
+	# Bitcoin mainnet, no legacy support
+	# TODO: the new-bitcoin-app's assigns different 
+	# values for the variables bellow depending on
+	# mainnet or testnet. lets pick 
+	# the ones for mainnet for now
+	DEFINES   += BIP32_PUBKEY_VERSION=0x0488B21E
+	DEFINES   += BIP44_COIN_TYPE=0
+	DEFINES   += BIP44_COIN_TYPE_2=0
+	# The coin type bellow is not part of the btc app,
+	# but this is necesary here as avax wants support for 
+	# coin_type = 60'
+	DEFINES   += BIP44_COIN_TYPE_3=60
+	DEFINES   += COIN_P2PKH_VERSION=0
+	DEFINES   += COIN_P2SH_VERSION=5
+	DEFINES   += COIN_NATIVE_SEGWIT_PREFIX=\"bc\"
+	DEFINES   += COIN_COINID_SHORT=\"BTC\"
+
+	# Needed to be able to include the definition of G_cx
+	INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/boilerplate/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/common/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/handler/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/swap/
+	INCLUDES_PATH += $(MY_DIR)/../deps/btc/src/ui/
+
+	APP_SOURCE_PATH += $(MY_DIR)/../deps/btc/src
+	DEFINES   += HAVE_BOLOS_APP_STACK_CANARY
+
+	ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_STAX))
+		DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+		DEFINES       += HAVE_BLE_APDU
+	endif
+endif #NO TARGET_NANOS OR TARGET_STAX
 
 .PHONY: rust
 rust:
@@ -237,7 +312,8 @@ create_output_folders:
 	- mkdir -p $(ARTIFACT_OUTPUT_PATH)/output
 
 # Before linking, we need to be sure rust lib is there
-bin/app.elf: create_output_folders rust
+# this appends `create_output_folders` to the list of prerequisites
+bin/app.elf: create_output_folders
 
 # load, delete and listvariants are provided to comply with Ledger requirements
 .PHONY: load
