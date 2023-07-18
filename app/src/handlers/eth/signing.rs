@@ -340,7 +340,7 @@ fn cleanup_globals() -> Result<(), Error> {
         {
             crate::handlers::resources::NFT_INFO.lock(Sign).take();
             //let's release the lock for the future
-            crate::handlers::resources::NFT_INFO.release(Sign);
+            _ = crate::handlers::resources::NFT_INFO.release(Sign);
         }
     }
 
