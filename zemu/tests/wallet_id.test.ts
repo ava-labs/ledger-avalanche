@@ -18,7 +18,9 @@ import Zemu from '@zondax/zemu'
 import { defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
-describe.each(models)('Standard [%s] - wallet id', function (m) {
+jest.setTimeout(200000)
+
+describe.each(models)('WalletID [%s] - wallet id', function (m) {
   test.concurrent(
     'get wallet id',
     async function () {

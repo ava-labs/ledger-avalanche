@@ -16,6 +16,8 @@ export const models: IDeviceModel[] = [
   { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
 ]
 
+export const btc_models: IDeviceModel[] = models.filter((m) => m.name != 'nanos' && m.name != 'stax')
+
 export const defaultOptions = (m: IDeviceModel, is_address = false) => {
   let approveAction = ButtonKind.ApproveHoldButton;
   let approveKeyword = "";
@@ -38,6 +40,7 @@ export const defaultOptions = (m: IDeviceModel, is_address = false) => {
 export const ROOT_PATH = "m/44'/9000'/0'"
 export const APP_DERIVATION = "m/44'/9000'/0'/0/0"
 export const ETH_DERIVATION = "m/44'/60'/0'/0'"
+export const BTC_PATH = "m/44'/60'/0'"
 
 type MapCartesian<T extends any[][]> = {
   [P in keyof T]: T[P] extends Array<infer U> ? U : never

@@ -15,12 +15,19 @@
  *  limitations under the License.
  ********************************************************************************/
 #include "rslib.h"
-#include "ux.h"
 #include <os.h>
 #include <os_io_seproxyhal.h>
 
-unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#include "globals.h"
+#include "handler.h"
+#else
+#include "ux.h"
+#endif
 
+uint8_t G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+
+#if defined(TARGET_NANOS) || defined(TARGET_STAX)
 unsigned char io_event(unsigned char channel) {
   switch (G_io_seproxyhal_spi_buffer[0]) {
   case SEPROXYHAL_TAG_FINGER_EVENT: //
@@ -85,6 +92,7 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
   }
   return 0;
 }
+#endif
 
 void io_app_init() {
   io_seproxyhal_init();
@@ -112,14 +120,23 @@ __attribute__((section(".boot"))) int main(void) {
   volatile uint8_t app_init_done = 0;
   volatile uint32_t rx = 0, tx = 0, flags = 0;
   volatile uint16_t sw = 0;
-  zemu_log_stack((char *)"main");
+  zemu_log_stack("main");
+#if !defined(TARGET_NANOS) && !defined(TARGET_STAX)
+  initialize_app_globals();
+  btc_state_reset();
+#endif /* ifndef TARGET_NANOS */
 
   for (;;) {
+#if !defined(TARGET_NANOS) && !defined(TARGET_STAX)
+    // Reset length of APDU response
+    G_output_len = 0;
+#endif
+
     BEGIN_TRY {
       TRY {
         if (!app_init_done) {
           io_app_init();
-          view_idle_show(0, (const char *)MENU_MAIN_APP_LINE2);
+          view_idle_show(0, MENU_MAIN_APP_LINE2);
           app_init_done = 1;
           check_canary();
         }
@@ -131,13 +148,27 @@ __attribute__((section(".boot"))) int main(void) {
         flags = 0;
         check_canary();
 
+// Btc apdu commands are not supported by nanos
+#if defined(TARGET_NANOS) || defined(TARGET_STAX)
         rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+#else
+        if (G_io_apdu_buffer[OFFSET_CLA] == CLA_APP ||
+            G_io_apdu_buffer[OFFSET_CLA] == CLA_FRAMEWORK) {
+          // call btc handler
+          handle_btc_apdu(&flags, &tx, rx, G_io_apdu_buffer,
+                          IO_APDU_BUFFER_SIZE);
+        } else {
+          rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer,
+                         IO_APDU_BUFFER_SIZE);
+        }
+#endif
+
         check_canary();
       }
       CATCH(EXCEPTION_IO_RESET) {
         // reset IO and UX before continuing
         io_app_init();
-        view_idle_show(0, (const char *)MENU_MAIN_APP_LINE2);
+        view_idle_show(0, MENU_MAIN_APP_LINE2);
         continue;
       }
       CATCH_OTHER(e) {

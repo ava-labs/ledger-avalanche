@@ -134,7 +134,7 @@ impl Sign {
         }
 
         unsafe {
-            PATH.lock(Self)?.replace(root_path);
+            PATH.lock(Self).replace(root_path);
         }
 
         // then, get the change_path list.
@@ -209,17 +209,12 @@ impl Viewable for SignUI {
         // In this step the transaction has not been signed
         // so store the hash for the next steps
         unsafe {
-            match HASH.lock(Sign) {
-                Ok(hash) => {
-                    hash.replace(self.hash);
-                }
-                Err(_) => return (0, Error::ExecutionError as _),
-            }
+            HASH.lock(Sign).replace(self.hash);
 
             // next step requires SignHash handler to have
             // access to the path and hash resources that this handler just updated
-            let _ = PATH.lock(SignHash);
-            let _ = HASH.lock(SignHash);
+            PATH.lock(SignHash);
+            HASH.lock(SignHash);
         }
 
         (tx, Error::Success as _)

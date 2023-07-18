@@ -25,6 +25,8 @@ const defaultOptions = (model: any) => {
 
 const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4';
 
+jest.setTimeout(200000)
+
 describe.each(models)('Standard [%s] - pubkey', function (m) {
   test.concurrent(
     'get pubkey and addr',

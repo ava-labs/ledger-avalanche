@@ -40,10 +40,14 @@ import { pathCoinType, serializeChainID, serializeHrp, serializePath, serializeP
 import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId, ResponseXPub } from './types'
 
 import Eth from '@ledgerhq/hw-app-eth'
+import { AppClient, DefaultWalletPolicy, WalletPolicy, PsbtV2 } from 'ledger-bitcoin';
+
 import { LedgerEthTransactionResolution, LoadConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
 
 export * from './types'
 export { LedgerError }
+// reexport bitcoin types
+export {WalletPolicy, PsbtV2, DefaultWalletPolicy}
 
 function processGetAddrResponse(response: Buffer) {
   let partialResponse = response
@@ -100,6 +104,7 @@ function processGetXPubResponse(response: Buffer) {
 export default class AvalancheApp {
   transport
   private eth
+  private btc
 
   constructor(transport: Transport, ethScrambleKey = 'w0w', ethLoadConfig: LoadConfig = {}) {
     this.transport = transport
@@ -108,6 +113,7 @@ export default class AvalancheApp {
     }
 
     this.eth = new Eth(transport, ethScrambleKey, ethLoadConfig)
+    this.btc = new AppClient(transport);
   }
 
   private static prepareChunks(message: Buffer, serializedPathBuffer?: Buffer) {
@@ -599,5 +605,42 @@ export default class AvalancheApp {
         errorMessage: errorMessage,
       }
     }, processErrorResponse)
+  }
+
+  async getMasterFingerprint(): Promise<string> {
+    return this.btc.getMasterFingerprint()
+  }
+
+  async signPsbt(
+    psbt: PsbtV2,
+    walletPolicy: WalletPolicy,
+    walletHMAC: Buffer | null,
+    progressCallback?: () => void
+  // ): Promise<[number, Buffer, Buffer][]> {
+  ): Promise<any> {
+    return this.btc.signPsbt(psbt, walletPolicy, walletHMAC, progressCallback)
+  }
+
+  async getWalletAddress(
+    walletPolicy: WalletPolicy,
+    walletHMAC: Buffer | null,
+    change: number,
+    addressIndex: number,
+    display: boolean
+  ): Promise<string> {
+    return this.btc.getWalletAddress(walletPolicy, walletHMAC, change, addressIndex, display)
+  }
+  async registerWallet(
+    walletPolicy: WalletPolicy
+  ): Promise<readonly [Buffer, Buffer]> {
+
+    return this.btc.registerWallet(walletPolicy)
+
+  }
+  async getBtcExtendedPubkey(
+    path: string,
+    display: boolean = false
+  ): Promise<string> {
+    return this.btc.getExtendedPubkey(path, display)
   }
 }

@@ -83,7 +83,7 @@ impl Sign {
         // also during the review part
         #[cfg(feature = "erc721")]
         unsafe {
-            _ = crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
+            crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
         };
 
         // now parse the transaction
@@ -144,7 +144,7 @@ impl ApduHandler for Sign {
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
 
                 unsafe {
-                    PATH.lock(Self)?.replace(bip32_path);
+                    PATH.lock(Self).replace(bip32_path);
                 }
 
                 //parse the length of the RLP message
@@ -152,7 +152,7 @@ impl ApduHandler for Sign {
                 let len = core::cmp::min((to_read as usize).saturating_add(read), rest.len());
 
                 //write the rest to the swapping buffer so we persist this data
-                let buffer = unsafe { BUFFER.lock(Self)? };
+                let buffer = unsafe { BUFFER.lock(Self) };
                 buffer.reset();
 
                 buffer
@@ -337,11 +337,10 @@ fn cleanup_globals() -> Result<(), Error> {
         // Forcefully acquire the resource as it is not longer in use
         // transaction was rejected.
         #[cfg(feature = "erc721")]
-        if let Ok(info) = crate::handlers::resources::NFT_INFO.lock(Sign) {
-            info.take();
-
+        {
+            crate::handlers::resources::NFT_INFO.lock(Sign).take();
             //let's release the lock for the future
-            let _ = crate::handlers::resources::NFT_INFO.release(Sign);
+            _ = crate::handlers::resources::NFT_INFO.release(Sign);
         }
     }
 

@@ -20,7 +20,7 @@ use crate::{
         CHAIN_ID_LEN, MAX_BIP32_PATH_DEPTH,
     },
     crypto,
-    handlers::handle_ui_message,
+    handlers::{handle_ui_message, resources::PATH},
     sys::{
         bech32,
         crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
@@ -101,13 +101,8 @@ impl<'ui> AddrUIInitializer<'ui> {
 
     /// Initialie the path with the given one
     pub fn with_path(&mut self, path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> &mut Self {
-        //get ui *mut
-        let ui = self.ui.as_mut_ptr();
-
-        //SAFETY: pointers are all valid since they are coming from rust
         unsafe {
-            let ui_path = addr_of_mut!((*ui).path);
-            ui_path.write(path);
+            PATH.lock(super::GetPublicKey).replace(path);
         }
 
         self.path_init = true;
@@ -189,7 +184,6 @@ impl<'ui> AddrUIInitializer<'ui> {
 }
 
 pub struct AddrUI {
-    path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
     //includes checksum
     chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
@@ -233,7 +227,11 @@ impl AddrUI {
     ) -> Result<crypto::PublicKey, Error> {
         let mut out = MaybeUninit::uninit();
 
-        AddrUIInitializer::key_initializer(&self.path)(&mut out, chain_code)
+        let path = unsafe { PATH.acquire(super::GetPublicKey) }?
+            .as_ref()
+            .ok_or(Error::ExecutionError)?;
+
+        AddrUIInitializer::key_initializer(path)(&mut out, chain_code)
             .map_err(|_| Error::ExecutionError)?;
 
         //SAFETY: out has been initialized by the call above

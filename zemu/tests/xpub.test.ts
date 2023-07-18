@@ -18,6 +18,8 @@ import Zemu from '@zondax/zemu'
 import { defaultOptions as commonOpts, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
+jest.setTimeout(200000)
+
 const defaultOptions = (model: any) => {
   return { ...commonOpts(model, true), approveKeyword: model.name == 'stax' ? "Path" : "" }
 }

@@ -109,7 +109,7 @@ impl Uploader {
             ZPacketType::new(buffer.p1()).map_err(|_| UploaderError::PacketTypeParseError)?;
 
         if packet_type.is_init() {
-            let zbuffer = unsafe { BUFFER.lock(self.accessor)? };
+            let zbuffer = unsafe { BUFFER.lock(self.accessor) };
             zbuffer.reset();
 
             zbuffer.write(&[buffer.p2()])?;

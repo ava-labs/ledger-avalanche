@@ -45,10 +45,7 @@ impl ERC721Info {
     pub fn set_info(info: NftInfo) -> Result<(), ParserError> {
         // store the information use to parse erc721 token
         unsafe {
-            NFT_INFO
-                .lock(Self)
-                .map_err(|_| ParserError::UnexpectedError)?
-                .replace(info);
+            NFT_INFO.lock(Self).replace(info);
         }
         Ok(())
     }
