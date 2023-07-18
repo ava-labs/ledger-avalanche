@@ -69,6 +69,7 @@ pub mod resources {
         SignHash,
         SignMsg,
         EthSignMsg,
+        Address,
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
@@ -176,6 +177,12 @@ pub mod resources {
     impl From<super::avax::sign_hash::Sign> for PATHAccessors {
         fn from(_: super::avax::sign_hash::Sign) -> Self {
             Self::SignHash
+        }
+    }
+
+    impl From<super::public_key::GetPublicKey> for PATHAccessors {
+        fn from(_: super::public_key::GetPublicKey) -> Self {
+            Self::Address
         }
     }
 
