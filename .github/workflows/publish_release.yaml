@@ -36,7 +36,7 @@ jobs:
 
       - name: Retrieve version
         id: vars
-        run: echo "version=$(bash ./build/pkg/installer_s.sh version)" >> $GITHUB_OUTPUT
+        run: echo "version=$(bash ./build/pkg/nanosp-installer/installer_sp.sh version)" >> $GITHUB_OUTPUT
 
       - name: Create release
         id: create_release
@@ -45,8 +45,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            build/pkg/*
-            build/output/*
+            build/pkg/**/*.sh
+            build/output/**/*.elf
           tag_name: ${{ steps.vars.outputs.version }}
           draft: false
           prerelease: false
