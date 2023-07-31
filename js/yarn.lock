@@ -6316,9 +6316,9 @@ rollup-plugin-esbuild@^5.0.0:
     jsonc-parser "^3.2.0"
 
 rollup@^3.7.0:
-  version "3.21.2"
-  resolved "https://registry.yarnpkg.com/rollup/-/rollup-3.21.2.tgz#c3a06bc8d235a0c0a8f1f7d9da73426f53706bdc"
-  integrity sha512-c4vC+JZ3bbF4Kqq2TtM7zSKtSyMybFOjqmomFax3xpfYaPZDZ4iz8NMIuBRMjnXOcKYozw7bC6vhJjiWD6JpzQ==
+  version "3.27.0"
+  resolved "https://registry.yarnpkg.com/rollup/-/rollup-3.27.0.tgz#15bd07e2e1cbfa9255bf6a3f04a432621c2f3550"
+  integrity sha512-aOltLCrYZ0FhJDm7fCqwTjIUEVjWjcydKBV/Zeid6Mn8BWgDCUBBWT5beM5ieForYNo/1ZHuGJdka26kvQ3Gzg==
   optionalDependencies:
     fsevents "~2.3.2"
 
