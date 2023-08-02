@@ -94,7 +94,7 @@ impl<'b> DisplayableItem for AvmImportTx<'b> {
         let new_item_n = item_n - 1;
 
         match new_item_n {
-            x @ 0.. if x < inputs_num_items as u8 => self.0.render_imports(x, title, message, page),
+            x @ 0.. if x < inputs_num_items => self.0.render_imports(x, title, message, page),
             x if x == inputs_num_items => self.0.render_import_description(title, message, page),
             x if x == (inputs_num_items + 1) => {
                 let title_content = pic_str!(b"Fee(AVAX)");

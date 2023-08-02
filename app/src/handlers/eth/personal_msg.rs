@@ -103,10 +103,10 @@ impl Sign {
 
 impl ApduHandler for Sign {
     #[inline(never)]
-    fn handle<'apdu>(
+    fn handle(
         flags: &mut u32,
         tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
+        buffer: ApduBufferRead<'_>,
     ) -> Result<(), Error> {
         sys::zemu_log_stack("EthSignMessage::handle\x00");
 
@@ -140,7 +140,7 @@ impl ApduHandler for Sign {
                 let buffer = unsafe { BUFFER.lock(Self) };
                 buffer.reset();
 
-                buffer.write(&rest[..]).map_err(|_| Error::ExecutionError)?;
+                buffer.write(rest).map_err(|_| Error::ExecutionError)?;
 
                 if len as usize == msg.len() {
                     // The message is completed so we can proceed with the signature
@@ -156,7 +156,7 @@ impl ApduHandler for Sign {
                 let buffer = unsafe { BUFFER.acquire(Self)? };
 
                 buffer
-                    .write(&payload[..])
+                    .write(payload)
                     .map_err(|_| Error::ExecutionError)?;
 
                 let (msg, len) = be_u32::<_, ParserError>(buffer.read_exact())

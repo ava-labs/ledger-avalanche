@@ -147,7 +147,7 @@ impl<'b> AvaxMessage<'b> {
     }
 
     pub fn msg(&self) -> &[u8] {
-        &self.data.msg()
+        self.data.msg()
     }
 }
 

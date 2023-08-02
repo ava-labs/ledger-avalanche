@@ -264,7 +264,7 @@ impl<'b> DisplayableItem for ImportTx<'b> {
         let new_item_n = item_n - 1;
 
         match new_item_n {
-            x @ 0.. if x < outputs_num_items as u8 => self.render_imports(x, title, message, page),
+            x @ 0.. if x < outputs_num_items => self.render_imports(x, title, message, page),
             x if x == outputs_num_items => self.render_import_description(title, message, page),
             x if x == (outputs_num_items + 1) => {
                 let title_content = pic_str!(b"Fee");

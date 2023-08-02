@@ -233,7 +233,7 @@ impl<'b> ExportTx<'b> {
                 // get the address index
                 let address_idx = x - 1;
                 let address = obj
-                    .get_address_at(address_idx as usize)
+                    .get_address_at(address_idx)
                     .ok_or(ViewError::NoData)?;
                 // render encoded address with proper hrp,
                 let t = pic_str!(b"Address");

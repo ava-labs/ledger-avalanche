@@ -21,10 +21,10 @@ pub struct GetVersion {}
 
 impl ApduHandler for GetVersion {
     #[inline(never)]
-    fn handle<'apdu>(
+    fn handle(
         _: &mut u32,
         tx: &mut u32,
-        apdu_buffer: ApduBufferRead<'apdu>,
+        apdu_buffer: ApduBufferRead<'_>,
     ) -> Result<(), ApduError> {
         crate::sys::zemu_log_stack("GetVersion\x00");
         *tx = 0;

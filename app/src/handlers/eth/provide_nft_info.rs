@@ -48,10 +48,10 @@ impl Info {
 
 impl ApduHandler for Info {
     #[inline(never)]
-    fn handle<'apdu>(
+    fn handle(
         _flags: &mut u32,
         tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
+        buffer: ApduBufferRead<'_>,
     ) -> Result<(), Error> {
         sys::zemu_log_stack("NftInfoProvider::handle\x00");
 

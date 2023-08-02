@@ -44,7 +44,6 @@ fn p_create_chain() {
     const MAX_COMPONENT: u32 = u32::MAX & !0x8000_0000;
 
     let paths = (0..NUMBER_OF_SIGNERS)
-        .into_iter()
         .map(|_| {
             let mut rng = rand::thread_rng();
 

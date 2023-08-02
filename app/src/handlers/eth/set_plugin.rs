@@ -24,7 +24,7 @@ pub struct SetPlugin;
 // provide_token_info/provide_erc20_info instructions
 impl ApduHandler for SetPlugin {
     #[inline(never)]
-    fn handle<'apdu>(_: &mut u32, tx: &mut u32, _: ApduBufferRead<'apdu>) -> Result<(), Error> {
+    fn handle(_: &mut u32, tx: &mut u32, _: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("SetPlugin::handle\x00");
 
         *tx = 0;

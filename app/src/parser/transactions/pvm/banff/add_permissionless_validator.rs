@@ -380,7 +380,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
                 .encode_into(hrp, &mut encoded[..])
                 .map_err(|_| ViewError::Unknown)?;
 
-            return handle_ui_message(&encoded[..len], message, page);
+            handle_ui_message(&encoded[..len], message, page)
         };
 
         //look for validator address first
