@@ -42,7 +42,7 @@ impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
     pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
-        let data = self.addresses.get(idx as usize)?;
+        let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr).ok()?;
         Some(unsafe { addr.assume_init() })
@@ -131,7 +131,7 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
 
             x @ 1.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
-                let addr = self.get_address_at(idx as usize).ok_or(ViewError::NoData)?;
+                let addr = self.get_address_at(idx).ok_or(ViewError::NoData)?;
                 addr.render_item(0, title, message, page)
             }
             _ => Err(ViewError::NoData),

@@ -22,7 +22,7 @@ use super::BaseLegacy;
 use crate::parser::U64_SIZE;
 use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
-const MAX_CHAIN_LEN: usize = U64_SIZE as usize;
+const MAX_CHAIN_LEN: usize = U64_SIZE;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]

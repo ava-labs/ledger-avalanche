@@ -51,7 +51,7 @@ impl<'b> NFTTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
 
     pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
-        let data = self.addresses.get(idx as usize)?;
+        let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
             .map_err(|_| ViewError::Unknown)
@@ -184,7 +184,7 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
             }
             x @ 2.. if x < self.num_addresses() + 2 => {
                 let idx = x - 2;
-                if let Some(addr) = self.get_address_at(idx as usize) {
+                if let Some(addr) = self.get_address_at(idx) {
                     let res = addr.render_item(0, title, message, page);
                     // render Owner instead of Address
                     title.iter_mut().for_each(|v| *v = 0);

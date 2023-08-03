@@ -284,7 +284,7 @@ impl<'b> DisplayableItem for TransformSubnetTx<'b> {
                 title[..label.len()].copy_from_slice(label);
 
                 let content = pic_str!(b"Transaction");
-                return handle_ui_message(content, message, page);
+                handle_ui_message(content, message, page)
             }
             1 => self.subnet_id.render_item(0, title, message, page),
             2 => self.asset_id.render_item(0, title, message, page),

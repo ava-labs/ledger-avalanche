@@ -42,18 +42,18 @@ use crate::handlers::dev::*;
 use crate::utils::{ApduBufferRead, ApduPanic};
 
 pub trait ApduHandler {
-    fn handle<'apdu>(
+    fn handle(
         flags: &mut u32,
         tx: &mut u32,
-        apdu_buffer: ApduBufferRead<'apdu>,
+        apdu_buffer: ApduBufferRead<'_>,
     ) -> Result<(), ApduError>;
 }
 
 #[inline(never)]
-pub fn apdu_dispatch<'apdu>(
+pub fn apdu_dispatch(
     flags: &mut u32,
     tx: &mut u32,
-    apdu_buffer: ApduBufferRead<'apdu>,
+    apdu_buffer: ApduBufferRead<'_>,
 ) -> Result<(), ApduError> {
     crate::sys::zemu_log_stack("apdu_dispatch\x00");
     *flags = 0;

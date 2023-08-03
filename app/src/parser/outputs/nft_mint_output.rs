@@ -42,7 +42,7 @@ impl<'b> NFTMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x0000000a;
 
     pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
-        let data = self.addresses.get(idx as usize)?;
+        let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
             .map_err(|_| ViewError::Unknown)
@@ -152,7 +152,7 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
 
             x @ 3.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
-                if let Some(data) = self.addresses.get(idx as usize) {
+                if let Some(data) = self.addresses.get(idx) {
                     let mut addr = MaybeUninit::uninit();
                     Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
                     let addr = unsafe { addr.assume_init() };

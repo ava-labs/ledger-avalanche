@@ -99,7 +99,7 @@ impl<'b> DisplayableItem for SECPMintOperation<'b> {
 
         let item_n = item_n as usize - 1;
 
-        match item_n as usize {
+        match item_n {
             0 => {
                 let res = self.transfer_output.render_item(0, title, message, page);
                 title.iter_mut().for_each(|v| *v = 0);

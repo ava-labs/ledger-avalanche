@@ -113,11 +113,7 @@ impl Sign {
 
 impl ApduHandler for Sign {
     #[inline(never)]
-    fn handle<'apdu>(
-        flags: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
-    ) -> Result<(), Error> {
+    fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("EthSign::handle\x00");
 
         *tx = 0;
@@ -251,7 +247,7 @@ impl Viewable for SignUI {
         // defined by EIP-155.
         //
         // Check for typed transactions
-        if let Some(_) = self.tx.raw_tx_type() {
+        if self.tx.raw_tx_type().is_some() {
             //write V, which is the oddity of the signature
             out[tx] = flags.contains(ECCInfo::ParityOdd) as u8;
             tx += 1;

@@ -19,7 +19,7 @@ pub struct ProvideERC20;
 
 impl ApduHandler for ProvideERC20 {
     #[inline(never)]
-    fn handle<'apdu>(_: &mut u32, tx: &mut u32, _: ApduBufferRead<'apdu>) -> Result<(), Error> {
+    fn handle(_: &mut u32, tx: &mut u32, _: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("ProvideERC20::handle\x00");
 
         *tx = 0;
