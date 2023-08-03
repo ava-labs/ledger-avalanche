@@ -426,13 +426,13 @@ mod tests {
     }
 
     #[test]
-    #[file_serial(path)]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn p_chain() {
         test_chain_alias(Some("P"), None)
     }
 
     #[test]
-    #[file_serial(path)]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn x_chain() {
         let id = hex::decode("ab68eb1ee142a05cfe768c36e11f0b596db5a3c6c77aabe665dad9e638ca94f7")
             .unwrap();
@@ -441,7 +441,7 @@ mod tests {
     }
 
     #[test]
-    #[file_serial(path)]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn c_chain() {
         let id = hex::decode("7fc93d85c6d62c5b2ac0b519c87010ea5294012d1e407030d6acd0021cac10d5")
             .unwrap();
@@ -450,7 +450,7 @@ mod tests {
     }
 
     #[test]
-    #[file_serial(path)]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn unknown_chain() {
         let id = hex::decode("2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")
             .unwrap();
