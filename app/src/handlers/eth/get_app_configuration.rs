@@ -37,11 +37,7 @@ pub struct GetAppConfiguration;
 
 impl ApduHandler for GetAppConfiguration {
     #[inline(never)]
-    fn handle(
-        _: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'_>,
-    ) -> Result<(), Error> {
+    fn handle(_: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("GetAppConfig::handle\x00");
 
         //ignore any input, we don't care

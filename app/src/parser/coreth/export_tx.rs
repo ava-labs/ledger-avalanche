@@ -232,9 +232,7 @@ impl<'b> ExportTx<'b> {
             x @ 1.. if x < num_inner_items => {
                 // get the address index
                 let address_idx = x - 1;
-                let address = obj
-                    .get_address_at(address_idx)
-                    .ok_or(ViewError::NoData)?;
+                let address = obj.get_address_at(address_idx).ok_or(ViewError::NoData)?;
                 // render encoded address with proper hrp,
                 let t = pic_str!(b"Address");
                 title[..t.len()].copy_from_slice(t);
