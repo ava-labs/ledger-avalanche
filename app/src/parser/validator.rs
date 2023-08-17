@@ -64,9 +64,10 @@ impl<'b> FromBytes<'b> for Validator<'b> {
 }
 
 impl<'b> DisplayableItem for Validator<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // node_id(1), start_time, endtime and total_stake
-        self.node_id.num_items() + 3
+        let items = self.node_id.num_items()?;
+        items.checked_add(3).ok_or(ViewError::Unknown)
     }
 
     fn render_item(

@@ -23,6 +23,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
@@ -168,17 +169,32 @@ impl<'b> ExportTx<'b> {
             })
     }
 
-    fn num_outputs_items(&self) -> usize {
+    fn num_outputs_items(&self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
         self.outputs.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     fn render_outputs(
@@ -203,7 +219,10 @@ impl<'b> ExportTx<'b> {
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
+
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -219,7 +238,7 @@ impl<'b> ExportTx<'b> {
         let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
 
         // get the number of items for Output
-        let num_inner_items = obj.num_items() as _;
+        let num_inner_items = obj.num_items()?;
 
         // do a custom rendering of the first base_output_items
         match obj_item_n {
@@ -232,7 +251,9 @@ impl<'b> ExportTx<'b> {
             x @ 1.. if x < num_inner_items => {
                 // get the address index
                 let address_idx = x - 1;
-                let address = obj.get_address_at(address_idx).ok_or(ViewError::NoData)?;
+                let address = obj
+                    .get_address_at(address_idx as usize)
+                    .ok_or(ViewError::NoData)?;
                 // render encoded address with proper hrp,
                 let t = pic_str!(b"Address");
                 title[..t.len()].copy_from_slice(t);
@@ -286,9 +307,9 @@ impl<'b> ExportTx<'b> {
 }
 
 impl<'b> DisplayableItem for ExportTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         //description + number outputs + fee
-        1 + self.num_outputs_items() + 1
+        checked_add!(ViewError::Unknown, 2u8, self.num_outputs_items()?)
     }
 
     fn render_item(
@@ -305,12 +326,12 @@ impl<'b> DisplayableItem for ExportTx<'b> {
             return self.render_export_description(title, message, page);
         }
 
-        let outputs_num_items = self.num_outputs_items();
+        let outputs_num_items = self.num_outputs_items()?;
         let new_item_n = item_n - 1;
 
         match new_item_n {
             x @ 0.. if x < outputs_num_items as u8 => self.render_outputs(x, title, message, page),
-            x if x == outputs_num_items as u8 => {
+            x if x == outputs_num_items => {
                 let title_content = pic_str!(b"Fee");
                 title[..title_content.len()].copy_from_slice(title_content);
 

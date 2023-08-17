@@ -23,6 +23,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
@@ -164,17 +165,32 @@ impl<'b> ImportTx<'b> {
             })
     }
 
-    fn num_output_items(&self) -> usize {
+    fn num_output_items(&self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
         self.outputs.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     // use outputs, which contains the amount
@@ -198,7 +214,9 @@ impl<'b> ImportTx<'b> {
                 return false;
             }
 
-            let n = o.num_items() as u8;
+            let Ok( n ) = o.num_items() else {
+                return false;
+            };
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -240,9 +258,9 @@ impl<'b> ImportTx<'b> {
 }
 
 impl<'b> DisplayableItem for ImportTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         //type + number outputs + fee + description
-        1 + self.num_output_items() + 1 + 1
+        checked_add!(ViewError::Unknown, 3u8, self.num_output_items()?)
     }
 
     fn render_item(
@@ -260,7 +278,7 @@ impl<'b> DisplayableItem for ImportTx<'b> {
             return handle_ui_message(pic_str!(b"Importing in C-Chain"), message, page);
         }
 
-        let outputs_num_items = self.num_output_items() as u8;
+        let outputs_num_items = self.num_output_items()?;
         let new_item_n = item_n - 1;
 
         match new_item_n {

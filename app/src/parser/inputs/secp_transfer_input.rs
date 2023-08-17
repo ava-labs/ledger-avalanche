@@ -22,6 +22,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, ParserError, U32_SIZE},
 };
@@ -77,9 +78,9 @@ impl<'b> FromBytes<'b> for SECPTransferInput<'b> {
 }
 
 impl<'a> DisplayableItem for SECPTransferInput<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // output-type, amount, indices
-        1 + 1 + self.address_indices.len()
+        checked_add!(ViewError::Unknown, 2u8, self.address_indices.len() as u8)
     }
 
     #[inline(never)]

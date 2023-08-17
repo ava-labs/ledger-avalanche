@@ -75,10 +75,12 @@ impl<'b> FromBytes<'b> for SECPMintOperation<'b> {
 }
 
 impl<'b> DisplayableItem for SECPMintOperation<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // operation description
         // and the transfer to the new mint-output owners
-        1 + self.transfer_output.num_items()
+        self.transfer_output
+            .num_items()
+            .and_then(|a| a.checked_add(1).ok_or(ViewError::Unknown))
     }
 
     fn render_item(

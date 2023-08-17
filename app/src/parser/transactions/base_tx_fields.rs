@@ -17,6 +17,7 @@ use core::ops::Deref;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32};
+use zemu_sys::ViewError;
 
 use crate::parser::{
     DisplayableItem, FromBytes, ObjectList, Output, OutputIdx, ParserError, TransferableInput,
@@ -102,17 +103,32 @@ where
         &self.inputs
     }
 
-    pub fn base_outputs_num_items(&'b self) -> usize {
+    pub fn base_outputs_num_items(&'b self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
         self.outputs.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     // Gets the obj that contain the item_n, along with the index
@@ -139,7 +155,10 @@ where
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
+
             for index in 0..n {
                 obj_item_n = index;
                 if count == item_n as usize {

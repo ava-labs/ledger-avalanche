@@ -171,18 +171,32 @@ where
     // Default implementation similar to "num_items", this relies on the
     // inner objects, but callers might want to filter it
     // out.
-    pub fn num_outputs_items(&'b self) -> usize {
+    pub fn num_outputs_items(&'b self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
         self.outputs.iterate_with(|o| {
-            // check first if the output is listed as renderable
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     // Gets the obj that contain the item_n, along with the index
@@ -205,7 +219,10 @@ where
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
+
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -236,7 +253,7 @@ where
         let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
 
         // get the number of items for the obj wrapped up by PvmOutput
-        let num_inner_items = obj.num_items() as _;
+        let num_inner_items = obj.num_items()?;
 
         // do a custom rendering of the first base_output_items
         match obj_item_n {

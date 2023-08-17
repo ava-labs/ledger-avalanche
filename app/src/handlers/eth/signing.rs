@@ -207,7 +207,7 @@ pub(crate) struct SignUI {
 
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
-        Ok(self.tx.num_items() as _)
+        self.tx.num_items()
     }
 
     #[inline(never)]

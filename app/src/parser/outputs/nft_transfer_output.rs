@@ -22,6 +22,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{u32_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
     utils::hex_encode,
@@ -115,9 +116,9 @@ impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
 }
 
 impl<'a> DisplayableItem for NFTTransferOutput<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // group_id, payload and addresses
-        1 + 1 + self.num_addresses()
+        checked_add!(ViewError::Unknown, 2u8, self.num_addresses() as u8)
     }
 
     #[inline(never)]

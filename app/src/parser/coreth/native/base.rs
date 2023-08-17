@@ -20,6 +20,7 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use crate::{
+    checked_add,
     handlers::{
         eth::{u256, BorrowedU256},
         handle_ui_message,
@@ -130,7 +131,7 @@ impl<'b> BaseLegacy<'b> {
             x @ 2.. if !render_funding && x == 2 || render_funding && x == 3 => {
                 self.data.render_item(0, title, message, page)
             }
-            x @ 3.. if x as usize == self.num_items() - 1 => {
+            x @ 3.. if x == self.num_items()? - 1 => {
                 let label = pic_str!(b"Maximum Fee(GWEI)");
                 title[..label.len()].copy_from_slice(label);
 
@@ -148,7 +149,7 @@ impl<'b> BaseLegacy<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let render_fee = self.num_items() as u8 - 1;
+        let render_fee = self.num_items()? - 1;
 
         match item_n {
             x @ 0.. if x < render_fee => self.data.render_item(item_n, title, message, page),
@@ -225,7 +226,7 @@ impl<'b> BaseLegacy<'b> {
             _ => unsafe { core::hint::unreachable_unchecked() },
         };
 
-        let num_items = erc20.num_items() as u8;
+        let num_items = erc20.num_items()?;
 
         match item_n {
             item_n @ 0.. if item_n < num_items => erc20.render_item(item_n, title, message, page),
@@ -264,7 +265,7 @@ impl<'b> BaseLegacy<'b> {
             _ => unsafe { core::hint::unreachable_unchecked() },
         };
 
-        let num_items = erc721.num_items() as u8;
+        let num_items = erc721.num_items()?;
 
         match item_n {
             item_n @ 0.. if item_n < num_items => erc721.render_item(item_n, title, message, page),
@@ -365,25 +366,32 @@ impl<'b> FromBytes<'b> for BaseLegacy<'b> {
 }
 
 impl<'b> DisplayableItem for BaseLegacy<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // The type of the data field defines how a transaction
         // info is displayed.
-        match self.data {
+        let items = match self.data {
             // description, gas limit, funding contract(if value != zero), maximun fee and data.items
-            EthData::Deploy(d) => 1 + 1 + 1 + d.num_items() + !self.value.is_empty() as usize,
+            EthData::Deploy(d) => checked_add!(
+                ViewError::Unknown,
+                3u8,
+                d.num_items()?,
+                !self.value.is_empty() as u8
+            )?,
             // render a simple Transfer, to, fee
             EthData::None => 1 + 1 + 1,
             // asset items + fee
-            EthData::AssetCall(d) => d.num_items() + 1,
+            EthData::AssetCall(d) => d.num_items()?.checked_add(1).ok_or(ViewError::Unknown)?,
             // description amount, address, fee and contract_data
-            EthData::ContractCall(d) => 1 + 1 + 1 + 1 + d.num_items(),
+            EthData::ContractCall(d) => d.num_items()?.checked_add(4).ok_or(ViewError::Unknown)?,
             // address, fee
             #[cfg(feature = "erc20")]
-            EthData::Erc20(d) => 1 + 1 + d.num_items(),
+            EthData::Erc20(d) => d.num_items()?.checked_add(2).ok_or(ViewError::Unknown)?,
             // contract address, fee
             #[cfg(feature = "erc721")]
-            EthData::Erc721(d) => 1 + 1 + d.num_items(),
-        }
+            EthData::Erc721(d) => d.num_items()?.checked_add(2).ok_or(ViewError::Unknown)?,
+        };
+
+        Ok(items)
     }
 
     fn render_item(

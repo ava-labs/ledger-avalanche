@@ -19,6 +19,7 @@ use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseExport, DisplayableItem, FromBytes, ParserError, PvmOutput,
@@ -69,8 +70,10 @@ impl<'b> FromBytes<'b> for PvmExportTx<'b> {
 }
 
 impl<'b> DisplayableItem for PvmExportTx<'b> {
-    fn num_items(&self) -> usize {
-        1 + self.0.num_outputs_items() + 1
+    fn num_items(&self) -> Result<u8, ViewError> {
+        let outputs = self.0.num_outputs_items()?;
+
+        checked_add!(ViewError::Unknown, 2u8, outputs)
     }
 
     fn render_item(
@@ -88,7 +91,7 @@ impl<'b> DisplayableItem for PvmExportTx<'b> {
             return self.0.render_export_description(title, message, page);
         }
 
-        let outputs_num_items = self.0.num_outputs_items();
+        let outputs_num_items = self.0.num_outputs_items()?;
         let new_item_n = item_n - 1;
 
         match new_item_n {

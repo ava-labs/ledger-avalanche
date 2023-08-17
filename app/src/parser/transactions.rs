@@ -326,7 +326,7 @@ impl<'b> Transaction<'b> {
 }
 
 impl<'b> DisplayableItem for Transaction<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, zemu_sys::ViewError> {
         match self {
             Self::XImport(tx) => tx.num_items(),
             Self::XExport(tx) => tx.num_items(),
@@ -411,7 +411,7 @@ mod tests {
     /// it's present inside the `mod test` block only
     impl Viewable for Transaction<'static> {
         fn num_items(&mut self) -> Result<u8, zemu_sys::ViewError> {
-            Ok(DisplayableItem::num_items(&*self) as u8)
+            DisplayableItem::num_items(&*self)
         }
 
         fn render_item(
@@ -446,13 +446,13 @@ mod tests {
 
         let mut tx = Transaction::new(&data).unwrap();
         // get number of items with all active outputs
-        let num_items = tx.num_items();
+        let num_items = tx.num_items().expect("Overflow?");
 
         // disable one output.
         tx.disable_output_if(&change_address);
 
         //get again the number of outputs
-        let num_items_hide = tx.num_items();
+        let num_items_hide = tx.num_items().expect("Overflows?");
 
         // ensure the number of items has changed
         // as there is now one output that is disable

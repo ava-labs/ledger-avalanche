@@ -228,7 +228,7 @@ pub fn intstr_to_fpstr_inplace(
 
 #[macro_export]
 macro_rules! checked_add {
-    ($err_type:ident, $first:expr $(, $rest:expr)*) => {{
+    ($err_type:path, $first:expr $(, $rest:expr)*) => {{
         // Start with the first value
         let mut sum = $first;
 

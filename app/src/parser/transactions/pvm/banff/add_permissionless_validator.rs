@@ -19,6 +19,7 @@ use nom::{bytes::complete::tag, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
@@ -131,18 +132,27 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
 }
 
 impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
         // fee, fee_delegation, validator_rewards_to, delegator_rewards_to,
         // and stake items
-        1 + self.base_tx.base_outputs_num_items()
-            + self.validator.num_items()
-            + self.signer.num_items()
-            + self.validator_rewards_owner.num_addresses()
-            + self.delegator_rewards_owner.num_addresses()
-            + self.num_stake_items()
-            + 1
-            + 1
+        let base = self.base_tx.base_outputs_num_items()?;
+        let validator = self.validator.num_items()?;
+        let signer = self.signer.num_items()?;
+        let validator_rewards = self.validator_rewards_owner.num_addresses() as u8;
+        let delegator_rewards = self.delegator_rewards_owner.num_addresses() as u8;
+        let stake = self.num_stake_items()?;
+
+        checked_add!(
+            ViewError::Unknown,
+            3u8,
+            base,
+            validator,
+            signer,
+            validator_rewards,
+            delegator_rewards,
+            stake
+        )
     }
 
     fn render_item(
@@ -152,12 +162,12 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let signer_items = self.signer.num_items() as u8;
-        let validator_items = self.validator.num_items() as u8;
-        let base_outputs_items = self.base_tx.base_outputs_num_items() as u8;
-        let stake_outputs_items = self.num_stake_items() as u8;
+        let signer_items = self.signer.num_items()?;
+        let validator_items = self.validator.num_items()?;
+        let base_outputs_items = self.base_tx.base_outputs_num_items()?;
+        let stake_outputs_items = self.num_stake_items()?;
 
-        let total_items = self.num_items() as u8;
+        let total_items = self.num_items()?;
 
         match_ranges! {
             match item_n alias x {
@@ -217,17 +227,32 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         Ok(fee)
     }
 
-    fn num_stake_items(&self) -> usize {
+    fn num_stake_items(&self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
         self.stake.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     fn render_base_outputs(
@@ -286,7 +311,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         //      0.5 AVAX until 2021-05-31 21:28:00 UTC
 
         // get the number of items for the obj wrapped up by PvmOutput
-        let num_inner_items = obj.output.num_inner_items() as _;
+        let num_inner_items = obj.output.num_inner_items()?;
 
         // do a custom rendering of the first base_output_items
         match item_n {
@@ -442,7 +467,10 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
+
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -572,9 +600,9 @@ mod tests {
             println!("-------------------- Add Permissionless Validator TX #{i} ------------------------");
             let (_, tx) = AddPermissionlessValidatorTx::from_bytes(data).unwrap();
 
-            let items = tx.num_items();
+            let items = tx.num_items().expect("Overflow?");
 
-            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items as usize);
             for i in 0..items {
                 let mut page = Page::default();
 

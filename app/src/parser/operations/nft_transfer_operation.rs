@@ -75,7 +75,7 @@ impl<'b> FromBytes<'b> for NFTTransferOperation<'b> {
 }
 
 impl<'b> DisplayableItem for NFTTransferOperation<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, zemu_sys::ViewError> {
         self.nft_transfer_output.num_items()
     }
 
