@@ -28,6 +28,8 @@ use crate::{
     },
 };
 
+use avalanche_app_derive::match_ranges;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
@@ -155,49 +157,24 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
         let base_outputs_items = self.base_tx.base_outputs_num_items() as u8;
         let stake_outputs_items = self.num_stake_items() as u8;
 
-        if item_n == 0 {
-            let label = pic_str!(b"AddValidator");
-            title[..label.len()].copy_from_slice(label);
-            let content = pic_str!(b"Transaction");
-            return handle_ui_message(content, message, page);
-        }
-
-        let item_n = item_n - 1;
-
-        // when to start rendering staked outputs
-        let render_stake_outputs_at = validator_items + base_outputs_items + signer_items;
-        let render_last_items_at = render_stake_outputs_at + stake_outputs_items;
         let total_items = self.num_items() as u8;
 
-        match item_n {
-            // render base_outputs
-            x @ 0.. if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
-
-            // render validator items
-            x if x >= base_outputs_items && x < render_stake_outputs_at - signer_items => {
-                let new_idx = x - base_outputs_items;
-                self.validator.render_item(new_idx, title, message, page)
+        match_ranges! {
+            match item_n alias x {
+                0 => {
+                    // FIXME: truncated due to NanoS 17 character limit
+                    let label = pic_str!(b"AddPermlessValida");
+                    title[..label.len()].copy_from_slice(label);
+                    let content = pic_str!(b"Transaction");
+                    return handle_ui_message(content, message, page);
+                },
+                until base_outputs_items => self.render_base_outputs(x, title, message, page),
+                until validator_items => self.validator.render_item(x, title, message, page),
+                until signer_items => self.signer.render_item(x, title, message, page),
+                until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
+                until total_items => self.render_last_items(x, title, message, page),
+                _ => Err(ViewError::NoData),
             }
-
-            //if signer_items is 0 this will be skipped already but let's make the check
-            // explicit
-            x if x >= base_outputs_items && x < render_stake_outputs_at && signer_items != 0 => {
-                self.signer.render_item(0, title, message, page)
-            }
-
-            // render stake items
-            x if x >= render_stake_outputs_at && x < render_last_items_at => {
-                let new_idx = x - render_stake_outputs_at;
-                self.render_stake_outputs(new_idx, title, message, page)
-            }
-
-            // render rewards to, delegate fee and fee
-            x if x >= render_last_items_at && x < total_items - 1 => {
-                // normalize index to zero
-                let new_idx = x - render_last_items_at;
-                self.render_last_items(new_idx, title, message, page)
-            }
-            _ => Err(ViewError::NoData),
         }
     }
 }
