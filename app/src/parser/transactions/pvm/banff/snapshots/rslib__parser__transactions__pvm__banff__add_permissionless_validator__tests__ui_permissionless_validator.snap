@@ -3,7 +3,7 @@ source: app/src/parser/transactions/pvm/banff/add_permissionless_validator.rs
 expression: reduced
 ---
 [
-    "AddValidator": "Transaction",
+    "AddPermlessValida": "Transaction",
     "Validator": "NodeID-9ig1HmgE4hECbPAugbAbb283e9PdGeji5",
     "Start time": "2022-12-12 17:14:22 UTC",
     "End time": "2023-01-11 17:14:22 UTC",
