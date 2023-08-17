@@ -259,7 +259,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
             .stake_output_with_item(item_n)
             .map_err(|_| ViewError::NoData)?;
 
-        // for base_outputs the header is Transfer
+        // for staking the header is Stake
         let header = pic_str!(b"Stake");
 
         self.render_output_with_header(&obj, item_idx, title, message, page, header)
@@ -394,32 +394,33 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = (self.validator_rewards_owner.num_addresses()
             + self.delegator_rewards_owner.num_addresses()) as u8;
+        let delegate_fee_items = 1 as u8;
+        let fee_items = 1 as u8;
 
-        match item_n {
-            // render rewards
-            x @ 0.. if x < num_addresses => {
-                self.render_rewards_to(x as usize, title, message, page)
+        match_ranges! {
+            match item_n alias x {
+                until num_addresses => self.render_rewards_to(x as usize, title, message, page),
+                until delegate_fee_items => {
+                    let label = pic_str!(b"Delegate fee(%)");
+                    title[..label.len()].copy_from_slice(label);
+                    u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+
+                    let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                        .map_err(|_| ViewError::Unknown)?;
+
+                    handle_ui_message(buffer, message, page)
+                },
+                until fee_items => {
+                    let label = pic_str!(b"Fee(AVAX)");
+                    title[..label.len()].copy_from_slice(label);
+
+                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                    let fee_buff =
+                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    handle_ui_message(fee_buff, message, page)
+                }
+                _ => Err(ViewError::Unknown)
             }
-            x if x >= num_addresses && x < (num_addresses + 1) => {
-                let label = pic_str!(b"Delegate fee(%)");
-                title[..label.len()].copy_from_slice(label);
-                u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-
-                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
-                    .map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(buffer, message, page)
-            }
-            x if x == (num_addresses + 1) => {
-                let label = pic_str!(b"Fee(AVAX)");
-                title[..label.len()].copy_from_slice(label);
-
-                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-                handle_ui_message(fee_buff, message, page)
-            }
-            _ => Err(ViewError::NoData),
         }
     }
 

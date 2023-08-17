@@ -350,22 +350,25 @@ impl<'b> AddDelegatorTx<'b> {
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
+        let fee_items = 1 as u8;
 
-        match item_n {
-            // render rewards
-            x @ 0.. if x < num_addresses => {
-                self.render_rewards_to(x as usize, title, message, page)
-            }
-            x if x == num_addresses => {
-                let label = pic_str!(b"Fee(AVAX)");
-                title[..label.len()].copy_from_slice(label);
+        match_ranges! {
+            match item_n alias x {
+                // render rewards
+                until num_addresses => {
+                    self.render_rewards_to(x as usize, title, message, page)
+                }
+                until fee_items => {
+                    let label = pic_str!(b"Fee(AVAX)");
+                    title[..label.len()].copy_from_slice(label);
 
-                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-                handle_ui_message(fee_buff, message, page)
+                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                    let fee_buff =
+                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    handle_ui_message(fee_buff, message, page)
+                }
+                _ => Err(ViewError::NoData),
             }
-            _ => Err(ViewError::NoData),
         }
     }
 
