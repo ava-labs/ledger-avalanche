@@ -97,7 +97,7 @@ impl<'b> OperationTx<'b> {
             .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
 
-        Ok((obj, obj_item_n as u8))
+        Ok((obj, obj_item_n))
     }
 
     fn render_outputs(

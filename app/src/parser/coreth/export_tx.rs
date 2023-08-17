@@ -330,7 +330,7 @@ impl<'b> DisplayableItem for ExportTx<'b> {
         let new_item_n = item_n - 1;
 
         match new_item_n {
-            x @ 0.. if x < outputs_num_items as u8 => self.render_outputs(x, title, message, page),
+            x @ 0.. if x < outputs_num_items => self.render_outputs(x, title, message, page),
             x if x == outputs_num_items => {
                 let title_content = pic_str!(b"Fee");
                 title[..title_content.len()].copy_from_slice(title_content);

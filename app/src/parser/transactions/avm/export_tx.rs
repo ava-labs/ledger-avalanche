@@ -79,10 +79,8 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
         let new_item_n = item_n - 1;
 
         match new_item_n {
-            x @ 0.. if x < outputs_num_items as u8 => {
-                self.0.render_outputs(x, title, message, page)
-            }
-            x if x == outputs_num_items as u8 => {
+            x @ 0.. if x < outputs_num_items => self.0.render_outputs(x, title, message, page),
+            x if x == outputs_num_items => {
                 let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];

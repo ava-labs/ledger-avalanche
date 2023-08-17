@@ -122,7 +122,7 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
         // directly since it offsets the pages by 1 if present
         let render_threshold_at = 2 + render_locktime as u8;
 
-        match item_n as u8 {
+        match item_n {
             0 => {
                 let title_content = pic_str!(b"Output");
                 title[..title_content.len()].copy_from_slice(title_content);

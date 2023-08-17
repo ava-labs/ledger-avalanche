@@ -234,7 +234,7 @@ where
         };
 
         let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
-        Ok((obj, obj_item_n as u8))
+        Ok((obj, obj_item_n))
     }
 
     // default render_item implementation that

@@ -176,7 +176,7 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
                     let label = pic_str!(b"AddPermlessValida");
                     title[..label.len()].copy_from_slice(label);
                     let content = pic_str!(b"Transaction");
-                    return handle_ui_message(content, message, page);
+                     handle_ui_message(content, message, page)
                 },
                 until base_outputs_items => self.render_base_outputs(x, title, message, page),
                 until validator_items => self.validator.render_item(x, title, message, page),
@@ -419,8 +419,8 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = (self.validator_rewards_owner.num_addresses()
             + self.delegator_rewards_owner.num_addresses()) as u8;
-        let delegate_fee_items = 1 as u8;
-        let fee_items = 1 as u8;
+        let delegate_fee_items = 1;
+        let fee_items = 1;
 
         match_ranges! {
             match item_n alias x {
@@ -485,7 +485,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
             .stake
             .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
-        Ok((obj, obj_item_n as u8))
+        Ok((obj, obj_item_n))
     }
 }
 
