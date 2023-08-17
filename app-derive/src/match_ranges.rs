@@ -51,7 +51,7 @@ fn expr_to_paren_expr(expr: Box<Expr>) -> Box<Expr> {
 #[derive(Debug)]
 enum RangePat {
     Lit(Lit),
-    Ident(Ident),
+    Ident(kw::until, Ident),
     Wild(Token![_]),
 }
 
@@ -66,7 +66,7 @@ impl RangePat {
                 attrs: vec![],
                 lit: Lit::Int(syn::LitInt::new("1", lit.span())),
             })),
-            Self::Ident(ident) => Some(Expr::Path(syn::ExprPath {
+            Self::Ident(_, ident) => Some(Expr::Path(syn::ExprPath {
                 attrs: vec![],
                 qself: None,
                 path: ident_to_path(ident.clone()),
@@ -78,7 +78,7 @@ impl RangePat {
     fn span(&self) -> proc_macro2::Span {
         match self {
             RangePat::Lit(lit) => lit.span(),
-            RangePat::Ident(ident) => ident.span(),
+            RangePat::Ident(_, ident) => ident.span(),
             RangePat::Wild(wild) => wild.span(),
         }
     }
@@ -88,12 +88,13 @@ impl Parse for RangePat {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         if let Ok(wild) = input.parse::<Token![_]>() {
             Ok(Self::Wild(wild))
-        } else if let Ok(ident) = input.parse::<Ident>() {
-            Ok(Self::Ident(ident))
+        } else if let Ok(until) = input.parse::<kw::until>() {
+            let ident = input.parse()?;
+            Ok(Self::Ident(until, ident))
         } else if let Ok(lit) = input.parse::<Lit>() {
             Ok(Self::Lit(lit))
         } else {
-            Err(input.error("Expected identifier, literal or _"))
+            Err(input.error("Expected `until` identifier, literal or wildcard (_)"))
         }
     }
 }
