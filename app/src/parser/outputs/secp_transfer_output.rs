@@ -22,6 +22,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
@@ -89,13 +90,13 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
 }
 
 impl<'a> DisplayableItem for SECPTransferOutput<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // According to avalanche team, and to be "compatible" at presentation layer
         // we should summarize the items to show. As they suggested we only show the amount
         // and address. Legacy app errors if there is more than 1 address, in our case we dont yet.
         //
         // amount and addresses
-        1 + self.addresses.len()
+        checked_add!(ViewError::Unknown, 1u8, self.addresses.len() as u8)
     }
 
     #[inline(never)]
@@ -110,9 +111,9 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
         use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO_LEN];
-        let addr_item_n = self.num_items() - self.addresses.len();
+        let addr_item_n = self.num_items()? - self.addresses.len() as u8;
 
-        match item_n as usize {
+        match item_n {
             0 => {
                 let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
@@ -131,7 +132,7 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
 
             x @ 1.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
-                let addr = self.get_address_at(idx).ok_or(ViewError::NoData)?;
+                let addr = self.get_address_at(idx as usize).ok_or(ViewError::NoData)?;
                 addr.render_item(0, title, message, page)
             }
             _ => Err(ViewError::NoData),

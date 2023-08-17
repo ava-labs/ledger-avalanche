@@ -18,6 +18,7 @@ use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
@@ -75,8 +76,8 @@ impl<'b> FromBytes<'b> for CreateSubnetTx<'b> {
 }
 
 impl<'b> DisplayableItem for CreateSubnetTx<'b> {
-    fn num_items(&self) -> usize {
-        1 + self.owners.num_items() + 1 //fee
+    fn num_items(&self) -> Result<u8, ViewError> {
+        checked_add!(ViewError::Unknown, 2u8, self.owners.num_items()?)
     }
 
     fn render_item(
@@ -89,7 +90,7 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
         use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
-        let owners_items = self.owners.num_items() as u8;
+        let owners_items = self.owners.num_items()?;
 
         if item_n == 0 {
             let label = pic_str!(b"CreateSubnet");

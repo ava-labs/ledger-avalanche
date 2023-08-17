@@ -87,7 +87,7 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
 }
 
 impl<'b> DisplayableItem for Eip2930<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.base.num_items()
     }
 

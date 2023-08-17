@@ -259,7 +259,7 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
 }
 
 impl<'b> DisplayableItem for EthTransaction<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         match self {
             Self::Legacy(t) => t.num_items(),
             Self::Eip1559(t) => t.num_items(),
@@ -292,7 +292,7 @@ mod tests {
 
     impl Viewable for EthTransaction<'static> {
         fn num_items(&mut self) -> Result<u8, zemu_sys::ViewError> {
-            Ok(DisplayableItem::num_items(&*self) as u8)
+            DisplayableItem::num_items(&*self)
         }
 
         fn render_item(

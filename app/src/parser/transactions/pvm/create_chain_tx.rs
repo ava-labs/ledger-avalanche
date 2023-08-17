@@ -122,11 +122,11 @@ impl<'b> FromBytes<'b> for CreateChainTx<'b> {
 }
 
 impl<'b> DisplayableItem for CreateChainTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // we need to show:
         // tx description, SubnetID, ChainName, VMID, GenesisDataHash
         // and fee
-        1 + 4 + 1
+        Ok(1 + 4 + 1)
     }
 
     fn render_item(

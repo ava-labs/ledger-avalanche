@@ -19,6 +19,7 @@ use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, AvmOutput, BaseExport, DisplayableItem, FromBytes, ParserError,
@@ -51,12 +52,12 @@ impl<'b> FromBytes<'b> for AvmExportTx<'b> {
 }
 
 impl<'b> DisplayableItem for AvmExportTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // only support SECP256k1 outputs
         // and to keep compatibility with the legacy app,
         // we show only 4 items for each output
         // chains info, amount, address and fee which is the sum of all inputs minus all outputs
-        1 + self.0.num_outputs_items() + 1
+        checked_add!(ViewError::Unknown, 2u8, self.0.num_outputs_items()?)
     }
 
     fn render_item(
@@ -74,14 +75,12 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
             return self.0.render_export_description(title, message, page);
         }
 
-        let outputs_num_items = self.0.num_outputs_items();
+        let outputs_num_items = self.0.num_outputs_items()?;
         let new_item_n = item_n - 1;
 
         match new_item_n {
-            x @ 0.. if x < outputs_num_items as u8 => {
-                self.0.render_outputs(x, title, message, page)
-            }
-            x if x == outputs_num_items as u8 => {
+            x @ 0.. if x < outputs_num_items => self.0.render_outputs(x, title, message, page),
+            x if x == outputs_num_items => {
                 let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];

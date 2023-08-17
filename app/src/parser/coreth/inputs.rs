@@ -20,6 +20,7 @@ use nom::number::complete::be_u64;
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{Address, AssetId, DisplayableItem, FromBytes},
     utils::is_app_mode_expert,
@@ -82,16 +83,16 @@ impl<'b> FromBytes<'b> for EVMInput<'b> {
 }
 
 impl<'b> DisplayableItem for EVMInput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // expert: address, nonce
         let expert = if is_app_mode_expert() {
-            self.address.num_items() + 1
+            self.address.num_items()? + 1
         } else {
             0
         };
 
         //type, asset id, amount
-        1 + self.asset_id.num_items() + 1 + expert
+        checked_add!(ViewError::Unknown, 2u8, expert, self.asset_id.num_items()?)
     }
 
     fn render_item(

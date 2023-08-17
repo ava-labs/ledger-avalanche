@@ -112,8 +112,8 @@ impl<'b> FromBytes<'b> for Message<'b> {
 }
 
 impl<'b> DisplayableItem for Message<'b> {
-    fn num_items(&self) -> usize {
-        1
+    fn num_items(&self) -> Result<u8, ViewError> {
+        Ok(1)
     }
 
     fn render_item(
@@ -175,9 +175,10 @@ impl<'b> FromBytes<'b> for AvaxMessage<'b> {
 }
 
 impl<'b> DisplayableItem for AvaxMessage<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // Description + message
-        1 + self.data.num_items()
+        let items = self.data.num_items()?;
+        items.checked_add(1).ok_or(ViewError::Unknown)
     }
 
     fn render_item(

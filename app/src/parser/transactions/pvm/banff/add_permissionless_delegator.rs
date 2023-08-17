@@ -20,6 +20,7 @@ use nom::number::complete::be_u32;
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
@@ -112,16 +113,23 @@ impl<'b> FromBytes<'b> for AddPermissionlessDelegatorTx<'b> {
 }
 
 impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
         // subnet id, rewards_to,
         // stake items and fee
-        1 + self.base_tx.base_outputs_num_items()
-            + self.validator.num_items()
-            + 1
-            + self.rewards_owner.addresses.len()
-            + self.num_stake_items()
-            + 1
+        let base_outputs = self.base_tx.base_outputs_num_items()?;
+        let validator_items = self.validator.num_items()?;
+        let owners = self.rewards_owner.addresses.len() as u8;
+        let stake = self.num_stake_items()?;
+
+        checked_add!(
+            ViewError::Unknown,
+            3u8,
+            base_outputs,
+            validator_items,
+            owners,
+            stake
+        )
     }
 
     fn render_item(
@@ -131,12 +139,12 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let validator_items = self.validator.num_items() as u8;
-        let base_outputs_items = self.base_tx.base_outputs_num_items() as u8;
-        let stake_outputs_items = self.num_stake_items() as u8;
-        let subnet_id_items = self.subnet_id.num_items() as u8;
+        let validator_items = self.validator.num_items()?;
+        let base_outputs_items = self.base_tx.base_outputs_num_items()?;
+        let stake_outputs_items = self.num_stake_items()?;
+        let subnet_id_items = self.subnet_id.num_items()?;
 
-        let total_items = self.num_items() as u8;
+        let total_items = self.num_items()?;
 
         match_ranges! {
             match item_n alias x {
@@ -145,7 +153,7 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
                     let label = pic_str!(b"AddPermlessDelega");
                     title[..label.len()].copy_from_slice(label);
                     let content = pic_str!(b"Transaction");
-                    return handle_ui_message(content, message, page);
+                    handle_ui_message(content, message, page)
                 },
                 until base_outputs_items => self.render_base_outputs(x, title, message, page),
                 until validator_items => self.validator.render_item(x, title, message, page),
@@ -195,17 +203,32 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
         Ok(fee)
     }
 
-    fn num_stake_items(&self) -> usize {
+    fn num_stake_items(&self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
         self.stake.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     fn render_base_outputs(
@@ -264,7 +287,7 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
         //      0.5 AVAX until 2021-05-31 21:28:00 UTC
 
         // get the number of items for the obj wrapped up by PvmOutput
-        let num_inner_items = obj.output.num_inner_items() as _;
+        let num_inner_items = obj.output.num_inner_items()?;
 
         // do a custom rendering of the first base_output_items
         match item_n {
@@ -361,7 +384,7 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
-        let fee_items = 1 as u8;
+        let fee_items = 1;
 
         match_ranges! {
             match item_n alias x {
@@ -405,7 +428,9 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -420,7 +445,7 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
             .stake
             .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
-        Ok((obj, obj_item_n as u8))
+        Ok((obj, obj_item_n))
     }
 }
 
@@ -451,9 +476,9 @@ mod tests {
             println!("-------------------- Add Permissionless Delegator TX #{i} ------------------------");
             let (_, tx) = AddPermissionlessDelegatorTx::from_bytes(data).unwrap();
 
-            let items = tx.num_items();
+            let items = tx.num_items().expect("Overflow!");
 
-            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items as usize);
             for i in 0..items {
                 let mut page = Page::default();
 
