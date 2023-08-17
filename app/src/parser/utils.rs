@@ -226,6 +226,22 @@ pub fn intstr_to_fpstr_inplace(
     Ok(&mut s[..len])
 }
 
+#[macro_export]
+macro_rules! checked_add {
+    ($err_type:ident, $first:expr $(, $rest:expr)*) => {{
+        // Start with the first value
+        let mut sum = $first;
+
+        // Try to add each of the rest, checking for overflow
+        $(
+            sum = sum.checked_add($rest).ok_or($err_type)?;
+        )*
+
+        // If we reach here, the sum is valid
+        Ok(sum)
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use super::{intstr_to_fpstr_inplace, u64_to_str};
