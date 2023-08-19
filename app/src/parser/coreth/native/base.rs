@@ -18,7 +18,7 @@ use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
-use super::parse_rlp_item;
+use super::{parse_rlp_item, render_u256};
 use crate::{
     checked_add,
     handlers::{
@@ -32,7 +32,7 @@ use crate::{
     utils::ApduPanic,
 };
 
-use super::render_u256;
+use avalanche_app_derive::match_ranges;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -106,39 +106,41 @@ impl<'b> BaseLegacy<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         let render_funding = !self.value.is_empty();
-        match item_n {
-            0 => {
-                let label = pic_str!(b"Contract");
-                title[..label.len()].copy_from_slice(label);
 
-                let content = pic_str!(b"Creation");
-                handle_ui_message(&content[..], message, page)
+        match_ranges! {
+            match item_n alias x {
+                0 => {
+                    let label = pic_str!(b"Contract");
+                    title[..label.len()].copy_from_slice(label);
+
+                    let content = pic_str!(b"Creation");
+                    handle_ui_message(&content[..], message, page)
+                }
+
+                1 => {
+                    let label = pic_str!(b"Gas Limit");
+                    title[..label.len()].copy_from_slice(label);
+
+                    render_u256(&self.gas_limit, 0, message, page)
+                }
+
+                2 if render_funding => {
+                    let label = pic_str!(b"Funding Contract");
+                    title[..label.len()].copy_from_slice(label);
+
+                    render_u256(&self.value, WEI_NAVAX_DIGITS, message, page)
+                }
+                until 1 => {
+                    self.data.render_item(0, title, message, page)
+                }
+                until 1 => {
+                    let label = pic_str!(b"Maximum Fee(GWEI)");
+                    title[..label.len()].copy_from_slice(label);
+
+                    self.render_fee(message, page)
+                }
+                _ => Err(ViewError::NoData),
             }
-
-            1 => {
-                let label = pic_str!(b"Gas Limit");
-                title[..label.len()].copy_from_slice(label);
-
-                render_u256(&self.gas_limit, 0, message, page)
-            }
-
-            2 if render_funding => {
-                let label = pic_str!(b"Funding Contract");
-                title[..label.len()].copy_from_slice(label);
-
-                render_u256(&self.value, WEI_NAVAX_DIGITS, message, page)
-            }
-            x @ 2.. if !render_funding && x == 2 || render_funding && x == 3 => {
-                self.data.render_item(0, title, message, page)
-            }
-            x @ 3.. if x == self.num_items()? - 1 => {
-                let label = pic_str!(b"Maximum Fee(GWEI)");
-                title[..label.len()].copy_from_slice(label);
-
-                self.render_fee(message, page)
-            }
-
-            _ => Err(ViewError::NoData),
         }
     }
 
@@ -149,18 +151,19 @@ impl<'b> BaseLegacy<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let render_fee = self.num_items()? - 1;
+        let before_render_fee = self.num_items()? - 1;
 
-        match item_n {
-            x @ 0.. if x < render_fee => self.data.render_item(item_n, title, message, page),
-            x if x == render_fee => {
-                let label = pic_str!(b"Maximum Fee");
-                title[..label.len()].copy_from_slice(label);
+        match_ranges! {
+            match item_n alias x {
+                until before_render_fee => self.data.render_item(x, title, message, page),
+                until 1 => {
+                    let label = pic_str!(b"Maximum Fee");
+                    title[..label.len()].copy_from_slice(label);
 
-                self.render_fee(message, page)
+                    self.render_fee(message, page)
+                }
+                _ => Err(ViewError::NoData),
             }
-
-            _ => Err(ViewError::NoData),
         }
     }
 
@@ -228,26 +231,27 @@ impl<'b> BaseLegacy<'b> {
 
         let num_items = erc20.num_items()?;
 
-        match item_n {
-            item_n @ 0.. if item_n < num_items => erc20.render_item(item_n, title, message, page),
-            x @ 0.. if x == num_items => {
-                let label = pic_str!(b"Contract");
-                title[..label.len()].copy_from_slice(label);
+        match_ranges! {
+            match item_n  alias x {
+                until num_items => erc20.render_item(item_n, title, message, page),
+                until 1 => {
+                    let label = pic_str!(b"Contract");
+                    title[..label.len()].copy_from_slice(label);
 
-                // should not panic as address was check
-                self.to
-                    .as_ref()
-                    .apdu_unwrap()
-                    .render_eth_address(message, page)
+                    // should not panic as address was check
+                    self.to
+                        .as_ref()
+                        .apdu_unwrap()
+                        .render_eth_address(message, page)
+                }
+                until 1 => {
+                    let label = pic_str!(b"Maximun Fee(GWEI)");
+                    title[..label.len()].copy_from_slice(label);
+
+                    self.render_fee(message, page)
+                }
+                _ => Err(ViewError::NoData),
             }
-            x @ 0.. if x == num_items + 1 => {
-                let label = pic_str!(b"Maximun Fee(GWEI)");
-                title[..label.len()].copy_from_slice(label);
-
-                self.render_fee(message, page)
-            }
-
-            _ => Err(ViewError::NoData),
         }
     }
 
@@ -267,26 +271,27 @@ impl<'b> BaseLegacy<'b> {
 
         let num_items = erc721.num_items()?;
 
-        match item_n {
-            item_n @ 0.. if item_n < num_items => erc721.render_item(item_n, title, message, page),
-            x @ 0.. if x == num_items => {
-                let label = pic_str!(b"Contract");
-                title[..label.len()].copy_from_slice(label);
+        match_ranges! {
+            match item_n alias x {
+                until num_items => erc721.render_item(item_n, title, message, page),
+                until 1 => {
+                    let label = pic_str!(b"Contract");
+                    title[..label.len()].copy_from_slice(label);
 
-                // should not panic as address was check
-                self.to
-                    .as_ref()
-                    .apdu_unwrap()
-                    .render_eth_address(message, page)
+                    // should not panic as address was check
+                    self.to
+                        .as_ref()
+                        .apdu_unwrap()
+                        .render_eth_address(message, page)
+                }
+                until 1 => {
+                    let label = pic_str!(b"Maximun Fee(GWEI)");
+                    title[..label.len()].copy_from_slice(label);
+
+                    self.render_fee(message, page)
+                }
+                _ => Err(ViewError::NoData),
             }
-            x @ 0.. if x == num_items + 1 => {
-                let label = pic_str!(b"Maximun Fee(GWEI)");
-                title[..label.len()].copy_from_slice(label);
-
-                self.render_fee(message, page)
-            }
-
-            _ => Err(ViewError::NoData),
         }
     }
 

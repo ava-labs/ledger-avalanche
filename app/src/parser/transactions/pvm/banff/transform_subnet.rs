@@ -219,6 +219,7 @@ impl<'b> TransformSubnetTx<'b> {
                 let label = pic_str!(b"Min delegate fee");
                 title[..label.len()].copy_from_slice(label);
 
+                // TODO: determine how to display properly
                 let buffer = itoa(self.min_delegation_fee, &mut buffer);
                 handle_ui_message(buffer, message, page)
             }
