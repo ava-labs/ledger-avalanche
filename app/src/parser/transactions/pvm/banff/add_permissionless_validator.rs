@@ -419,13 +419,11 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = (self.validator_rewards_owner.num_addresses()
             + self.delegator_rewards_owner.num_addresses()) as u8;
-        let delegate_fee_items = 1;
-        let fee_items = 1;
 
         match_ranges! {
             match item_n alias x {
                 until num_addresses => self.render_rewards_to(x as usize, title, message, page),
-                until delegate_fee_items => {
+                until 1 => {
                     let label = pic_str!(b"Delegate fee(%)");
                     title[..label.len()].copy_from_slice(label);
                     u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
@@ -435,7 +433,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
 
                     handle_ui_message(buffer, message, page)
                 },
-                until fee_items => {
+                until 1 => {
                     let label = pic_str!(b"Fee(AVAX)");
                     title[..label.len()].copy_from_slice(label);
 

@@ -142,7 +142,6 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
         let validator_items = self.validator.num_items()?;
         let base_outputs_items = self.base_tx.base_outputs_num_items()?;
         let stake_outputs_items = self.num_stake_items()?;
-        let subnet_id_items = self.subnet_id.num_items()?;
 
         let total_items = self.num_items()?;
 
@@ -157,7 +156,7 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
                 },
                 until base_outputs_items => self.render_base_outputs(x, title, message, page),
                 until validator_items => self.validator.render_item(x, title, message, page),
-                until subnet_id_items => self.subnet_id.render_item(x, title, message, page),
+                until 1 => self.subnet_id.render_item(x, title, message, page),
                 until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
                 until total_items => self.render_last_items(x, title, message, page),
                 _ => Err(ViewError::NoData),
@@ -384,7 +383,6 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
-        let fee_items = 1;
 
         match_ranges! {
             match item_n alias x {
@@ -392,7 +390,7 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
                 until num_addresses => {
                     self.render_rewards_to(x as usize, title, message, page)
                 }
-                until fee_items => {
+                until 1 => {
                     let label = pic_str!(b"Fee(AVAX)");
                     title[..label.len()].copy_from_slice(label);
 
