@@ -442,7 +442,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
                         nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
                     handle_ui_message(fee_buff, message, page)
                 }
-                _ => Err(ViewError::Unknown)
+                _ => Err(ViewError::NoData)
             }
         }
     }
