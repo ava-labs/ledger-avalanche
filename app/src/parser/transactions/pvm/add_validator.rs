@@ -168,6 +168,10 @@ impl<'b> AddValidatorTx<'b> {
         let mut idx = 0;
         let mut render = self.renderable_out;
 
+        // stake is defined as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.stake.iterate_with(|o| {
             // The 99.99% of the outputs contain only one address(best case),
             // In the worse case we just show every output.
@@ -203,6 +207,10 @@ impl<'b> AddValidatorTx<'b> {
         // if an overflows happens
         let mut err: Option<ViewError> = None;
 
+        // stake is defined as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.stake.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {

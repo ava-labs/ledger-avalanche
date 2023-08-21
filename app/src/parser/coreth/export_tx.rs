@@ -118,6 +118,11 @@ impl<'b> ExportTx<'b> {
 
         let mut idx = 0;
         let mut render = self.renderable_out;
+
+        // outputs is define as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.outputs.iterate_with(|o| {
             // The 99.99% of the outputs contain only one address(best case),
             // In the worse case we just show every output.
@@ -177,6 +182,10 @@ impl<'b> ExportTx<'b> {
         // if an overflows happens
         let mut err: Option<ViewError> = None;
 
+        // outputs is defined as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.outputs.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
@@ -203,12 +212,13 @@ impl<'b> ExportTx<'b> {
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
-    ) -> Result<u8, zemu_sys::ViewError> {
+    ) -> Result<u8, ViewError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
         // gets the SECPTranfer output that contains item_n
         // and its corresponding index
         let mut idx = 0;
+
         // gets the output that contains item_n
         // and its corresponding index
         let filter = |o: &TransferableOutput<EOutput>| -> bool {
@@ -234,6 +244,7 @@ impl<'b> ExportTx<'b> {
         };
 
         let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
+
         // ETH Import/Export only supports secp_transfer types
         let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
 
