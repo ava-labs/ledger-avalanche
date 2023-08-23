@@ -21,6 +21,7 @@ use nom::{bytes::complete::take, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::{handle_ui_message, resources::NFT_INFO},
     parser::{
         Address, AssetId, DisplayableItem, FromBytes, NftInfo, ParserError, ADDRESS_LEN,
@@ -60,8 +61,8 @@ pub struct BaseTransfer<'b> {
 }
 
 impl<'b> DisplayableItem for BaseTransfer<'b> {
-    fn num_items(&self) -> usize {
-        3
+    fn num_items(&self) -> Result<u8, ViewError> {
+        Ok(3)
     }
 
     fn render_item(
@@ -421,7 +422,7 @@ impl<'b> ERC721<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         match item_n {
-            x @ 0.. if x < this.base.num_items() as u8 => {
+            x @ 0.. if x < this.base.num_items()? => {
                 this.base.render_item(item_n, title, message, page)
             }
             _ => Err(ViewError::NoData),
@@ -497,13 +498,15 @@ impl<'b> ERC721<'b> {
 }
 
 impl<'b> DisplayableItem for ERC721<'b> {
-    fn num_items(&self) -> usize {
-        1 + match self {
-            ERC721::TransferFrom(t) => t.base.num_items(),
-            ERC721::SafeTransferFrom(t) => t.base.num_items(),
+    fn num_items(&self) -> Result<u8, ViewError> {
+        let items = match self {
+            ERC721::TransferFrom(t) => t.base.num_items()?,
+            ERC721::SafeTransferFrom(t) => t.base.num_items()?,
             ERC721::Approve(_) => 3,
             ERC721::ApprovalForAll(_) => 2,
-        }
+        };
+
+        checked_add!(ViewError::Unknown, 1u8, items)
     }
 
     fn render_item(

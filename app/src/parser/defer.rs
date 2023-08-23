@@ -86,7 +86,7 @@ where
     Obj: DisplayableItem + FromBytes<'b>,
 {
     #[inline(always)]
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.read().num_items()
     }
 

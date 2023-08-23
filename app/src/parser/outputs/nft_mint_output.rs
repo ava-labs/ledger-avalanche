@@ -22,6 +22,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         u32_to_str, u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
@@ -92,11 +93,15 @@ impl<'b> FromBytes<'b> for NFTMintOutput<'b> {
 }
 
 impl<'a> DisplayableItem for NFTMintOutput<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // output-type, group_id, threshold and addresses
-        let items = 1 + 1 + 1 + self.addresses.len();
         // do not show locktime if it is 0
-        items + (self.locktime > 0) as usize
+        checked_add!(
+            ViewError::Unknown,
+            3u8,
+            self.addresses.len() as _,
+            (self.locktime > 0) as u8
+        )
     }
 
     #[inline(never)]
@@ -111,13 +116,13 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
         use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-        let addr_item_n = self.num_items() - self.addresses.len();
+        let addr_item_n = self.num_items()? - self.addresses.len() as u8;
         let render_locktime = self.locktime > 0;
         // Gets the page at which this field is displayed, by summing the boolean
         // directly since it offsets the pages by 1 if present
-        let render_threshold_at = 2 + render_locktime as usize;
+        let render_threshold_at = 2 + render_locktime as u8;
 
-        match item_n as usize {
+        match item_n {
             0 => {
                 let title_content = pic_str!(b"Output");
                 title[..title_content.len()].copy_from_slice(title_content);
@@ -152,7 +157,7 @@ impl<'a> DisplayableItem for NFTMintOutput<'a> {
 
             x @ 3.. if x >= addr_item_n => {
                 let idx = x - addr_item_n;
-                if let Some(data) = self.addresses.get(idx) {
+                if let Some(data) = self.addresses.get(idx as usize) {
                     let mut addr = MaybeUninit::uninit();
                     Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
                     let addr = unsafe { addr.assume_init() };

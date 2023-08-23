@@ -164,9 +164,9 @@ impl<'b> EthData<'b> {
 }
 
 impl<'b> DisplayableItem for EthData<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         match self {
-            Self::None => 0,
+            Self::None => Ok(0),
             Self::Deploy(d) => d.num_items(),
             Self::AssetCall(d) => d.num_items(),
             #[cfg(feature = "erc20")]

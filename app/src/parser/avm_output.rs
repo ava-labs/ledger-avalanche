@@ -86,7 +86,7 @@ impl<'b> AvmOutput<'b> {
 }
 
 impl<'b> DisplayableItem for AvmOutput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // the asset_id is not part of the summary we need from objects of this type,
         // but could give to higher level objects information to display such information.
         self.0.num_items()

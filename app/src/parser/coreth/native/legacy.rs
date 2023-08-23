@@ -113,7 +113,7 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
 }
 
 impl<'b> DisplayableItem for Legacy<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.base.num_items()
     }
 

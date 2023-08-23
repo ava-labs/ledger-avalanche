@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::sys::ViewError;
+use crate::{checked_add, sys::ViewError};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
 
@@ -73,10 +73,10 @@ impl<'b> FromBytes<'b> for AddSubnetValidatorTx<'b> {
 }
 
 impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, validator_items(4),
         // subnet_id and fee
-        1 + self.validator.num_items() + 1 + 1
+        checked_add!(ViewError::Unknown, 3u8, self.validator.num_items()?)
     }
 
     fn render_item(
@@ -98,7 +98,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
 
         let item_n = item_n - 1;
 
-        let validator_items = self.validator.num_items() as u8;
+        let validator_items = self.validator.num_items()?;
 
         match item_n {
             // render validator info

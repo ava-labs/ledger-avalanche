@@ -37,7 +37,7 @@ impl ApduHandler for Debug {
 
         let payload = apdu.payload().map_err(|_| Error::DataInvalid)?;
 
-        let zbuffer = unsafe { BUFFER.lock(Self)? };
+        let zbuffer = unsafe { BUFFER.lock(Self) };
         zbuffer
             .write(&[
                 apdu.cla(),

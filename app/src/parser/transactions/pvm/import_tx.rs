@@ -19,6 +19,7 @@ use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseImport, DisplayableItem, FromBytes, ParserError, PvmOutput,
@@ -64,13 +65,13 @@ impl<'b> PvmImportTx<'b> {
 }
 
 impl<'b> DisplayableItem for PvmImportTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // only support SECP256k1 outputs
         // and to keep compatibility with the legacy app,
         // we show only 4 items for each output
         // tx info, amount, address and fee which is the sum of all inputs minus all outputs
         // and the chain description
-        1 + self.0.num_input_items() + 1 + 1
+        checked_add!(ViewError::Unknown, 3u8, self.0.num_input_items()?)
     }
 
     fn render_item(
@@ -90,7 +91,7 @@ impl<'b> DisplayableItem for PvmImportTx<'b> {
             return handle_ui_message(&value_content[..], message, page);
         }
 
-        let inputs_num_items = self.0.num_input_items() as u8;
+        let inputs_num_items = self.0.num_input_items()?;
         let new_item_n = item_n - 1;
 
         match new_item_n {
