@@ -5,7 +5,10 @@
   "version": "1.0.0",
   "description": "",
   "types": "./dist/index.d.ts",
-  "keywords": ["Zondax", "Ledger"],
+  "keywords": [
+    "Zondax",
+    "Ledger"
+  ],
   "scripts": {
     "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*'",
     "test_dev": "jest",
