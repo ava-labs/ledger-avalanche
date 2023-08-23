@@ -248,6 +248,7 @@ SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
 ifeq ($(TARGET_NAME),TARGET_STAX)
 	SDK_SOURCE_PATH += lib_nbgl/src
 	SDK_SOURCE_PATH += lib_ux_stax
+	SDK_SOURCE_PATH += qrcode
 else
 	SDK_SOURCE_PATH += lib_ux
 endif

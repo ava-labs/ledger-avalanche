@@ -17,6 +17,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
 
+use crate::checked_add;
 use crate::handlers::handle_ui_message;
 use crate::parser::{
     nano_avax_to_fp_str, AvmOutput, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
@@ -52,7 +53,7 @@ impl<'b> Transfer<'b> {
         // this is a secp_transfer so it contain
         // 1 item amount
         // x items which is one item for each address
-        let num_inner_items = obj.num_items() as _;
+        let num_inner_items = obj.num_items()?;
 
         match idx {
             0 => {
@@ -139,8 +140,8 @@ impl<'b> FromBytes<'b> for Transfer<'b> {
 }
 
 impl<'b> DisplayableItem for Transfer<'b> {
-    fn num_items(&self) -> usize {
-        1usize + self.base.base_outputs_num_items() + 1 // fee
+    fn num_items(&self) -> Result<u8, ViewError> {
+        checked_add!(ViewError::Unknown, 2u8, self.base.base_outputs_num_items()?)
     }
 
     fn render_item(
@@ -162,7 +163,7 @@ impl<'b> DisplayableItem for Transfer<'b> {
 
         let item_n = item_n - 1;
 
-        let outputs_items = self.base.base_outputs_num_items() as u8;
+        let outputs_items = self.base.base_outputs_num_items()?;
 
         match item_n {
             // render outputs

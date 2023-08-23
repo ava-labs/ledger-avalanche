@@ -22,6 +22,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
@@ -39,7 +40,7 @@ impl<'b> SECPOutputOwners<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
 
     pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
-        let data = self.addresses.get(idx as usize)?;
+        let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
             .map_err(|_| ViewError::Unknown)
@@ -85,12 +86,12 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
 }
 
 impl<'a> DisplayableItem for SECPOutputOwners<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // show an item for each address in the list
-        let items = self.addresses.len();
+        let items = self.addresses.len() as u8;
         // show locktime only if it is higher than zero,
         // that is why we sum up this boolean
-        items + (self.locktime > 0) as usize
+        checked_add!(ViewError::Unknown, items, (self.locktime > 0) as u8)
     }
 
     #[inline(never)]
@@ -105,9 +106,9 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
         use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-        let addr_item_n = self.num_items() - self.addresses.len();
+        let addr_item_n = self.num_items()? - self.addresses.len() as u8;
 
-        match item_n as usize {
+        match item_n {
             0 if self.locktime > 0 => {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);

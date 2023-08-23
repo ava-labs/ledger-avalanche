@@ -183,11 +183,7 @@ impl Viewable for SignUI {
 
 impl ApduHandler for Sign {
     #[inline(never)]
-    fn handle<'apdu>(
-        flags: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
-    ) -> Result<(), Error> {
+    fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("SignHash::handle\x00");
 
         *tx = 0;

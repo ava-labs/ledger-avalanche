@@ -1,3 +1,4 @@
+use crate::checked_add;
 /*******************************************************************************
 *   (c) 2021 Zondax GmbH
 *
@@ -51,12 +52,24 @@ impl<'b> OperationTx<'b> {
         Ok(fee)
     }
 
-    fn operation_items(&self) -> usize {
+    fn operation_items(&self) -> Result<u8, ViewError> {
         let mut num_items = 0;
+
+        let mut err: Option<ViewError> = None;
         self.operations.iterate_with(|op| {
-            num_items += op.num_items();
+            match op
+                .num_items()
+                .and_then(|a| a.checked_add(num_items).ok_or(ViewError::Unknown))
+            {
+                Ok(i) => num_items = i,
+                Err(_) => err = Some(ViewError::Unknown),
+            }
         });
-        num_items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(num_items)
     }
 
     pub fn op_with_item(&'b self, item_n: u8) -> Result<(TransferableOp, u8), ParserError> {
@@ -65,7 +78,10 @@ impl<'b> OperationTx<'b> {
         // gets the operation that contains item_n
         // and its corresponding index
         let filter = |o: &TransferableOp<'b>| -> bool {
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
+
             for index in 0..n {
                 obj_item_n = index;
                 if count == item_n as usize {
@@ -81,7 +97,7 @@ impl<'b> OperationTx<'b> {
             .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
 
-        Ok((obj, obj_item_n as u8))
+        Ok((obj, obj_item_n))
     }
 
     fn render_outputs(
@@ -101,7 +117,7 @@ impl<'b> OperationTx<'b> {
         // this is a secp_transfer so it contain
         // 1 item amount
         // x items which is one item for each address
-        let num_inner_items = obj.num_items() as _;
+        let num_inner_items = obj.num_items()?;
 
         match idx {
             0 => {
@@ -179,9 +195,12 @@ impl<'b> FromBytes<'b> for OperationTx<'b> {
 }
 
 impl<'b> DisplayableItem for OperationTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // description +
-        1 + self.base_tx.base_outputs_num_items() + self.operation_items() + 1 // fee
+        let base = self.base_tx.base_outputs_num_items()?;
+        let operation = self.operation_items()?;
+
+        checked_add!(ViewError::Unknown, 2u8, base, operation)
     }
 
     fn render_item(
@@ -203,16 +222,16 @@ impl<'b> DisplayableItem for OperationTx<'b> {
 
         let item_n = item_n - 1;
 
-        let base_items = self.base_tx.base_outputs_num_items() as u8;
+        let base_items = self.base_tx.base_outputs_num_items()?;
 
         match item_n {
             x @ 0.. if x < base_items => self.render_outputs(item_n, title, message, page),
-            x if x >= base_items && x < self.num_items() as u8 - 2 => {
+            x if x >= base_items && x < self.num_items()? - 2 => {
                 let x = item_n - base_items;
                 let (op, idx) = self.op_with_item(x).map_err(|_| ViewError::NoData)?;
                 op.render_item(idx, title, message, page)
             }
-            x if x == self.num_items() as u8 - 2 => {
+            x if x == self.num_items()? - 2 => {
                 let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
 

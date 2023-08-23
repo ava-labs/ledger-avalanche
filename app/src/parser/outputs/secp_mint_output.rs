@@ -22,6 +22,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
 };
@@ -40,7 +41,7 @@ impl<'b> SECPMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000006;
 
     pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
-        let data = self.addresses.get(idx as usize)?;
+        let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
             .map_err(|_| ViewError::Unknown)
@@ -87,11 +88,14 @@ impl<'b> FromBytes<'b> for SECPMintOutput<'b> {
 }
 
 impl<'a> DisplayableItem for SECPMintOutput<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // output-type, threshold and addresses
-        let items = 1 + 1 + self.addresses.len();
-        // do not show locktime if it is 0
-        items + (self.locktime > 0) as usize
+        checked_add!(
+            ViewError::Unknown,
+            2u8,
+            self.addresses.len() as u8,
+            (self.locktime > 0) as u8
+        )
     }
 
     #[inline(never)]
@@ -106,9 +110,9 @@ impl<'a> DisplayableItem for SECPMintOutput<'a> {
         use lexical_core::{write as itoa, Number};
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-        let addr_item_n = self.num_items() - self.addresses.len();
+        let addr_item_n = self.num_items()? - self.addresses.len() as u8;
 
-        match item_n as usize {
+        match item_n {
             0 => {
                 let title_content = pic_str!(b"Output");
                 title[..title_content.len()].copy_from_slice(title_content);

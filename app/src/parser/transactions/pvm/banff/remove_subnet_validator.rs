@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::{parser::NodeId, sys::ViewError};
+use crate::{checked_add, parser::NodeId, sys::ViewError};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
 
@@ -73,10 +73,10 @@ impl<'b> FromBytes<'b> for RemoveSubnetValidatorTx<'b> {
 }
 
 impl<'b> DisplayableItem for RemoveSubnetValidatorTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, node_id_items(1),
         // subnet_id and fee
-        1 + self.node_id.num_items() + 1 + 1
+        checked_add!(ViewError::Unknown, 3u8, self.node_id.num_items()?)
     }
 
     fn render_item(
@@ -195,9 +195,9 @@ mod tests {
             );
             let (_, tx) = RemoveSubnetValidatorTx::from_bytes(data).unwrap();
 
-            let items = tx.num_items();
+            let items = tx.num_items().expect("Overflow?");
 
-            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items as usize);
             for i in 0..items {
                 let mut page = Page::default();
 

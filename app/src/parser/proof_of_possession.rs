@@ -119,11 +119,12 @@ impl<'b> FromBytes<'b> for BLSSigner<'b> {
 }
 
 impl<'b> DisplayableItem for BLSSigner<'b> {
-    fn num_items(&self) -> usize {
-        match &self {
+    fn num_items(&self) -> Result<u8, ViewError> {
+        let i = match &self {
             BLSSigner::EmptyProof => 0,
             BLSSigner::Proof(_) => 1,
-        }
+        };
+        Ok(i)
     }
 
     fn render_item(

@@ -115,14 +115,14 @@ impl u256 {
     /// Conversion to u32
     #[inline]
     pub const fn low_u32(&self) -> u32 {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         arr[0] as u32
     }
 
     /// Low word (u64)
     #[inline]
     pub const fn low_u64(&self) -> u64 {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         arr[0]
     }
 
@@ -133,7 +133,7 @@ impl u256 {
     /// Panics if the number is larger than 2^32.
     #[inline]
     pub fn as_u32(&self) -> u32 {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         if !self.fits_word() || arr[0] > u32::max_value() as u64 {
             panic!("Integer overflow when casting to u32");
         }
@@ -147,7 +147,7 @@ impl u256 {
     /// Panics if the number is larger than u64::max_value().
     #[inline]
     pub fn as_u64(&self) -> u64 {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         if !self.fits_word() {
             panic!("Integer overflow when casting to u64");
         }
@@ -161,7 +161,7 @@ impl u256 {
     /// Panics if the number is larger than usize::max_value().
     #[inline]
     pub fn as_usize(&self) -> usize {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         if !self.fits_word() || arr[0] > usize::max_value() as u64 {
             panic!("Integer overflow when casting to usize");
         }
@@ -176,14 +176,14 @@ impl u256 {
 
     #[inline]
     fn fits_word(&self) -> bool {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         arr.iter().take(4).skip(1).all(|n| *n == 0)
     }
 
     /// Return the least number of bits needed to represent the number
     #[inline]
     pub fn bits(&self) -> usize {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         for i in 1..4 {
             if arr[4 - i] > 0 {
                 return (0x40 * (4 - i + 1)) - arr[4 - i].leading_zeros() as usize;
@@ -199,7 +199,7 @@ impl u256 {
     /// Panics if `index` exceeds the bit width of the number.
     #[inline]
     pub const fn bit(&self, index: usize) -> bool {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         arr[index / 64] & (1 << (index % 64)) != 0
     }
 
@@ -240,7 +240,7 @@ impl u256 {
     /// Panics if `index` exceeds the byte width of the number.
     #[inline]
     pub const fn byte(&self, index: usize) -> u8 {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         (arr[index / 8] >> ((index % 8) * 8)) as u8
     }
 
@@ -1526,7 +1526,7 @@ impl u256 {
     /// Low 2 words (u128)
     #[inline]
     pub const fn low_u128(&self) -> u128 {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         ((arr[1] as u128) << 64) + arr[0] as u128
     }
 
@@ -1537,7 +1537,7 @@ impl u256 {
     /// Panics if the number is larger than 2^128.
     #[inline]
     pub fn as_u128(&self) -> u128 {
-        let &u256(ref arr) = self;
+        let u256(arr) = self;
         if arr.iter().take(4).skip(2).any(|n| *n != 0) {
             panic!("Integer overflow when casting to u128");
         }
@@ -1597,7 +1597,7 @@ impl u256 {
     }
 
     fn fmt_hex(&self, f: &mut core::fmt::Formatter, is_lower: bool) -> core::fmt::Result {
-        let &u256(ref data) = self;
+        let u256(data) = self;
         if self.is_zero() {
             return f.pad_integral(true, "0x", "0");
         }

@@ -82,7 +82,7 @@ pub use coreth::{data::ERC721Info, nft_info::NftInfo};
 /// so that all the different OperationTypes or other items can handle their own UI
 pub trait DisplayableItem {
     /// Returns the number of items to display
-    fn num_items(&self) -> usize;
+    fn num_items(&self) -> Result<u8, ViewError>;
 
     /// This is invoked when a given page is to be displayed
     ///

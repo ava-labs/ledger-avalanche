@@ -20,6 +20,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::number::complete::{be_u32, be_u64};
 use zemu_sys::ViewError;
 
+use crate::checked_add;
 use crate::{
     handlers::handle_ui_message,
     parser::{
@@ -78,7 +79,7 @@ impl<'b> EOutput<'b> {
 }
 
 impl<'b> DisplayableItem for EOutput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.0.num_items()
     }
 
@@ -148,9 +149,9 @@ impl<'b> FromBytes<'b> for EVMOutput<'b> {
 }
 
 impl<'b> DisplayableItem for EVMOutput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // amount, address
-        1 + self.address.num_items()
+        checked_add!(ViewError::Unknown, 1u8, self.address.num_items()?)
     }
 
     fn render_item(

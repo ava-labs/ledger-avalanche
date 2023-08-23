@@ -20,6 +20,7 @@ use bolos::hash::{Hasher, Keccak};
 use constants::INS_ETH_GET_PUBLIC_KEY as INS;
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 fn eth_public_key() {
     let mut flags = 0u32;
     let mut tx = 0u32;

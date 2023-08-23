@@ -56,8 +56,8 @@ impl<'b> AssetId<'b> {
 }
 
 impl<'a> DisplayableItem for AssetId<'a> {
-    fn num_items(&self) -> usize {
-        1
+    fn num_items(&self) -> Result<u8, ViewError> {
+        Ok(1)
     }
 
     #[inline(never)]

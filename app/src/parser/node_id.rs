@@ -62,8 +62,8 @@ impl<'b> FromBytes<'b> for NodeId<'b> {
 }
 
 impl<'b> DisplayableItem for NodeId<'b> {
-    fn num_items(&self) -> usize {
-        1
+    fn num_items(&self) -> Result<u8, ViewError> {
+        Ok(1)
     }
 
     fn render_item(

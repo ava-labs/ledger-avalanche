@@ -165,11 +165,7 @@ impl Sign {
 
 impl ApduHandler for Sign {
     #[inline(never)]
-    fn handle<'apdu>(
-        flags: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
-    ) -> Result<(), Error> {
+    fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("AvaxSign::handle\x00");
 
         *tx = 0;
@@ -189,7 +185,7 @@ pub(crate) struct SignUI {
 
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
-        Ok(self.transaction.num_items() as _)
+        self.transaction.num_items()
     }
 
     #[inline(never)]

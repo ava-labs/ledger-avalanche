@@ -356,7 +356,10 @@ mod tests {
     #[test]
     fn object_list_iterator() {
         let (_, list) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
-        let num_items: usize = list.iter().map(|output| output.num_items()).sum();
+        let num_items: usize = list
+            .iter()
+            .map(|output| output.num_items().expect("Overflow!") as usize)
+            .sum();
         // the iterator does not change the state of the
         // main list object, as we return just a copy
         assert_eq!(list.read, 0);

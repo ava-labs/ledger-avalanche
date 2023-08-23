@@ -19,6 +19,7 @@ use nom::{bytes::complete::tag, number::complete::be_u32};
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
@@ -27,6 +28,8 @@ use crate::{
         DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_VALIDATOR,
     },
 };
+
+use avalanche_app_derive::match_ranges;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -129,18 +132,27 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
 }
 
 impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
         // fee, fee_delegation, validator_rewards_to, delegator_rewards_to,
         // and stake items
-        1 + self.base_tx.base_outputs_num_items()
-            + self.validator.num_items()
-            + self.signer.num_items()
-            + self.validator_rewards_owner.num_addresses()
-            + self.delegator_rewards_owner.num_addresses()
-            + self.num_stake_items()
-            + 1
-            + 1
+        let base = self.base_tx.base_outputs_num_items()?;
+        let validator = self.validator.num_items()?;
+        let signer = self.signer.num_items()?;
+        let validator_rewards = self.validator_rewards_owner.num_addresses() as u8;
+        let delegator_rewards = self.delegator_rewards_owner.num_addresses() as u8;
+        let stake = self.num_stake_items()?;
+
+        checked_add!(
+            ViewError::Unknown,
+            3u8,
+            base,
+            validator,
+            signer,
+            validator_rewards,
+            delegator_rewards,
+            stake
+        )
     }
 
     fn render_item(
@@ -150,54 +162,29 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let signer_items = self.signer.num_items() as u8;
-        let validator_items = self.validator.num_items() as u8;
-        let base_outputs_items = self.base_tx.base_outputs_num_items() as u8;
-        let stake_outputs_items = self.num_stake_items() as u8;
+        let signer_items = self.signer.num_items()?;
+        let validator_items = self.validator.num_items()?;
+        let base_outputs_items = self.base_tx.base_outputs_num_items()?;
+        let stake_outputs_items = self.num_stake_items()?;
 
-        if item_n == 0 {
-            let label = pic_str!(b"AddValidator");
-            title[..label.len()].copy_from_slice(label);
-            let content = pic_str!(b"Transaction");
-            return handle_ui_message(content, message, page);
-        }
+        let total_items = self.num_items()?;
 
-        let item_n = item_n - 1;
-
-        // when to start rendering staked outputs
-        let render_stake_outputs_at = validator_items + base_outputs_items + signer_items;
-        let render_last_items_at = render_stake_outputs_at + stake_outputs_items;
-        let total_items = self.num_items() as u8;
-
-        match item_n {
-            // render base_outputs
-            x @ 0.. if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
-
-            // render validator items
-            x if x >= base_outputs_items && x < render_stake_outputs_at - signer_items => {
-                let new_idx = x - base_outputs_items;
-                self.validator.render_item(new_idx, title, message, page)
+        match_ranges! {
+            match item_n alias x {
+                0 => {
+                    // FIXME: truncated due to NanoS 17 character limit
+                    let label = pic_str!(b"AddPermlessValida");
+                    title[..label.len()].copy_from_slice(label);
+                    let content = pic_str!(b"Transaction");
+                     handle_ui_message(content, message, page)
+                },
+                until base_outputs_items => self.render_base_outputs(x, title, message, page),
+                until validator_items => self.validator.render_item(x, title, message, page),
+                until signer_items => self.signer.render_item(x, title, message, page),
+                until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
+                until total_items => self.render_last_items(x, title, message, page),
+                _ => Err(ViewError::NoData),
             }
-
-            //if signer_items is 0 this will be skipped already but let's make the check
-            // explicit
-            x if x >= base_outputs_items && x < render_stake_outputs_at && signer_items != 0 => {
-                self.signer.render_item(0, title, message, page)
-            }
-
-            // render stake items
-            x if x >= render_stake_outputs_at && x < render_last_items_at => {
-                let new_idx = x - render_stake_outputs_at;
-                self.render_stake_outputs(new_idx, title, message, page)
-            }
-
-            // render rewards to, delegate fee and fee
-            x if x >= render_last_items_at && x < total_items - 1 => {
-                // normalize index to zero
-                let new_idx = x - render_last_items_at;
-                self.render_last_items(new_idx, title, message, page)
-            }
-            _ => Err(ViewError::NoData),
         }
     }
 }
@@ -213,6 +200,10 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         let mut idx = 0;
         let mut render = self.renderable_out;
 
+        // stake is defined as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.stake.iterate_with(|o| {
             // The 99.99% of the outputs contain only one address(best case),
             // In the worse case we just show every output.
@@ -240,17 +231,36 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         Ok(fee)
     }
 
-    fn num_stake_items(&self) -> usize {
+    fn num_stake_items(&self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
+        // stake is defined as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.stake.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     fn render_base_outputs(
@@ -282,7 +292,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
             .stake_output_with_item(item_n)
             .map_err(|_| ViewError::NoData)?;
 
-        // for base_outputs the header is Transfer
+        // for staking the header is Stake
         let header = pic_str!(b"Stake");
 
         self.render_output_with_header(&obj, item_idx, title, message, page, header)
@@ -309,7 +319,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         //      0.5 AVAX until 2021-05-31 21:28:00 UTC
 
         // get the number of items for the obj wrapped up by PvmOutput
-        let num_inner_items = obj.output.num_inner_items() as _;
+        let num_inner_items = obj.output.num_inner_items()?;
 
         // do a custom rendering of the first base_output_items
         match item_n {
@@ -380,7 +390,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
                 .encode_into(hrp, &mut encoded[..])
                 .map_err(|_| ViewError::Unknown)?;
 
-            return handle_ui_message(&encoded[..len], message, page);
+            handle_ui_message(&encoded[..len], message, page)
         };
 
         //look for validator address first
@@ -418,31 +428,30 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         let num_addresses = (self.validator_rewards_owner.num_addresses()
             + self.delegator_rewards_owner.num_addresses()) as u8;
 
-        match item_n {
-            // render rewards
-            x @ 0.. if x < num_addresses => {
-                self.render_rewards_to(x as usize, title, message, page)
-            }
-            x if x >= num_addresses && x < (num_addresses + 1) => {
-                let label = pic_str!(b"Delegate fee(%)");
-                title[..label.len()].copy_from_slice(label);
-                u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+        match_ranges! {
+            match item_n alias x {
+                until num_addresses => self.render_rewards_to(x as usize, title, message, page),
+                until 1 => {
+                    let label = pic_str!(b"Delegate fee(%)");
+                    title[..label.len()].copy_from_slice(label);
+                    u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
-                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
-                    .map_err(|_| ViewError::Unknown)?;
+                    let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                        .map_err(|_| ViewError::Unknown)?;
 
-                handle_ui_message(buffer, message, page)
-            }
-            x if x == (num_addresses + 1) => {
-                let label = pic_str!(b"Fee(AVAX)");
-                title[..label.len()].copy_from_slice(label);
+                    handle_ui_message(buffer, message, page)
+                },
+                until 1 => {
+                    let label = pic_str!(b"Fee(AVAX)");
+                    title[..label.len()].copy_from_slice(label);
 
-                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-                handle_ui_message(fee_buff, message, page)
+                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                    let fee_buff =
+                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                    handle_ui_message(fee_buff, message, page)
+                }
+                _ => Err(ViewError::NoData)
             }
-            _ => Err(ViewError::NoData),
         }
     }
 
@@ -464,7 +473,10 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
+
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -479,7 +491,7 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
             .stake
             .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
-        Ok((obj, obj_item_n as u8))
+        Ok((obj, obj_item_n))
     }
 }
 
@@ -594,9 +606,9 @@ mod tests {
             println!("-------------------- Add Permissionless Validator TX #{i} ------------------------");
             let (_, tx) = AddPermissionlessValidatorTx::from_bytes(data).unwrap();
 
-            let items = tx.num_items();
+            let items = tx.num_items().expect("Overflow?");
 
-            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items as usize);
             for i in 0..items {
                 let mut page = Page::default();
 

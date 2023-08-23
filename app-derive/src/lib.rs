@@ -60,7 +60,6 @@ pub fn unroll(input: TokenStream) -> TokenStream {
 }
 
 mod enum_init;
-
 #[proc_macro_error]
 #[proc_macro_attribute]
 /// The aim of this macro is to ease the writing of boilerplate for enums
@@ -92,4 +91,28 @@ mod enum_init;
 /// ```
 pub fn enum_init(metadata: TokenStream, input: TokenStream) -> TokenStream {
     enum_init::enum_init(metadata, input)
+}
+
+mod match_ranges;
+#[proc_macro_error]
+#[proc_macro]
+/// The aim of this macro is to ease the write of match arms
+/// when the arms are composed by ranges determined during runtime.
+///
+/// # Example
+/// ```rust,ignore
+///
+/// let bar = 3;
+/// let baz = 4;
+///
+/// match foo alias x {
+///    0 => dbg!("zeroth arm", x),
+///    bar => dbg!("bar arm", x), //x = 0, 1, 2 when foo > 1
+///    4 => dbg!("4 arm", x), //x = 0 when foo == 4
+///    baz => dbg!("baz arm", x), //x = 0, 1, 2, 3 when foo > 2 + bar
+///    _ => dbg!("catchall", x), //x = 8 and above when foo > 2 + bar + baz
+/// }
+/// ```
+pub fn match_ranges(input: TokenStream) -> TokenStream {
+    match_ranges::match_ranges(input)
 }

@@ -17,6 +17,7 @@
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, Message},
 };
@@ -52,8 +53,8 @@ impl<'b> FromBytes<'b> for PersonalMsg<'b> {
 }
 
 impl<'b> DisplayableItem for PersonalMsg<'b> {
-    fn num_items(&self) -> usize {
-        1 + self.0.num_items()
+    fn num_items(&self) -> Result<u8, ViewError> {
+        checked_add!(ViewError::Unknown, 1u8, self.0.num_items()?)
     }
 
     fn render_item(

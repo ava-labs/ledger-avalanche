@@ -43,7 +43,7 @@ where
     #[inline(always)]
     pub fn read_into(&self, out: &mut MaybeUninit<Obj>) {
         //safety: &self.data is checked during the constructor
-        Obj::from_bytes_into(&self.data, out)
+        Obj::from_bytes_into(self.data, out)
             .unwrap_or_else(|_| unsafe { core::hint::unreachable_unchecked() });
     }
 
@@ -86,7 +86,7 @@ where
     Obj: DisplayableItem + FromBytes<'b>,
 {
     #[inline(always)]
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.read().num_items()
     }
 
