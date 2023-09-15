@@ -57,11 +57,6 @@ const command_descriptor_t COMMAND_DESCRIPTORS[] = {
     },
     {
         .cla = CLA_APP,
-        .ins = REGISTER_WALLET,
-        .handler = (command_handler_t)handler_register_wallet
-    },
-    {
-        .cla = CLA_APP,
         .ins = SIGN_PSBT,
         .handler = (command_handler_t)handler_sign_psbt
     },
