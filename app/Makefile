@@ -264,8 +264,6 @@ ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS TARGET_STAX))
 	# mainnet or testnet. lets pick 
 	# the ones for mainnet for now
 	DEFINES   += BIP32_PUBKEY_VERSION=0x0488B21E
-	DEFINES   += BIP44_COIN_TYPE=0
-	DEFINES   += BIP44_COIN_TYPE_2=0
 	# The coin type bellow is not part of the btc app,
 	# but this is necesary here as avax wants support for 
 	# coin_type = 60'
