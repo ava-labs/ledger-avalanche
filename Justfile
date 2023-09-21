@@ -52,3 +52,46 @@ cargo *cmd='':
     cargo {{cmd}}
 
 insta: (cargo "insta test --review")
+
+_ztest-ci:
+    #!/bin/env bash
+    pushd zemu
+    TESTS=`yarn test --listTests --json | head -n 3 | tail -n 1 | jq -r '.[]'`
+
+    has_failed=0
+    outputs=()
+
+    for file in ${TESTS[@]}; do
+        output=`yarn jest "$file" --maxConcurrency 2 2>&1`
+        exit=$?
+
+        outputs+=("$output")
+        if [ $exit -ne 0 ]; then
+            echo "=== Test $file failed ==="
+            has_failed=1
+        fi
+    done
+
+    if [ $has_failed -eq 1 ]; then
+        for i in "${!outputs[@]}"; do
+            output=$outputs[i]
+            file=$TESTS[i]
+            echo "=== Test Output for $file ==="
+            echo "$output"
+        done
+        echo "Some tests failed. See detailed output above."
+        exit 1
+    else
+        echo "All tests passed."
+        exit 0
+    fi
+
+    popd
+
+# Run the same things as a normal CI workflow
+ci:
+    just miri
+    cargo fmt -- --check
+    cargo clippy --all-targets --features "full"
+    just make clean all
+    just _ztest-ci
