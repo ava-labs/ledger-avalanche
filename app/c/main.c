@@ -18,7 +18,7 @@
 #include <os.h>
 #include <os_io_seproxyhal.h>
 
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#if defined(HAVE_BTC_INTEGRATION)
 #include "globals.h"
 #include "handler.h"
 #else
@@ -27,7 +27,7 @@
 
 uint8_t G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-#if defined(TARGET_NANOS) || defined(TARGET_STAX)
+#if !defined(HAVE_BTC_INTEGRATION)
 unsigned char io_event(unsigned char channel) {
   switch (G_io_seproxyhal_spi_buffer[0]) {
   case SEPROXYHAL_TAG_FINGER_EVENT: //
@@ -121,13 +121,13 @@ __attribute__((section(".boot"))) int main(void) {
   volatile uint32_t rx = 0, tx = 0, flags = 0;
   volatile uint16_t sw = 0;
   zemu_log_stack("main");
-#if !defined(TARGET_NANOS) && !defined(TARGET_STAX)
+#if defined(HAVE_BTC_INTEGRATION)
   initialize_app_globals();
   btc_state_reset();
 #endif /* ifndef TARGET_NANOS */
 
   for (;;) {
-#if !defined(TARGET_NANOS) && !defined(TARGET_STAX)
+#if defined(HAVE_BTC_INTEGRATION)
     // Reset length of APDU response
     G_output_len = 0;
 #endif
@@ -148,8 +148,7 @@ __attribute__((section(".boot"))) int main(void) {
         flags = 0;
         check_canary();
 
-// Btc apdu commands are not supported by nanos
-#if defined(TARGET_NANOS) || defined(TARGET_STAX)
+#if !defined(HAVE_BTC_INTEGRATION)
         rs_handle_apdu(&flags, &tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 #else
         if (G_io_apdu_buffer[OFFSET_CLA] == CLA_APP ||

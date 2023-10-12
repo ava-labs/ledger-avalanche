@@ -16,15 +16,15 @@ export const models: IDeviceModel[] = [
   { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
 ]
 
-export const btc_models: IDeviceModel[] = models.filter((m) => m.name != 'nanos' && m.name != 'stax')
+export const btc_models: IDeviceModel[] = models.filter(m => m.name != 'nanos' && m.name != 'stax')
 
 export const defaultOptions = (m: IDeviceModel, is_address = false) => {
-  let approveAction = ButtonKind.ApproveHoldButton;
-  let approveKeyword = "";
+  let approveAction = ButtonKind.ApproveHoldButton
+  let approveKeyword = ''
 
   if (m.name == 'stax' && is_address) {
-    approveKeyword = 'Show as QR';
-    approveAction = ButtonKind.ApproveTapButton;
+    approveKeyword = 'Show as QR'
+    approveAction = ButtonKind.ApproveTapButton
   }
 
   return {
