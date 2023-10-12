@@ -38,8 +38,7 @@
 ///////////////////////////////////
 // General
 
-// Other targets will use btc declarations
-#if defined(TARGET_NANOS)
+#if !defined(HAVE_BTC_INTEGRATION) && !defined(TARGET_STAX)
 void io_seproxyhal_display(const bagl_element_t *element) {
   io_seproxyhal_display_default((bagl_element_t *)element);
 }
