@@ -15,9 +15,7 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include "bolos_target.h"
-
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#if defined(HAVE_BTC_INTEGRATION)
 #include "globals.h"
 // #include "io.h"
 #include "boilerplate/apdu_parser.h"
