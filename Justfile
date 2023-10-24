@@ -95,3 +95,16 @@ ci:
     cargo clippy --all-targets --features "full"
     just make clean all
     just _ztest-ci
+
+app-sizes:
+    #!/bin/bash
+    folder="./build/output"
+
+    printf "%-20s %-10s\n" "File" "Size (bytes)"
+    echo "---------------------------------"
+
+    for file in "$folder"/*.elf; do
+        result=$(size -A -d "$file" | awk 'NR==3 {print $2}')
+
+        printf "%-20s %-10s\n" "$(basename $file)" "$result"
+    done
