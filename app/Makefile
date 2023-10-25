@@ -69,6 +69,9 @@ $(error "$(error_message)")
 endif
 
 APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1
+ifneq ($(FEATURE_BTC), 1)
+APP_LOAD_PARAMS += --path $(APPPATH)
+endif
 
 ARTIFACT_OUTPUT_PATH := $(CURDIR)/../build
 
