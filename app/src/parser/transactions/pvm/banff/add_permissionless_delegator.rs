@@ -139,7 +139,7 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let validator_items = self.validator.num_items()?;
+        let validator_items = self.validator.num_items()? - 1;
         let base_outputs_items = self.base_tx.base_outputs_num_items()?;
         let stake_outputs_items = self.num_stake_items()?;
 
@@ -155,8 +155,10 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
                     handle_ui_message(content, message, page)
                 },
                 until base_outputs_items => self.render_base_outputs(x, title, message, page),
-                until validator_items => self.validator.render_item(x, title, message, page),
+                //render node id first, then the subnet id, then the rest
+                until 1 => self.validator.render_item(x, title, message, page),
                 until 1 => self.subnet_id.render_item(x, title, message, page),
+                until validator_items => self.validator.render_item(x + 1, title, message, page),
                 until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
                 until total_items => self.render_last_items(x, title, message, page),
                 _ => Err(ViewError::NoData),

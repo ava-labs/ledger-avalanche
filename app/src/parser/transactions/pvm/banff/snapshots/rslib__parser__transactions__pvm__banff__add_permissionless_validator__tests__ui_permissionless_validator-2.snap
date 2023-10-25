@@ -5,10 +5,10 @@ expression: reduced
 [
     "AddPermlessValida": "Transaction",
     "Validator": "NodeID-2ZbTY9GatRTrfinAoYiYLcf6CvrPAUYgo",
+    "SubnetID": "Primary Subnet",
     "Start time": "1970-01-01 03:25:45 UTC",
     "End time": "1970-07-20 03:25:45 UTC",
     "Total stake(AVAX)": "2000",
-    "SubnetID": "Primary Subnet",
     "Signer": "0xaff4acb4c5439b5d426cadf9e946d3a452f7de3414d1ad27336133211d8b90cf49fb97eebcdeeef714dc20f54ed0d4d1",
     "Stake": "2000 AVAX to ",
     "Address": "avax1g32kvaugnx4tk3z4vemc3xd2hdz92enh972wxr",
