@@ -24,7 +24,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
-        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, Validator,
+        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, Stake, TransferableOutput, Validator,
         MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR,
     },
 };
@@ -68,7 +68,7 @@ impl<'b> FromBytes<'b> for AddDelegatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Stake>::from_bytes_into(rem, validator)?;
 
         // stake
         // check for the number of stake-outputs before parsing then as now
@@ -84,7 +84,7 @@ impl<'b> FromBytes<'b> for AddDelegatorTx<'b> {
         // valid pointers read as memory was initialized
         let staked_list = unsafe { &*stake.as_ptr() };
 
-        let validator_stake = unsafe { (*validator.as_ptr()).weight };
+        let validator_stake = unsafe { (*validator.as_ptr()).stake() };
 
         // get locked outputs amount to check for invariant
         let stake = Self::sum_stake_outputs_amount(staked_list)?;
@@ -486,6 +486,6 @@ mod tests {
     #[test]
     fn parse_add_delegator() {
         let (_, tx) = AddDelegatorTx::from_bytes(DATA).unwrap();
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
     }
 }

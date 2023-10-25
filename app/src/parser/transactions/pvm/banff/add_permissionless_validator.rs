@@ -24,7 +24,7 @@ use crate::{
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
         Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList, OutputIdx,
-        ParserError, PvmOutput, SECPOutputOwners, SubnetId, TransferableOutput, Validator,
+        ParserError, PvmOutput, SECPOutputOwners, Stake, SubnetId, TransferableOutput, Validator,
         DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_VALIDATOR,
     },
 };
@@ -72,7 +72,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Stake>::from_bytes_into(rem, validator)?;
 
         // SubnetId
         let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
@@ -97,7 +97,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
         // valid pointers read as memory was initialized
         let staked_list = unsafe { &*stake.as_ptr() };
 
-        let validator_stake = unsafe { (*validator.as_ptr()).weight };
+        let validator_stake = unsafe { (*validator.as_ptr()).stake() };
 
         // get locked outputs amount to check for invariant
         let stake = Self::sum_stake_outputs_amount(staked_list)?;
@@ -510,20 +510,20 @@ mod tests {
     fn parse_add_permissionless_validator_tx() {
         let (_, tx) = AddPermissionlessValidatorTx::from_bytes(SAMPLE).unwrap();
         assert_eq!(tx.shares, 20_000);
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert!(matches!(tx.signer, BLSSigner::Proof(_)));
 
         let (_, tx) =
             AddPermissionlessValidatorTx::from_bytes(SIMPLE_ADD_PERMISSIONLESS_VALIDATOR).unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert!(matches!(tx.signer, BLSSigner::Proof(_)));
 
         let (_, tx) =
             AddPermissionlessValidatorTx::from_bytes(COMPLEX_ADD_PERMISSIONLESS_VALIDATOR).unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 5000000000000);
+        assert_eq!(tx.validator.stake(), 5000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert_eq!(
             tx.stake
@@ -557,7 +557,7 @@ mod tests {
             AddPermissionlessValidatorTx::from_bytes(SIMPLE_ADD_SUBNET_PERMISSIONLESS_VALIDATOR)
                 .unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 1);
+        assert_eq!(tx.validator.stake(), 1);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.base_tx
@@ -575,7 +575,7 @@ mod tests {
             AddPermissionlessValidatorTx::from_bytes(COMPLEX_ADD_SUBNET_PERMISSIONLESS_VALIDATOR)
                 .unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 9);
+        assert_eq!(tx.validator.stake(), 9);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.base_tx

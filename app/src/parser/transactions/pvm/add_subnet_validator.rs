@@ -21,7 +21,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, SubnetAuth, SubnetId, Validator, PVM_ADD_SUBNET_VALIDATOR,
+        PvmOutput, SubnetAuth, SubnetId, Validator, Weight, PVM_ADD_SUBNET_VALIDATOR,
     },
 };
 
@@ -31,7 +31,7 @@ use crate::{
 pub struct AddSubnetValidatorTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
-    pub validator: Validator<'b>,
+    pub validator: Validator<'b, Weight>,
     pub subnet_id: SubnetId<'b>,
     pub subnet_auth: SubnetAuth<'b>,
 }
@@ -58,7 +58,7 @@ impl<'b> FromBytes<'b> for AddSubnetValidatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Weight>::from_bytes_into(rem, validator)?;
 
         // SubnetId
         let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };

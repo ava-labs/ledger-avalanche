@@ -24,7 +24,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
-        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, SubnetId, TransferableOutput,
+        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, Stake, SubnetId, TransferableOutput,
         Validator, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_DELEGATOR,
     },
 };
@@ -70,7 +70,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessDelegatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Stake>::from_bytes_into(rem, validator)?;
 
         // SubnetId
         let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
@@ -90,7 +90,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessDelegatorTx<'b> {
         // valid pointers read as memory was initialized
         let staked_list = unsafe { &*stake.as_ptr() };
 
-        let validator_stake = unsafe { (*validator.as_ptr()).weight };
+        let validator_stake = unsafe { (*validator.as_ptr()).stake() };
 
         // get locked outputs amount to check for invariant
         let stake = Self::sum_stake_outputs_amount(staked_list)?;
@@ -503,7 +503,7 @@ mod tests {
     #[test]
     fn parse_add_permissionless_delegator() {
         let (_, tx) = AddPermissionlessDelegatorTx::from_bytes(SAMPLE).unwrap();
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert_eq!(
             tx.subnet_id,
             SubnetId::new(&[
@@ -514,13 +514,13 @@ mod tests {
 
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(SIMPLE_ADD_PERMISSIONLESS_DELEGATOR).unwrap();
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert_eq!(tx.rewards_owner.locktime, 0);
 
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(COMPLEX_ADD_PERMISSIONLESS_DELEGATOR).unwrap();
-        assert_eq!(tx.validator.weight, 5000000000000);
+        assert_eq!(tx.validator.stake(), 5000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert_eq!(
             tx.stake
@@ -550,7 +550,7 @@ mod tests {
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(SIMPLE_ADD_SUBNET_PERMISSIONLESS_DELEGATOR)
                 .unwrap();
-        assert_eq!(tx.validator.weight, 1);
+        assert_eq!(tx.validator.stake(), 1);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.stake.iter().next().expect("1 stake out").asset_id().id(),
@@ -561,7 +561,7 @@ mod tests {
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(COMPLEX_ADD_SUBNET_PERMISSIONLESS_DELEGATOR)
                 .unwrap();
-        assert_eq!(tx.validator.weight, 9);
+        assert_eq!(tx.validator.stake(), 9);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.base_tx

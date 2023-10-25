@@ -24,7 +24,7 @@ use crate::{
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
         DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput,
-        SECPOutputOwners, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
+        SECPOutputOwners, Stake, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
         MAX_ADDRESS_ENCODED_LEN, PVM_ADD_VALIDATOR,
     },
 };
@@ -69,7 +69,7 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Stake>::from_bytes_into(rem, validator)?;
 
         // stake
         // check for the number of stake-outputs before parsing then as now
@@ -86,7 +86,7 @@ impl<'b> FromBytes<'b> for AddValidatorTx<'b> {
         // valid pointers read as memory was initialized
         let staked_list = unsafe { &*stake.as_ptr() };
 
-        let validator_stake = unsafe { (*validator.as_ptr()).weight };
+        let validator_stake = unsafe { (*validator.as_ptr()).stake() };
 
         // get locked outputs amount to check for invariant
         let stake = Self::sum_stake_outputs_amount(staked_list)?;
@@ -504,7 +504,7 @@ mod tests {
     fn parse_add_validator_tx() {
         let (_, tx) = AddValidatorTx::from_bytes(DATA).unwrap();
         assert_eq!(tx.shares, 20_000);
-        assert_eq!(tx.validator.weight, 1000000000);
+        assert_eq!(tx.validator.stake(), 1000000000);
     }
 
     #[test]
