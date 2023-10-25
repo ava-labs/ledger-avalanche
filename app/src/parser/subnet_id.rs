@@ -81,20 +81,27 @@ impl<'b> DisplayableItem for SubnetId<'b> {
         let label = pic_str!(b"SubnetID");
         title[..label.len()].copy_from_slice(label);
 
-        let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
+        if self == &Self::PRIMARY_NETWORK {
+            let primary_network = pic_str!(b"Primary Subnet");
 
-        data[..SUBNET_ID_LEN].copy_from_slice(&self.0[..]);
+            handle_ui_message(primary_network, message, page)
+        } else {
+            let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
 
-        let checksum = Sha256::digest(&data[..SUBNET_ID_LEN]).map_err(|_| ViewError::Unknown)?;
+            data[..SUBNET_ID_LEN].copy_from_slice(&self.0[..]);
 
-        // prepare the data to be encoded by appending last 4-byte
-        data[SUBNET_ID_LEN..]
-            .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
+            let checksum =
+                Sha256::digest(&data[..SUBNET_ID_LEN]).map_err(|_| ViewError::Unknown)?;
 
-        const MAX_SIZE: usize = cb58_output_len::<SUBNET_ID_LEN>();
-        let mut encoded = [0; MAX_SIZE];
+            // prepare the data to be encoded by appending last 4-byte
+            data[SUBNET_ID_LEN..]
+                .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
 
-        let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
-        handle_ui_message(&encoded[..len], message, page)
+            const MAX_SIZE: usize = cb58_output_len::<SUBNET_ID_LEN>();
+            let mut encoded = [0; MAX_SIZE];
+
+            let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
+            handle_ui_message(&encoded[..len], message, page)
+        }
     }
 }
