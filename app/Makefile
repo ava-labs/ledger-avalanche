@@ -107,7 +107,7 @@ RUST_TARGET:=thumbv6m-none-eabi
 ifeq ($(FEATURE_BTC), 1))
 APP_LOAD_PARAMS += --appFlags 0xa50
 else
-APP_LOAD_PARAMS += --appFlags 0x200
+APP_LOAD_PARAMS += --appFlags 0x000
 endif
 APP_FULL:=1
 endif
