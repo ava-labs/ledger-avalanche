@@ -142,7 +142,9 @@ endif
 ############
 # Platform
 
-DEFINES       += UNUSED\(x\)=\(void\)x
+ifneq ($(TARGET_NAME),TARGET_NANOS)
+	DEFINES       += UNUSED\(x\)=\(void\)x
+endif
 DEFINES       += PRINTF\(...\)=
 
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
@@ -172,9 +174,6 @@ else ifeq ($(TARGET_NAME),TARGET_STAX)
     DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 	DEFINES += HAVE_UX_FLOW
 	DEFINES += NBGL_QRCODE
-
-#	Required by SDK
-	DEFINES += UNUSED\(x\)=\(void\)x
 else
 # Nano X/S+
 DEFINES       += IO_SEPROXYHAL_BUFFER_SIZE_B=300
