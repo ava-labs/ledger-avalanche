@@ -24,7 +24,7 @@ use crate::{
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
         Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList, OutputIdx,
-        ParserError, PvmOutput, SECPOutputOwners, SubnetId, TransferableOutput, Validator,
+        ParserError, PvmOutput, SECPOutputOwners, Stake, SubnetId, TransferableOutput, Validator,
         DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_VALIDATOR,
     },
 };
@@ -72,7 +72,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Stake>::from_bytes_into(rem, validator)?;
 
         // SubnetId
         let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
@@ -97,7 +97,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
         // valid pointers read as memory was initialized
         let staked_list = unsafe { &*stake.as_ptr() };
 
-        let validator_stake = unsafe { (*validator.as_ptr()).weight };
+        let validator_stake = unsafe { (*validator.as_ptr()).stake() };
 
         // get locked outputs amount to check for invariant
         let stake = Self::sum_stake_outputs_amount(staked_list)?;
@@ -134,7 +134,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
 impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
-        // fee, fee_delegation, validator_rewards_to, delegator_rewards_to,
+        // subnet id, validator_rewards_to, delegator_rewards_to,
         // and stake items
         let base = self.base_tx.base_outputs_num_items()?;
         let validator = self.validator.num_items()?;
@@ -145,7 +145,7 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
 
         checked_add!(
             ViewError::Unknown,
-            3u8,
+            4u8,
             base,
             validator,
             signer,
@@ -163,7 +163,7 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         let signer_items = self.signer.num_items()?;
-        let validator_items = self.validator.num_items()?;
+        let validator_items = self.validator.num_items()? - 1;
         let base_outputs_items = self.base_tx.base_outputs_num_items()?;
         let stake_outputs_items = self.num_stake_items()?;
 
@@ -179,7 +179,10 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
                      handle_ui_message(content, message, page)
                 },
                 until base_outputs_items => self.render_base_outputs(x, title, message, page),
-                until validator_items => self.validator.render_item(x, title, message, page),
+                //render node id first, then the subnet id, then the rest
+                until 1 => self.validator.render_item(x, title, message, page),
+                until 1 => self.subnet_id.render_item(x, title, message, page),
+                until validator_items => self.validator.render_item(x + 1, title, message, page),
                 until signer_items => self.signer.render_item(x, title, message, page),
                 until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
                 until total_items => self.render_last_items(x, title, message, page),
@@ -381,37 +384,28 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let mut render_addr = |addr: Address| {
-            let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+        let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+        let validators = self.validator_rewards_owner.num_addresses();
+        let delegators = self.delegator_rewards_owner.num_addresses();
 
-            let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+        match_ranges! {
+            match addr_idx alias x {
+                until validators => {
+                    // FIXME: title truncated
+                    let label = pic_str!(b"Valida rewards to");
+                    title[..label.len()].copy_from_slice(label);
 
-            let len = addr
-                .encode_into(hrp, &mut encoded[..])
-                .map_err(|_| ViewError::Unknown)?;
+                    self.validator_rewards_owner.render_address_with_hrp(hrp, x, message, page)
+                }
+                until delegators => {
+                    // FIXME: title truncated
+                    let label = pic_str!(b"Delega rewards to");
+                    title[..label.len()].copy_from_slice(label);
 
-            handle_ui_message(&encoded[..len], message, page)
-        };
-
-        //look for validator address first
-        if let Some(addr) = self.validator_rewards_owner.get_address_at(addr_idx) {
-            // FIXME: title truncated
-            let label = pic_str!(b"Valida rewards to");
-            title[..label.len()].copy_from_slice(label);
-            render_addr(addr)
-        }
-        //if no address found then look into the delegeators
-        else if let Some(addr) = self
-            .delegator_rewards_owner
-            // with an offset
-            .get_address_at(addr_idx - self.validator_rewards_owner.num_addresses())
-        {
-            // FIXME: title truncated
-            let label = pic_str!(b"Delega rewards to");
-            title[..label.len()].copy_from_slice(label);
-            render_addr(addr)
-        } else {
-            Err(ViewError::NoData)
+                    self.delegator_rewards_owner.render_address_with_hrp(hrp, x, message, page)
+                }
+                _ => Err(ViewError::NoData)
+            }
         }
     }
 
@@ -510,20 +504,20 @@ mod tests {
     fn parse_add_permissionless_validator_tx() {
         let (_, tx) = AddPermissionlessValidatorTx::from_bytes(SAMPLE).unwrap();
         assert_eq!(tx.shares, 20_000);
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert!(matches!(tx.signer, BLSSigner::Proof(_)));
 
         let (_, tx) =
             AddPermissionlessValidatorTx::from_bytes(SIMPLE_ADD_PERMISSIONLESS_VALIDATOR).unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert!(matches!(tx.signer, BLSSigner::Proof(_)));
 
         let (_, tx) =
             AddPermissionlessValidatorTx::from_bytes(COMPLEX_ADD_PERMISSIONLESS_VALIDATOR).unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 5000000000000);
+        assert_eq!(tx.validator.stake(), 5000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert_eq!(
             tx.stake
@@ -557,7 +551,7 @@ mod tests {
             AddPermissionlessValidatorTx::from_bytes(SIMPLE_ADD_SUBNET_PERMISSIONLESS_VALIDATOR)
                 .unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 1);
+        assert_eq!(tx.validator.stake(), 1);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.base_tx
@@ -575,7 +569,7 @@ mod tests {
             AddPermissionlessValidatorTx::from_bytes(COMPLEX_ADD_SUBNET_PERMISSIONLESS_VALIDATOR)
                 .unwrap();
         assert_eq!(tx.shares, 1_000_000);
-        assert_eq!(tx.validator.weight, 9);
+        assert_eq!(tx.validator.stake(), 9);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.base_tx

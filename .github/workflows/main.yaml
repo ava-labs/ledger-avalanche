@@ -182,7 +182,10 @@ jobs:
         run: |
           export PATH=~/.cargo/bin:$PATH
           cd zemu
-          yarn jest ${{ matrix.test.file }} --maxConcurrency 2
+          yarn jest ${{ matrix.test.file }} --maxConcurrency 2 \
+                --reporters='@matteoh2o1999/github-actions-jest-reporter'
+        env:
+          FORCE_COLOR: 1
 
       - name: Tar Zemu snapshots
         if: always()

@@ -5,7 +5,10 @@
   "version": "1.0.0",
   "description": "",
   "types": "./dist/index.d.ts",
-  "keywords": ["Zondax", "Ledger"],
+  "keywords": [
+    "Zondax",
+    "Ledger"
+  ],
   "scripts": {
     "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*|btc.*'",
     "test_dev": "jest",
@@ -25,6 +28,7 @@
     "@ledgerhq/hw-app-eth": "6.32.1",
     "@ledgerhq/hw-transport-node-hid": "^6.27.2",
     "@ledgerhq/logs": "^6.10.0",
+    "@matteoh2o1999/github-actions-jest-reporter": "^2.0.0",
     "@types/bs58": "^4.0.1",
     "@types/elliptic": "^6.4.14",
     "@types/jest": "^29.4.0",
