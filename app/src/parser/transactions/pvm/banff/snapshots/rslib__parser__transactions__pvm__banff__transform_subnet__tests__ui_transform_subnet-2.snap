@@ -15,8 +15,8 @@ expression: reduced
     "Max valid. stake": "18446744073709551615",
     "Min stake time": "1",
     "Max stake time": "31536000",
-    "Min delegate fee": "1000000",
+    "Min delegate fee": "100%",
     "Min delega. stake": "1",
     "Max weight fact.": "1",
-    "Uptime req.": "950000",
+    "Uptime req.": "95%",
 ]

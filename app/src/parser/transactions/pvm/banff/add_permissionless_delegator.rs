@@ -24,7 +24,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
-        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, SubnetId, TransferableOutput,
+        OutputIdx, ParserError, PvmOutput, SECPOutputOwners, Stake, SubnetId, TransferableOutput,
         Validator, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_DELEGATOR,
     },
 };
@@ -70,7 +70,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessDelegatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Stake>::from_bytes_into(rem, validator)?;
 
         // SubnetId
         let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
@@ -90,7 +90,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessDelegatorTx<'b> {
         // valid pointers read as memory was initialized
         let staked_list = unsafe { &*stake.as_ptr() };
 
-        let validator_stake = unsafe { (*validator.as_ptr()).weight };
+        let validator_stake = unsafe { (*validator.as_ptr()).stake() };
 
         // get locked outputs amount to check for invariant
         let stake = Self::sum_stake_outputs_amount(staked_list)?;
@@ -139,7 +139,7 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let validator_items = self.validator.num_items()?;
+        let validator_items = self.validator.num_items()? - 1;
         let base_outputs_items = self.base_tx.base_outputs_num_items()?;
         let stake_outputs_items = self.num_stake_items()?;
 
@@ -155,8 +155,10 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
                     handle_ui_message(content, message, page)
                 },
                 until base_outputs_items => self.render_base_outputs(x, title, message, page),
-                until validator_items => self.validator.render_item(x, title, message, page),
+                //render node id first, then the subnet id, then the rest
+                until 1 => self.validator.render_item(x, title, message, page),
                 until 1 => self.subnet_id.render_item(x, title, message, page),
+                until validator_items => self.validator.render_item(x + 1, title, message, page),
                 until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
                 until total_items => self.render_last_items(x, title, message, page),
                 _ => Err(ViewError::NoData),
@@ -357,28 +359,13 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
+        let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+
         let label = pic_str!(b"Rewards to");
         title[..label.len()].copy_from_slice(label);
 
-        // render owner addresses
-        if let Some(addr) = self.rewards_owner.addresses.get(addr_idx) {
-            let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
-
-            let mut address = MaybeUninit::uninit();
-            Address::from_bytes_into(addr, &mut address).map_err(|_| ViewError::Unknown)?;
-
-            let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
-            // valid read as memory was initialized
-            let address = unsafe { address.assume_init() };
-
-            let len = address
-                .encode_into(hrp, &mut encoded[..])
-                .map_err(|_| ViewError::Unknown)?;
-
-            return handle_ui_message(&encoded[..len], message, page);
-        }
-
-        Err(ViewError::NoData)
+        self.rewards_owner
+            .render_address_with_hrp(hrp, addr_idx, message, page)
     }
 
     fn render_last_items(
@@ -503,7 +490,7 @@ mod tests {
     #[test]
     fn parse_add_permissionless_delegator() {
         let (_, tx) = AddPermissionlessDelegatorTx::from_bytes(SAMPLE).unwrap();
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert_eq!(
             tx.subnet_id,
             SubnetId::new(&[
@@ -514,13 +501,13 @@ mod tests {
 
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(SIMPLE_ADD_PERMISSIONLESS_DELEGATOR).unwrap();
-        assert_eq!(tx.validator.weight, 2000000000000);
+        assert_eq!(tx.validator.stake(), 2000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert_eq!(tx.rewards_owner.locktime, 0);
 
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(COMPLEX_ADD_PERMISSIONLESS_DELEGATOR).unwrap();
-        assert_eq!(tx.validator.weight, 5000000000000);
+        assert_eq!(tx.validator.stake(), 5000000000000);
         assert_eq!(tx.subnet_id, SubnetId::PRIMARY_NETWORK);
         assert_eq!(
             tx.stake
@@ -550,7 +537,7 @@ mod tests {
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(SIMPLE_ADD_SUBNET_PERMISSIONLESS_DELEGATOR)
                 .unwrap();
-        assert_eq!(tx.validator.weight, 1);
+        assert_eq!(tx.validator.stake(), 1);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.stake.iter().next().expect("1 stake out").asset_id().id(),
@@ -561,7 +548,7 @@ mod tests {
         let (_, tx) =
             AddPermissionlessDelegatorTx::from_bytes(COMPLEX_ADD_SUBNET_PERMISSIONLESS_DELEGATOR)
                 .unwrap();
-        assert_eq!(tx.validator.weight, 9);
+        assert_eq!(tx.validator.stake(), 9);
         assert_eq!(tx.subnet_id, subnet_id);
         assert_eq!(
             tx.base_tx
