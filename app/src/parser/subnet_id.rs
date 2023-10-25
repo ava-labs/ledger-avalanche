@@ -19,7 +19,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::take;
 
 use crate::parser::{cb58_output_len, DisplayableItem, FromBytes, ParserError, CB58_CHECKSUM_LEN};
-use crate::utils::bs58_encode;
+use crate::utils::{bs58_encode, ApduPanic};
 
 pub const SUBNET_ID_LEN: usize = 32;
 
@@ -33,6 +33,11 @@ impl<'b> SubnetId<'b> {
 
     pub fn new(id: &'b [u8; SUBNET_ID_LEN]) -> Self {
         Self(id)
+    }
+
+    pub fn is_primary_network(&self) -> bool {
+        let primary_net = bolos::PIC::new(Self::PRIMARY_NETWORK.0).into_inner();
+        &self.0.get(..).apdu_unwrap() == &primary_net.get(..).apdu_unwrap()
     }
 }
 
@@ -81,7 +86,7 @@ impl<'b> DisplayableItem for SubnetId<'b> {
         let label = pic_str!(b"SubnetID");
         title[..label.len()].copy_from_slice(label);
 
-        if self == &Self::PRIMARY_NETWORK {
+        if self.is_primary_network() {
             let primary_network = pic_str!(b"Primary Subnet");
 
             handle_ui_message(primary_network, message, page)

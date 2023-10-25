@@ -13,6 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use avalanche_app_derive::match_ranges;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
@@ -45,6 +46,23 @@ impl<'b> CreateSubnetTx<'b> {
             .checked_sub(base_outputs)
             .ok_or(ParserError::OperationOverflows)?;
         Ok(fee)
+    }
+
+    fn render_owners(
+        &self,
+        addr_idx: usize,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        use bolos::{pic_str, PIC};
+
+        let label = pic_str!(b"Owner address");
+        title[..label.len()].copy_from_slice(label);
+
+        let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+        self.owners
+            .render_address_with_hrp(hrp, addr_idx, message, page)
     }
 }
 
@@ -90,31 +108,31 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
         use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
-        let owners_items = self.owners.num_items()?;
+        let owner_items = self.owners.num_items()?;
 
-        if item_n == 0 {
-            let label = pic_str!(b"CreateSubnet");
-            title[..label.len()].copy_from_slice(label);
-            let content = pic_str!(b"transaction");
-            return handle_ui_message(content, message, page);
-        }
+        match_ranges! {
+            match item_n alias x {
+                0 => {
+                    let label = pic_str!(b"CreateSubnet");
+                    title[..label.len()].copy_from_slice(label);
 
-        let item_n = item_n - 1;
+                    let content = pic_str!(b"transaction");
+                    return handle_ui_message(content, message, page);
+                },
+                until owner_items => self.render_owners(x as usize, title, message, page),
+                until 1 => {
+                    let label = pic_str!(b"Fee(AVAX)");
+                    title[..label.len()].copy_from_slice(label);
 
-        match item_n {
-            x @ 0.. if x < owners_items => self.owners.render_item(item_n, title, message, page),
-            x if x == owners_items => {
-                let label = pic_str!(b"Fee(AVAX)");
-                title[..label.len()].copy_from_slice(label);
+                    let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                    let fee_buff =
+                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(fee_buff, message, page)
+                    handle_ui_message(fee_buff, message, page)
+                }
+                _ => Err(ViewError::NoData),
             }
-            _ => Err(ViewError::NoData),
         }
     }
 }
