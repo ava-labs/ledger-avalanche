@@ -359,28 +359,13 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
+        let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+
         let label = pic_str!(b"Rewards to");
         title[..label.len()].copy_from_slice(label);
 
-        // render owner addresses
-        if let Some(addr) = self.rewards_owner.addresses.get(addr_idx) {
-            let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
-
-            let mut address = MaybeUninit::uninit();
-            Address::from_bytes_into(addr, &mut address).map_err(|_| ViewError::Unknown)?;
-
-            let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
-            // valid read as memory was initialized
-            let address = unsafe { address.assume_init() };
-
-            let len = address
-                .encode_into(hrp, &mut encoded[..])
-                .map_err(|_| ViewError::Unknown)?;
-
-            return handle_ui_message(&encoded[..len], message, page);
-        }
-
-        Err(ViewError::NoData)
+        self.rewards_owner
+            .render_address_with_hrp(hrp, addr_idx, message, page)
     }
 
     fn render_last_items(

@@ -384,37 +384,28 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let mut render_addr = |addr: Address| {
-            let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+        let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+        let validators = self.validator_rewards_owner.num_addresses();
+        let delegators = self.delegator_rewards_owner.num_addresses();
 
-            let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+        match_ranges! {
+            match addr_idx alias x {
+                until validators => {
+                    // FIXME: title truncated
+                    let label = pic_str!(b"Valida rewards to");
+                    title[..label.len()].copy_from_slice(label);
 
-            let len = addr
-                .encode_into(hrp, &mut encoded[..])
-                .map_err(|_| ViewError::Unknown)?;
+                    self.validator_rewards_owner.render_address_with_hrp(hrp, x, message, page)
+                }
+                until delegators => {
+                    // FIXME: title truncated
+                    let label = pic_str!(b"Delega rewards to");
+                    title[..label.len()].copy_from_slice(label);
 
-            handle_ui_message(&encoded[..len], message, page)
-        };
-
-        //look for validator address first
-        if let Some(addr) = self.validator_rewards_owner.get_address_at(addr_idx) {
-            // FIXME: title truncated
-            let label = pic_str!(b"Valida rewards to");
-            title[..label.len()].copy_from_slice(label);
-            render_addr(addr)
-        }
-        //if no address found then look into the delegeators
-        else if let Some(addr) = self
-            .delegator_rewards_owner
-            // with an offset
-            .get_address_at(addr_idx - self.validator_rewards_owner.num_addresses())
-        {
-            // FIXME: title truncated
-            let label = pic_str!(b"Delega rewards to");
-            title[..label.len()].copy_from_slice(label);
-            render_addr(addr)
-        } else {
-            Err(ViewError::NoData)
+                    self.delegator_rewards_owner.render_address_with_hrp(hrp, x, message, page)
+                }
+                _ => Err(ViewError::NoData)
+            }
         }
     }
 
