@@ -134,7 +134,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
 impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
-        // fee, fee_delegation, validator_rewards_to, delegator_rewards_to,
+        // subnet id, validator_rewards_to, delegator_rewards_to,
         // and stake items
         let base = self.base_tx.base_outputs_num_items()?;
         let validator = self.validator.num_items()?;
@@ -145,7 +145,7 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
 
         checked_add!(
             ViewError::Unknown,
-            3u8,
+            4u8,
             base,
             validator,
             signer,
@@ -180,6 +180,7 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
                 },
                 until base_outputs_items => self.render_base_outputs(x, title, message, page),
                 until validator_items => self.validator.render_item(x, title, message, page),
+                until 1 => self.subnet_id.render_item(x, title, message, page),
                 until signer_items => self.signer.render_item(x, title, message, page),
                 until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
                 until total_items => self.render_last_items(x, title, message, page),

@@ -8,6 +8,7 @@ expression: reduced
     "Start time": "2022-12-12 17:14:22 UTC",
     "End time": "2023-01-11 17:14:22 UTC",
     "Total stake(AVAX)": "2000",
+    "SubnetID": "2r2x62v3WxP6xs7rZhoakaTK3hxpf1L6q8bqs6FZ83dTcKFwRA",
     "Signer": "0xa5af179e4188583893c2b99e1a8be27d90a9213cfbff1d75b74fe2bc9f3b072c2ded0863a9d9acd9033f223295810e42",
     "Stake": "2000 AVAX to ",
     "Address": "local1x0h0l3j8sh8emq88wvwe7v0k00grch8sh4entf",
