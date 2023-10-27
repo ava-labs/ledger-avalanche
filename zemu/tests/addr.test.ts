@@ -15,19 +15,25 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { APP_DERIVATION, defaultOptions, models } from './common'
+import { APP_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { encode as bs58_encode } from 'bs58'
 
+const defaultOptions = (model: any) => {
+  return commonOpts(model, true)
+}
+
 const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4';
 
+jest.setTimeout(200000)
+
 describe.each(models)('Standard [%s] - pubkey', function (m) {
-  test(
+  test.concurrent(
     'get pubkey and addr',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
 
@@ -46,12 +52,12 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
     },
   );
 
-  test(
+  test.concurrent(
     'show addr',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
 
@@ -72,12 +78,12 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
     },
   );
 
-  test(
+  test.concurrent(
     'get addr with custom hrp & chainID addr',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const resp = await app.getAddressAndPubKey(APP_DERIVATION, false,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))
@@ -97,12 +103,12 @@ describe.each(models)('Standard [%s] - pubkey', function (m) {
     },
   );
 
-  test(
+  test.concurrent(
     'show custom hrp & chainID addr',
     async function () {
       const sim = new Zemu(m.path)
       try {
-        await sim.start({ ...defaultOptions, model: m.name })
+        await sim.start(defaultOptions(m))
         const app = new AvalancheApp(sim.getTransport())
         const respReq = app.getAddressAndPubKey(APP_DERIVATION, true,
           "zemu", bs58_encode(Buffer.alloc(32, 42)))

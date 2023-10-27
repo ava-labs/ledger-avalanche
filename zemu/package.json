@@ -10,7 +10,7 @@
     "Ledger"
   ],
   "scripts": {
-    "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*'",
+    "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*|btc.*'",
     "test_dev": "jest",
     "try": "node try.mjs",
     "debug": "node debug/debug.mjs debug"
@@ -18,7 +18,7 @@
   "dependencies": {
     "@types/node": "^18.14.6",
     "@zondax/ledger-avalanche-app": "link:../js",
-    "@zondax/zemu": "^0.36.0"
+    "@zondax/zemu": "=0.44.0"
   },
   "devDependencies": {
     "@ethereumjs/common": "^3.1.1",
@@ -28,6 +28,7 @@
     "@ledgerhq/hw-app-eth": "6.32.1",
     "@ledgerhq/hw-transport-node-hid": "^6.27.2",
     "@ledgerhq/logs": "^6.10.0",
+    "@matteoh2o1999/github-actions-jest-reporter": "^2.0.0",
     "@types/bs58": "^4.0.1",
     "@types/elliptic": "^6.4.14",
     "@types/jest": "^29.4.0",

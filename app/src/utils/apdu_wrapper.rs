@@ -95,7 +95,7 @@ impl<'apdu> ApduBufferRead<'apdu> {
     pub fn payload(&self) -> Result<&[u8], ApduBufferReadError> {
         let plen = self.inner[APDU_INDEX_LEN] as usize;
         //check that the buffer is long enough for the payload
-        Self::check_min_len(self.inner.len(), plen as usize, APDU_MIN_LENGTH as usize)
+        Self::check_min_len(self.inner.len(), plen, APDU_MIN_LENGTH as usize)
             .map_err(|err| err.length_to_payload())?;
 
         Ok(&self.inner[APDU_MIN_LENGTH as usize..APDU_MIN_LENGTH as usize + plen])

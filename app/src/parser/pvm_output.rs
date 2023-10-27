@@ -63,7 +63,7 @@ impl<'b> PvmOutput<'b> {
         self.locktime.is_some()
     }
 
-    pub fn num_inner_items(&self) -> usize {
+    pub fn num_inner_items(&self) -> Result<u8, ViewError> {
         self.output.num_items()
     }
 }
@@ -131,15 +131,14 @@ impl<'b> PvmOutput<'b> {
 }
 
 impl<'b> DisplayableItem for PvmOutput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // check if output is locked, if so the number of items
         // includes the locked information
-        if self.is_locked() {
-            // amount, address and locked info
-            self.num_inner_items() + 1
-        } else {
-            self.num_inner_items()
-        }
+        let items = self.num_inner_items()?;
+
+        items
+            .checked_add(self.is_locked() as u8)
+            .ok_or(ViewError::Unknown)
     }
 
     fn render_item(
@@ -152,7 +151,7 @@ impl<'b> DisplayableItem for PvmOutput<'b> {
         use bolos::{pic_str, PIC};
         use lexical_core::Number;
 
-        let num_inner_items = self.output.num_items() as _;
+        let num_inner_items = self.output.num_items()?;
         match item_n {
             // Use the default implementation, if transactions require to improve this they can do
             // separately in their ui implementation

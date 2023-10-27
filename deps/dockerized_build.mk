@@ -26,11 +26,13 @@ DOCKER_APP_BIN=$(DOCKER_APP_SRC)/app/bin/app.elf
 
 DOCKER_BOLOS_SDKS = NANOS_SDK
 DOCKER_BOLOS_SDKX = NANOX_SDK
-DOCKER_BOLOS_SDKS2 = NANOSP_SDK
+DOCKER_BOLOS_SDKSP = NANOSP_SDK
+DOCKER_BOLOS_SDKFS = STAX_SDK
 
 TARGET_S = nanos
 TARGET_X = nanox
-TARGET_S2 = nanos2
+TARGET_SP = nanos2
+TARGET_STAX = stax
 
 # Note: This is not an SSH key, and being public represents no risk
 SCP_PUBKEY=049bc79d139c70c83a4b19e8922e5ee3e0080bb14a2e8b0752aa42cda90a1463f689b0fa68c1c0246845c2074787b649d0d8a6c0b97d4607065eee3057bdf16b83
@@ -45,7 +47,7 @@ $(info TESTS_ZEMU_DIR        : $(TESTS_ZEMU_DIR))
 $(info TESTS_JS_DIR          : $(TESTS_JS_DIR))
 $(info TESTS_JS_PACKAGE      : $(TESTS_JS_PACKAGE))
 
-DOCKER_IMAGE_ZONDAX=zondax/ledger-app-builder:latest
+DOCKER_IMAGE_ZONDAX=zondax/ledger-app-builder:ledger-d5bfe2e793f15a826971ae9de2adcad524df3e8e
 DOCKER_IMAGE_LEDGER=ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
 ifdef INTERACTIVE
@@ -85,10 +87,12 @@ endef
 all:
 	@$(MAKE) clean
 	@$(MAKE) buildS
-	@$(MAKE) clean_glyphs
+	@$(MAKE) clean_build
 	@$(MAKE) buildX
-	@$(MAKE) clean_glyphs
-	@$(MAKE) buildS2
+	@$(MAKE) clean_build
+	@$(MAKE) buildSP
+	@$(MAKE) clean_build
+	@$(MAKE) buildFS
 
 .PHONY: check_python
 check_python:
@@ -97,7 +101,7 @@ check_python:
 .PHONY: deps
 deps: check_python
 	@echo "Install dependencies"
-	$(CURDIR)/deps/ledger-zxlib/scripts/install_deps.sh
+	$(CURDIR)/install_deps.sh
 
 .PHONY: pull
 pull:
@@ -114,11 +118,18 @@ build_rustS:
 
 .PHONY: build_rustX
 build_rustX:
-	$(call run_docker,$(DOCKER_BOLOS_SDKX),$(TARGET_X,)make -j $(NPROC) rust)
+	$(call run_docker,$(DOCKER_BOLOS_SDKX),$(TARGET_X),make -j $(NPROC) rust)
 
-.PHONY: build_rustS2
-build_rustS2:
-	$(call run_docker,$(DOCKER_BOLOS_SDKS2),$(TARGET_S2),make -j $(NPROC) rust)
+.PHONY: build_rustSP
+build_rustSP:
+	$(call run_docker,$(DOCKER_BOLOS_SDKSP),$(TARGET_SP),make -j $(NPROC) rust)
+
+.PHONY: build_rustFS
+build_rustFS:
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS),$(TARGET_FS),make -j $(NPROC) rust)
+
+generate_rustFS:
+	$(MAKE) -C $(CURDIR) TARGET_NAME=TARGET_STAX BOLOS_SDK=$(CURDIR)/deps/ledger-secure-sdk generate
 
 .PHONY: convert_icon
 convert_icon:
@@ -133,14 +144,18 @@ buildS:
 buildX:
 	$(call run_docker,$(DOCKER_BOLOS_SDKX),$(TARGET_X),make -j $(NPROC))
 
-.PHONY: buildS2
-buildS2:
-	$(call run_docker,$(DOCKER_BOLOS_SDKS2),$(TARGET_S2),make -j $(NPROC))
+.PHONY: buildSP
+buildSP:
+	$(call run_docker,$(DOCKER_BOLOS_SDKSP),$(TARGET_SP),make -j $(NPROC))
 
 .PHONY: clean_glyphs
 clean_glyphs:
 	@echo "Removing glyphs files"
 	@rm -f app/glyphs/glyphs.c app/glyphs/glyphs.h || true
+
+.PHONY: buildFS
+buildFS: build_rustFS
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS),$(TARGET_FS),make -j $(NPROC))
 
 .PHONY: clean_output
 clean_output:
@@ -148,15 +163,15 @@ clean_output:
 	@rm -f app/output/app* || true
 
 .PHONY: clean_build
-clean_build:
-	$(call run_docker,$(DOCKER_BOLOS_SDKS2),$(TARGET_S2),make clean)
+clean_build: clean_glyphs
+	$(call run_docker,$(DOCKER_BOLOS_SDKSP),$(TARGET_SP),make clean)
 
 .PHONY: clean
-clean: clean_output clean_build clean_glyphs
+clean: clean_output clean_build
 
 .PHONY: listvariants
 listvariants:
-	$(call run_docker,$(DOCKER_BOLOS_SDKS2),$(TARGET_S2),make listvariants)
+	$(call run_docker,$(DOCKER_BOLOS_SDKSP),$(TARGET_SP),make listvariants)
 
 .PHONY: shellS
 shellS:
@@ -166,9 +181,13 @@ shellS:
 shellX:
 	$(call run_docker,$(DOCKER_BOLOS_SDKX) -t,$(TARGET_X),bash)
 
-.PHONY: shellS2
-shellS2:
-	$(call run_docker,$(DOCKER_BOLOS_SDKS2) -t,$(TARGET_S2),bash)
+.PHONY: shellSP
+shellSP:
+	$(call run_docker,$(DOCKER_BOLOS_SDKSP) -t,$(TARGET_SP),bash)
+
+.PHONY: shellFS
+shellFS:
+	$(call run_docker,$(DOCKER_BOLOS_SDKFS) -t,$(TARGET_FS),bash)
 
 .PHONY: loadS
 loadS:
@@ -178,13 +197,21 @@ loadS:
 deleteS:
 	${LEDGER_SRC}/pkg/installer_s.sh delete
 
-.PHONY: loadS2
-loadS2:
-	${LEDGER_SRC}/pkg/installer_s2.sh load
+.PHONY: loadSP
+loadSP:
+	${LEDGER_SRC}/pkg/installer_sp.sh load
 
-.PHONY: deleteS2
-deleteS2:
-	${LEDGER_SRC}/pkg/installer_s2.sh delete
+.PHONY: deleteSP
+deleteSP:
+	${LEDGER_SRC}/pkg/installer_sp.sh delete
+
+.PHONY: loadFS
+loadFS:
+	${LEDGER_SRC}/pkg/installer_fs.sh load
+
+.PHONY: deleteFS
+deleteFS:
+	${LEDGER_SRC}/pkg/installer_fs.sh delete
 
 .PHONY: show_info_recovery_mode
 show_info_recovery_mode:
@@ -216,12 +243,12 @@ dev_ca_delete: check_python
 	@python -m ledgerblue.resetCustomCA --targetId 0x31100004
 
 # This target will setup a custom developer certificate
-.PHONY: dev_caS2
-dev_caS2: check_python
+.PHONY: dev_caSP
+dev_caSP: check_python
 	@python -m ledgerblue.setupCustomCA --targetId 0x33100004 --public $(SCP_PUBKEY) --name zondax
 
-.PHONY: dev_ca_deleteS2
-dev_ca_deleteS2: check_python
+.PHONY: dev_ca_deleteSP
+dev_ca_deleteSP: check_python
 	@python -m ledgerblue.resetCustomCA --targetId 0x33100004
 
 .PHONY: zemu_install

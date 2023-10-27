@@ -13,6 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use avalanche_app_derive::match_ranges;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
@@ -22,8 +23,12 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
-    parser::{u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{
+        u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
+        MAX_ADDRESS_ENCODED_LEN,
+    },
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -39,7 +44,7 @@ impl<'b> SECPOutputOwners<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
 
     pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
-        let data = self.addresses.get(idx as usize)?;
+        let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
             .map_err(|_| ViewError::Unknown)
@@ -49,6 +54,26 @@ impl<'b> SECPOutputOwners<'b> {
 
     pub fn num_addresses(&self) -> usize {
         self.addresses.len()
+    }
+
+    pub fn render_address_with_hrp(
+        &self,
+        hrp: &str,
+        idx: usize,
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, zemu_sys::ViewError> {
+        if let Some(address) = self.get_address_at(idx) {
+            let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
+
+            let len = address
+                .encode_into(hrp, &mut encoded[..])
+                .map_err(|_| ViewError::Unknown)?;
+
+            handle_ui_message(&encoded[..len], message, page)
+        } else {
+            Err(ViewError::NoData)
+        }
     }
 }
 impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
@@ -85,12 +110,12 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
 }
 
 impl<'a> DisplayableItem for SECPOutputOwners<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // show an item for each address in the list
-        let items = self.addresses.len();
+        let items = self.addresses.len() as u8;
         // show locktime only if it is higher than zero,
         // that is why we sum up this boolean
-        items + (self.locktime > 0) as usize
+        checked_add!(ViewError::Unknown, items, (self.locktime > 0) as u8)
     }
 
     #[inline(never)]
@@ -105,37 +130,28 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
         use lexical_core::Number;
 
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-        let addr_item_n = self.num_items() - self.addresses.len();
 
-        match item_n as usize {
-            0 if self.locktime > 0 => {
-                let title_content = pic_str!(b"Locktime");
-                title[..title_content.len()].copy_from_slice(title_content);
-                let buffer =
-                    u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
+        let addr_items = self.addresses.len() as u8;
 
-                handle_ui_message(buffer, message, page)
-            }
+        match_ranges! {
+            match item_n alias x {
+                0 if self.locktime > 0 => {
+                    let title_content = pic_str!(b"Locktime");
+                    title[..title_content.len()].copy_from_slice(title_content);
 
-            x @ 0.. if x >= addr_item_n => {
-                let idx = x - addr_item_n;
-                if let Some(data) = self.addresses.get(idx as usize) {
-                    let mut addr = MaybeUninit::uninit();
-                    Address::from_bytes_into(data, &mut addr).map_err(|_| ViewError::Unknown)?;
-                    let addr = unsafe { addr.assume_init() };
-                    let ret = addr.render_item(0, title, message, page);
-                    // lets change the title to Owner address
-                    // as it is more clear than just Address which is what
-                    // the Address.render_item method does.
+                    let buffer =
+                        u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
+
+                    handle_ui_message(buffer, message, page)
+                },
+                until addr_items => {
                     let label = pic_str!(b"Owner address");
-                    title.iter_mut().for_each(|v| *v = 0);
                     title[..label.len()].copy_from_slice(label);
-                    ret
-                } else {
-                    Err(ViewError::NoData)
-                }
+
+                    self.render_address_with_hrp("", x as usize, message, page)
+                },
+                _ => Err(ViewError::NoData)
             }
-            _ => Err(ViewError::NoData),
         }
     }
 }

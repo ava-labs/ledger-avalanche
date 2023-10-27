@@ -156,7 +156,7 @@ where
             .map_err(|_| ViewError::Unknown)
     }
 
-    pub fn num_input_items(&'b self) -> usize {
+    pub fn num_input_items(&'b self) -> Result<u8, ViewError> {
         self.base_tx.base_outputs_num_items()
     }
 
@@ -175,7 +175,7 @@ where
         let obj = (*obj).secp_transfer().ok_or(ViewError::NoData)?;
 
         // get the number of items for the obj wrapped up by PvmOutput
-        let num_inner_items = obj.num_items() as _;
+        let num_inner_items = obj.num_items()?;
 
         // do a custom rendering of the first base_output_items
         match obj_item_n {

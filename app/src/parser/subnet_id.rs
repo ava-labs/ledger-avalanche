@@ -19,7 +19,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::take;
 
 use crate::parser::{cb58_output_len, DisplayableItem, FromBytes, ParserError, CB58_CHECKSUM_LEN};
-use crate::utils::bs58_encode;
+use crate::utils::{bs58_encode, ApduPanic};
 
 pub const SUBNET_ID_LEN: usize = 32;
 
@@ -33,6 +33,11 @@ impl<'b> SubnetId<'b> {
 
     pub fn new(id: &'b [u8; SUBNET_ID_LEN]) -> Self {
         Self(id)
+    }
+
+    pub fn is_primary_network(&self) -> bool {
+        let primary_net = bolos::PIC::new(Self::PRIMARY_NETWORK.0).into_inner();
+        &self.0.get(..).apdu_unwrap() == &primary_net.get(..).apdu_unwrap()
     }
 }
 
@@ -60,8 +65,8 @@ impl<'b> FromBytes<'b> for SubnetId<'b> {
 }
 
 impl<'b> DisplayableItem for SubnetId<'b> {
-    fn num_items(&self) -> usize {
-        1
+    fn num_items(&self) -> Result<u8, ViewError> {
+        Ok(1)
     }
 
     fn render_item(
@@ -81,20 +86,27 @@ impl<'b> DisplayableItem for SubnetId<'b> {
         let label = pic_str!(b"SubnetID");
         title[..label.len()].copy_from_slice(label);
 
-        let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
+        if self.is_primary_network() {
+            let primary_network = pic_str!(b"Primary Subnet");
 
-        data[..SUBNET_ID_LEN].copy_from_slice(&self.0[..]);
+            handle_ui_message(primary_network, message, page)
+        } else {
+            let mut data = [0; SUBNET_ID_LEN + CB58_CHECKSUM_LEN];
 
-        let checksum = Sha256::digest(&data[..SUBNET_ID_LEN]).map_err(|_| ViewError::Unknown)?;
+            data[..SUBNET_ID_LEN].copy_from_slice(&self.0[..]);
 
-        // prepare the data to be encoded by appending last 4-byte
-        data[SUBNET_ID_LEN..]
-            .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
+            let checksum =
+                Sha256::digest(&data[..SUBNET_ID_LEN]).map_err(|_| ViewError::Unknown)?;
 
-        const MAX_SIZE: usize = cb58_output_len::<SUBNET_ID_LEN>();
-        let mut encoded = [0; MAX_SIZE];
+            // prepare the data to be encoded by appending last 4-byte
+            data[SUBNET_ID_LEN..]
+                .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
 
-        let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
-        handle_ui_message(&encoded[..len], message, page)
+            const MAX_SIZE: usize = cb58_output_len::<SUBNET_ID_LEN>();
+            let mut encoded = [0; MAX_SIZE];
+
+            let len = bs58_encode(data, &mut encoded[..]).map_err(|_| ViewError::Unknown)?;
+            handle_ui_message(&encoded[..len], message, page)
+        }
     }
 }

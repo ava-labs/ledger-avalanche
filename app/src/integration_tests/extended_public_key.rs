@@ -18,6 +18,7 @@ use super::prelude::*;
 use constants::INS_GET_EXTENDED_PUBLIC_KEY as INS;
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 fn extended_public_key() {
     let mut flags = 0u32;
     let mut tx = 0u32;

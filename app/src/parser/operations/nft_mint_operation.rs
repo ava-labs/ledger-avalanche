@@ -76,7 +76,7 @@ impl<'b> FromBytes<'b> for NFTMintOperation<'b> {
 }
 
 impl<'a> DisplayableItem for NFTMintOperation<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.nft_output.num_items()
     }
 

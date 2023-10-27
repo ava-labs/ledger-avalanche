@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::sys::ViewError;
+use crate::{checked_add, sys::ViewError};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
 
@@ -21,7 +21,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, SubnetAuth, SubnetId, Validator, PVM_ADD_SUBNET_VALIDATOR,
+        PvmOutput, SubnetAuth, SubnetId, Validator, Weight, PVM_ADD_SUBNET_VALIDATOR,
     },
 };
 
@@ -31,7 +31,7 @@ use crate::{
 pub struct AddSubnetValidatorTx<'b> {
     pub tx_header: Header<'b>,
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
-    pub validator: Validator<'b>,
+    pub validator: Validator<'b, Weight>,
     pub subnet_id: SubnetId<'b>,
     pub subnet_auth: SubnetAuth<'b>,
 }
@@ -58,7 +58,7 @@ impl<'b> FromBytes<'b> for AddSubnetValidatorTx<'b> {
 
         // validator
         let validator = unsafe { &mut *addr_of_mut!((*out).validator).cast() };
-        let rem = Validator::from_bytes_into(rem, validator)?;
+        let rem = Validator::<Weight>::from_bytes_into(rem, validator)?;
 
         // SubnetId
         let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
@@ -73,10 +73,10 @@ impl<'b> FromBytes<'b> for AddSubnetValidatorTx<'b> {
 }
 
 impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, validator_items(4),
         // subnet_id and fee
-        1 + self.validator.num_items() + 1 + 1
+        checked_add!(ViewError::Unknown, 3u8, self.validator.num_items()?)
     }
 
     fn render_item(
@@ -98,7 +98,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
 
         let item_n = item_n - 1;
 
-        let validator_items = self.validator.num_items() as u8;
+        let validator_items = self.validator.num_items()?;
 
         match item_n {
             // render validator info

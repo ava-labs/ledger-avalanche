@@ -24,10 +24,12 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{
-        nano_avax_to_fp_str, AssetId, BaseTxFields, DisplayableItem, FromBytes, Header,
-        ParserError, PvmOutput, SubnetAuth, SubnetId, PVM_TRANSFORM_SUBNET,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u32_to_str, AssetId, BaseTxFields,
+        DisplayableItem, FromBytes, Header, ParserError, PvmOutput, SubnetAuth, SubnetId,
+        DELEGATION_FEE_DIGITS, PVM_TRANSFORM_SUBNET,
     },
     utils::is_app_mode_expert,
 };
@@ -155,7 +157,8 @@ impl<'b> TransformSubnetTx<'b> {
     ) -> Result<u8, ViewError> {
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        //+2 for 0. in case of decimals and +1 for % in percentages
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + 1];
 
         match item_n {
             0 => {
@@ -218,7 +221,15 @@ impl<'b> TransformSubnetTx<'b> {
                 let label = pic_str!(b"Min delegate fee");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.min_delegation_fee, &mut buffer);
+                u32_to_str(self.min_delegation_fee, &mut buffer[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                let len = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                    .map_err(|_| ViewError::Unknown)?
+                    .len();
+                buffer[len] = b'%';
+                let buffer = &mut buffer[..len + 1];
+
                 handle_ui_message(buffer, message, page)
             }
             9 => {
@@ -240,8 +251,16 @@ impl<'b> TransformSubnetTx<'b> {
                 let label = pic_str!(b"Uptime req.");
                 title[..label.len()].copy_from_slice(label);
 
-                // TODO: determine how to display properly
-                let buffer = itoa(self.uptime_requirement, &mut buffer);
+                u32_to_str(self.uptime_requirement, &mut buffer[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                //the uptime req% shares the same number of digits as the delegation fee% (4)
+                let len = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                    .map_err(|_| ViewError::Unknown)?
+                    .len();
+                buffer[len] = b'%';
+                let buffer = &mut buffer[..len + 1];
+
                 handle_ui_message(buffer, message, page)
             }
             _ => Err(ViewError::NoData),
@@ -250,7 +269,7 @@ impl<'b> TransformSubnetTx<'b> {
 }
 
 impl<'b> DisplayableItem for TransformSubnetTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         let num_expert_items = if is_app_mode_expert() {
             // init/max supply + min/max consumption rate
             // + min/max stake duration
@@ -264,7 +283,13 @@ impl<'b> DisplayableItem for TransformSubnetTx<'b> {
 
         //tx info, subnet id, asset id, fee
         // + expert items
-        1 + self.subnet_id.num_items() + self.asset_id.num_items() + 1 + num_expert_items
+        checked_add!(
+            ViewError::Unknown,
+            2u8,
+            self.subnet_id.num_items()?,
+            self.asset_id.num_items()?,
+            num_expert_items
+        )
     }
 
     fn render_item(
@@ -284,7 +309,7 @@ impl<'b> DisplayableItem for TransformSubnetTx<'b> {
                 title[..label.len()].copy_from_slice(label);
 
                 let content = pic_str!(b"Transaction");
-                return handle_ui_message(content, message, page);
+                handle_ui_message(content, message, page)
             }
             1 => self.subnet_id.render_item(0, title, message, page),
             2 => self.asset_id.render_item(0, title, message, page),
@@ -373,9 +398,9 @@ mod tests {
             println!("-------------------- Transform Subnet TX #{i} ------------------------");
             let (_, tx) = TransformSubnetTx::from_bytes(data).unwrap();
 
-            let items = tx.num_items();
+            let items = tx.num_items().expect("Overflow?");
 
-            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items);
+            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items as usize);
             for i in 0..items {
                 let mut page = Page::default();
 

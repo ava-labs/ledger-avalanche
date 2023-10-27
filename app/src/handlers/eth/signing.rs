@@ -83,7 +83,7 @@ impl Sign {
         // also during the review part
         #[cfg(feature = "erc721")]
         unsafe {
-            _ = crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
+            crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
         };
 
         // now parse the transaction
@@ -113,11 +113,7 @@ impl Sign {
 
 impl ApduHandler for Sign {
     #[inline(never)]
-    fn handle<'apdu>(
-        flags: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
-    ) -> Result<(), Error> {
+    fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("EthSign::handle\x00");
 
         *tx = 0;
@@ -144,7 +140,7 @@ impl ApduHandler for Sign {
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
 
                 unsafe {
-                    PATH.lock(Self)?.replace(bip32_path);
+                    PATH.lock(Self).replace(bip32_path);
                 }
 
                 //parse the length of the RLP message
@@ -152,7 +148,7 @@ impl ApduHandler for Sign {
                 let len = core::cmp::min((to_read as usize).saturating_add(read), rest.len());
 
                 //write the rest to the swapping buffer so we persist this data
-                let buffer = unsafe { BUFFER.lock(Self)? };
+                let buffer = unsafe { BUFFER.lock(Self) };
                 buffer.reset();
 
                 buffer
@@ -211,7 +207,7 @@ pub(crate) struct SignUI {
 
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
-        Ok(self.tx.num_items() as _)
+        self.tx.num_items()
     }
 
     #[inline(never)]
@@ -251,7 +247,7 @@ impl Viewable for SignUI {
         // defined by EIP-155.
         //
         // Check for typed transactions
-        if let Some(_) = self.tx.raw_tx_type() {
+        if self.tx.raw_tx_type().is_some() {
             //write V, which is the oddity of the signature
             out[tx] = flags.contains(ECCInfo::ParityOdd) as u8;
             tx += 1;
@@ -337,11 +333,10 @@ fn cleanup_globals() -> Result<(), Error> {
         // Forcefully acquire the resource as it is not longer in use
         // transaction was rejected.
         #[cfg(feature = "erc721")]
-        if let Ok(info) = crate::handlers::resources::NFT_INFO.lock(Sign) {
-            info.take();
-
+        {
+            crate::handlers::resources::NFT_INFO.lock(Sign).take();
             //let's release the lock for the future
-            let _ = crate::handlers::resources::NFT_INFO.release(Sign);
+            _ = crate::handlers::resources::NFT_INFO.release(Sign);
         }
     }
 

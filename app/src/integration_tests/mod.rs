@@ -36,6 +36,8 @@ pub(self) mod prelude {
     };
     use bolos::crypto::bip32::BIP32Path;
 
+    pub use serial_test::file_serial;
+
     pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, buffer: &mut [u8]) -> Vec<u8> {
         unsafe { crate::rs_handle_apdu(flags, tx, rx, buffer.as_mut_ptr(), buffer.len() as u16) }
 

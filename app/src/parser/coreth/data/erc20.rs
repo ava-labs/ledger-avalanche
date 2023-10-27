@@ -329,12 +329,14 @@ impl<'b> ERC20<'b> {
 }
 
 impl<'b> DisplayableItem for ERC20<'b> {
-    fn num_items(&self) -> usize {
-        1 + match self {
+    fn num_items(&self) -> Result<u8, ViewError> {
+        let items = match self {
             ERC20::Transfer { .. } => 2,
             ERC20::TransferFrom { .. } => 3,
             ERC20::Approve { .. } => 2,
-        }
+        };
+
+        Ok(1 + items)
     }
 
     fn render_item(

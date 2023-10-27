@@ -33,7 +33,6 @@ jobs:
 
       - name: Invoke `version`
         shell: bash -l {0}
-        env:
         run: make version
 
       - id: store-version

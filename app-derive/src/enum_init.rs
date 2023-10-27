@@ -77,6 +77,7 @@ pub fn enum_init(_metadata: TokenStream, input: TokenStream) -> TokenStream {
                     ident: None,
                     colon_token: None,
                     ty: inner.clone(),
+                    mutability: syn::FieldMutability::None,
                 },
             );
 

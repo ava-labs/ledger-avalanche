@@ -72,6 +72,29 @@ typedef struct NanoSPBackend {
 
 extern struct NanoSPBackend BACKEND_LAZY;
 
+#elif defined(TARGET_STAX)
+
+#define KEY_SIZE 64
+#define MESSAGE_SIZE 4096
+
+#define MAX_ITEMS 4
+#define MAX_LINES_PER_FIELD 8
+
+typedef struct UIItem {
+  uint8_t title[KEY_SIZE];
+  uint8_t message[MESSAGE_SIZE];
+} UIItem;
+
+typedef struct StaxBackend {
+  struct UIItem items[MAX_ITEMS];
+  uintptr_t items_len;
+
+  uintptr_t viewable_size;
+  bool expert_mode;
+} StaxBackend;
+
+extern struct StaxBackend BACKEND_LAZY;
+
 #endif
 
 #if defined(BLIND_SIGN_TOGGLE)
@@ -94,5 +117,5 @@ void h_blind_sign_update();
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
 
-void view_idle_show_impl(uint8_t item_idx, char *statusString);
-void view_init_impl(uint8_t *msg);
+void view_idle_show_impl(uint8_t item_idx, const char *statusString);
+void view_init_impl(const char *msg);
