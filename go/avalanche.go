@@ -137,8 +137,8 @@ func (ledger *LedgerAvalanche) GetPubKey(path string, show bool, hrp string, cha
 
 	// [publicKeyLen | publicKey | hash | address | errorCode]
 	publicKeyLen := response[0]
-	publicKey := response[1 : publicKeyLen+1]
-	hash := response[publicKeyLen+1 : publicKeyLen+1+20]
+	publicKey := append([]byte{}, response[1:publicKeyLen+1]...)
+	hash := append([]byte{}, response[publicKeyLen+1:publicKeyLen+1+20]...)
 	address := string(response[publicKeyLen+1+20:])
 
 	return &ResponseAddr{publicKey, hash, address}, nil
@@ -187,8 +187,8 @@ func (ledger *LedgerAvalanche) GetExtPubKey(path string, show bool, hrp string, 
 	}
 
 	publicKeyLen := response[0]
-	publicKey := response[1 : publicKeyLen+1]
-	chainCode := response[publicKeyLen+1:]
+	publicKey := append([]byte{}, response[1:publicKeyLen+1]...)
+	chainCode := append([]byte{}, response[publicKeyLen+1:]...)
 
 	return publicKey, chainCode, nil
 }
