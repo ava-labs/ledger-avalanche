@@ -20,7 +20,7 @@ use crate::{
         CHAIN_ID_LEN, MAX_BIP32_PATH_DEPTH,
     },
     crypto,
-    handlers::handle_ui_message,
+    handlers::{handle_ui_message, resources::PATH},
     sys::{
         bech32,
         crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
@@ -101,13 +101,8 @@ impl<'ui> AddrUIInitializer<'ui> {
 
     /// Initialie the path with the given one
     pub fn with_path(&mut self, path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> &mut Self {
-        //get ui *mut
-        let ui = self.ui.as_mut_ptr();
-
-        //SAFETY: pointers are all valid since they are coming from rust
         unsafe {
-            let ui_path = addr_of_mut!((*ui).path);
-            ui_path.write(path);
+            PATH.lock(super::GetPublicKey).replace(path);
         }
 
         self.path_init = true;
@@ -189,7 +184,6 @@ impl<'ui> AddrUIInitializer<'ui> {
 }
 
 pub struct AddrUI {
-    path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
     //includes checksum
     chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
@@ -233,7 +227,11 @@ impl AddrUI {
     ) -> Result<crypto::PublicKey, Error> {
         let mut out = MaybeUninit::uninit();
 
-        AddrUIInitializer::key_initializer(&self.path)(&mut out, chain_code)
+        let path = unsafe { PATH.acquire(super::GetPublicKey) }?
+            .as_ref()
+            .ok_or(Error::ExecutionError)?;
+
+        AddrUIInitializer::key_initializer(path)(&mut out, chain_code)
             .map_err(|_| Error::ExecutionError)?;
 
         //SAFETY: out has been initialized by the call above
@@ -276,6 +274,8 @@ impl AddrUI {
 }
 
 impl Viewable for AddrUI {
+    const IS_ADDRESS: bool = true;
+
     fn num_items(&mut self) -> Result<u8, ViewError> {
         Ok(1)
     }
@@ -342,6 +342,7 @@ impl Viewable for AddrUI {
 mod tests {
     use arrayref::array_ref;
     use bolos::{bech32, crypto::bip32::BIP32Path};
+    use serial_test::file_serial;
     use zuit::{MockDriver, Page};
 
     use crate::{handlers::public_key::GetPublicKey, utils::strlen};
@@ -425,11 +426,13 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn p_chain() {
         test_chain_alias(Some("P"), None)
     }
 
     #[test]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn x_chain() {
         let id = hex::decode("ab68eb1ee142a05cfe768c36e11f0b596db5a3c6c77aabe665dad9e638ca94f7")
             .unwrap();
@@ -438,6 +441,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn c_chain() {
         let id = hex::decode("7fc93d85c6d62c5b2ac0b519c87010ea5294012d1e407030d6acd0021cac10d5")
             .unwrap();
@@ -446,6 +450,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(not(miri), file_serial(path))]
     pub fn unknown_chain() {
         let id = hex::decode("2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a")
             .unwrap();

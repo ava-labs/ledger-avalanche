@@ -54,6 +54,7 @@ fn addr_len(hrp: Option<&[u8]>, chain_id: Option<&[u8]>) -> usize {
 }
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 fn public_key() {
     let mut flags = 0u32;
     let mut tx = 0u32;
@@ -72,6 +73,7 @@ fn public_key() {
 }
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 fn public_key_with_hrp() {
     let mut flags = 0u32;
     let mut tx = 0u32;
@@ -92,6 +94,7 @@ fn public_key_with_hrp() {
 }
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 #[should_panic = "DataInvalid"]
 fn public_key_with_too_long_hrp() {
     let mut flags = 0u32;
@@ -113,6 +116,7 @@ fn public_key_with_too_long_hrp() {
 }
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 fn public_key_with_long_hrp() {
     let mut flags = 0u32;
     let mut tx = 0u32;
@@ -133,6 +137,7 @@ fn public_key_with_long_hrp() {
 }
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 fn public_key_with_chainid() {
     let mut flags = 0u32;
     let mut tx = 0u32;
@@ -156,6 +161,7 @@ fn public_key_with_chainid() {
 }
 
 #[test]
+#[cfg_attr(not(miri), file_serial(path))]
 #[should_panic = "DataInvalid"]
 fn public_key_with_bad_chainid() {
     let mut flags = 0u32;

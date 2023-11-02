@@ -22,10 +22,12 @@ pub use nft_mint_operation::NFTMintOperation;
 pub use nft_transfer_operation::NFTTransferOperation;
 use nom::number::complete::be_u32;
 pub use secp_mint_operation::SECPMintOperation;
+use zemu_sys::ViewError;
 
 use core::convert::TryFrom;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
+use crate::checked_add;
 use crate::handlers::handle_ui_message;
 use crate::parser::{AssetId, DisplayableItem, FromBytes, ObjectList, UtxoId};
 
@@ -62,7 +64,7 @@ impl<'b> FromBytes<'b> for TransferableOp<'b> {
 }
 
 impl<'b> DisplayableItem for TransferableOp<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.operation.num_items()
     }
 
@@ -195,14 +197,16 @@ impl<'b> FromBytes<'b> for Operation<'b> {
 }
 
 impl<'b> DisplayableItem for Operation<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // operation description
         // + operation items
-        1 + match self {
-            Operation::NFTMint(op) => op.num_items(),
-            Operation::NFTTransfer(op) => op.num_items(),
-            Operation::SECPMint(op) => op.num_items(),
-        }
+        let items = match self {
+            Operation::NFTMint(op) => op.num_items()?,
+            Operation::NFTTransfer(op) => op.num_items()?,
+            Operation::SECPMint(op) => op.num_items()?,
+        };
+
+        checked_add!(ViewError::Unknown, 1u8, items)
     }
 
     fn render_item(
@@ -211,7 +215,7 @@ impl<'b> DisplayableItem for Operation<'b> {
         title: &mut [u8],
         message: &mut [u8],
         page: u8,
-    ) -> Result<u8, zemu_sys::ViewError> {
+    ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
 
         if item_n == 0 {

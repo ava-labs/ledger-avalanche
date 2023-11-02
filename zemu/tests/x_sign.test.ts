@@ -24,6 +24,8 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
+jest.setTimeout(200000)
+
 const LITE_SIGN_TEST_DATA = [
   {
     name: 'x_import_from_p',
@@ -47,10 +49,10 @@ const FULL_SIGN_TEST_DATA = [
 ]
 
 describe.each(models)('X_Sign[%s]; sign', function (m) {
-  test.each(FULL_SIGN_TEST_DATA)('[full] sign x-chain $name', async function ({ name, op }) {
+  test.concurrent.each(FULL_SIGN_TEST_DATA)('[full] sign x-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = op
 
@@ -90,10 +92,10 @@ describe.each(models)('X_Sign[%s]; sign', function (m) {
     }
   })
 
-  test.each(LITE_SIGN_TEST_DATA)('sign x-chain $name', async function ({ name, op }) {
+  test.concurrent.each(LITE_SIGN_TEST_DATA)('sign x-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = op
 

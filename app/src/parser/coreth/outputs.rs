@@ -20,6 +20,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::number::complete::{be_u32, be_u64};
 use zemu_sys::ViewError;
 
+use crate::checked_add;
 use crate::{
     handlers::handle_ui_message,
     parser::{
@@ -78,7 +79,7 @@ impl<'b> EOutput<'b> {
 }
 
 impl<'b> DisplayableItem for EOutput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         self.0.num_items()
     }
 
@@ -97,7 +98,7 @@ impl<'b> DisplayableItem for EOutput<'b> {
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
 pub struct EVMOutput<'b> {
-    /// EVM address from which to transfer funds
+    /// EVM destination address
     address: Address<'b>,
     /// Amount of the asset to be transferred,
     /// in the smallest denomination possible
@@ -148,9 +149,9 @@ impl<'b> FromBytes<'b> for EVMOutput<'b> {
 }
 
 impl<'b> DisplayableItem for EVMOutput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // amount, address
-        1 + self.address.num_items()
+        checked_add!(ViewError::Unknown, 1u8, self.address.num_items()?)
     }
 
     fn render_item(
@@ -174,7 +175,14 @@ impl<'b> DisplayableItem for EVMOutput<'b> {
 
                 handle_ui_message(buffer, message, page)
             }
-            1 => self.address.render_item(0, title, message, page),
+            1 => {
+                //does it make sense to render all EVM outputs addrs
+                // as hex? I think so
+                let label = pic_str!(b"To");
+                title[..label.len()].copy_from_slice(label);
+
+                self.address.render_eth_address(message, page)
+            }
             _ => Err(ViewError::NoData),
         }
     }

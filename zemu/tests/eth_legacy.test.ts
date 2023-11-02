@@ -16,126 +16,133 @@
 
 import Zemu from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions, models } from './common'
-import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
-import { Transaction, FeeMarketEIP1559Transaction } from "@ethereumjs/tx"; 
-import Common from '@ethereumjs/common'
-import { bnToRlp, rlp, bufArrToArr} from "ethereumjs-util";
-import { ec } from 'elliptic'
-const BN = require('bn.js');
 
+import { Transaction } from "@ethereumjs/tx";
+import { Common } from '@ethereumjs/common'
+import { bufArrToArr } from "@ethereumjs/util";
+import { RLP } from "@ethereumjs/rlp";
+import { ec } from 'elliptic'
+
+jest.setTimeout(200000)
 
 type NftInfo = {
-    token_address: string,
-    token_name: string,
-    chain_id: number,
+  token_address: string,
+  token_name: string,
+  chain_id: number,
 }
 
-type TestData = {
-    name: string,
-    op: Buffer,
-    nft_info: NftInfo | undefined,
-    chainId: number | undefined
+type Op = {
+  to?: string,
+  value?: string,
+  data?: string,
 }
-const SIGN_TEST_DATA = [
+type TestData = {
+  name: string,
+  op: Op,
+  nft_info?: NftInfo,
+  chainId?: number
+}
+const SIGN_TEST_DATA: TestData[] = [
   {
     name: 'basic_transfer',
     op: {
-        value: 'abcdef00',
-        to: 'df073477da421520cf03af261b782282c304ad66',
-    }, 
+      value: 'abcdef00',
+      to: 'df073477da421520cf03af261b782282c304ad66',
+    },
     chainId: 9867,
   },
   {
     name: 'legacy_contract_deploy',
     op: {
-        value: 'abcdef00',
-        data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-    }, 
+      value: 'abcdef00',
+      data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+    },
     chainId: 5,
   },
   {
     name: 'legacy_contract_call',
     op: {
-        to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
-        value: 'abcdef01',
-        data: 'ee919d500000000000000000000000000000000000000000000000000000000000000001',
-    }, 
+      to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+      value: 'abcdef01',
+      data: 'ee919d500000000000000000000000000000000000000000000000000000000000000001',
+    },
     chainId: 689,
   },
   {
     name: 'erc20_transfer',
     op: {
-        // this is not probably the contract address but lets use it
-        to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
-        value: '0',
-        data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
-    }, 
+      // this is not probably the contract address but lets use it
+      to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+      value: '0',
+      data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
+    },
     chainId: 65089,
   },
   {
     name: 'pangolin_contract_call',
     op: {
-        // Pangolin AVAX/DAI swap 2
-        to: '62650ae5c5777d1660cc17fcd4f550000eacdfa0',
-        value: '0',
-        data: '8a657e670000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000c7b9b39ab3081ac34fc4324e3f648b55528871970000000000000000000000000000000000000000000000000000017938e114be0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b31f66aa3c1e785363f0875a1b74e27b85fd66c7000000000000000000000000ba7deebbfc5fa1100fb055a87773e1e99cd3507a',
-    }, 
+      // Pangolin AVAX/DAI swap 2
+      to: '62650ae5c5777d1660cc17fcd4f550000eacdfa0',
+      value: '0',
+      data: '8a657e670000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000c7b9b39ab3081ac34fc4324e3f648b55528871970000000000000000000000000000000000000000000000000000017938e114be0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000b31f66aa3c1e785363f0875a1b74e27b85fd66c7000000000000000000000000ba7deebbfc5fa1100fb055a87773e1e99cd3507a',
+    },
     chainId: 100,
   },
-  {
-    name: 'erc721_approve',
-    op: {
-        // this is not probably the contract address but lets use it
-        to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
-        value: '0',
-        data: '095ea7b30000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
-    }, 
-    chainId: 43114,
-    nft_info: {
-      token_address: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
-      token_name: 'Unknown',
-      chain_id: 43114,
-    },
-  },
+  // TODO: fix after Ledger investigates the issue with the emulator
+  // {
+  //   name: 'erc721_approve',
+  //   op: {
+  //     // this is not probably the contract address but lets use it
+  //     to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+  //     value: '0',
+  //     data: '095ea7b30000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
+  //   },
+  //   chainId: 43114,
+  //   nft_info: {
+  //     token_address: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+  //     token_name: 'Unknown',
+  //     chain_id: 43114,
+  //   },
+  // },
   {
     name: 'basic_transfer_no_eip155',
     op: {
-        value: 'a1bcd400',
-        to: 'df073477da421520cf03af261b782282c304ad66',
-    }, 
+      value: 'a1bcd400',
+      to: 'df073477da421520cf03af261b782282c304ad66',
+    },
   },
   {
     name: 'contract_deploy_no_eip155',
     op: {
-        value: '1',
-        data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-    }, 
+      value: '1',
+      data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+    },
   },
 ]
 
-const rawUnsignedLegacyTransaction = (params: any, chainId: number | undefined) => {
+const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
 
-    const txParams = {
-        nonce: '0x00',
-        gasPrice: '0x6d6e2edc00',
-        gasLimit: '0x2dc6c0',
-        to: params.to !== undefined? '0x' + params.to: undefined,
-        value: '0x' + params.value,
-        data: params.data !== undefined? '0x' + params.data: undefined,
-    }
+  const txParams = {
+    nonce: '0x00',
+    gasPrice: '0x6d6e2edc00',
+    gasLimit: '0x2dc6c0',
+    to: params.to !== undefined ? '0x' + params.to : undefined,
+    value: '0x' + params.value,
+    data: params.data !== undefined ? '0x' + params.data : undefined,
+  }
 
-    const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId })
-    const options = chainId !== undefined? {common: chain}: undefined
+  const chain = Common.custom({ name: 'avalanche', networkId: 1, chainId }, { baseChain: 1 })
+  const options = chainId !== undefined ? { common: chain } : undefined
 
-    // legacy
-    const tx = Transaction.fromTxData(txParams, options)
+  // legacy
+  const tx = Transaction.fromTxData(txParams, options)
 
-    let unsignedTx: Buffer[] | Buffer
-    unsignedTx = tx.getMessageToSign(false)
-    unsignedTx = Buffer.from(rlp.encode(bufArrToArr(unsignedTx)))
+  let unsignedTx: Buffer[] | Buffer
+  unsignedTx = tx.getMessageToSign(false)
+  unsignedTx = Buffer.from(RLP.encode(bufArrToArr(unsignedTx)))
 
-    return unsignedTx
+  return unsignedTx
 
 };
 
@@ -144,11 +151,11 @@ const rawUnsignedLegacyTransaction = (params: any, chainId: number | undefined) 
 function check_legacy_signature(hexTx: string, signature: any, chainId: number | undefined) {
   const ethTx = Buffer.from(hexTx, 'hex');
 
-  const chain = Common.forCustomChain(1, { name: 'avalanche', networkId: 1, chainId })
-  const tx_options = chainId !== undefined? {common: chain}: undefined
+  const chain = Common.custom({ name: 'avalanche', networkId: 1, chainId }, { baseChain: 1 })
+  const tx_options = chainId !== undefined ? { common: chain } : undefined
 
-  const txnBufsDecoded: any = rlp.decode(ethTx).slice(0,6);
-  const txnBufsMap = [signature.v, signature.r, signature.s].map(a=>Buffer.from(((a.length%2==1)?'0'+a:a),'hex'));
+  const txnBufsDecoded: any = RLP.decode(ethTx).slice(0, 6);
+  const txnBufsMap = [signature.v, signature.r, signature.s].map(a => Buffer.from(((a.length % 2 == 1) ? '0' + a : a), 'hex'));
 
   const txnBufs = txnBufsDecoded.concat(txnBufsMap);
 
@@ -157,26 +164,27 @@ function check_legacy_signature(hexTx: string, signature: any, chainId: number |
   return ethTxObj.verifySignature()
 }
 
+
 describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
+  test.concurrent.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
 
-      const currentScreen = sim.snapshot()
+      const currentScreen = await sim.snapshot()
       const msg = rawUnsignedLegacyTransaction(data.op, data.chainId);
 
       const nft = data.nft_info
       if (nft !== undefined) {
-          const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
-          expect(provide_resp.returnCode).toEqual(0x9000)
+        const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
+        expect(provide_resp.returnCode).toEqual(0x9000)
       }
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen, 60000)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
@@ -188,7 +196,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       expect(resp).toHaveProperty('v')
 
       //Verify signature
-     const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
+      const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
 
       const EC = new ec("secp256k1");
       const sha3 = require('js-sha3');
@@ -204,7 +212,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       expect(signatureOK).toEqual(true)
 
       // alternative verification to be safe
-      const test = await check_legacy_signature(msg.toString('hex'),resp, data.chainId)
+      const test = check_legacy_signature(msg.toString('hex'), resp, data.chainId)
       expect(test).toEqual(true)
     } finally {
       await sim.close()

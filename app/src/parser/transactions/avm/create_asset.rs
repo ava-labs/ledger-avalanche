@@ -116,9 +116,9 @@ impl<'b> FromBytes<'b> for CreateAssetTx<'b> {
 }
 
 impl<'b> DisplayableItem for CreateAssetTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // description + asset_name + asset_symbol + denomination + fee
-        1 + 1 + 1 + 1 + 1
+        Ok(1 + 1 + 1 + 1 + 1)
     }
 
     fn render_item(

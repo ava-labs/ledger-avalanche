@@ -60,9 +60,9 @@ impl<'b> ContractCall<'b> {
 }
 
 impl<'b> DisplayableItem for ContractCall<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // data
-        1
+        Ok(1)
     }
 
     fn render_item(

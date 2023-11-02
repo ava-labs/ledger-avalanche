@@ -185,12 +185,10 @@ func (ledger *LedgerAvalanche) Sign(pathPrefix string, signingPaths []string, me
 		if err != nil {
 			if err.Error() == "[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect" {
 				// In this special case, we can extract additional info
-				errorMsg := string(response)
-				return nil, errors.New(errorMsg)
+				return nil, fmt.Errorf("%w extra_info=(%s)", err, string(response))
 			}
 			if err.Error() == "[APDU_CODE_DATA_INVALID] Referenced data reversibly blocked (invalidated)" {
-				errorMsg := string(response)
-				return nil, errors.New(errorMsg)
+				return nil, fmt.Errorf("%w extra_info=(%s)", err, string(response))
 			}
 			return nil, err
 		}
@@ -268,11 +266,11 @@ func (ledger *LedgerAvalanche) VerifyMultipleSignatures(response ResponseSign, m
 			return errors.New("error getting the pubkey")
 		}
 
-		hexString := fmt.Sprintf("%x", addr.publicKey)
+		hexString := fmt.Sprintf("%x", addr.PublicKey)
 		fmt.Println(hexString)
 
 		sigLen := len(response.Signature[suffix])
-		verified := VerifySignature(addr.publicKey, messageHash, response.Signature[suffix][:sigLen-1])
+		verified := VerifySignature(addr.PublicKey, messageHash, response.Signature[suffix][:sigLen-1])
 
 		if !verified {
 			return errors.New("[VerifySig] Error verifying signature: ")

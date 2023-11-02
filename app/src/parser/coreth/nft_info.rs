@@ -86,7 +86,7 @@ impl<'b> FromBytes<'b> for NftInfo {
             return Err(ParserError::ValueOutOfRange.into());
         }
 
-        let (rem, name) = take(name_len as usize)(&input[1..])?;
+        let (rem, name) = take(name_len)(&input[1..])?;
 
         // check for a well-formed name as only ascii is supported
         if !name.is_ascii() {

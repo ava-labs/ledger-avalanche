@@ -1,0 +1,10 @@
+---
+source: app/src/parser/transactions/pvm/banff/remove_subnet_validator.rs
+expression: reduced
+---
+[
+    "RemoveSubnetValid": "Transaction",
+    "Validator": "NodeID-2ZbTY9GatRTrfinAoYiYLcf6CvrPAUYgo",
+    "SubnetID": "SkB92YpWm4UpburLz9tEKZw2i67H3FF6YkjaU4BkFUDTG9Xm",
+    "Fee(AVAX)": "0.001",
+]

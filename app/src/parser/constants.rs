@@ -18,11 +18,13 @@
 pub const NETWORK_ID_MAINNET: u32 = 1;
 pub const NETWORK_ID_FUJI: u32 = 5;
 pub const NETWORK_ID_LOCAL: u32 = 12345;
+pub const NETWORK_ID_CUSTOM: u32 = 1337;
 
 // hrp
 pub const HRP_MAINNET: &str = "avax";
 pub const HRP_TESTNET: &str = "fuji";
 pub const HRP_LOCAL: &str = "local";
+pub const HRP_CUSTOM: &str = "custom";
 
 pub const TRANSFER_TX: u32 = 0;
 
@@ -34,6 +36,10 @@ pub const PVM_ADD_VALIDATOR: u32 = 0x0000000c;
 pub const PVM_ADD_SUBNET_VALIDATOR: u32 = 0x0000000d;
 pub const PVM_ADD_DELEGATOR: u32 = 0x0000000e;
 pub const PVM_CREATE_CHAIN: u32 = 0x0000000f;
+pub const PVM_REMOVE_SUBNET_VALIDATOR: u32 = 0x00000017;
+pub const PVM_TRANSFORM_SUBNET: u32 = 0x00000018;
+pub const PVM_ADD_PERMISSIONLESS_VALIDATOR: u32 = 0x00000019;
+pub const PVM_ADD_PERMISSIONLESS_DELEGATOR: u32 = 0x0000001A;
 
 // avm transaction types
 pub const AVM_CREATE_ASSET_TX: u32 = 0x00000001;

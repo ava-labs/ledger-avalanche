@@ -1,9 +1,17 @@
 [workspace]
-members = [ "app", "app-derive" ]
-
-exclude = [ "hfuzz" ]
-
 resolver = "2"
+members = [ "app", "app-derive" ]
+exclude = [ "hfuzz", "deps/ledger-rust" ]
+
+[workspace.package]
+edition = "2018"
+authors = ["Zondax <hello@zondax.ch>"]
+
+[workspace.dependencies]
+bolos = { path = "deps/ledger-rust/bolos" }
+bolos-common = { path = "deps/ledger-rust/bolos-common" }
+zemu-sys = { path = "deps/ledger-rust/zemu" }
+zuit = { path = "deps/ledger-rust/zuit" }
 
 [profile.dev]
 panic = "abort"
@@ -13,3 +21,4 @@ lto = false
 codegen-units = 1
 debug = false
 opt-level = "z"
+overflow-checks = true

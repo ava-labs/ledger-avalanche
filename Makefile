@@ -24,6 +24,12 @@ TESTS_JS_DIR = $(CURDIR)/js
 ifeq ($(BOLOS_SDK),)
 	include $(CURDIR)/deps/dockerized_build.mk
 
+.PHONY: init
+init:
+	cd deps; sh get_sdk.sh
+	$(MAKE) deps
+	$(MAKE) zemu_install
+
 build:
 	$(MAKE)
 .PHONY: build
@@ -35,11 +41,6 @@ lint:
 clippy:
 	cargo clippy --all-targets
 .PHONY: clippy
-
-
-.PHONY: zemu_test
-zemu_test:
-	cd $(TESTS_ZEMU_DIR) && yarn test$(COIN)
 
 .PHONY: zemu_debug
 zemu_debug:
@@ -56,12 +57,22 @@ test_all:
 	make build
 	make zemu_test
 
-.PHONY: fuzz clean_fuzz
+.PHONY: fuzz clean_fuzz restore_fuzz
+FUZZ_CMD = cd hfuzz && cargo hfuzz run apdu
+
 fuzz:
-	cd hfuzz && cargo hfuzz run apdu
+	@echo "Adding \"rslib\" to crate-type"
+	@sed -i.bak '/crate-type = \["staticlib"\]/ s/\]/, "rlib"\]/' app/Cargo.toml
+	@trap "make -C $(CURDIR) restore_fuzz" INT; \
+		$(FUZZ_CMD)
+	$(MAKE) restore_fuzz
 
 clean_fuzz:
 	cd hfuzz && cargo hfuzz clean
+
+restore_fuzz:
+	@echo "Reverting crate-type to original"
+	@mv app/Cargo.toml.bak app/Cargo.toml
 
 else
 

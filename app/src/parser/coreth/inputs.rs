@@ -20,6 +20,7 @@ use nom::number::complete::be_u64;
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{Address, AssetId, DisplayableItem, FromBytes},
     utils::is_app_mode_expert,
@@ -82,16 +83,16 @@ impl<'b> FromBytes<'b> for EVMInput<'b> {
 }
 
 impl<'b> DisplayableItem for EVMInput<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // expert: address, nonce
         let expert = if is_app_mode_expert() {
-            self.address.num_items() + 1
+            self.address.num_items()? + 1
         } else {
             0
         };
 
         //type, asset id, amount
-        1 + self.asset_id.num_items() + 1 + expert
+        checked_add!(ViewError::Unknown, 2u8, expert, self.asset_id.num_items()?)
     }
 
     fn render_item(
@@ -122,7 +123,14 @@ impl<'b> DisplayableItem for EVMInput<'b> {
 
                 handle_ui_message(buffer, message, page)
             }
-            3 if expert => self.address.render_item(0, title, message, page),
+            3 if expert => {
+                //does it make sense to render all EVM input addrs
+                // as hex? I think so
+                let label = pic_str!(b"From");
+                title[..label.len()].copy_from_slice(label);
+
+                self.address.render_eth_address(message, page)
+            }
             4 if expert => {
                 let title_content = pic_str!(b"Nonce");
                 title[..title_content.len()].copy_from_slice(title_content);

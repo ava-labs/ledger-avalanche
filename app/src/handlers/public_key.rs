@@ -113,11 +113,7 @@ impl GetPublicKey {
 
 impl ApduHandler for GetPublicKey {
     #[inline(never)]
-    fn handle<'apdu>(
-        flags: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
-    ) -> Result<(), Error> {
+    fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("GetPublicKey::handle\x00");
 
         *tx = 0;

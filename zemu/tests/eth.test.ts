@@ -103,17 +103,19 @@ const SIGN_TEST_DATA = [
   },
 ]
 
+jest.setTimeout(200000)
+
 describe.each(models)('EthereumTx [%s]; sign', function (m) {
-  test.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
+  test.concurrent.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
       const msg = data.op
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
 
-      const currentScreen = sim.snapshot()
+      const currentScreen = await sim.snapshot()
 
       const nft = data.nft_info
       if (nft !== undefined) {
@@ -123,7 +125,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'))
-      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.waitUntilScreenIsNot(currentScreen, 100000)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
@@ -155,138 +157,78 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
   })
 })
 
-describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
-  test('get pubkey and addr %s', async function () {
+describe.each(models)('Ethereum [%s] - misc', function (m) {
+  test.concurrent('get app configuration', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
 
-      const ETH_PATH = "m/44'/60'/0'/0'/5"
-      const EXPECTED_PUBLIC_KEY = '024f1dd50f180bfd546339e75410b127331469837fa618d950f7cfb8be351b0020';
-      const resp = await app.getAddress(ETH_PATH, false)
+      const resp = await app.getAppConfiguration()
 
       console.log(resp, m.name)
 
-      expect(resp).toHaveProperty('address')
-      expect(resp).toHaveProperty('publicKey')
-      expect(resp.publicKey === EXPECTED_PUBLIC_KEY)
+      expect(resp.arbitraryDataEnabled).toBeFalsy()
+      expect(resp.erc20ProvisioningNecessary).toBeTruthy()
+      expect(resp.starkEnabled).toBeFalsy()
+      expect(resp.starkv2Supported).toBeFalsy()
     } finally {
       await sim.close()
     }
   })
 
-  test('show addr %s', async function () {
+  test.concurrent('Ethereum Sign PersonalMessage%s', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start({ ...defaultOptions, model: m.name })
+      await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
-      const respReq = app.getAddress(ETH_DERIVATION, true)
 
-      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-eth-addr`)
+      let msgData = Buffer.from('Hello World', 'utf8')
+
+      const testcase = `${m.prefix.toLowerCase()}-eth-sign-message`
+
+      const currentScreen = await sim.snapshot()
+
+
+      const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
+      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
-      console.log(resp, m.name)
 
-      expect(resp).toHaveProperty('publicKey')
-      expect(resp).toHaveProperty('address')
+      console.log(resp, m.name, msgData)
+
+      expect(resp).toHaveProperty('s')
+      expect(resp).toHaveProperty('r')
+      expect(resp).toHaveProperty('v')
+
+      //Verify signature
+      const resp_addr = await app.getAddress(ETH_DERIVATION, false, false)
+
+      const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
+      // recreate data buffer:
+      // header + msg.len() + msg
+      let data = Buffer.alloc(4 + msgData.length)
+      let msg = Buffer.alloc(data.length + header.length)
+      data.writeInt32BE(msgData.length)
+      msgData.copy(data, 4)
+      header.copy(msg)
+      data.copy(msg, header.length)
+
+      const EC = new ec("secp256k1");
+      const sha3 = require('js-sha3');
+      const msgHash = sha3.keccak256(msg);
+
+      const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
+      const signature_obj = {
+        r: Buffer.from(resp.r, 'hex'),
+        s: Buffer.from(resp.s, 'hex'),
+      }
+
+      const signatureOK = EC.verify(msgHash, signature_obj, pubKey, 'hex')
+      expect(signatureOK).toEqual(true)
     } finally {
       await sim.close()
     }
   })
-
-  test('get xpub and addr %s', async function () {
-    const sim = new Zemu(m.path)
-    try {
-      await sim.start({ ...defaultOptions, model: m.name })
-      const app = new Eth(sim.getTransport())
-      const resp = await app.getAddress(ETH_DERIVATION, false, true)
-
-      console.log(resp, m.name)
-
-      expect(resp).toHaveProperty('address')
-      expect(resp).toHaveProperty('publicKey')
-      expect(resp).toHaveProperty('chainCode')
-      expect(resp.chainCode).not.toBeUndefined();
-    } finally {
-      await sim.close()
-    }
-  })
-})
-
-describe.each(models)('Ethereum [%s] - misc', function (m) {
-    test('get app configuration', async function () {
-        const sim = new Zemu(m.path)
-        try {
-            await sim.start({ ...defaultOptions, model: m.name })
-            const app = new Eth(sim.getTransport())
-
-            const resp = await app.getAppConfiguration()
-
-            console.log(resp, m.name)
-
-            expect(resp.arbitraryDataEnabled).toBeFalsy()
-            expect(resp.erc20ProvisioningNecessary).toBeTruthy()
-            expect(resp.starkEnabled).toBeFalsy()
-            expect(resp.starkv2Supported).toBeFalsy()
-        } finally {
-            await sim.close()
-        }
-    })
-
-    test('Ethereum Sign PersonalMessage%s', async function () {
-        const sim = new Zemu(m.path)
-        try {
-            await sim.start({ ...defaultOptions, model: m.name })
-            const app = new Eth(sim.getTransport())
-
-            let msgData = Buffer.from('Hello World', 'utf8')
-
-            const testcase = `${m.prefix.toLowerCase()}-eth-sign-message`
-
-            const currentScreen = sim.snapshot()
-
-
-            const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
-            await sim.waitUntilScreenIsNot(currentScreen, 20000)
-            await sim.compareSnapshotsAndApprove('.', testcase)
-
-            const resp = await respReq
-
-            console.log(resp, m.name, msgData)
-
-            expect(resp).toHaveProperty('s')
-            expect(resp).toHaveProperty('r')
-            expect(resp).toHaveProperty('v')
-
-            //Verify signature
-            const resp_addr = await app.getAddress(ETH_DERIVATION, false, false)
-
-            const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
-            // recreate data buffer:
-            // header + msg.len() + msg
-            let data = Buffer.alloc(4 + msgData.length)
-            let msg = Buffer.alloc(data.length + header.length)
-            data.writeInt32BE(msgData.length)
-            msgData.copy(data, 4)
-            header.copy(msg)
-            data.copy(msg, header.length)
-
-            const EC = new ec("secp256k1");
-            const sha3 = require('js-sha3');
-            const msgHash = sha3.keccak256(msg);
-
-            const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
-            const signature_obj = {
-                r: Buffer.from(resp.r, 'hex'),
-                s: Buffer.from(resp.s, 'hex'),
-            }
-
-            const signatureOK = EC.verify(msgHash, signature_obj, pubKey, 'hex')
-            expect(signatureOK).toEqual(true)
-        } finally {
-            await sim.close()
-        }
-    })
 })

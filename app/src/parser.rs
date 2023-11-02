@@ -22,11 +22,13 @@ mod asset_id;
 mod avm_output;
 mod constants;
 mod coreth;
+mod defer;
 mod error;
 mod initial_state;
 mod inputs;
 mod message;
 mod network_info;
+mod node_id;
 mod object_list;
 mod operations;
 mod outputs;
@@ -37,6 +39,9 @@ mod transactions;
 mod utils;
 mod utxo_id;
 mod validator;
+
+#[cfg(feature = "banff")]
+mod proof_of_possession;
 
 #[cfg(test)]
 mod snapshots_common;
@@ -49,11 +54,13 @@ pub use coreth::{
     bytes_to_u64, data::EthData, export_tx::ExportTx, import_tx::ImportTx, native::EthTransaction,
     PersonalMsg,
 };
+pub use defer::Defer;
 pub use error::ParserError;
 pub use initial_state::{FxId, InitialState};
 pub use inputs::{Input, SECPTransferInput, TransferableInput};
 pub use message::{AvaxMessage, Message};
 pub use network_info::*;
+pub use node_id::*;
 pub use object_list::ObjectList;
 pub use operations::{Operation, TransferableOp};
 pub use outputs::{
@@ -75,7 +82,7 @@ pub use coreth::{data::ERC721Info, nft_info::NftInfo};
 /// so that all the different OperationTypes or other items can handle their own UI
 pub trait DisplayableItem {
     /// Returns the number of items to display
-    fn num_items(&self) -> usize;
+    fn num_items(&self) -> Result<u8, ViewError>;
 
     /// This is invoked when a given page is to be displayed
     ///

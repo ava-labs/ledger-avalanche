@@ -23,12 +23,13 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     constants::chain_alias_lookup,
     handlers::handle_ui_message,
     parser::{
         coreth::outputs::EVMOutput, nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes,
         Header, ObjectList, OutputIdx, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN,
-        EVM_IMPORT_TX, MAX_ADDRESS_ENCODED_LEN,
+        EVM_IMPORT_TX,
     },
 };
 
@@ -164,17 +165,32 @@ impl<'b> ImportTx<'b> {
             })
     }
 
-    fn num_output_items(&self) -> usize {
+    fn num_output_items(&self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
         self.outputs.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     // use outputs, which contains the amount
@@ -198,7 +214,9 @@ impl<'b> ImportTx<'b> {
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok( n ) = o.num_items() else {
+                return false;
+            };
             for index in 0..n {
                 count += 1;
                 obj_item_n = index;
@@ -210,31 +228,7 @@ impl<'b> ImportTx<'b> {
         };
 
         let obj = self.outputs.get_obj_if(filter).ok_or(ViewError::NoData)?;
-
-        // do a custom rendering of the first base_output_items
-        match obj_item_n {
-            0 => {
-                // render amount
-                obj.render_item(0, title, message, page)
-            }
-            // render output's address
-            1 => {
-                let address = obj.address();
-                // render encoded address with proper hrp,
-                let t = pic_str!(b"Address");
-                title[..t.len()].copy_from_slice(t);
-
-                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
-                let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
-
-                let addr_len = address
-                    .encode_into(hrp, &mut encoded[..])
-                    .map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(&encoded[..addr_len], message, page)
-            }
-            _ => Err(ViewError::NoData),
-        }
+        obj.render_item(obj_item_n, title, message, page)
     }
 
     fn render_import_description(
@@ -264,9 +258,9 @@ impl<'b> ImportTx<'b> {
 }
 
 impl<'b> DisplayableItem for ImportTx<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         //type + number outputs + fee + description
-        1 + self.num_output_items() + 1 + 1
+        checked_add!(ViewError::Unknown, 3u8, self.num_output_items()?)
     }
 
     fn render_item(
@@ -284,11 +278,11 @@ impl<'b> DisplayableItem for ImportTx<'b> {
             return handle_ui_message(pic_str!(b"Importing in C-Chain"), message, page);
         }
 
-        let outputs_num_items = self.num_output_items() as u8;
+        let outputs_num_items = self.num_output_items()?;
         let new_item_n = item_n - 1;
 
         match new_item_n {
-            x @ 0.. if x < outputs_num_items as u8 => self.render_imports(x, title, message, page),
+            x @ 0.. if x < outputs_num_items => self.render_imports(x, title, message, page),
             x if x == outputs_num_items => self.render_import_description(title, message, page),
             x if x == (outputs_num_items + 1) => {
                 let title_content = pic_str!(b"Fee");

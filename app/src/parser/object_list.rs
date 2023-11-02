@@ -52,8 +52,6 @@ where
         Ok((rem, list))
     }
 
-    ///
-    #[inline(never)]
     /// Attempt to parse the provided input as an [`ObjectList`] of the given `Obj` type.
     /// The number of elements in the list should be provided. This is useful in cases
     /// where the number of elements has an arbitrary type or is not part of the input
@@ -61,6 +59,7 @@ where
     ///
     /// Will fail if the input bytes are not properly encoded for the list or if any of the objects inside fail to parse.
     /// This also means accessing any inner objects shouldn't fail to parse
+    #[inline(never)]
     pub fn new_into_with_len(
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
@@ -357,7 +356,10 @@ mod tests {
     #[test]
     fn object_list_iterator() {
         let (_, list) = ObjectList::<TransferableOutput<AvmOutput>>::new(DATA).unwrap();
-        let num_items: usize = list.iter().map(|output| output.num_items()).sum();
+        let num_items: usize = list
+            .iter()
+            .map(|output| output.num_items().expect("Overflow!") as usize)
+            .sum();
         // the iterator does not change the state of the
         // main list object, as we return just a copy
         assert_eq!(list.read, 0);

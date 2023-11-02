@@ -17,6 +17,7 @@ use core::ops::Deref;
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32};
+use zemu_sys::ViewError;
 
 use crate::parser::{
     DisplayableItem, FromBytes, ObjectList, Output, OutputIdx, ParserError, TransferableInput,
@@ -65,6 +66,11 @@ where
     pub fn force_disable_output(&mut self, address: &[u8]) {
         let mut idx = 0;
         let mut render = self.renderable_out;
+
+        // outputs is define as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.outputs.iterate_with(|o| {
             // The 99.99% of the outputs contain only one address(best case),
             // In the worse case we just show every output.
@@ -102,17 +108,36 @@ where
         &self.inputs
     }
 
-    pub fn base_outputs_num_items(&'b self) -> usize {
+    pub fn base_outputs_num_items(&'b self) -> Result<u8, ViewError> {
         let mut items = 0;
         let mut idx = 0;
+
+        // store an error during execution, specifically
+        // if an overflows happens
+        let mut err: Option<ViewError> = None;
+
+        // outputs is defined as an Object List of TransferableOutputs,
+        // when parsing transactions we ensure that it is not longer than
+        // 64, as we use that value as a limit for the bitwise operation,
+        // this ensures that render ^= 1 << idx never overflows.
         self.outputs.iterate_with(|o| {
             let render = self.renderable_out & (1 << idx);
             if render > 0 {
-                items += o.num_items();
+                match o
+                    .num_items()
+                    .and_then(|a| a.checked_add(items).ok_or(ViewError::Unknown))
+                {
+                    Ok(i) => items = i,
+                    Err(_) => err = Some(ViewError::Unknown),
+                }
             }
             idx += 1;
         });
-        items
+
+        if err.is_some() {
+            return Err(ViewError::Unknown);
+        }
+        Ok(items)
     }
 
     // Gets the obj that contain the item_n, along with the index
@@ -123,6 +148,7 @@ where
     ) -> Result<(TransferableOutput<O>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
+
         // index to check for renderable outputs.
         // we can omit this and be "fancy" with iterators but
         // they consume a lot of stack.
@@ -139,7 +165,10 @@ where
                 return false;
             }
 
-            let n = o.num_items();
+            let Ok(n) = o.num_items() else {
+                return false;
+            };
+
             for index in 0..n {
                 obj_item_n = index;
                 if count == item_n as usize {
@@ -155,7 +184,7 @@ where
             .get_obj_if(filter)
             .ok_or(ParserError::DisplayIdxOutOfRange)?;
 
-        Ok((obj, obj_item_n as u8))
+        Ok((obj, obj_item_n))
     }
 }
 

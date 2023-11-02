@@ -54,11 +54,7 @@ impl GetExtendedPublicKey {
 
 impl ApduHandler for GetExtendedPublicKey {
     #[inline(never)]
-    fn handle<'apdu>(
-        flags: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'apdu>,
-    ) -> Result<(), Error> {
+    fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
         sys::zemu_log_stack("GetExtendedPublicKey::handle\x00");
 
         *tx = 0;
@@ -182,6 +178,8 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
 }
 
 impl Viewable for ExtendedPubkeyUI {
+    const IS_ADDRESS: bool = true;
+
     fn num_items(&mut self) -> Result<u8, ViewError> {
         Ok(2)
     }

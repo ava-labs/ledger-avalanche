@@ -61,7 +61,7 @@ where
         (*self.output).amount()
     }
 
-    pub fn assert_id(&self) -> &AssetId<'b> {
+    pub fn asset_id(&self) -> &AssetId<'b> {
         &self.asset_id
     }
 
@@ -118,7 +118,7 @@ impl<'b, O> DisplayableItem for TransferableOutput<'b, O>
 where
     O: FromBytes<'b> + DisplayableItem + Deref<Target = Output<'b>> + 'b,
 {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // the asset_id is not part of the summary we need from objects of this type,
         // but could give to higher level objects information to display such information.
         self.output.num_items()
@@ -296,7 +296,7 @@ impl<'b> Output<'b> {
 }
 
 impl<'a> DisplayableItem for Output<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         match self {
             Self::SECPTransfer(t) => t.num_items(),
             Self::SECPMint(m) => m.num_items(),

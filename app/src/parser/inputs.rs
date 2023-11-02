@@ -26,6 +26,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{error::ParserError, AssetId, DisplayableItem, FromBytes},
     utils::hex_encode,
@@ -63,6 +64,10 @@ impl<'b> TransferableInput<'b> {
 
     pub fn locktime(&self) -> Option<u64> {
         self.locktime
+    }
+
+    pub fn asset_id(&self) -> &AssetId<'b> {
+        &self.asset_id
     }
 }
 
@@ -105,8 +110,13 @@ impl<'b> FromBytes<'b> for TransferableInput<'b> {
 }
 
 impl<'b> DisplayableItem for TransferableInput<'b> {
-    fn num_items(&self) -> usize {
-        1 + 1 + self.asset_id.num_items() + self.input.num_items()
+    fn num_items(&self) -> Result<u8, ViewError> {
+        checked_add!(
+            ViewError::Unknown,
+            2u8,
+            self.asset_id.num_items()?,
+            self.input.num_items()?
+        )
     }
 
     fn render_item(
@@ -144,7 +154,7 @@ impl<'b> DisplayableItem for TransferableInput<'b> {
 
             2 => self.asset_id.render_item(0, title, message, page),
 
-            x @ 3.. if (x as usize) < 3 + self.input.num_items() => {
+            x @ 3.. if x < 3 + self.input.num_items()? => {
                 let index = x - 3;
                 self.input.render_item(index, title, message, page)
             }
@@ -232,7 +242,7 @@ impl<'b> FromBytes<'b> for Input<'b> {
 }
 
 impl<'a> DisplayableItem for Input<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         match self {
             Self::SECPTransfer(t) => t.num_items(),
         }

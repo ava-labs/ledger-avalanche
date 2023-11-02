@@ -13,37 +13,41 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use crate::checked_add;
 use crate::handlers::handle_ui_message;
-use crate::parser::{
-    cb58_output_len, nano_avax_to_fp_str, DisplayableItem, FromBytes, ParserError,
-    CB58_CHECKSUM_LEN,
-};
-use crate::sys::{
-    hash::{Hasher, Sha256},
-    ViewError, PIC,
-};
-use crate::utils::bs58_encode;
-use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{
-    bytes::complete::take,
-    number::complete::{be_i64, be_u64},
-    sequence::tuple,
-};
+use crate::parser::{DisplayableItem, FromBytes, NodeId, ParserError};
+use crate::sys::{ViewError, PIC};
 
-pub const NODE_ID_LEN: usize = 20;
-const NODE_ID_PREFIX_LEN: usize = 7;
+use core::{mem::MaybeUninit, ptr::addr_of_mut};
+use nom::{number::complete::be_i64, sequence::tuple};
+
+mod weight_type;
+pub use weight_type::{Stake, Weight};
+use weight_type::{StakeTrait, WeightTrait};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
-pub struct Validator<'b> {
-    pub node_id: &'b [u8; NODE_ID_LEN],
+pub struct Validator<'b, W = Stake> {
+    pub node_id: NodeId<'b>,
     pub start_time: i64,
     pub endtime: i64,
-    pub weight: u64,
+    pub weight: W,
 }
 
-impl<'b> FromBytes<'b> for Validator<'b> {
+impl<'b, W: StakeTrait> Validator<'b, W> {
+    pub fn stake(&self) -> u64 {
+        self.weight.stake()
+    }
+}
+
+impl<'b, W: WeightTrait> Validator<'b, W> {
+    pub fn weight(&self) -> u64 {
+        self.weight.weight()
+    }
+}
+
+impl<'b, W: FromBytes<'b>> FromBytes<'b> for Validator<'b, W> {
     #[inline(never)]
     fn from_bytes_into(
         input: &'b [u8],
@@ -51,32 +55,37 @@ impl<'b> FromBytes<'b> for Validator<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("Validator::from_bytes_into\x00");
 
-        let (rem, node_id) = take(NODE_ID_LEN)(input)?;
-        let node_id = arrayref::array_ref!(node_id, 0, NODE_ID_LEN);
+        let out = out.as_mut_ptr();
 
-        let (rem, (start_time, endtime, weight)) = tuple((be_i64, be_i64, be_u64))(rem)?;
+        let node_id = unsafe { &mut *addr_of_mut!((*out).node_id).cast() };
+        let rem = NodeId::from_bytes_into(input, node_id)?;
+
+        let (rem, (start_time, endtime)) = tuple((be_i64, be_i64))(rem)?;
+
+        let weight = unsafe { &mut *addr_of_mut!((*out).weight).cast() };
+        let rem = W::from_bytes_into(rem, weight)?;
 
         // check for appropiate timestamps
         if endtime <= start_time {
             return Err(ParserError::InvalidTimestamp.into());
         }
 
-        let out = out.as_mut_ptr();
         unsafe {
-            addr_of_mut!((*out).node_id).write(node_id);
             addr_of_mut!((*out).start_time).write(start_time);
             addr_of_mut!((*out).endtime).write(endtime);
-            addr_of_mut!((*out).weight).write(weight);
         }
 
         Ok(rem)
     }
 }
 
-impl<'b> DisplayableItem for Validator<'b> {
-    fn num_items(&self) -> usize {
-        // node_id, start_time, endtime and total_stake
-        4
+impl<'b, W: DisplayableItem> DisplayableItem for Validator<'b, W> {
+    fn num_items(&self) -> Result<u8, ViewError> {
+        // node_id(1), start_time, endtime and weight(1)
+        let items = self.node_id.num_items()?;
+        let weight = self.weight.num_items()?;
+
+        checked_add!(ViewError::Unknown, items, 2, weight)
     }
 
     fn render_item(
@@ -88,36 +97,9 @@ impl<'b> DisplayableItem for Validator<'b> {
     ) -> Result<u8, zemu_sys::ViewError> {
         use crate::parser::timestamp_to_str_date;
         use bolos::pic_str;
-        use lexical_core::Number;
 
         match item_n {
-            0 => {
-                let label = pic_str!(b"Validator");
-                title[..label.len()].copy_from_slice(label);
-
-                let mut data = [0; NODE_ID_LEN + CB58_CHECKSUM_LEN];
-                data[..NODE_ID_LEN].copy_from_slice(&self.node_id[..]);
-
-                let checksum = Sha256::digest(&self.node_id[..]).map_err(|_| ViewError::Unknown)?;
-                // format the node_id
-                let prefix = pic_str!(b"NodeID-"!);
-
-                // prepare the data to be encoded by appending last 4-byte
-                data[NODE_ID_LEN..]
-                    .copy_from_slice(&checksum[(Sha256::DIGEST_LEN - CB58_CHECKSUM_LEN)..]);
-
-                const MAX_SIZE: usize = cb58_output_len::<NODE_ID_LEN>() + NODE_ID_PREFIX_LEN;
-
-                let mut node_id = [0; MAX_SIZE];
-
-                node_id[..prefix.len()].copy_from_slice(prefix);
-
-                let len = bs58_encode(data, &mut node_id[NODE_ID_PREFIX_LEN..])
-                    .map_err(|_| ViewError::Unknown)?
-                    + NODE_ID_PREFIX_LEN;
-
-                handle_ui_message(&node_id[..len], message, page)
-            }
+            0 => self.node_id.render_item(0, title, message, page),
             1 => {
                 let label = pic_str!(b"Start time");
                 title[..label.len()].copy_from_slice(label);
@@ -131,17 +113,7 @@ impl<'b> DisplayableItem for Validator<'b> {
                 let time = timestamp_to_str_date(self.endtime).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(time.as_slice(), message, page)
             }
-            3 => {
-                let label = pic_str!(b"Total stake(AVAX)");
-                title[..label.len()].copy_from_slice(label);
-
-                let mut buffer = [0; u64::FORMATTED_SIZE + 2];
-                let num = nano_avax_to_fp_str(self.weight, &mut buffer[..])
-                    .map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(num, message, page)
-            }
-
+            3 => self.weight.render_item(0, title, message, page),
             _ => Err(ViewError::NoData),
         }
     }

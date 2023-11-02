@@ -90,8 +90,8 @@ impl<'b> FromBytes<'b> for Address<'b> {
 }
 
 impl<'a> DisplayableItem for Address<'a> {
-    fn num_items(&self) -> usize {
-        1
+    fn num_items(&self) -> Result<u8, ViewError> {
+        Ok(1)
     }
 
     #[inline(never)]
@@ -108,7 +108,6 @@ impl<'a> DisplayableItem for Address<'a> {
 
         let mut addr = [0; MAX_ADDRESS_ENCODED_LEN];
 
-        // TODO see https://github.com/Zondax/ledger-avalanche/issues/10
         let len = self
             .encode_into("", &mut addr[..])
             .map_err(|_| ViewError::Unknown)?;

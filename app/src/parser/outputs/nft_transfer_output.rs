@@ -22,6 +22,7 @@ use nom::{
 use zemu_sys::ViewError;
 
 use crate::{
+    checked_add,
     handlers::handle_ui_message,
     parser::{u32_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
     utils::hex_encode,
@@ -51,7 +52,7 @@ impl<'b> NFTTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
 
     pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
-        let data = self.addresses.get(idx as usize)?;
+        let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
             .map_err(|_| ViewError::Unknown)
@@ -115,9 +116,9 @@ impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
 }
 
 impl<'a> DisplayableItem for NFTTransferOutput<'a> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // group_id, payload and addresses
-        1 + 1 + self.num_addresses()
+        checked_add!(ViewError::Unknown, 2u8, self.num_addresses() as u8)
     }
 
     #[inline(never)]
@@ -184,7 +185,7 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
             }
             x @ 2.. if x < self.num_addresses() + 2 => {
                 let idx = x - 2;
-                if let Some(addr) = self.get_address_at(idx as usize) {
+                if let Some(addr) = self.get_address_at(idx) {
                     let res = addr.render_item(0, title, message, page);
                     // render Owner instead of Address
                     title.iter_mut().for_each(|v| *v = 0);

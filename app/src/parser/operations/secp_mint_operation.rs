@@ -75,10 +75,12 @@ impl<'b> FromBytes<'b> for SECPMintOperation<'b> {
 }
 
 impl<'b> DisplayableItem for SECPMintOperation<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // operation description
         // and the transfer to the new mint-output owners
-        1 + self.transfer_output.num_items()
+        self.transfer_output
+            .num_items()
+            .and_then(|a| a.checked_add(1).ok_or(ViewError::Unknown))
     }
 
     fn render_item(
@@ -99,7 +101,7 @@ impl<'b> DisplayableItem for SECPMintOperation<'b> {
 
         let item_n = item_n as usize - 1;
 
-        match item_n as usize {
+        match item_n {
             0 => {
                 let res = self.transfer_output.render_item(0, title, message, page);
                 title.iter_mut().for_each(|v| *v = 0);

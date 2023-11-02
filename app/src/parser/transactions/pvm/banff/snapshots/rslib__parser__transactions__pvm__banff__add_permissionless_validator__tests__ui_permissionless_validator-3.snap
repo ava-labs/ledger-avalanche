@@ -1,0 +1,18 @@
+---
+source: app/src/parser/transactions/pvm/banff/add_permissionless_validator.rs
+expression: reduced
+---
+[
+    "AddPermlessValida": "Transaction",
+    "Validator": "NodeID-2ZbTY9GatRTrfinAoYiYLcf6CvrPAUYgo",
+    "SubnetID": "SkB92YpWm4UpburLz9tEKZw2i67H3FF6YkjaU4BkFUDTG9Xm",
+    "Start time": "1970-01-01 03:25:45 UTC",
+    "End time": "1970-01-01 03:25:46 UTC",
+    "Total stake(AVAX)": "0.000000001",
+    "Stake": "0.000000001 AVAX to ",
+    "Address": "avax1g32kvaugnx4tk3z4vemc3xd2hdz92enh972wxr",
+    "Valida rewards to": "avax1g32kvaugnx4tk3z4vemc3xd2hdz92enh972wxr",
+    "Delega rewards to": "avax1g32kvaugnx4tk3z4vemc3xd2hdz92enh972wxr",
+    "Delegate fee(%)": "100",
+    "Fee(AVAX)": "0.001",
+]

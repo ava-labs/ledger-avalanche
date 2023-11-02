@@ -1,0 +1,22 @@
+---
+source: app/src/parser/transactions/pvm/banff/transform_subnet.rs
+expression: reduced
+---
+[
+    "TransformSubnet": "Transaction",
+    "SubnetID": "SkB92YpWm4UpburLz9tEKZw2i67H3FF6YkjaU4BkFUDTG9Xm",
+    "AssetId": "2Ab62uWwJw1T6VvmKD36ufsiuGZuX1pGykXAvPX1LtjTRHxwcc",
+    "Fee(AVAX)": "17293822579.102704639",
+    "Initial supply": "1152921504606846976",
+    "Maximum supply": "18446744073709551615",
+    "Min consumption": "1000",
+    "Max consumption": "1000000",
+    "Min valid. stake": "1",
+    "Max valid. stake": "18446744073709551615",
+    "Min stake time": "1",
+    "Max stake time": "31536000",
+    "Min delegate fee": "100%",
+    "Min delega. stake": "1",
+    "Max weight fact.": "1",
+    "Uptime req.": "95%",
+]

@@ -178,7 +178,7 @@ impl<'ast> Visit<'ast> for GenericParamsCollector<'ast> {
 pub fn remove_doc_comment_attributes(attrs: Vec<Attribute>) -> Vec<Attribute> {
     attrs
         .into_iter()
-        .filter(|a| !a.path.is_ident("doc"))
+        .filter(|a| !a.path().is_ident("doc"))
         .collect()
 }
 
@@ -188,7 +188,7 @@ pub fn remove_doc_comment_attributes(attrs: Vec<Attribute>) -> Vec<Attribute> {
 pub fn cfg_variant_attributes(attrs: Vec<Attribute>) -> Vec<Attribute> {
     attrs
         .into_iter()
-        .filter(|a| a.path.is_ident("cfg"))
+        .filter(|a| a.path().is_ident("cfg"))
         .collect()
 }
 

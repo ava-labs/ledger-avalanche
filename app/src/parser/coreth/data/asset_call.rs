@@ -105,9 +105,9 @@ impl<'b> AssetCall<'b> {
 }
 
 impl<'b> DisplayableItem for AssetCall<'b> {
-    fn num_items(&self) -> usize {
+    fn num_items(&self) -> Result<u8, ViewError> {
         // transfer/deposit, asset_id and address
-        1 + 1 + 1
+        Ok(1 + 1 + 1)
     }
 
     fn render_item(

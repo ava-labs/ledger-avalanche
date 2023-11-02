@@ -31,7 +31,7 @@ extern "C" {
 #include "bolos_target.h"
 #endif
 
-#if defined (TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#if defined (TARGET_NANOS) || defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
 #include "zxmacros_ledger.h"
 #else
 #error "Not supported"
