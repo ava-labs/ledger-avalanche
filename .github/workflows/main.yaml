@@ -79,7 +79,7 @@ jobs:
           - varname: STAX_SDK
             target: stax
     container:
-      image: zondax/ledger-app-builder:ledger-d5bfe2e793f15a826971ae9de2adcad524df3e8e
+      image: zondax/ledger-app-builder:latest
       env:
         SDK_VARNAME: ${{ matrix.sdk.varname }}
       options: --user ${{ needs.configure.outputs.uid_gid }}
