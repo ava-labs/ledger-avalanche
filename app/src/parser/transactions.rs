@@ -73,6 +73,8 @@ cfg_if! {
     }
 }
 
+use self::pvm::PvmBaseTx;
+
 use super::{
     ChainId, FromBytes, NetworkInfo, ParserError, AVM_EXPORT_TX, AVM_IMPORT_TX, AVM_OPERATION_TX,
     EVM_EXPORT_TX, TRANSFER_TX,
@@ -96,6 +98,8 @@ use super::PVM_ADD_VALIDATOR;
 #[cfg(feature = "add-delegator")]
 use super::PVM_ADD_DELEGATOR;
 
+use super::PVM_BASE_TX;
+
 cfg_if! {
     if #[cfg(feature = "banff")] {
         use super::{
@@ -112,6 +116,7 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
         let tx_type = match value.0 {
             PVM_EXPORT_TX => Transaction__Type::PExport,
             PVM_IMPORT_TX => Transaction__Type::PImport,
+            PVM_BASE_TX if matches!(value.1.chain_id, ChainId::PChain) => Transaction__Type::PBase,
             AVM_EXPORT_TX => Transaction__Type::XExport,
             AVM_IMPORT_TX => Transaction__Type::XImport,
             AVM_OPERATION_TX => Transaction__Type::XOperation,
@@ -161,6 +166,7 @@ pub enum Transaction<'b> {
     XImport(AvmImportTx<'b>),
     XExport(AvmExportTx<'b>),
     XOperation(OperationTx<'b>),
+    PBase(PvmBaseTx<'b>),
     PImport(PvmImportTx<'b>),
     PExport(PvmExportTx<'b>),
     CImport(EvmImport<'b>),
@@ -244,6 +250,7 @@ impl<'b> Transaction<'b> {
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         let info = Self::peek_transaction_info(input)?;
+
         let transaction_type = Transaction__Type::try_from(info)?;
 
         match transaction_type {
@@ -252,6 +259,9 @@ impl<'b> Transaction<'b> {
             }
             Transaction__Type::PExport => {
                 Self::init_as_p_export(|out| PvmExportTx::from_bytes_into(input, out), out)
+            }
+            Transaction__Type::PBase => {
+                Self::init_as_p_base(|out| PvmBaseTx::from_bytes_into(input, out), out)
             }
             Transaction__Type::XImport => {
                 Self::init_as_x_import(|out| AvmImportTx::from_bytes_into(input, out), out)
@@ -336,6 +346,7 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::CImport(tx) => tx.num_items(),
             Self::CExport(tx) => tx.num_items(),
             Self::Transfer(tx) => tx.num_items(),
+            Self::PBase(tx) => tx.num_items(),
             #[cfg(feature = "create-asset")]
             Self::XAsset(tx) => tx.num_items(),
             #[cfg(feature = "add-validator")]
@@ -372,6 +383,7 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::XOperation(tx) => tx.render_item(item_n, title, message, page),
             Self::PImport(tx) => tx.render_item(item_n, title, message, page),
             Self::PExport(tx) => tx.render_item(item_n, title, message, page),
+            Self::PBase(tx) => tx.render_item(item_n, title, message, page),
             Self::CImport(tx) => tx.render_item(item_n, title, message, page),
             Self::CExport(tx) => tx.render_item(item_n, title, message, page),
             Self::Transfer(tx) => tx.render_item(item_n, title, message, page),
@@ -475,6 +487,7 @@ mod tests {
         use crate::parser::snapshots_common::{with_leaked, ReducedPage};
 
         insta::glob!("testvectors/*.json", |path| {
+            println!("Running test for {:?}", path);
             let file = std::fs::File::open(path)
                 .unwrap_or_else(|e| panic!("Unable to open file {:?}: {:?}", path, e));
             let input: Vec<u8> = serde_json::from_reader(file)

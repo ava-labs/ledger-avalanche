@@ -22,10 +22,10 @@ use crate::{
     checked_add,
     handlers::handle_ui_message,
     parser::{
-        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, Address, BaseTxFields,
-        DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput,
-        SECPOutputOwners, Stake, TransferableOutput, Validator, DELEGATION_FEE_DIGITS,
-        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_VALIDATOR,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, BaseTxFields, DisplayableItem,
+        FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput, SECPOutputOwners, Stake,
+        TransferableOutput, Validator, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
+        PVM_ADD_VALIDATOR,
     },
 };
 

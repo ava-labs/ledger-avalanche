@@ -24,7 +24,7 @@ mod apdu_wrapper;
 pub use apdu_wrapper::*;
 
 pub mod convert_to_rs;
-pub use convert_to_rs::{convert_der_to_rs, ConvertError};
+pub use convert_to_rs::convert_der_to_rs;
 
 mod buffer_upload;
 pub use buffer_upload::*;

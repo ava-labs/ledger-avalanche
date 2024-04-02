@@ -23,8 +23,8 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
-        Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList, OutputIdx,
-        ParserError, PvmOutput, SECPOutputOwners, Stake, SubnetId, TransferableOutput, Validator,
+        BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError,
+        PvmOutput, SECPOutputOwners, Stake, SubnetId, TransferableOutput, Validator,
         DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_VALIDATOR,
     },
 };
