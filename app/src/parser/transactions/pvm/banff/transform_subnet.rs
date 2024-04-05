@@ -27,8 +27,9 @@ use crate::{
     checked_add,
     handlers::handle_ui_message,
     parser::{
-        nano_avax_to_fp_str, AssetId, BaseTxFields, DisplayableItem, FromBytes, Header,
-        ParserError, PvmOutput, SubnetAuth, SubnetId, PVM_TRANSFORM_SUBNET,
+        intstr_to_fpstr_inplace, nano_avax_to_fp_str, u32_to_str, AssetId, BaseTxFields,
+        DisplayableItem, FromBytes, Header, ParserError, PvmOutput, SubnetAuth, SubnetId,
+        DELEGATION_FEE_DIGITS, PVM_TRANSFORM_SUBNET,
     },
     utils::is_app_mode_expert,
 };
@@ -156,7 +157,8 @@ impl<'b> TransformSubnetTx<'b> {
     ) -> Result<u8, ViewError> {
         use lexical_core::{write as itoa, Number};
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        //+2 for 0. in case of decimals and +1 for % in percentages
+        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + 1];
 
         match item_n {
             0 => {
@@ -219,8 +221,15 @@ impl<'b> TransformSubnetTx<'b> {
                 let label = pic_str!(b"Min delegate fee");
                 title[..label.len()].copy_from_slice(label);
 
-                // TODO: determine how to display properly
-                let buffer = itoa(self.min_delegation_fee, &mut buffer);
+                u32_to_str(self.min_delegation_fee, &mut buffer[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                let len = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                    .map_err(|_| ViewError::Unknown)?
+                    .len();
+                buffer[len] = b'%';
+                let buffer = &mut buffer[..len + 1];
+
                 handle_ui_message(buffer, message, page)
             }
             9 => {
@@ -242,8 +251,16 @@ impl<'b> TransformSubnetTx<'b> {
                 let label = pic_str!(b"Uptime req.");
                 title[..label.len()].copy_from_slice(label);
 
-                // TODO: determine how to display properly
-                let buffer = itoa(self.uptime_requirement, &mut buffer);
+                u32_to_str(self.uptime_requirement, &mut buffer[..])
+                    .map_err(|_| ViewError::Unknown)?;
+
+                //the uptime req% shares the same number of digits as the delegation fee% (4)
+                let len = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                    .map_err(|_| ViewError::Unknown)?
+                    .len();
+                buffer[len] = b'%';
+                let buffer = &mut buffer[..len + 1];
+
                 handle_ui_message(buffer, message, page)
             }
             _ => Err(ViewError::NoData),
