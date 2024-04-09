@@ -24,15 +24,15 @@ jobs:
         run: |
           rustup toolchain install nightly --component miri rustfmt
           cargo +nightly miri --version
-      - name: Test with Miri
-        env:
-          MIRIFLAGS: "-Zmiri-symbolic-alignment-check \
-            -Zmiri-check-number-validity \
-            -Zmiri-permissive-provenance \
-            -Zmiri-backtrace=full"
-        # disable miri tests for now
-        # run: |
-        # cargo +nightly miri test --features "full","derive-debug"
+      # - name: Test with Miri
+      #   env:
+      #     MIRIFLAGS: "-Zmiri-symbolic-alignment-check \
+      #       -Zmiri-check-number-validity \
+      #       -Zmiri-permissive-provenance \
+      #       -Zmiri-backtrace=full"
+      #   # disable miri tests for now
+      #   run: |
+      #   # cargo +nightly miri test --features "full","derive-debug"
       - name: show versions
         run: |
           rustup show
