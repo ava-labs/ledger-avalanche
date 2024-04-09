@@ -292,6 +292,12 @@ rust:
 	cargo build --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
 
+.PHONY: rust_test
+rust_test:
+	RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cargo test --release --target $(RUST_TARGET) \
+	--no-default-features $(RUST_FEATURES)
+
 .PHONY: rust_clean
 rust_clean:
 	CARGO_HOME="$(CURDIR)/.cargo" cargo clean
