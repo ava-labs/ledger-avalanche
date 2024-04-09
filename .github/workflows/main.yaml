@@ -14,7 +14,8 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     container:
-      image: zondax/rust-ci:latest
+      # image: zondax/rust-ci:latest
+      image: zondax/ledger-app-builder:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -47,7 +48,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: zondax/rust-ci:latest
+      # image: zondax/rust-ci:latest
+      image: zondax/ledger-app-builder:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
