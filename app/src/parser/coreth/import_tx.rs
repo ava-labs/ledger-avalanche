@@ -214,7 +214,7 @@ impl<'b> ImportTx<'b> {
                 return false;
             }
 
-            let Ok( n ) = o.num_items() else {
+            let Ok(n) = o.num_items() else {
                 return false;
             };
             for index in 0..n {
