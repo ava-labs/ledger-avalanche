@@ -31,7 +31,7 @@ jobs:
             -Zmiri-permissive-provenance \
             -Zmiri-backtrace=full"
         run: |
-          make rust_miri
+          cargo +nightly miri test --features "full","derive-debug"
       - name: show versions
         run: |
           rustup show
