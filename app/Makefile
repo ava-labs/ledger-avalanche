@@ -298,6 +298,11 @@ rust_test:
 	cargo test --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
 
+.PHONY: rust_miri 
+rust_miri:
+	RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cargo +nightly miri test --features "full","derive-debug"
+
 .PHONY: rust_clean
 rust_clean:
 	CARGO_HOME="$(CURDIR)/.cargo" cargo clean
