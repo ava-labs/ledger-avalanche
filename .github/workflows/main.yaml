@@ -131,6 +131,8 @@ jobs:
 
       - name: Install node
         uses: actions/setup-node@v3
+        with:
+          node-version: "20.8.1"
 
       - name: Install yarn
         run: npm install -g yarn
@@ -172,6 +174,8 @@ jobs:
       - run: sudo apt-get update -y && sudo apt-get install -y libusb-1.0.0 libudev-dev
       - name: Install node
         uses: actions/setup-node@v3
+        with:
+          node-version: "20.8.1"
       - name: Install yarn
         run: npm install -g yarn
 
