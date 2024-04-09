@@ -242,6 +242,8 @@ APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib
 SDK_SOURCE_PATH += lib_stusb lib_stusb_impl
 
 ifeq ($(TARGET_NAME),TARGET_STAX)
+	DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
+	DEFINES += NBGL_QRCODE
 	SDK_SOURCE_PATH += lib_nbgl/src
 	SDK_SOURCE_PATH += lib_ux_stax
 	SDK_SOURCE_PATH += qrcode
@@ -297,12 +299,6 @@ rust_test:
 	RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
 	cargo test --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
-
-
-.PHONY: rust_miri
-rust_miri:
-	RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
-	cargo +nightly miri test --features "full","derive-debug"
 
 .PHONY: rust_clean
 rust_clean:
