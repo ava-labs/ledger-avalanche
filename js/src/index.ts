@@ -21,6 +21,12 @@ import {
   CLA,
   CLA_ETH,
   COLLECTION_NAME_MAX_LEN,
+  ADDRESS_LENGTH,
+  ALGORITHM_ID_1,
+  ALGORITHM_ID_SIZE,
+  TYPE_SIZE,
+  VERSION_SIZE,
+  SIGNATURE_LENGTH_SIZE,
   CONTRACT_ADDRESS_LEN,
   errorCodeToString,
   FIRST_MESSAGE,
@@ -40,14 +46,12 @@ import { pathCoinType, serializeChainID, serializeHrp, serializePath, serializeP
 import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseVersion, ResponseWalletId, ResponseXPub } from './types'
 
 import Eth from '@ledgerhq/hw-app-eth'
-import { AppClient, DefaultWalletPolicy, WalletPolicy, PsbtV2 } from 'ledger-bitcoin';
 
-import { LedgerEthTransactionResolution, LoadConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
+import { LedgerEthTransactionResolution, LoadConfig, ResolutionConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
+import { EIP712Message } from '@ledgerhq/types-live'
 
 export * from './types'
 export { LedgerError }
-// reexport bitcoin types
-export {WalletPolicy, PsbtV2, DefaultWalletPolicy}
 
 function processGetAddrResponse(response: Buffer) {
   let partialResponse = response
@@ -104,7 +108,6 @@ function processGetXPubResponse(response: Buffer) {
 export default class AvalancheApp {
   transport
   private eth
-  private btc
 
   constructor(transport: Transport, ethScrambleKey = 'w0w', ethLoadConfig: LoadConfig = {}) {
     this.transport = transport
@@ -113,7 +116,6 @@ export default class AvalancheApp {
     }
 
     this.eth = new Eth(transport, ethScrambleKey, ethLoadConfig)
-    this.btc = new AppClient(transport);
   }
 
   private static prepareChunks(message: Buffer, serializedPathBuffer?: Buffer) {
@@ -543,104 +545,219 @@ export default class AvalancheApp {
     return this.eth.getAppConfiguration()
   }
 
-  // Function that provides the necessary token information to parse ERC721 transactions
-  // The implementation aligns with the reference app-ethereum does, but it is provided as
-  // an alternative to avoid writing a full NFT service provider to be use in pair with the
-  // hw-app-eth package.
-  async provideNftInfo(contract_address: string, token_name: string, chainId: number): Promise<ResponseBase> {
-    const p2 = 0
-    const p1 = 0
+  async provideERC20TokenInformation(
+    ticker: string,
+    contractName: string,
+    address: string,
+    decimals: number,
+    chainId: number,
+  ): Promise<boolean> {
+    // Calculate lengths
+    const tickerLength = Buffer.byteLength(ticker)
+    const contractNameLength = Buffer.byteLength(contractName)
+
+    // Create a buffer with the exact size needed
+    const buffer = Buffer.alloc(1 + tickerLength + 1 + contractNameLength + 20 + 4 + 4)
 
     let offset = 0
-    // allocate version, type, name_len, name, contract_address and chain_id
-    const buffer = Buffer.alloc(1 + 1 + 1 + CHAIN_ID_SIZE + COLLECTION_NAME_MAX_LEN + CONTRACT_ADDRESS_LEN + CHAIN_ID_SIZE)
 
-    // write type and version
-    buffer.writeInt8(TYPE_1, offset) // type_1
+    // Ticker length and ticker
+    buffer.writeUInt8(tickerLength, offset)
     offset += 1
-    buffer.writeInt8(VERSION_1, offset) // version
-    offset += 1
+    buffer.write(ticker, offset)
+    offset += tickerLength
 
-    // the len prefix is just 1-byte
-    if (token_name.length > COLLECTION_NAME_MAX_LEN) {
-      return {
-        returnCode: LedgerError.WrongLength,
-        errorMessage: 'Token name too long',
-      }
+    // Contract name length and contract name
+    buffer.writeUInt8(contractNameLength, offset)
+    offset += 1
+    buffer.write(contractName, offset)
+    offset += contractNameLength
+
+    // Address (20 bytes, hex string needs to be parsed)
+
+    var addr_offset = 0
+    if (address.startsWith('0x')) {
+      addr_offset = 2
     }
 
-    buffer.writeInt8(token_name.length, offset)
-    offset += 1
+    // Slice to remove '0x'
+    const addressBuffer = Buffer.from(address.slice(addr_offset), 'hex')
+    addressBuffer.copy(buffer, offset)
+    offset += 20
 
-    // copy token name
-    const name = Buffer.from(token_name, 'utf8')
-    offset += name.copy(buffer, offset)
+    // Decimals (4 bytes, big endian)
+    buffer.writeUInt32BE(decimals, offset)
+    offset += 4
 
-    // copy address
-    const address = Buffer.from(contract_address, 'hex')
-    offset += address.copy(buffer, offset)
+    // Chain ID (4 bytes, big endian)
+    buffer.writeUInt32BE(chainId, offset)
+    offset += 4
 
-    // copy chainID
-    const id = BigInt(chainId)
-    buffer.writeBigUInt64BE(id, offset)
-
-    return this.transport.send(CLA_ETH, INS.ETH_PROVIDE_NFT_INFO, p1, p2, buffer).then((response: Buffer) => {
-      const errorCodeData = response.slice(-2)
-      const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-      let errorMessage = errorCodeToString(returnCode)
-
-      if (returnCode === LedgerError.DataIsInvalid || returnCode === LedgerError.WrongLength) {
-        errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
-      }
-
-      if (returnCode === LedgerError.NoErrors && response.length > 2) {
-        return {
-          returnCode: returnCode,
-          errorMessage: errorMessage,
-        }
-      }
-
-      return {
-        returnCode: returnCode,
-        errorMessage: errorMessage,
-      }
-    }, processErrorResponse)
+    return this.eth.provideERC20TokenInformation(buffer.toString('hex'))
   }
 
-  async getMasterFingerprint(): Promise<string> {
-    return this.btc.getMasterFingerprint()
+  async provideNFTInformation(collectionName: string, contractAddress: string, chainId: bigint): Promise<boolean> {
+    const NAME_LENGTH_SIZE = 1
+    const HEADER_SIZE = TYPE_SIZE + VERSION_SIZE + NAME_LENGTH_SIZE
+    const KEY_ID_SIZE = 1
+    const PROD_NFT_METADATA_KEY = 1
+
+    const collectionNameLength = Buffer.byteLength(collectionName, 'utf8')
+
+    if (collectionNameLength > COLLECTION_NAME_MAX_LEN) {
+      throw new Error(`Collection name exceeds maximum allowed length of ${COLLECTION_NAME_MAX_LEN}`)
+    }
+
+    // We generate a fake signature, because verification is disabled
+    // in the app.
+    const fakeDerSignature = this._generateFakeDerSignature()
+
+    const buffer = Buffer.alloc(
+      HEADER_SIZE +
+        collectionNameLength +
+        ADDRESS_LENGTH +
+        CHAIN_ID_SIZE +
+        KEY_ID_SIZE +
+        ALGORITHM_ID_SIZE +
+        SIGNATURE_LENGTH_SIZE +
+        fakeDerSignature.length,
+    )
+
+    let offset = 0
+
+    buffer.writeUInt8(TYPE_1, offset)
+    offset += TYPE_SIZE
+
+    buffer.writeUInt8(VERSION_1, offset)
+    offset += VERSION_SIZE
+
+    buffer.writeUInt8(collectionNameLength, offset)
+    offset += NAME_LENGTH_SIZE
+
+    buffer.write(collectionName, offset, 'utf8')
+    offset += collectionNameLength
+
+    Buffer.from(contractAddress.slice(2), 'hex').copy(buffer, offset) // Remove '0x' from address
+    offset += ADDRESS_LENGTH
+
+    buffer.writeBigUInt64BE(chainId, offset)
+    offset += CHAIN_ID_SIZE
+
+    buffer.writeUInt8(PROD_NFT_METADATA_KEY, offset) // Assume production key for simplicity
+    offset += KEY_ID_SIZE
+
+    buffer.writeUInt8(ALGORITHM_ID_1, offset) // Assume a specific algorithm for signature or hash
+    offset += ALGORITHM_ID_SIZE
+
+    buffer.writeUInt8(fakeDerSignature.length, offset)
+    offset += SIGNATURE_LENGTH_SIZE
+
+    fakeDerSignature.copy(buffer, offset)
+
+    return this.eth.provideNFTInformation(buffer.toString('hex'))
   }
 
-  async signPsbt(
-    psbt: PsbtV2,
-    walletPolicy: WalletPolicy,
-    walletHMAC: Buffer | null,
-    progressCallback?: () => void
-  // ): Promise<[number, Buffer, Buffer][]> {
-  ): Promise<any> {
-    return this.btc.signPsbt(psbt, walletPolicy, walletHMAC, progressCallback)
+  _generateFakeDerSignature(): Buffer {
+    const fakeSignatureLength = 70
+    const fakeDerSignature = Buffer.alloc(fakeSignatureLength)
+
+    // Fill the buffer with random bytes
+    for (let i = 0; i < fakeSignatureLength; i++) {
+      fakeDerSignature[i] = Math.floor(Math.random() * 256)
+    }
+
+    return fakeDerSignature
   }
 
-  async getWalletAddress(
-    walletPolicy: WalletPolicy,
-    walletHMAC: Buffer | null,
-    change: number,
-    addressIndex: number,
-    display: boolean
-  ): Promise<string> {
-    return this.btc.getWalletAddress(walletPolicy, walletHMAC, change, addressIndex, display)
-  }
-  async registerWallet(
-    walletPolicy: WalletPolicy
-  ): Promise<readonly [Buffer, Buffer]> {
+  // We assume pluginName is ERC721 for Nft tokens
+  async setPlugin(contractAddress: string, methodSelector: string, chainId: bigint): Promise<boolean> {
+    const KEY_ID = 2
+    const PLUGIN_NAME_LENGTH_SIZE = 1
+    const KEY_ID_SIZE = 1
+    const PLUGIN_NAME = 'ERC721'
 
-    return this.btc.registerWallet(walletPolicy)
+    const pluginNameBuffer = Buffer.from(PLUGIN_NAME, 'utf8')
+    const pluginNameLength = pluginNameBuffer.length
 
+    const contractAddressBuffer = Buffer.from(contractAddress.slice(2), 'hex')
+    const methodSelectorBuffer = Buffer.from(methodSelector.slice(2), 'hex')
+
+    // We generate a fake signature, because verification is disabled
+    // in the app.
+    const signatureBuffer = this._generateFakeDerSignature()
+    const signatureLength = signatureBuffer.length
+
+    const buffer = Buffer.alloc(
+      TYPE_SIZE +
+        VERSION_SIZE +
+        PLUGIN_NAME_LENGTH_SIZE +
+        pluginNameLength +
+        contractAddressBuffer.length +
+        methodSelectorBuffer.length +
+        CHAIN_ID_SIZE +
+        KEY_ID_SIZE +
+        ALGORITHM_ID_SIZE +
+        SIGNATURE_LENGTH_SIZE +
+        signatureLength,
+    )
+
+    let offset = 0
+
+    buffer.writeUInt8(TYPE_1, offset)
+    offset += TYPE_SIZE
+
+    buffer.writeUInt8(VERSION_1, offset)
+    offset += VERSION_SIZE
+
+    buffer.writeUInt8(pluginNameLength, offset)
+    offset += PLUGIN_NAME_LENGTH_SIZE
+
+    pluginNameBuffer.copy(buffer, offset)
+    offset += pluginNameLength
+
+    contractAddressBuffer.copy(buffer, offset)
+    offset += contractAddressBuffer.length
+
+    methodSelectorBuffer.copy(buffer, offset)
+    offset += methodSelectorBuffer.length
+
+    buffer.writeBigUInt64BE(BigInt(chainId), offset)
+    offset += CHAIN_ID_SIZE
+
+    // use default key_id
+    buffer.writeUInt8(KEY_ID, offset)
+    offset += KEY_ID_SIZE
+
+    // use default algorithm
+    buffer.writeUInt8(ALGORITHM_ID_1, offset)
+    offset += ALGORITHM_ID_SIZE
+
+    buffer.writeUInt8(signatureLength, offset)
+    offset += SIGNATURE_LENGTH_SIZE
+
+    signatureBuffer.copy(buffer, offset)
+
+    return this.eth.setPlugin(buffer.toString('hex'))
   }
-  async getBtcExtendedPubkey(
+
+  async clearSignTransaction(
     path: string,
-    display: boolean = false
-  ): Promise<string> {
-    return this.btc.getExtendedPubkey(path, display)
+    rawTxHex: string,
+    resolutionConfig: ResolutionConfig,
+    throwOnError = false,
+  ): Promise<{ r: string; s: string; v: string }> {
+    return this.eth.clearSignTransaction(path, rawTxHex, resolutionConfig, throwOnError)
+  }
+
+  async signEIP712Message(path: string, jsonMessage: EIP712Message, fullImplem = false): Promise<{ v: number; s: string; r: string }> {
+    return this.eth.signEIP712Message(path, jsonMessage, fullImplem)
+  }
+
+  async signEIP712HashedMessage(
+    path: string,
+    domainSeparatorHex: string,
+    hashStructMessageHex: string,
+  ): Promise<{ v: number; s: string; r: string }> {
+    return this.eth.signEIP712HashedMessage(path, domainSeparatorHex, hashStructMessageHex)
   }
 }

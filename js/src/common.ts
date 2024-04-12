@@ -9,13 +9,17 @@ export const LAST_MESSAGE = 0x02
 export const NEXT_MESSAGE = 0x03
 export const HASH_LEN = 32
 
-// the max collection len is set to 70-bytes
-// lets decrease it to 50 to save some stack
-export const COLLECTION_NAME_MAX_LEN = 50
+export const COLLECTION_NAME_MAX_LEN = 70
 export const CHAIN_ID_SIZE = 8
 export const CONTRACT_ADDRESS_LEN = 20
 export const TYPE_1 = 1
 export const VERSION_1 = 1
+export const ADDRESS_LENGTH = 20
+export const ALGORITHM_ID_1 = 1
+export const ALGORITHM_ID_SIZE = 1
+export const TYPE_SIZE = 1
+export const VERSION_SIZE = 1
+export const SIGNATURE_LENGTH_SIZE = 1
 
 export const INS = {
   GET_VERSION: 0x00,

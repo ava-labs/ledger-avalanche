@@ -1,0 +1,13 @@
+---
+source: src/parser/transactions.rs
+expression: reduced
+input_file: src/parser/testvectors/p_base_tx.json
+---
+[
+    "P-Chain": "BaseTx",
+    "Amount": "0.1 AVAX to ",
+    "Address": "fuji13sa0ld5rlwn0rssdzedd6rvtclt670ej672fwj",
+    "Amount": "193.882463256 AVAX to ",
+    "Address": "fuji13sa0ld5rlwn0rssdzedd6rvtclt670ej672fwj",
+    "Fee(AVAX)": "0.001",
+]
