@@ -1,0 +1,88 @@
+[package]
+name = "avalanche-app"
+version = "0.1.0"
+edition = "2021"
+autotests = false                      #TODO: to be enabled when we can emit rlib
+authors = ["Zondax <hello@zondax.ch>"]
+resolver = "2"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "rslib"
+crate-type = ["staticlib"]
+
+[features]
+default = ["full"]
+lite = ["erc20", "erc721", "add-validator", "add-delegator"]
+full = [
+    "lite",
+    "create-asset",
+    "create-chain",
+    "create-subnet",
+    "add-subnet-validator",
+    "banff",
+]
+
+#features
+create-asset = []
+create-chain = []
+create-subnet = []
+add-subnet-validator = []
+add-delegator = []
+add-validator = []
+erc20 = []
+erc721 = []
+banff = []
+
+#debugging features
+dev = []
+derive-debug = []
+blind-sign-togle = []
+
+[dependencies]
+no-std-compat = { version = "0.4" }
+cfg-if = "1.0.0"
+
+avalanche-app-derive = { path = "../../app-derive" }
+arrayvec = { version = "0.7", default-features = false }
+arrayref = "0.3.6"
+nom = { version = "7.1.1", default-features = false }
+bytemuck = { version = "1" }
+lexical-core = { version = "0.7", features = [
+    "libm",
+], default-features = false }
+educe = "0.4.19"
+byteorder = { version = "1.4.3", default-features = false }
+
+bolos = { path = "../../deps/ledger-rust/bolos" }
+bolos-common = { path = "../../deps/ledger-rust/bolos-common" }
+zemu-sys = { path = "../../deps/ledger-rust/zemu" }
+
+[dev-dependencies]
+no-std-compat = { version = "0.4", features = ["std"] }
+
+zbs58 = { version = "0.4.0", features = [
+    "cb58",
+], git = "https://github.com/Zondax/bs58-rs", branch = "cb58", package = "bs58" }
+serial_test = { version = "2.0.0", features = ["file_locks"] }
+hex = "0.4.3"
+arrayvec = { version = "0.7" }
+time = { version = "0.3.15", features = ["formatting"] }
+k256 = { version = "0.13.0", features = ["ecdsa"] }
+rand = "0.8.5"
+insta = { version = "1", features = ["glob"] }
+serde_json = "1.0.85"
+itertools = "0.10.4"
+proptest = "1.1.0"
+zuit = { path = "../../deps/ledger-rust/zuit" }
+
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+lto = false
+codegen-units = 1
+debug = false
+opt-level = "z"
+overflow-checks = true
