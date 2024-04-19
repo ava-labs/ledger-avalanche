@@ -91,11 +91,11 @@ LDLIBS   += -lm -lgcc -lc
 LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
 
 APP_SOURCE_PATH += $(CURDIR)/rust/include
-APP_CUSTOM_LINK_DEPENDENCIES = rust
+APP_CUSTOM_LINK_DEPENDENCIES := rust
 RUST_TARGET:=thumbv6m-none-eabi
 .PHONY: rust
 rust:
-	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
 	cargo build --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
 
@@ -104,6 +104,12 @@ rust_clean:
 	cd rust && CARGO_HOME="$(CURDIR)/rust/.cargo" cargo clean
 
 clean: rust_clean
+
+.PHONY: rust_test_full
+rust_test_full:
+	RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cargo test --release --target $(RUST_TARGET) \
+	--no-default-features $(RUST_FEATURES)
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.side_loading
 
