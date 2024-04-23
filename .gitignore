@@ -81,3 +81,5 @@ app/glyphs/glyphs.*
 hfuzz/hfuzz_workspace
 
 zemu/snapshots-tmp
+app/output/*.apdu
+app/output/*.sha256
