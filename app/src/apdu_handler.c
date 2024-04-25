@@ -29,6 +29,7 @@
 #include "view.h"
 #include "view_internal.h"
 #include "zxmacros.h"
+#include "parser_common.h"
 
 static bool tx_initialized = false;
 
@@ -115,7 +116,7 @@ __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx
         THROW(APDU_CODE_OK);
     }
 
-    const char *error_msg = tx_parse();
+    const char *error_msg = tx_avax_parse();
     CHECK_APP_CANARY()
     if (error_msg != NULL) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
@@ -160,13 +161,31 @@ __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile 
 void handleTest(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) { THROW(APDU_CODE_OK); }
 #endif
 
+__Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx, uint16_t instruction) {
+    switch (instruction) {
+        case INS_GET_VERSION:
+            handle_getversion(flags, tx);
+            break;
+        case INS_GET_ADDR:
+            CHECK_PIN_VALIDATED()
+            handleGetAddr(flags, tx, rx);
+            break;
+        case AVX_INS_SIGN:
+            CHECK_PIN_VALIDATED()
+            handleSignAvaxTx(flags, tx, rx);
+            break;
+        default:
+            THROW(APDU_CODE_INS_NOT_SUPPORTED);
+    }
+}
+
 void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     volatile uint16_t sw = 0;
     zemu_log("HandleApdu******\n");
 
     BEGIN_TRY {
         TRY {
-            if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
+            if (G_io_apdu_buffer[OFFSET_CLA] != AVX_CLA) {
                 THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }
 
@@ -174,23 +193,12 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
                 THROW(APDU_CODE_WRONG_LENGTH);
             }
 
+            if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
+                avax_dispatch(flags, tx, rx, G_io_apdu_buffer[OFFSET_INS]);
+            }
+
+            // Process non-avax instruction
             switch (G_io_apdu_buffer[OFFSET_INS]) {
-                case INS_GET_VERSION: {
-                    handle_getversion(flags, tx);
-                    break;
-                }
-
-                case INS_GET_ADDR: {
-                    CHECK_PIN_VALIDATED()
-                    handleGetAddr(flags, tx, rx);
-                    break;
-                }
-
-                case AVX_INS_SIGN: {
-                    CHECK_PIN_VALIDATED()
-                    handleSignAvaxTx(flags, tx, rx);
-                    break;
-                }
 
 #if defined(APP_TESTING)
                 case INS_TEST: {

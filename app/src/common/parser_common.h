@@ -31,32 +31,6 @@ extern "C" {
         if (__err != parser_ok) return __err; \
     }
 
-/* typedef enum { */
-/*     // Generic errors */
-/*     parser_ok = 0, */
-/*     parser_no_data, */
-/*     parser_init_context_empty, */
-/*     parser_display_idx_out_of_range, */
-/*     parser_display_page_out_of_range, */
-/*     parser_unexpected_error, */
-/**/
-/*     // Coin generic */
-/*     parser_unexpected_type, */
-/*     parser_unexpected_method, */
-/*     parser_unexpected_buffer_end, */
-/*     parser_unexpected_value, */
-/*     parser_unexpected_number_items, */
-/*     parser_unexpected_version, */
-/*     parser_unexpected_characters, */
-/*     parser_unexpected_field, */
-/*     parser_duplicated_field, */
-/*     parser_value_out_of_range, */
-/*     parser_invalid_address, */
-/*     parser_unexpected_chain, */
-/*     parser_missing_field, */
-/*     paser_unknown_transaction, */
-/* } parser_error_t; */
-
 typedef enum {
     parser_ok = 0,
     parser_no_data,
@@ -100,11 +74,22 @@ typedef enum {
     parser_context_unexpected_size,
 } parser_error_t;
 
+#include <stdint.h>
+
+typedef enum {
+    SignAvaxTx = 0x00, // Explicitly set to 0
+    SignEthTx,         // Implicitly set to 1
+    SignAvaxMsg,       // Implicitly set to 2
+    SignEthMsg,        // Implicitly set to 3
+    SignAvaxHash       // Implicitly set to 4
+} instruction_t;
+
 
 typedef struct {
     const uint8_t *buffer;
     uint16_t bufferLen;
     uint16_t offset;
+    instruction_t ins;
     parser_tx_t *tx_obj;
 } parser_context_t;
 

@@ -25,13 +25,14 @@
 #include "crypto.h"
 #include "parser_common.h"
 #include "parser_impl.h"
+#include "rslib.h"
 
 static zxerr_t parser_allocate();
 static zxerr_t parser_deallocate();
 
 // This buffer will store parser_state.
 // Its size corresponds to ParsedObj (Rust struct)
-// Maximum required size: 212 bytes
+// Maximum required size: 256 bytes
 #define PARSER_BUFFER_SIZE 256
 static uint8_t parser_buffer[PARSER_BUFFER_SIZE];
 
@@ -69,7 +70,7 @@ parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer,
 parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, parser_tx_t *tx_obj) {
     tx_obj->state = NULL;
     tx_obj->len = 0;
-    CHECK_ERROR(_init_avax_tx(ctx, data, dataLen, &tx_obj->len));
+    CHECK_ERROR(_parser_init(ctx, data, dataLen, &tx_obj->len));
 
     if (tx_obj->len == 0) {
         return parser_context_unexpected_size;
@@ -79,7 +80,7 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
         return parser_init_context_empty ;
     }
 
-    parser_error_t err = _read_avax_tx(ctx, tx_obj);
+    parser_error_t err = _parser_read(ctx, tx_obj);
     return err;
 }
 

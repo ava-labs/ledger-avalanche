@@ -17,6 +17,8 @@
 
 #include <os_io_seproxyhal.h>
 #include <stdint.h>
+#include "cx.h"
+
 
 #include "apdu_codes.h"
 #include "coin.h"
@@ -41,10 +43,13 @@ __Z_INLINE zxerr_t app_fill_address() {
 }
 
 __Z_INLINE void app_sign() {
-    const uint8_t *message = tx_get_buffer();
-    const uint16_t messageLength = tx_get_buffer_length();
+    const uint8_t *data = tx_get_buffer();
+    const uint16_t data_len = tx_get_buffer_length();
+    uint8_t message[CX_SHA256_SIZE];
 
-    const zxerr_t err = crypto_sign(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength);
+    cx_hash_sha256(data, data_len, message, CX_SHA256_SIZE);
+
+    const zxerr_t err = crypto_sign_avax(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, CX_SHA256_SIZE);
 
     if (err != zxerr_ok) {
         set_code(G_io_apdu_buffer, 0, APDU_CODE_SIGN_VERIFY_ERROR);

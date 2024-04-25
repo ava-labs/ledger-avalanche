@@ -18,6 +18,7 @@
 #include "apdu_codes.h"
 #include "buffering.h"
 #include "parser.h"
+#include "parser_common.h"
 #include <string.h>
 #include "zxmacros.h"
 
@@ -69,8 +70,10 @@ uint8_t *tx_get_buffer() {
     return buffering_get_buffer()->data;
 }
 
-const char *tx_parse() {
+const char *tx_avax_parse() {
     MEMZERO(&tx_obj, sizeof(tx_obj));
+    // This is an avax transaction either P, X or C chain
+    ctx_parsed_tx.ins = SignAvaxTx;
 
     uint8_t err = parser_parse(
             &ctx_parsed_tx,

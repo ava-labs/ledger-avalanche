@@ -128,44 +128,91 @@ catch_cx_error:
     return error;
 }
 
-zxerr_t crypto_sign(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen) {
-    if (signature == NULL || message == NULL || signatureMaxlen < ED25519_SIGNATURE_SIZE || messageLen == 0) {
-        return zxerr_invalid_crypto_settings;
+
+typedef struct {
+    uint8_t r[32];
+    uint8_t s[32];
+    uint8_t v;
+
+    // DER signature max size should be 73
+    // https://bitcoin.stackexchange.com/questions/77191/what-is-the-maximum-size-of-a-der-encoded-ecdsa-signature#77192
+    uint8_t der_signature[73];
+} __attribute__((packed)) signature_t;
+
+zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen) {
+    if (signatureMaxlen < sizeof_field(signature_t, der_signature)) {
+        return zxerr_buffer_too_small;
     }
+
+    if (messageLen != CX_SHA256_SIZE) {
+        return zxerr_out_of_bounds;
+    }
+    #ifdef APP_TESTING
+        char tmpBuff[65] = {0};
+        array_to_hexstr(tmpBuff, sizeof(tmpBuff), message, CX_SHA256_SIZE);
+        ZEMU_LOGF(100, "Digest: *** %s\n", tmpBuff)
+    #endif
 
     cx_ecfp_private_key_t cx_privateKey;
-    uint8_t privateKeyData[SK_LEN_25519] = {0};
+    uint8_t privateKeyData[32];
+    int signatureLength = 0;
+    unsigned int info = 0;
 
-    zxerr_t error = zxerr_unknown;
-    // Generate keys
-    CATCH_CXERROR(os_derive_bip32_with_seed_no_throw(HDW_NORMAL, CX_CURVE_Ed25519, hdPath, HDPATH_LEN_DEFAULT,
-                                                     privateKeyData, NULL, NULL, 0));
+    signature_t *const signature = (signature_t *) buffer;
 
-    CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, privateKeyData, SCALAR_LEN_ED25519, &cx_privateKey));
+    zxerr_t zxerr = zxerr_unknown;
+    BEGIN_TRY
+    {
+        TRY
+        {
+            // Generate keys
+            os_perso_derive_node_bip32(CX_CURVE_256K1,
+                                       hdPath,
+                                       HDPATH_LEN_DEFAULT,
+                                       privateKeyData, NULL);
 
-    // Sign
-    CATCH_CXERROR(cx_eddsa_sign_no_throw(&cx_privateKey, CX_SHA512, message, messageLen, signature, signatureMaxlen));
+            cx_ecfp_init_private_key(CX_CURVE_256K1, privateKeyData, 32, &cx_privateKey);
 
-    error = zxerr_ok;
+            // Sign
+            signatureLength = cx_ecdsa_sign(&cx_privateKey,
+                                            CX_RND_RFC6979 | CX_LAST,
+                                            CX_SHA256,
+                                            message,
+                                            CX_SHA256_SIZE,
+                                            signature->der_signature,
+                                            sizeof_field(signature_t, der_signature),
+                                            &info);
 
-catch_cx_error:
-    MEMZERO(&cx_privateKey, sizeof(cx_privateKey));
-    MEMZERO(privateKeyData, sizeof(privateKeyData));
+            zxerr = zxerr_ok;
+        }
+        CATCH_ALL {
+            signatureLength = 0;
+            zxerr = zxerr_ledger_api_error;
+        };
+        FINALLY {
+            MEMZERO(&cx_privateKey, sizeof(cx_privateKey));
+            MEMZERO(privateKeyData, 32);
+        }
+    }
+    END_TRY;
 
-    if (error != zxerr_ok) {
-        MEMZERO(signature, signatureMaxlen);
+    if(zxerr != zxerr_ok) {
+        return zxerr;
     }
 
-    return error;
-}
+    err_convert_e err = convertDERtoRSV(signature->der_signature, info,  signature->r, signature->s, &signature->v);
+    if (err != no_error) {
+        return zxerr_encoding_failed;
+    }
 
+    return zxerr;
+}
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen) {
     if (buffer == NULL || addrResponseLen == NULL) {
         return zxerr_unknown;
     }
 
     MEMZERO(buffer, bufferLen);
-    // CHECK_ZXERR(crypto_generateSaplingKeys(buffer, bufferLen));
     *addrResponseLen = 3 * KEY_LENGTH;
 
     return zxerr_ok;
