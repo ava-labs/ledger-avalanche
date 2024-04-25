@@ -20,6 +20,8 @@ ifeq ($(BOLOS_SDK),)
 $(error BOLOS_SDK is not set)
 endif
 
+DEBUG:=0
+
 MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
@@ -80,7 +82,12 @@ endif
 
 # Building Rust
 CC := $(CLANGPATH)clang
+
+ifeq ($(DEBUG),1)
+CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter -g
+else
 CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter
+endif
 
 AS := $(GCCPATH)arm-none-eabi-gcc
 AFLAGS +=
