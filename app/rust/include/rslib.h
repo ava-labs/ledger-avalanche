@@ -11,9 +11,9 @@
 
 /****************************** others ***********************************************************/
 
-parser_error_t _init_avax_tx(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize, uint16_t *alloc_size);
+parser_error_t _parser_init(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize, uint16_t *alloc_size);
 
-parser_error_t _read_avax_tx(const parser_context_t *c, parser_tx_t *v);
+parser_error_t _parser_read(const parser_context_t *c, parser_tx_t *v);
 
 parser_error_t _validate(const parser_context_t *ctx, const parser_tx_t *v);
 
