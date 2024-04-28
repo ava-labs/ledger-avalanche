@@ -108,6 +108,8 @@ pub const FIRST_MESSAGE: u8 = 0x01;
 pub const NEXT_MESSAGE: u8 = 0x03;
 pub const LAST_MESSAGE: u8 = 0x02;
 
+pub const SIGN_HASH_TX_SIZE: usize = 32 + MAX_BIP32_PATH_DEPTH * core::mem::size_of::<u32>();
+
 pub(crate) mod instructions {
     pub const CLA: u8 = 0x80;
 

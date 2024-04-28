@@ -133,14 +133,14 @@ typedef struct {
     uint8_t r[32];
     uint8_t s[32];
     uint8_t v;
-
-    // DER signature max size should be 73
-    // https://bitcoin.stackexchange.com/questions/77191/what-is-the-maximum-size-of-a-der-encoded-ecdsa-signature#77192
-    uint8_t der_signature[73];
 } __attribute__((packed)) signature_t;
 
-zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen) {
-    if (signatureMaxlen < sizeof_field(signature_t, der_signature)) {
+// DER signature max size should be 73
+// https://bitcoin.stackexchange.com/questions/77191/what-is-the-maximum-size-of-a-der-encoded-ecdsa-signature#77192
+uint8_t der_signature[73];
+
+zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
+    if (signatureMaxlen < sizeof(signature_t)) {
         return zxerr_buffer_too_small;
     }
 
@@ -162,8 +162,8 @@ zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_
         {
             // Generate keys
             os_perso_derive_node_bip32(CX_CURVE_256K1,
-                                       hdPath,
-                                       HDPATH_LEN_DEFAULT,
+                                       path,
+                                       path_len,
                                        privateKeyData, NULL);
 
             cx_ecfp_init_private_key(CX_CURVE_256K1, privateKeyData, 32, &cx_privateKey);
@@ -174,8 +174,8 @@ zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_
                                             CX_SHA256,
                                             message,
                                             CX_SHA256_SIZE,
-                                            signature->der_signature,
-                                            sizeof_field(signature_t, der_signature),
+                                            der_signature,
+                                            sizeof(der_signature),
                                             &info);
 
             zxerr = zxerr_ok;
@@ -195,13 +195,14 @@ zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_
         return zxerr;
     }
 
-    err_convert_e err = convertDERtoRSV(signature->der_signature, info,  signature->r, signature->s, &signature->v);
+    err_convert_e err = convertDERtoRSV(der_signature, info,  signature->r, signature->s, &signature->v);
     if (err != no_error) {
         return zxerr_encoding_failed;
     }
 
     return zxerr;
 }
+
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen) {
     if (buffer == NULL || addrResponseLen == NULL) {
         return zxerr_unknown;

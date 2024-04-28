@@ -30,34 +30,40 @@
 #include "view_internal.h"
 #include "zxmacros.h"
 #include "parser_common.h"
+#include "rslib.h"
 
 static bool tx_initialized = false;
 
 void extractHDPath(uint32_t rx, uint32_t offset) {
     tx_initialized = false;
 
-    if ((rx - offset) < sizeof(uint32_t) * HDPATH_LEN_DEFAULT) {
+    if (rx < offset + 1) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
-    memcpy(hdPath, G_io_apdu_buffer + offset, sizeof(uint32_t) * HDPATH_LEN_DEFAULT);
+    uint8_t path_len = G_io_apdu_buffer[offset];
+    uint8_t len_bytes = path_len * sizeof(uint32_t);
 
-    // #{TODO} --> testnet necessary?
-    const bool mainnet = hdPath[0] == HDPATH_0_DEFAULT && hdPath[1] == HDPATH_1_DEFAULT;
-
-    if (!mainnet) {
-        THROW(APDU_CODE_DATA_INVALID);
+    if (path_len > HDPATH_LEN_DEFAULT || (rx - (offset + 1)) < len_bytes) {
+        THROW(APDU_CODE_WRONG_LENGTH);
     }
+
+    memcpy(hdPath, G_io_apdu_buffer + offset + 1, len_bytes);
+    // we need to pass this root path to rust,
+    // later we can make rust ask for it but it would change other logic 
+    // in the crypto module.
+    // len_bytes + 1 to include the first byte that tells the number  
+    // of elements in the path list
+    _set_root_path(&G_io_apdu_buffer[offset], len_bytes + 1);
 }
 
 __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
-    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
     if (rx < OFFSET_DATA) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
     uint32_t added;
-    switch (payloadType) {
+    switch (G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE]) {
         case P1_INIT:
             tx_initialize();
             tx_reset();
@@ -68,6 +74,8 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
             if (!tx_initialized) {
                 THROW(APDU_CODE_TX_NOT_INITIALIZED);
             }
+            // we are appending the change_path list which 
+            // needs to be removed before signing
             added = tx_append(&(G_io_apdu_buffer[OFFSET_DATA]), rx - OFFSET_DATA);
             if (added != rx - OFFSET_DATA) {
                 tx_initialized = false;
@@ -94,10 +102,6 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
 __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleGetAddr\n");
 
-    // TODO: Fix later. this need to be adjusted for avax addresses 
-    // where path is the last argument
-    // extractHDPath(rx, OFFSET_DATA);
-
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
     zxerr_t zxerr = fill_address(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     if (zxerr != zxerr_ok) {
@@ -116,13 +120,19 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
 
 __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignAvaxTx\n");
+    // This is the first transaction signing stage, where we receive the root path 
+    // to be used for change_outputs and signers. so we need to tell process_chunk 
+    // to parse it.
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
     }
 
     const char *error_msg = tx_avax_parse();
+
     CHECK_APP_CANARY()
+
     if (error_msg != NULL) {
+        zemu_log(error_msg);
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
@@ -133,6 +143,56 @@ __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx
     view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
 }
+
+__Z_INLINE void handleSignAvaxTxHash(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignAvaxTxHash\n");
+
+    // we do not need to process_chunk 
+    // all data was send in one go
+    // and for now we are not ussing transaction buffer for this
+    // if (!process_chunk(tx, rx, is_first_message)) {
+    //     THROW(APDU_CODE_OK);
+    // }
+
+    // in this case we just received a path suffix 
+    // we are supposed to use the previously stored 
+    // root_path and hash
+    if (G_io_apdu_buffer[OFFSET_P1] != FIRST_MESSAGE) {
+        app_sign_hash();
+    } else {
+        // this is the sign_hash transaction 
+        // we received in one go the root path 
+        // and 32-bytes hash
+        // so append it to our internal buffer and parse it
+        tx_initialize();
+        tx_reset();
+        // this step is not really necessary
+        extractHDPath(rx, OFFSET_DATA);
+
+        uint16_t added = tx_append(&(G_io_apdu_buffer[OFFSET_DATA]), rx - OFFSET_DATA);
+
+        if (added != rx - OFFSET_DATA) {
+            THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
+        }
+
+        const char *error_msg = tx_avax_parse_hash();
+        CHECK_APP_CANARY()
+
+        if (error_msg != NULL) {
+
+            const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+            memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+            *tx += (error_msg_length);
+            THROW(APDU_CODE_DATA_INVALID);
+        }
+
+        view_review_init(tx_getItem, tx_getNumItems, app_sign_hash);
+        view_review_show(REVIEW_TXN);
+    }
+
+    *flags |= IO_ASYNCH_REPLY;
+}
+
 
 __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile uint32_t *tx) {
     G_io_apdu_buffer[0] = 0;
@@ -165,28 +225,39 @@ __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile 
 void handleTest(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) { THROW(APDU_CODE_OK); }
 #endif
 
-__Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx, uint16_t instruction) {
+__Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("AVAX Dispatch\n");
-    switch (instruction) {
-        case INS_GET_VERSION:
+    switch (G_io_apdu_buffer[OFFSET_INS]) {
+        case INS_GET_VERSION: {
             handle_getversion(flags, tx);
             break;
-        case AVX_INS_GET_PUBLIC_KEY:
+        }
+        case AVX_GET_PUBLIC_KEY: {
             CHECK_PIN_VALIDATED()
             handleGetAddr(flags, tx, rx);
             break;
-        case AVX_INS_SIGN:
+        }
+        case AVX_SIGN: {
             CHECK_PIN_VALIDATED()
             handleSignAvaxTx(flags, tx, rx);
             break;
-        default:
+        }
+
+        case AVX_SIGN_HASH: {
+            CHECK_PIN_VALIDATED()
+            handleSignAvaxTxHash(flags, tx, rx);
+
+            break; 
+        }
+        default: {
+            zemu_log("unknown_instruction***\n");
             THROW(APDU_CODE_INS_NOT_SUPPORTED);
+        }
     }
 }
 
 void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     volatile uint16_t sw = 0;
-    zemu_log("HandleApdu******\n");
 
     BEGIN_TRY {
         TRY {
@@ -199,7 +270,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             }
 
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
-                avax_dispatch(flags, tx, rx, G_io_apdu_buffer[OFFSET_INS]);
+                avax_dispatch(flags, tx, rx);
             }
 
             // Process non-avax instruction

@@ -1,4 +1,14 @@
-use crate::parser::ParserError;
+use bolos_common::bip32::BIP32Path;
+
+use crate::{
+    constants::BIP32_PATH_PREFIX_DEPTH,
+    handlers::{
+        avax::{sign_hash::Sign as SignHash, signing::Sign},
+        resources::{HASH, PATH},
+    },
+    parser::ParserError,
+    ZxError,
+};
 
 #[repr(C)]
 #[allow(non_camel_case_types)]
@@ -39,4 +49,44 @@ impl TryFrom<u8> for Instruction {
             _ => Err(ParserError::InvalidTransactionType),
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn _set_root_path(raw_path: *const u8, path_len_bytes: u16) -> u32 {
+    let path = core::slice::from_raw_parts(raw_path, path_len_bytes as usize);
+    // read root path and store it in ram as during the
+    // signing process and diseabling outputs we use it
+    // to get a full path: root_path + path_suffix
+    let Ok(root_path) = BIP32Path::read(path) else {
+        return ParserError::InvalidPath as u32;
+    };
+    //We expect a path prefix of the form x'/x'/x'
+    if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
+        return ParserError::InvalidPath as u32;
+    }
+
+    // important to use avax::signing::Sign
+    PATH.lock(Sign).replace(root_path);
+    ParserError::ParserOk as u32
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn _set_tx_hash(hash: *const u8, hash_len_bytes: u16) -> u16 {
+    if hash_len_bytes != Sign::SIGN_HASH_SIZE as u16 {
+        return ZxError::OutOfBounds as u16;
+    }
+
+    let Ok(hash) = core::slice::from_raw_parts(hash, hash_len_bytes as usize).try_into() else {
+        return ZxError::Unknown as u16;
+    };
+
+    // In this step the transaction has not been signed
+    // so store the hash for the next steps
+    HASH.lock(Sign).replace(hash);
+
+    // next step requires SignHash handler to have
+    // access to the path and hash resources that this handler just updated
+    PATH.lock(SignHash);
+    HASH.lock(SignHash);
+    ZxError::Ok as u16
 }

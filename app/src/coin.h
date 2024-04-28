@@ -41,12 +41,12 @@ extern "C" {
 #define PK_LEN_25519 32u
 
 #define COIN_AMOUNT_DECIMAL_PLACES 6
-#define COIN_TICKER "IRON "
+#define COIN_TICKER "AVAX "
 
-#define MENU_MAIN_APP_LINE1 "Ironfish"
+#define MENU_MAIN_APP_LINE1 "Avalanche"
 #define MENU_MAIN_APP_LINE2 "Ready"
 #define MENU_MAIN_APP_LINE2_SECRET "???"
-#define APPVERSION_LINE1 "Ironfish"
+#define APPVERSION_LINE1 "Avalanche"
 #define APPVERSION_LINE2 "v" APPVERSION
 
 // AVAX instructions:
@@ -54,11 +54,21 @@ extern "C" {
 
 #define AVX_INS_GET_VERSION 0x00
 #define AVX_INS_GET_WALLET_ID 0x01
-#define AVX_INS_GET_PUBLIC_KEY 0x02
+#define AVX_GET_PUBLIC_KEY 0x02
 #define AVX_INS_GET_EXTENDED_PUBLIC_KEY 0x03
-#define AVX_INS_SIGN_HASH 0x04
-#define AVX_INS_SIGN 0x05
-#define AVX_INS_SIGN_MSG 0x06
+#define AVX_SIGN_HASH 0x04
+#define AVX_SIGN 5
+#define AVX_SIGN_MSG 0x06
+// Definitions use to handle hash signing
+// if P1 == FIRST_MESSAGE, it means we have in front of a normal 
+// hash signing where the received path is the root path and a hash 
+// that must be shown to the user.
+// otherwise we use a previously stored rooth hash, and the received 
+// path prefix to compute the new path and sign the hash which was also 
+// previously stored and sign it.
+#define FIRST_MESSAGE 0x01
+#define NEXT_MESSAGE 0x03
+#define LAST_MESSAGE 0x02
 
 #ifdef __cplusplus
 }

@@ -80,7 +80,7 @@ app/glyphs/glyphs.*
 
 hfuzz/hfuzz_workspace
 
-zemu/snapshots-tmp
+tests_zemu/snapshots-tmp
 app/output/*.apdu
 app/output/*.sha256
 app/pkg/*

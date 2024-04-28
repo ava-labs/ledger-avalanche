@@ -43,8 +43,10 @@ storage_t NV_CONST N_appdata_impl __attribute__((aligned(64)));
 #define N_appdata (*(NV_VOLATILE storage_t *)PIC(&N_appdata_impl))
 #endif
 
-static parser_tx_t tx_obj;
+// Use the parser_tx_t object from the parser_context_t type
 static parser_context_t ctx_parsed_tx;
+
+const char *tx_parse();
 
 void tx_initialize() {
     buffering_init(
@@ -70,16 +72,11 @@ uint8_t *tx_get_buffer() {
     return buffering_get_buffer()->data;
 }
 
-const char *tx_avax_parse() {
-    MEMZERO(&tx_obj, sizeof(tx_obj));
-    // This is an avax transaction either P, X or C chain
-    ctx_parsed_tx.ins = SignAvaxTx;
-
-    uint8_t err = parser_parse(
+const char *tx_parse() {
+    parser_error_t err = parser_parse(
             &ctx_parsed_tx,
             tx_get_buffer(),
-            tx_get_buffer_length(),
-            &tx_obj);
+            tx_get_buffer_length());
 
     CHECK_APP_CANARY()
 
@@ -97,9 +94,25 @@ const char *tx_avax_parse() {
     return NULL;
 }
 
+const char *tx_avax_parse() {
+    MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));
+    // This is an avax transaction either P, X or C chain
+    ctx_parsed_tx.ins = SignAvaxTx;
+
+    return tx_parse();
+}
+
+const char *tx_avax_parse_hash() {
+    MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));
+    // This is an avax transaction either P, X or C chain
+    ctx_parsed_tx.ins = SignAvaxHash;
+
+    return tx_parse();
+}
+
 void tx_parse_reset()
 {
-    MEMZERO(&tx_obj, sizeof(tx_obj));
+    MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));
 }
 
 zxerr_t tx_getNumItems(uint8_t *num_items) {

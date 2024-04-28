@@ -44,6 +44,10 @@ uint8_t *tx_get_buffer();
 /// \return It returns NULL if data is valid or error message otherwise.
 const char *tx_avax_parse();
 
+/// Parse a hash transaction that contains the root path 
+/// plus the hash data to be signed
+const char *tx_avax_parse_hash();
+
 /// Return the number of items in the transaction
 zxerr_t tx_getNumItems(uint8_t *num_items);
 

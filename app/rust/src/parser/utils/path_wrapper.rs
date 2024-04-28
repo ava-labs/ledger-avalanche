@@ -16,7 +16,10 @@
 use bolos::crypto::bip32::BIP32Path;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
-use crate::parser::{FromBytes, ParserError, U32_SIZE};
+use crate::{
+    constants::BIP32_PATH_SUFFIX_DEPTH,
+    parser::{FromBytes, ObjectList, ParserError, U32_SIZE},
+};
 use nom::{bytes::complete::take, number::complete::be_u8};
 
 /// A simple wrapper around BIP32Path objects, in order to use it along
@@ -54,6 +57,24 @@ impl<const PATH_DEPTH: usize> PathWrapper<PATH_DEPTH> {
     pub fn path(&self) -> BIP32Path<PATH_DEPTH> {
         self.0
     }
+}
+
+pub fn parse_path_list<'a>(
+    path_list_uninit: &mut MaybeUninit<ObjectList<'a, PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>>,
+    data: &'a [u8],
+) -> Result<&'a [u8], ParserError> {
+    // Parse the number of paths
+    let (rem, num_paths) = be_u8(data)?;
+
+    // Try to initialize the ObjectList into the provided MaybeUninit
+    let rem = ObjectList::new_into_with_len(rem, path_list_uninit, num_paths as usize)
+        .map_err(|_| ParserError::InvalidPath)?;
+
+    // Safely assume initialization
+    let _path_list = unsafe { path_list_uninit.assume_init() };
+
+    // Return the remainder of the input data
+    Ok(rem)
 }
 
 #[cfg(test)]

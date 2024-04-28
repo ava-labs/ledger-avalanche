@@ -67,20 +67,20 @@ parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer,
     return parser_ok;
 }
 
-parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, parser_tx_t *tx_obj) {
-    tx_obj->state = NULL;
-    tx_obj->len = 0;
-    CHECK_ERROR(_parser_init(ctx, data, dataLen, &tx_obj->len));
+parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen) {
+    ctx->tx_obj.state = NULL;
+    ctx->tx_obj.len = 0;
+    CHECK_ERROR(_parser_init(ctx, data, dataLen, &(ctx->tx_obj.len )));
 
-    if (tx_obj->len == 0) {
+    if (ctx->tx_obj.len == 0) {
         return parser_context_unexpected_size;
     }
 
-    if(parser_allocate(tx_obj) != zxerr_ok) {
+    if(parser_allocate(&ctx->tx_obj) != zxerr_ok) {
         return parser_init_context_empty ;
     }
 
-    parser_error_t err = _parser_read(ctx, tx_obj);
+    parser_error_t err = _parser_read(ctx);
     return err;
 }
 
@@ -100,10 +100,11 @@ parser_error_t parser_validate(parser_context_t *ctx) {
 }
 
 parser_error_t parser_getNumItems(const parser_context_t *ctx, uint8_t *num_items) {
-    // #{TODO} --> function to retrieve num Items
-    // *num_items = _getNumItems();
-    UNUSED(ctx);
-    *num_items = 1;
+    zemu_log_stack("parser_getNumItems\n");
+
+    if (_getNumItems(ctx, num_items) != parser_ok) {
+        return parser_unexpected_number_items;
+    }
     if (*num_items == 0) {
         return parser_unexpected_number_items;
     }
@@ -126,8 +127,6 @@ static parser_error_t checkSanity(uint8_t numItems, uint8_t displayIdx) {
 
 parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, char *outKey, uint16_t outKeyLen,
                               char *outVal, uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount) {
-    UNUSED(pageIdx);
-    *pageCount = 1;
     uint8_t numItems = 0;
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
     CHECK_APP_CANARY()
@@ -135,25 +134,6 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     CHECK_ERROR(checkSanity(numItems, displayIdx))
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
-    switch (displayIdx) {
-        case 0:
-            // Display Item 0
-            snprintf(outKey, outKeyLen, "Title #0");
-            snprintf(outVal, outValLen, "Value #0");
-            return parser_ok;
-        case 1:
-            // Display Item 1
-            snprintf(outKey, outKeyLen, "Title #1");
-            snprintf(outVal, outValLen, "Value #1");
-            return parser_ok;
-        case 10:
-            // Display Item 10
-            snprintf(outKey, outKeyLen, "Title #N");
-            snprintf(outVal, outValLen, "Value #N");
-            return parser_ok;
-        default:
-            break;
-    }
-
-    return parser_display_idx_out_of_range;
+    zemu_log_stack("parser_getItem\n");
+    return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }

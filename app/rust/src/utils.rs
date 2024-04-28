@@ -34,7 +34,6 @@ pub use app_mode::*;
 
 pub mod blind_sign_toggle;
 mod ui;
-pub use ui::*;
 
 #[cfg(test)]
 #[macro_export]

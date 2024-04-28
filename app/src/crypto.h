@@ -30,7 +30,7 @@ extern uint32_t hdPath[HDPATH_LEN_DEFAULT];
 
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen);
 
-zxerr_t crypto_sign_avax(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen);
+zxerr_t crypto_sign_avax(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *hash, uint16_t hash_len, const uint32_t *path, uint16_t path_len);
 
 
 #ifdef __cplusplus

@@ -18,6 +18,7 @@
 #include <os_io_seproxyhal.h>
 #include <stdint.h>
 #include "cx.h"
+#include "app_main.h"
 
 #include "apdu_codes.h"
 #include "coin.h"
@@ -28,21 +29,82 @@
 
 extern uint16_t action_addrResponseLen;
 
-__Z_INLINE void app_sign() {
-    const uint8_t *data = tx_get_buffer();
-    const uint16_t data_len = tx_get_buffer_length();
-    uint8_t message[CX_SHA256_SIZE];
+__Z_INLINE void app_sign_hash() {
 
-    cx_hash_sha256(data, data_len, message, CX_SHA256_SIZE);
+    uint32_t path[HDPATH_LEN_DEFAULT] = {0};
+    uint8_t hash[CX_SHA256_SIZE] = {0};
 
-    const zxerr_t err = crypto_sign_avax(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, CX_SHA256_SIZE);
+    zxerr_t err = zxerr_ok;
+
+    // get the hash, the path and pass it to our crypto signing function 
+    // we should not use the global hdPath variable here as it is just the path prefix. 
+    err = _get_hash(hash, CX_SHA256_SIZE);
 
     if (err != zxerr_ok) {
-        set_code(G_io_apdu_buffer, 0, APDU_CODE_SIGN_VERIFY_ERROR);
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+        return;
+    }
+
+    // Do a partial parsing of the received path suffix
+    uint8_t path_len = G_io_apdu_buffer[OFFSET_DATA];
+    uint8_t len_bytes = path_len * sizeof(uint32_t) + 1;
+
+    // include 1-bytes for len
+    err = _get_signing_info(path, HDPATH_LEN_DEFAULT, &G_io_apdu_buffer[OFFSET_DATA], len_bytes);
+
+    if (err != zxerr_ok) {
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+        return;
+    }
+
+    err = crypto_sign_avax(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, hash, CX_SHA256_SIZE, path, HDPATH_LEN_DEFAULT);
+
+    if (err != zxerr_ok) {
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     } else {
-        set_code(G_io_apdu_buffer, SK_LEN_25519, APDU_CODE_OK);
-        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SK_LEN_25519 + 2);
+        // ensure we clean paths and hashes
+        if (G_io_apdu_buffer[OFFSET_P1] == LAST_MESSAGE)
+            _clean_up_hash();
+
+        set_code(G_io_apdu_buffer, SECP256K1_PK_LEN, APDU_CODE_OK);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SECP256K1_PK_LEN + 2);
+    }
+
+}
+
+__Z_INLINE void app_sign() {
+    zemu_log_stack("app_sign");
+
+    // needs to remove the change_path list
+    const uint8_t *data = tx_get_buffer();
+    const uint16_t data_len = tx_get_buffer_length();
+
+    uint16_t offset = 0;
+
+    if (_tx_data_offset(data, data_len, &offset) != zxerr_ok) {
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+        return;
+    }
+
+    uint8_t message[CX_SHA256_SIZE];
+
+    cx_hash_sha256(data + offset, data_len - offset, message, CX_SHA256_SIZE);
+
+    // Set hash in Rust side for the next stage:
+    zxerr_t err = _set_tx_hash(message, CX_SHA256_SIZE);
+
+    if (err != zxerr_ok) {
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    } else {
+        // we are just returning the CODE_OK
+        // the signature would be returned in the next stage.
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     }
 }
 

@@ -23,110 +23,95 @@ const defaultOptions = (model: any) => {
   return commonOpts(model, true)
 }
 
-const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4';
+const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4'
 
 jest.setTimeout(200000)
 
-describe.each(models)('Standard [%s] - pubkey', function (m) {
-  test.concurrent(
-    'get pubkey and addr',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
+describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
+  test.concurrent('get pubkey and addr', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
 
-        console.log(resp, m.name)
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('hash')
-        expect(resp).toHaveProperty('address')
-        expect(resp.publicKey.toString('hex')).toEqual(EXPECTED_PUBLIC_KEY)
-        expect(resp.address).toEqual('P-avax1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('hash')
+      expect(resp).toHaveProperty('address')
+      expect(resp.publicKey.toString('hex')).toEqual(EXPECTED_PUBLIC_KEY)
+      expect(resp.address).toEqual('P-avax1tlq4m9js4ckqvz9umfz7tjxna3yysm79r2jz8e')
+    } finally {
+      await sim.close()
+    }
+  })
 
-  test.concurrent(
-    'show addr',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
+  test.concurrent('show addr', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
 
-        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr`);
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr`)
 
-        const resp = await respReq;
-        console.log(resp, m.name)
+      const resp = await respReq
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('hash')
-        expect(resp).toHaveProperty('address')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('hash')
+      expect(resp).toHaveProperty('address')
+    } finally {
+      await sim.close()
+    }
+  })
 
-  test.concurrent(
-    'get addr with custom hrp & chainID addr',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getAddressAndPubKey(APP_DERIVATION, false,
-          "zemu", bs58_encode(Buffer.alloc(32, 42)))
+  test.concurrent('get addr with custom hrp & chainID addr', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 'zemu', bs58_encode(Buffer.alloc(32, 42)))
 
-        console.log(resp, m.name)
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('hash')
-        expect(resp).toHaveProperty('address')
-        expect(resp.address).toEqual('Ka3NKcnfs8d67EZYU5mbTCVY7Znnd2YQAYjbBfb4XmeWJuCGa'
-          + '-zemu1tlq4m9js4ckqvz9umfz7tjxna3yysm79zy94y7')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('hash')
+      expect(resp).toHaveProperty('address')
+      expect(resp.address).toEqual('Ka3NKcnfs8d67EZYU5mbTCVY7Znnd2YQAYjbBfb4XmeWJuCGa' + '-zemu1tlq4m9js4ckqvz9umfz7tjxna3yysm79zy94y7')
+    } finally {
+      await sim.close()
+    }
+  })
 
-  test.concurrent(
-    'show custom hrp & chainID addr',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.getAddressAndPubKey(APP_DERIVATION, true,
-          "zemu", bs58_encode(Buffer.alloc(32, 42)))
+  test.concurrent('show custom hrp & chainID addr', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 'zemu', bs58_encode(Buffer.alloc(32, 42)))
 
-        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`);
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`)
 
-        const resp = await respReq;
-        console.log(resp, m.name)
+      const resp = await respReq
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('hash')
-        expect(resp).toHaveProperty('address')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('hash')
+      expect(resp).toHaveProperty('address')
+    } finally {
+      await sim.close()
+    }
+  })
 })

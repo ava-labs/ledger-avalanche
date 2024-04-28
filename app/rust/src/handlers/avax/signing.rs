@@ -77,7 +77,7 @@ impl Sign {
         Ok(())
     }
 
-    fn disable_outputs(
+    pub fn disable_outputs(
         list: &mut ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>,
         tx: &mut Transaction,
     ) -> Result<(), Error> {

@@ -31,7 +31,7 @@ use crate::{
         handle_ui_message,
         resources::{HASH, PATH},
     },
-    parser::{FromBytes, PathWrapper},
+    parser::{FromBytes, ParserError, PathWrapper},
     sys,
     utils::{convert_der_to_rs, ApduBufferRead},
 };
@@ -50,7 +50,7 @@ impl Sign {
         }
     }
 
-    fn get_hash() -> Result<&'static [u8; Self::SIGN_HASH_SIZE], Error> {
+    pub fn get_hash() -> Result<&'static [u8; Self::SIGN_HASH_SIZE], Error> {
         match unsafe { HASH.acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
@@ -71,6 +71,36 @@ impl Sign {
             .map_err(|_| Error::ExecutionError)?;
 
         Ok((flags, sz, out))
+    }
+
+    #[inline(never)]
+    pub fn parse_hash(data: &[u8]) -> Result<(), ParserError> {
+        // the data contains root_path + 32-byte hash
+        let mut path = MaybeUninit::uninit();
+        let rem =
+            PathWrapper::from_bytes_into(data, &mut path).map_err(|_| ParserError::InvalidPath)?;
+        let root_path = unsafe { path.assume_init().path() };
+        // this path should be a root path of the form x/x/x
+        if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
+            return Err(ParserError::ValueOutOfRange);
+        }
+
+        unsafe {
+            PATH.lock(Self).replace(root_path);
+        }
+
+        if rem.len() != Self::SIGN_HASH_SIZE {
+            return Err(ParserError::ValueOutOfRange);
+        }
+
+        let mut unsigned_hash = [0; Self::SIGN_HASH_SIZE];
+        unsigned_hash.copy_from_slice(rem);
+
+        unsafe {
+            HASH.lock(Self).replace(unsigned_hash);
+        }
+
+        Ok(())
     }
 
     #[inline(never)]
@@ -102,7 +132,7 @@ impl Sign {
         crate::show_ui!(ui.show(flags))
     }
 
-    fn get_signing_info(data: &[u8]) -> Result<BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
+    pub fn get_signing_info(data: &[u8]) -> Result<BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
         //We expect a path prefix of the form x'/x'/x'
         let path_prefix = Self::get_derivation_info()?;
         if path_prefix.components().len() != BIP32_PATH_PREFIX_DEPTH {
@@ -132,6 +162,12 @@ impl Sign {
 
 pub(crate) struct SignUI {
     hash: [u8; Sign::SIGN_HASH_SIZE],
+}
+
+impl SignUI {
+    pub fn new(hash: [u8; Sign::SIGN_HASH_SIZE]) -> Self {
+        Self { hash }
+    }
 }
 
 impl Viewable for SignUI {
@@ -251,7 +287,7 @@ impl ApduHandler for Sign {
     }
 }
 
-fn cleanup_globals() -> Result<(), Error> {
+pub fn cleanup_globals() -> Result<(), Error> {
     unsafe {
         if let Ok(path) = PATH.acquire(Sign) {
             path.take();

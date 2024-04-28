@@ -16,21 +16,24 @@
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 
-use crate::parser::DisplayableItem;
-use crate::parser::{FromBytes, ParserError, Transaction};
-
-use self::context::{parse_tx_t, parser_context_t, Instruction};
+use crate::constants::{BIP32_PATH_SUFFIX_DEPTH, SIGN_HASH_TX_SIZE};
+use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
+use crate::handlers::avax::signing::Sign;
+use crate::parser::{parse_path_list, DisplayableItem, ObjectList, PathWrapper};
+use crate::parser::{ParserError, Transaction};
+use crate::ZxError;
 
 pub mod context;
 pub mod public_key;
+pub mod sign_hash;
+use context::{parser_context_t, Instruction};
 
 /// Cast a *mut u8 to a *mut Transaction
 macro_rules! avax_obj_from_state {
     ($ptr:expr) => {
-        unsafe { &mut (*addr_of_mut!((*$ptr).state).cast::<MaybeUninit<Transaction>>()) }
+        unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<Transaction>>()) }
     };
 }
-
 /// #Safety
 /// Enough space was allocated to store an Avalanche Transaction
 // unsafe fn parse_obj_from_state<'a>(tx: *mut parse_tx_t) -> Option<&'a mut Transaction<'a>> {
@@ -42,7 +45,7 @@ pub unsafe extern "C" fn _parser_init(
     ctx: *mut parser_context_t,
     buffer: *const u8,
     len: u16,
-    alloc_size: *mut u16,
+    alloc_size: *mut u32,
 ) -> u32 {
     if ctx.is_null() || alloc_size.is_null() {
         return ParserError::ParserInitContextEmpty as u32;
@@ -57,7 +60,7 @@ pub unsafe extern "C" fn _parser_init(
     // Lets the caller know how much memory we need for allocating
     // our global state
     let size = match ins {
-        Instruction::SignAvaxTx => core::mem::size_of::<MaybeUninit<Transaction>>() as u16,
+        Instruction::SignAvaxTx => core::mem::size_of::<MaybeUninit<Transaction>>() as u32,
         Instruction::SignEthTx => {
             unimplemented!()
         }
@@ -67,9 +70,7 @@ pub unsafe extern "C" fn _parser_init(
         Instruction::SignEthMsg => {
             unimplemented!()
         }
-        Instruction::SignAvaxHash => {
-            unimplemented!()
-        }
+        Instruction::SignAvaxHash => SIGN_HASH_TX_SIZE as u32,
     };
 
     *alloc_size = size;
@@ -102,48 +103,12 @@ unsafe fn parser_init_context(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn _parser_read(
-    context: *const parser_context_t,
-    tx_t: *mut parse_tx_t,
-) -> u32 {
-    zemu_sys::zemu_log_stack("********read_avax_tx\x00");
-    let data = core::slice::from_raw_parts((*context).buffer, (*context).buffer_len as _);
-    let state = tx_t;
-
-    if tx_t.is_null() || context.is_null() {
+pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
+    if ctx.is_null() {
         return ParserError::ParserContextMismatch as u32;
     };
 
-    let Ok(tx_type) = Instruction::try_from((*context).ins) else {
-        return ParserError::InvalidTransactionType as u32;
-    };
-
-    match tx_type {
-        Instruction::SignAvaxTx => {
-            let tx = avax_obj_from_state!(state);
-            match Transaction::new_into(data, tx) {
-                Ok(_) => ParserError::ParserOk as u32,
-                Err(e) => e as u32,
-            }
-        }
-
-        _ => todo!(),
-    };
-
-    ParserError::ParserOk as u32
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn _getNumItems(
-    ctx: *const parser_context_t,
-    tx_t: *const parse_tx_t,
-    num_items: *mut u8,
-) -> u32 {
-    if tx_t.is_null() || (*tx_t).state.is_null() || num_items.is_null() || ctx.is_null() {
-        return ParserError::NoData as u32;
-    }
-
-    let state = tx_t as *mut parse_tx_t;
+    let data = core::slice::from_raw_parts((*ctx).buffer, (*ctx).buffer_len as _);
 
     let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
         return ParserError::InvalidTransactionType as u32;
@@ -151,7 +116,65 @@ pub unsafe extern "C" fn _getNumItems(
 
     match tx_type {
         Instruction::SignAvaxTx => {
-            let tx = avax_obj_from_state!(state);
+            // then, get the change_path list.
+            let mut path_list: MaybeUninit<ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>> =
+                MaybeUninit::uninit();
+
+            let Ok(rem) = parse_path_list(&mut path_list, data) else {
+                return ParserError::InvalidPath as u32;
+            };
+
+            let mut path_list = path_list.assume_init();
+
+            let tx = avax_obj_from_state!(ctx as *mut parser_context_t);
+            match Transaction::new_into(rem, tx) {
+                Ok(_) => {
+                    // now disable transaction outputs that match
+                    // the change paths
+                    let tx = tx.assume_init_mut();
+                    // important to use the handlers::avax::signing::Sign module
+                    let Ok(_) = Sign::disable_outputs(&mut path_list, tx) else {
+                        return ParserError::InvalidPath as u32;
+                    };
+
+                    ParserError::ParserOk as u32
+                }
+                Err(e) => e as u32,
+            }
+        }
+
+        Instruction::SignAvaxHash => {
+            if let Err(e) = SignHash::parse_hash(data) {
+                return e as u32;
+            }
+            ParserError::ParserOk as u32
+        }
+
+        _ => todo!(),
+    }
+
+    // ParserError::ParserOk as u32
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *mut u8) -> u32 {
+    if num_items.is_null() || ctx.is_null() {
+        return ParserError::NoData as u32;
+    }
+
+    let state = (*ctx).tx_obj.state;
+
+    if state.is_null() {
+        return ParserError::NoData as u32;
+    }
+
+    let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
+        return ParserError::InvalidTransactionType as u32;
+    };
+
+    match tx_type {
+        Instruction::SignAvaxTx => {
+            let tx = avax_obj_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.num_items() {
                 Ok(n) => {
@@ -160,6 +183,11 @@ pub unsafe extern "C" fn _getNumItems(
                 }
                 Err(e) => e as u32,
             }
+        }
+
+        Instruction::SignAvaxHash => {
+            *num_items = 1;
+            ParserError::ParserOk as u32
         }
 
         _ => todo!(),
@@ -178,7 +206,6 @@ pub unsafe extern "C" fn _getItem(
     out_len: u16,
     page_idx: u8,
     page_count: *mut u8,
-    tx_t: *const parse_tx_t,
 ) -> u32 {
     *page_count = 0u8;
 
@@ -187,7 +214,7 @@ pub unsafe extern "C" fn _getItem(
     let key = core::slice::from_raw_parts_mut(out_key as *mut u8, key_len as usize);
     let value = core::slice::from_raw_parts_mut(out_value as *mut u8, out_len as usize);
 
-    if tx_t.is_null() || (*tx_t).state.is_null() || ctx.is_null() {
+    if ctx.is_null() {
         return ParserError::ParserContextMismatch as _;
     }
 
@@ -195,11 +222,9 @@ pub unsafe extern "C" fn _getItem(
         return ParserError::InvalidTransactionType as u32;
     };
 
-    let state = tx_t as *mut parse_tx_t;
-
     match tx_type {
         Instruction::SignAvaxTx => {
-            let tx = avax_obj_from_state!(state);
+            let tx = avax_obj_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.render_item(display_idx, key, value, page_idx) {
                 Ok(page) => {
@@ -210,6 +235,52 @@ pub unsafe extern "C" fn _getItem(
             }
         }
 
+        Instruction::SignAvaxHash => {
+            let Ok(hash) = SignHash::get_hash() else {
+                return ParserError::NoData as _;
+            };
+            let mut ui = SignUI::new(*hash);
+            match zemu_sys::Viewable::render_item(&mut ui, display_idx, key, value, page_idx) {
+                Ok(page) => {
+                    *page_count = page;
+                    ParserError::ParserOk as _
+                }
+                Err(e) => e as _,
+            }
+        }
+
         _ => todo!(),
     }
+}
+
+// Returns the offset at which transaction data starts.
+// remember that this instruction comes with a list of change_path at the
+// begining of the buffer. those paths needs to be ignored when
+// computing transaction hash for signing.
+#[no_mangle]
+pub unsafe extern "C" fn _tx_data_offset(
+    buffer: *const u8,
+    buffer_len: u16,
+    offset: *mut u16,
+) -> u16 {
+    if buffer.is_null() || offset.is_null() || buffer_len == 0 {
+        return ZxError::NoData as _;
+    }
+
+    let data = core::slice::from_raw_parts(buffer, buffer_len as _);
+
+    let mut path_list: MaybeUninit<ObjectList<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>>> =
+        MaybeUninit::uninit();
+
+    let Ok(rem) = parse_path_list(&mut path_list, data) else {
+        return ZxError::NoData as _;
+    };
+
+    if buffer_len < rem.len() as u16 {
+        return ZxError::BufferTooSmall as _;
+    }
+
+    *offset = buffer_len - rem.len() as u16;
+
+    ZxError::Ok as _
 }
