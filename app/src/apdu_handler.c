@@ -92,10 +92,14 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
 }
 
 __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    extractHDPath(rx, OFFSET_DATA);
+    zemu_log("handleGetAddr\n");
+
+    // TODO: Fix later. this need to be adjusted for avax addresses 
+    // where path is the last argument
+    // extractHDPath(rx, OFFSET_DATA);
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
-    zxerr_t zxerr = app_fill_address();
+    zxerr_t zxerr = fill_address(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     if (zxerr != zxerr_ok) {
         *tx = 0;
         THROW(APDU_CODE_DATA_INVALID);
@@ -106,7 +110,7 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
         *flags |= IO_ASYNCH_REPLY;
         return;
     }
-    *tx = action_addrResponseLen;
+
     THROW(APDU_CODE_OK);
 }
 
@@ -162,11 +166,12 @@ void handleTest(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) { 
 #endif
 
 __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx, uint16_t instruction) {
+    zemu_log("AVAX Dispatch\n");
     switch (instruction) {
         case INS_GET_VERSION:
             handle_getversion(flags, tx);
             break;
-        case INS_GET_ADDR:
+        case AVX_INS_GET_PUBLIC_KEY:
             CHECK_PIN_VALIDATED()
             handleGetAddr(flags, tx, rx);
             break;

@@ -147,11 +147,6 @@ zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_
     if (messageLen != CX_SHA256_SIZE) {
         return zxerr_out_of_bounds;
     }
-    #ifdef APP_TESTING
-        char tmpBuff[65] = {0};
-        array_to_hexstr(tmpBuff, sizeof(tmpBuff), message, CX_SHA256_SIZE);
-        ZEMU_LOGF(100, "Digest: *** %s\n", tmpBuff)
-    #endif
 
     cx_ecfp_private_key_t cx_privateKey;
     uint8_t privateKeyData[32];
@@ -212,7 +207,7 @@ zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrRe
         return zxerr_unknown;
     }
 
-    MEMZERO(buffer, bufferLen);
+    // MEMZERO(buffer, bufferLen);
     *addrResponseLen = 3 * KEY_LENGTH;
 
     return zxerr_ok;

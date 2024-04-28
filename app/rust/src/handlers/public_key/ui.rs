@@ -183,6 +183,7 @@ impl<'ui> AddrUIInitializer<'ui> {
     }
 }
 
+#[repr(C)]
 pub struct AddrUI {
     //includes checksum
     chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],

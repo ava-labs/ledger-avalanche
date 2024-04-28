@@ -24,47 +24,44 @@
 #include "zxmacros.h"
 #include "keys_def.h"
 #include "os.h"
+#include "rslib.h"
+#include "actions.h"
+
+#define ASCII_HRP_MAX_SIZE 24
+#define MAX_CHAIN_CB58_LEN 50
+#define CHAIN_ID_CHECKSUM_SIZE 4
+#define CHAIN_CODE_LEN 32
+#define ADDR_UI_MAX_SIZE 61
+
+// Use to hold the addr_ui object, used by rust to display the address
+addr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
+
+zxerr_t fill_address(
+    uint32_t *flags,
+    uint32_t *tx,
+    uint32_t rx,
+    uint8_t *buffer,
+    uint16_t buffer_len
+) {
+
+    zemu_log("fill_address\n");
+
+    zxerr_t err = _app_fill_address(tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, addr_ui_obj, ADDR_UI_MAX_SIZE);
+
+    if (err != zxerr_ok)
+        action_addrResponseLen = 0;
+
+    return err;
+}
 
 zxerr_t addr_getNumItems(uint8_t *num_items) {
     if (num_items == NULL) {
         return zxerr_no_data;
     }
-    // Display [public address | ivk | ovk | path]
-    *num_items = 4;
-    return zxerr_ok;
+    return _addr_num_items(addr_ui_obj, num_items);
 }
 
 zxerr_t addr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
                      uint8_t *pageCount) {
-    ZEMU_LOGF(50, "[addr_getItem] %d/%d\n", displayIdx, pageIdx)
-
-    switch (displayIdx) {
-        case 0:
-            snprintf(outKey, outKeyLen, "Address");
-            const char* address = (const char*)G_io_apdu_buffer;
-            pageStringHex(outVal, outValLen, address, KEY_LENGTH, pageIdx, pageCount);
-            break;
-        case 1:
-            snprintf(outKey, outKeyLen, "IVK");
-            const char* ivk = (const char*)G_io_apdu_buffer + KEY_LENGTH;
-            pageStringHex(outVal, outValLen, ivk, KEY_LENGTH, pageIdx, pageCount);
-            break;
-        case 2:
-            snprintf(outKey, outKeyLen, "OVK");
-            const char* ovk = (const char*)G_io_apdu_buffer + 2 * KEY_LENGTH;
-            pageStringHex(outVal, outValLen, ovk, KEY_LENGTH, pageIdx, pageCount);
-            break;
-        case 3: {
-            snprintf(outKey, outKeyLen, "HD Path");
-            char buffer[300];
-            bip32_to_str(buffer, sizeof(buffer), hdPath, HDPATH_LEN_DEFAULT);
-            pageString(outVal, outValLen, buffer, pageIdx, pageCount);
-            break;
-        }
-
-        default:
-            return zxerr_no_data;
-    }
-
-    return zxerr_ok;
+    return _addr_get_item(addr_ui_obj, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }

@@ -19,48 +19,13 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::parser::DisplayableItem;
 use crate::parser::{FromBytes, ParserError, Transaction};
 
-#[repr(u8)]
-pub enum Instruction {
-    SignAvaxTx = 0x00,
-    SignEthTx,
-    SignAvaxMsg,
-    SignEthMsg,
-    SignAvaxHash,
-}
+use self::context::{parse_tx_t, parser_context_t, Instruction};
 
-impl TryFrom<u8> for Instruction {
-    type Error = ParserError;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0x00 => Ok(Instruction::SignAvaxTx),
-            0x01 => Ok(Instruction::SignEthTx),
-            0x02 => Ok(Instruction::SignAvaxMsg),
-            0x03 => Ok(Instruction::SignEthMsg),
-            0x04 => Ok(Instruction::SignAvaxHash),
-            _ => Err(ParserError::InvalidTransactionType),
-        }
-    }
-}
-
-#[repr(C)]
-pub struct parser_context_t {
-    pub buffer: *const u8,
-    pub bufferLen: u16,
-    pub offset: u16,
-    pub ins: u8,
-    pub tx_obj: parse_tx_t,
-}
-
-#[repr(C)]
-pub struct parse_tx_t {
-    state: *mut u8,
-    len: u16,
-}
+pub mod context;
+pub mod public_key;
 
 /// Cast a *mut u8 to a *mut Transaction
 macro_rules! avax_obj_from_state {
-    // *addr_of_mut!((*out).0).cast()
     ($ptr:expr) => {
         unsafe { &mut (*addr_of_mut!((*$ptr).state).cast::<MaybeUninit<Transaction>>()) }
     };
@@ -126,12 +91,12 @@ unsafe fn parser_init_context(
 
     if len == 0 || buffer.is_null() {
         (*ctx).buffer = core::ptr::null_mut();
-        (*ctx).bufferLen = 0;
+        (*ctx).buffer_len = 0;
         return ParserError::ParserInitContextEmpty;
     }
 
     (*ctx).buffer = buffer;
-    (*ctx).bufferLen = len;
+    (*ctx).buffer_len = len;
 
     ParserError::ParserOk
 }
@@ -142,7 +107,7 @@ pub unsafe extern "C" fn _parser_read(
     tx_t: *mut parse_tx_t,
 ) -> u32 {
     zemu_sys::zemu_log_stack("********read_avax_tx\x00");
-    let data = core::slice::from_raw_parts((*context).buffer, (*context).bufferLen as _);
+    let data = core::slice::from_raw_parts((*context).buffer, (*context).buffer_len as _);
     let state = tx_t;
 
     if tx_t.is_null() || context.is_null() {

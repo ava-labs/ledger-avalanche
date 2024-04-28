@@ -20,6 +20,15 @@
 extern "C" {
 #endif
 
+
+zxerr_t fill_address(
+    uint32_t *flags,
+    uint32_t *tx,
+    uint32_t rx,
+    uint8_t *buffer,
+    uint16_t buffer_len
+);
+
 // Return the number of items in the address view
 zxerr_t addr_getNumItems(uint8_t *num_items);
 

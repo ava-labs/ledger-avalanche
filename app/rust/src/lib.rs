@@ -30,6 +30,9 @@ mod ffi;
 mod handlers;
 mod parser;
 mod sys;
+mod zxerror;
+
+pub use zxerror::ZxError;
 
 pub(crate) use sys::*;
 
