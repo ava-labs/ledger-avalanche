@@ -78,6 +78,32 @@ DEFINES += ZEMU_LOGGING
 $(info ************ LOGGING ENABLED ************)
 endif
 
+# Enable app features depending on the target device
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+RUST_TARGET:=thumbv6m-none-eabi
+APP_FULL:=1
+endif
+
+ifeq ($(TARGET_NAME),TARGET_NANOS2)
+RUST_TARGET:=thumbv6m-none-eabi
+APP_FULL:=1
+endif
+
+ifeq ($(TARGET_NAME),TARGET_STAX)
+RUST_TARGET:=thumbv6m-none-eabi
+APP_FULL:=1
+endif
+
+ifeq ($(APP_TESTING),1)
+RUST_FEATURES+=--features "dev"
+endif
+ifeq ($(APP_FULL),1)
+RUST_FEATURES+=--features "full"
+else
+# Lite version to run on nanos
+RUST_FEATURES+=--features "lite"
+endif
+
 # Compiler, assembler, and linker
 
 # Building Rust
