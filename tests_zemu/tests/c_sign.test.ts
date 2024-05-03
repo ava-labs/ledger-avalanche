@@ -25,10 +25,10 @@ import secp256k1 from 'secp256k1/elliptic'
 import crypto from 'crypto'
 
 const SIGN_TEST_DATA = [
-  // {
-  //   name: 'c_import_from_x',
-  //   op: C_IMPORT_FROM_X,
-  // },
+  {
+    name: 'c_import_from_x',
+    op: C_IMPORT_FROM_X,
+  },
   {
     name: 'c_export_to_x',
     op: C_EXPORT_TO_X,
