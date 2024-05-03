@@ -9,7 +9,13 @@ use crate::{
     parser::ParserError,
     ZxError,
 };
-
+// typedef struct {
+//     const uint8_t *buffer;
+//     uint16_t bufferLen;
+//     uint16_t offset;
+//     instruction_t ins;
+//     parser_tx_t tx_obj;
+// } parser_context_t;
 #[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct parser_context_t {
@@ -40,6 +46,9 @@ impl TryFrom<u8> for Instruction {
     type Error = ParserError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value == 2 {
+            crate::zlog("SignAvaxMsg\x00");
+        }
         match value {
             0x00 => Ok(Instruction::SignAvaxTx),
             0x01 => Ok(Instruction::SignEthTx),

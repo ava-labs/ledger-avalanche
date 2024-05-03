@@ -19,19 +19,27 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::constants::{BIP32_PATH_SUFFIX_DEPTH, SIGN_HASH_TX_SIZE};
 use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
-use crate::parser::{parse_path_list, DisplayableItem, ObjectList, PathWrapper};
-use crate::parser::{ParserError, Transaction};
+use crate::parser::{parse_path_list, AvaxMessage, DisplayableItem, ObjectList, PathWrapper};
+use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
 
 pub mod context;
+pub mod message;
 pub mod public_key;
 pub mod sign_hash;
 use context::{parser_context_t, Instruction};
 
 /// Cast a *mut u8 to a *mut Transaction
-macro_rules! avax_obj_from_state {
+macro_rules! avax_tx_from_state {
     ($ptr:expr) => {
         unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<Transaction>>()) }
+    };
+}
+
+/// Cast a *mut u8 to a *mut Transaction
+macro_rules! avax_msg_from_state {
+    ($ptr:expr) => {
+        unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<AvaxMessage>>()) }
     };
 }
 /// #Safety
@@ -44,7 +52,7 @@ macro_rules! avax_obj_from_state {
 pub unsafe extern "C" fn _parser_init(
     ctx: *mut parser_context_t,
     buffer: *const u8,
-    len: u16,
+    len: usize,
     alloc_size: *mut u32,
 ) -> u32 {
     if ctx.is_null() || alloc_size.is_null() {
@@ -62,13 +70,11 @@ pub unsafe extern "C" fn _parser_init(
     let size = match ins {
         Instruction::SignAvaxTx => core::mem::size_of::<MaybeUninit<Transaction>>() as u32,
         Instruction::SignEthTx => {
-            unimplemented!()
+            return ParserError::UnexpectedError as u32;
         }
-        Instruction::SignAvaxMsg => {
-            unimplemented!()
-        }
+        Instruction::SignAvaxMsg => core::mem::size_of::<MaybeUninit<AvaxMessage>>() as u32,
         Instruction::SignEthMsg => {
-            unimplemented!()
+            return ParserError::UnexpectedError as u32;
         }
         Instruction::SignAvaxHash => SIGN_HASH_TX_SIZE as u32,
     };
@@ -86,7 +92,7 @@ pub unsafe extern "C" fn _parser_init(
 unsafe fn parser_init_context(
     ctx: *mut parser_context_t,
     buffer: *const u8,
-    len: u16,
+    len: usize,
 ) -> ParserError {
     (*ctx).offset = 0;
 
@@ -97,7 +103,8 @@ unsafe fn parser_init_context(
     }
 
     (*ctx).buffer = buffer;
-    (*ctx).buffer_len = len;
+    // we are sure that len is less than u16::MAX
+    (*ctx).buffer_len = len as u16;
 
     ParserError::ParserOk
 }
@@ -126,7 +133,7 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
 
             let mut path_list = path_list.assume_init();
 
-            let tx = avax_obj_from_state!(ctx as *mut parser_context_t);
+            let tx = avax_tx_from_state!(ctx as *mut parser_context_t);
             match Transaction::new_into(rem, tx) {
                 Ok(_) => {
                     // now disable transaction outputs that match
@@ -150,7 +157,15 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
             ParserError::ParserOk as u32
         }
 
-        _ => todo!(),
+        Instruction::SignAvaxMsg => {
+            let tx = avax_msg_from_state!(ctx as *mut parser_context_t);
+            match AvaxMessage::from_bytes_into(data, tx) {
+                Ok(_) => ParserError::ParserOk as u32,
+                Err(_) => ParserError::InvalidAvaxMessage as u32,
+            }
+        }
+
+        _ => ParserError::UnexpectedError as u32,
     }
 
     // ParserError::ParserOk as u32
@@ -174,7 +189,7 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
 
     match tx_type {
         Instruction::SignAvaxTx => {
-            let tx = avax_obj_from_state!(ctx as *mut parser_context_t);
+            let tx = avax_tx_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.num_items() {
                 Ok(n) => {
@@ -188,6 +203,18 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
         Instruction::SignAvaxHash => {
             *num_items = 1;
             ParserError::ParserOk as u32
+        }
+
+        Instruction::SignAvaxMsg => {
+            let tx = avax_msg_from_state!(ctx as *mut parser_context_t);
+            let obj = tx.assume_init_mut();
+            match obj.num_items() {
+                Ok(n) => {
+                    *num_items = n;
+                    ParserError::ParserOk as u32
+                }
+                Err(e) => e as u32,
+            }
         }
 
         _ => todo!(),
@@ -224,7 +251,7 @@ pub unsafe extern "C" fn _getItem(
 
     match tx_type {
         Instruction::SignAvaxTx => {
-            let tx = avax_obj_from_state!(ctx as *mut parser_context_t);
+            let tx = avax_tx_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.render_item(display_idx, key, value, page_idx) {
                 Ok(page) => {
@@ -241,6 +268,18 @@ pub unsafe extern "C" fn _getItem(
             };
             let mut ui = SignUI::new(*hash);
             match zemu_sys::Viewable::render_item(&mut ui, display_idx, key, value, page_idx) {
+                Ok(page) => {
+                    *page_count = page;
+                    ParserError::ParserOk as _
+                }
+                Err(e) => e as _,
+            }
+        }
+
+        Instruction::SignAvaxMsg => {
+            let msg = avax_msg_from_state!(ctx as *mut parser_context_t);
+            let obj = msg.assume_init_mut();
+            match obj.render_item(display_idx, key, value, page_idx) {
                 Ok(page) => {
                     *page_count = page;
                     ParserError::ParserOk as _

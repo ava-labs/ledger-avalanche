@@ -149,6 +149,13 @@ impl<'b> AvaxMessage<'b> {
     pub fn msg(&self) -> &[u8] {
         self.data.msg()
     }
+
+    /// Returns the len of the received message including the header
+    pub fn msg_len(data: &'b [u8]) -> Result<u32, ParserError> {
+        let mut uninit = MaybeUninit::uninit();
+        let rem = Self::from_bytes_into(data, &mut uninit)?;
+        Ok((data.len() - rem.len()) as u32)
+    }
 }
 
 impl<'b> FromBytes<'b> for AvaxMessage<'b> {

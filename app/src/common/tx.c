@@ -110,6 +110,13 @@ const char *tx_avax_parse_hash() {
     return tx_parse();
 }
 
+const char *tx_avax_parse_msg() {
+    MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));
+    ctx_parsed_tx.ins = SignAvaxMsg;
+
+    return tx_parse();
+}
+
 void tx_parse_reset()
 {
     MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));

@@ -11,7 +11,7 @@
 
 /****************************** others ***********************************************************/
 
-parser_error_t _parser_init(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize, uint32_t *alloc_size);
+parser_error_t _parser_init(parser_context_t *ctx, const uint8_t *buffer, size_t bufferSize, uint32_t *alloc_size);
 
 parser_error_t _parser_read(const parser_context_t *c);
 

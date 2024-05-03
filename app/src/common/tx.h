@@ -48,6 +48,10 @@ const char *tx_avax_parse();
 /// plus the hash data to be signed
 const char *tx_avax_parse_hash();
 
+/// Parse an avax message that contains the root path 
+/// plus the message data to be signed
+const char *tx_avax_parse_msg();
+
 /// Return the number of items in the transaction
 zxerr_t tx_getNumItems(uint8_t *num_items);
 

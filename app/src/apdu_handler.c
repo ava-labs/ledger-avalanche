@@ -144,8 +144,8 @@ __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx
     *flags |= IO_ASYNCH_REPLY;
 }
 
-__Z_INLINE void handleSignAvaxTxHash(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    zemu_log("handleSignAvaxTxHash\n");
+__Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignAvaxHash\n");
 
     // we do not need to process_chunk 
     // all data was send in one go
@@ -190,6 +190,31 @@ __Z_INLINE void handleSignAvaxTxHash(volatile uint32_t *flags, volatile uint32_t
         view_review_show(REVIEW_TXN);
     }
 
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleSignAvaxMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignAvaxMsg\n");
+
+    // This is a message that comes with a root path and raw bytes to be signed
+    if (!process_chunk(tx, rx)) {
+        THROW(APDU_CODE_OK);
+    }
+
+    const char *error_msg = tx_avax_parse_msg();
+
+    CHECK_APP_CANARY()
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    view_review_init(tx_getItem, tx_getNumItems, app_sign);
+    view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
 }
 
@@ -245,7 +270,14 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
 
         case AVX_SIGN_HASH: {
             CHECK_PIN_VALIDATED()
-            handleSignAvaxTxHash(flags, tx, rx);
+            handleSignAvaxHash(flags, tx, rx);
+
+            break; 
+        }
+
+        case AVX_SIGN_MSG: {
+            CHECK_PIN_VALIDATED()
+            handleSignAvaxMsg(flags, tx, rx);
 
             break; 
         }

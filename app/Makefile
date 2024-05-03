@@ -79,6 +79,11 @@ $(info ************ LOGGING ENABLED ************)
 endif
 
 # Enable app features depending on the target device
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+RUST_TARGET:=thumbv6m-none-eabi
+APP_FULL:=1
+endif
+
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 RUST_TARGET:=thumbv6m-none-eabi
 APP_FULL:=1
@@ -125,7 +130,7 @@ LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
 
 APP_SOURCE_PATH += $(CURDIR)/rust/include
 APP_CUSTOM_LINK_DEPENDENCIES := rust
-RUST_TARGET:=thumbv6m-none-eabi
+
 .PHONY: rust
 rust:
 	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
