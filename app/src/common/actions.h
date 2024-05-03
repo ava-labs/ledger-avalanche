@@ -75,20 +75,12 @@ __Z_INLINE void app_sign_hash() {
 
 }
 
-__Z_INLINE void app_sign() {
+__Z_INLINE void app_sign(uint16_t offset) {
     zemu_log_stack("app_sign");
 
     // needs to remove the change_path list
     const uint8_t *data = tx_get_buffer();
     const uint16_t data_len = tx_get_buffer_length();
-
-    uint16_t offset = 0;
-
-    if (_tx_data_offset(data, data_len, &offset) != zxerr_ok) {
-        set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
-        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
-        return;
-    }
 
     uint8_t message[CX_SHA256_SIZE];
 
@@ -106,6 +98,33 @@ __Z_INLINE void app_sign() {
         set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     }
+}
+
+__Z_INLINE void app_sign_tx() {
+    zemu_log_stack("app_sign");
+
+    // needs to remove the change_path list
+    const uint8_t *data = tx_get_buffer();
+    const uint16_t data_len = tx_get_buffer_length();
+
+    uint16_t offset = 0;
+
+    // This is necessary so we skip the change_path list
+    if (_tx_data_offset(data, data_len, &offset) != zxerr_ok) {
+        zemu_log_stack("TX_DATA_OFFSET error\n");
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+        return;
+    }
+
+    app_sign(offset);
+}
+
+__Z_INLINE void app_sign_msg() {
+    zemu_log_stack("app_sign");
+
+    // no change paths list at the begining
+    app_sign(0);
 }
 
 __Z_INLINE void app_reject() {
