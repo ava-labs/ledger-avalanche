@@ -20,7 +20,7 @@ use bolos::crypto::bip32::BIP32Path;
 use zemu_sys::{Show, Viewable};
 
 mod ui;
-pub use ui::{AddrUI, AddrUIInitError, AddrUIInitializer};
+pub use ui::{AddrUI, AddrUIInitializer};
 
 use crate::{
     constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
@@ -64,6 +64,44 @@ impl GetPublicKey {
         ui_initializer.finalize().map_err(|(_, err)| err)?;
 
         Ok(())
+    }
+
+    pub fn fill(
+        tx: &mut u32,
+        buffer: ApduBufferRead<'_>,
+        addr_ui: *mut u8,
+        addr_ui_len: u16,
+    ) -> Result<(), Error> {
+        sys::zemu_log_stack("EthGetPublicKey::fill_address\x00");
+
+        if addr_ui.is_null() || addr_ui_len != core::mem::size_of::<MaybeUninit<AddrUI>>() as u16 {
+            return Err(Error::DataInvalid);
+        }
+
+        let req_chaincode = buffer.p2() >= 1;
+        let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
+
+        let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| Error::DataInvalid)?;
+
+        // In this step we initialized and store in memory(allocated from C) our
+        // UI object for later address visualization
+        let ui = unsafe { &mut *addr_ui.cast::<MaybeUninit<AddrUI>>() };
+
+        Self::initialize_ui(bip32_path, req_chaincode, ui)?;
+
+        //safe since it's all initialized now
+        let ui = unsafe { ui.assume_init_mut() };
+
+        //we don't need to show so we execute the "accept" already
+        // this way the "formatting" to `buffer` is all in the ui code
+        let (sz, code) = ui.accept(buffer.write());
+
+        if code != Error::Success as u16 {
+            Err(Error::try_from(code).map_err(|_| Error::ExecutionError)?)
+        } else {
+            *tx = sz as u32;
+            Ok(())
+        }
     }
 }
 

@@ -26,6 +26,7 @@ use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
 
 pub mod context;
+pub mod eth_public_key;
 pub mod public_key;
 pub mod sign_hash;
 use context::{parser_context_t, Instruction};

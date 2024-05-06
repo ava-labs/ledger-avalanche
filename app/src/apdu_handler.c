@@ -22,6 +22,7 @@
 
 #include "actions.h"
 #include "addr.h"
+#include "eth_addr.h"
 #include "app_main.h"
 #include "coin.h"
 #include "crypto.h"
@@ -159,7 +160,6 @@ process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
     const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
 
     if (G_io_apdu_buffer[OFFSET_P2] != 0) {
-        zemu_log("invalid_p2???\n");
         THROW(APDU_CODE_INVALIDP1P2);
     }
 
@@ -177,7 +177,6 @@ process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
     uint64_t added;
     switch (payloadType) {
         case P1_ETH_FIRST:
-            zemu_log("P1_ETH_FIRST\n");
             tx_initialize();
             tx_reset();
             extract_eth_path(rx, OFFSET_DATA);
@@ -196,7 +195,6 @@ process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
             // now process the chunk
             len -= path_len + 1;
             if (get_tx_rlp_len(data, len, &read, &to_read) != rlp_ok) {
-                zemu_log("error rlp_decoding\n");
                 THROW(APDU_CODE_DATA_INVALID);
             }
 
@@ -214,12 +212,10 @@ process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
             // if the number of bytes read and the number of bytes to read
             //  is the same as what we read...
             if ((saturating_add(read, to_read) - len) == 0) {
-                zemu_log("received_all_data1!\n");
                 return true;
             }
             return false;
         case P1_ETH_MORE:
-            zemu_log("P1_ETH_MORE\n");
             if (!tx_initialized) {
                 THROW(APDU_CODE_TX_NOT_INITIALIZED);
             }
@@ -251,7 +247,6 @@ process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
             // check if this chunk was the last one
             if (missing - len == 0) {
                 tx_initialized = false;
-                zemu_log("received_all_data2!\n");
                 return true;
             }
 
@@ -278,6 +273,34 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
 
     THROW(APDU_CODE_OK);
 }
+
+__Z_INLINE void
+handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
+{
+    extract_eth_path(rx, OFFSET_DATA);
+    zemu_log("handleGetAddrEth\n");
+
+    uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
+
+    // if (with_code != P2_CHAINCODE && with_code != P2_NO_CHAINCODE)
+    //     zemu_log("invalid_p2\n");
+    //     THROW(APDU_CODE_INVALIDP1P2);
+    //
+    zxerr_t zxerr = fill_eth_address(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    if (zxerr != zxerr_ok) {
+        *tx = 0;
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+    if (requireConfirmation) {
+        view_review_init(eth_addr_getItem, eth_addr_getNumItems, app_reply_address);
+        view_review_show(REVIEW_ADDRESS);
+        *flags |= IO_ASYNCH_REPLY;
+        return;
+    }
+    *tx = action_addrResponseLen;
+    THROW(APDU_CODE_OK);
+}
+
 
 __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignAvaxTx\n");
@@ -480,11 +503,11 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
             handleSignEthTx(flags, tx, rx);
             break;
         }
-        // case INS_ETH_GET_PUBLIC_KEY: {
-        //     CHECK_PIN_VALIDATED()
-        //     handleGetAddr(flags, tx, rx);
-        //     break;
-        // }
+        case INS_ETH_GET_PUBLIC_KEY: {
+            CHECK_PIN_VALIDATED()
+            handleGetAddrEth(flags, tx, rx);
+            break;
+        }
         // case INS_ETH_GET_APP_CONFIGURATION: {
         //     CHECK_PIN_VALIDATED()
         //     handleSignAvaxTx(flags, tx, rx);
@@ -537,13 +560,11 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             }
 
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
-                zemu_log("calling avax_dispatch\n");
                 avax_dispatch(flags, tx, rx);
             } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
                 zemu_log_stack("calling eth_dispath\n");
                 eth_dispatch(flags, tx, rx);
             } else {
-                zemu_log("apdu_code not supported");
                 THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }
 

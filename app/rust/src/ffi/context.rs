@@ -53,9 +53,6 @@ impl TryFrom<u8> for Instruction {
     type Error = ParserError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value == 1 {
-            crate::zlog("Instruction::SignEthTx\n");
-        }
         match value {
             0 => Ok(Instruction::SignAvaxTx),
             1 => Ok(Instruction::SignEthTx),

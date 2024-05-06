@@ -31,40 +31,38 @@
 #define MAX_CHAIN_CB58_LEN 50
 #define CHAIN_ID_CHECKSUM_SIZE 4
 #define CHAIN_CODE_LEN 32
-#define ADDR_UI_MAX_SIZE 61
+#define ADDR_UI_MAX_SIZE 32
 
 // Use to hold the addr_ui object, used by rust to display the address
 addr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
 
 
 
-zxerr_t fill_address(
+zxerr_t fill_eth_address(
     uint32_t *flags,
     uint32_t *tx,
     uint32_t rx,
     uint8_t *buffer,
     uint16_t buffer_len
 ) {
-
-    zemu_log("fill_address\n");
-
-    zxerr_t err = _app_fill_address(tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, addr_ui_obj, ADDR_UI_MAX_SIZE);
+    zxerr_t err = _fill_eth_address(tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, addr_ui_obj, ADDR_UI_MAX_SIZE);
 
     if (err != zxerr_ok)
         action_addrResponseLen = 0;
 
+    zemu_log("fill_address done\n");
     action_addrResponseLen = *tx;
     return err;
 }
 
-zxerr_t addr_getNumItems(uint8_t *num_items) {
+zxerr_t eth_addr_getNumItems(uint8_t *num_items) {
     if (num_items == NULL) {
         return zxerr_no_data;
     }
-    return _addr_num_items(addr_ui_obj, num_items);
+    return _eth_addr_num_items(addr_ui_obj, num_items);
 }
 
-zxerr_t addr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
+zxerr_t eth_addr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
                      uint8_t *pageCount) {
-    return _addr_get_item(addr_ui_obj, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
+    return _eth_addr_get_item(addr_ui_obj, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }
