@@ -236,6 +236,11 @@ zxerr_t crypto_sign_eth(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t
 
     // Check this or use our rust implementation?
     tx_compute_eth_v(info, &v);
+    {
+        char data[100];
+        snprintf(data, sizeof(data), "****V: %d", v);
+        zemu_log(data);
+    }
 
     // need to reorder signature as hw-eth-app expects v at the beginning.
     // so rsv -> vrs

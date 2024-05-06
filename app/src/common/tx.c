@@ -170,7 +170,7 @@ zxerr_t tx_getItem(int8_t displayIdx,
     return zxerr_ok;
 }
 
-tx_compute_eth_v(unsigned int info, uint8_t *v) {
+void tx_compute_eth_v(unsigned int info, uint8_t *v) {
     parser_compute_eth_v(&ctx_parsed_tx, info, v);
 }
 

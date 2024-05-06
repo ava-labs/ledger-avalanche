@@ -21,6 +21,7 @@ use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
 use crate::parser::{
     parse_path_list, AvaxMessage, DisplayableItem, EthTransaction, ObjectList, PathWrapper,
+    U32_SIZE, U64_SIZE,
 };
 use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
@@ -364,6 +365,10 @@ pub unsafe extern "C" fn _tx_data_offset(
 #[no_mangle]
 pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: *mut u8) {
     let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
+    let data = core::slice::from_raw_parts((*ctx).buffer, (*ctx).buffer_len as _);
+    // For a weird reason we need to parse again to validate internal pointers,
+    // need to investigate more this.
+    _ = EthTransaction::from_bytes_into(data, tx);
     let tx = tx.assume_init_mut();
 
     let chain_id = tx.chain_id();
@@ -372,7 +377,7 @@ pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: 
     if tx.raw_tx_type().is_some() {
         //write V, which is the oddity of the signature
         *v = parity;
-    } else if chain_id.is_none() {
+    } else if chain_id.is_empty() {
         // according to app-ethereum this is the legacy non eip155 conformant
         // so V should be made before EIP155 which had
         // 27 + {0, 1}
@@ -386,7 +391,13 @@ pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: 
         // this is not good but it relies on hw-eth-app lib from ledger
         // to recover the right chain_id from the V component being computed here, and
         // which is returned with the signature
-        let chain_id = chain_id.unwrap();
-        *v = (35 + parity as u32).saturating_add((chain_id as u32) << 1) as u8;
+        // Ensure that leading is not greater than U32_SIZE
+        let len = core::cmp::min(U32_SIZE, chain_id.len());
+        // unwrap here as chain_id is not empty neither grater that u64_size
+        let id = crate::parser::bytes_to_u64(&chain_id[..len]).unwrap();
+
+        let x = (35 + parity as u32).saturating_add((id as u32) << 1);
+
+        *v = x as u8;
     }
 }

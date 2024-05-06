@@ -62,6 +62,7 @@ zxerr_t _addr_get_item(
     uint8_t *page_count);
 
 zxerr_t _eth_addr_num_items(uint8_t *addr_obj, uint16_t *num_items);
+
 zxerr_t _eth_addr_get_item(
     uint8_t *addr_obj,
     uint8_t display_idx,
@@ -74,7 +75,7 @@ zxerr_t _eth_addr_get_item(
 
 // Set on the rust side the root path. 
 // path_len is in bytes
-_set_root_path(const uint8_t *path, uint16_t path_len);
+void _set_root_path(const uint8_t *path, uint16_t path_len);
 
 // Set the AVAX transaction hash, for the next step where we sign that hash with a list 
 // of signers.
@@ -90,8 +91,6 @@ zxerr_t _get_signing_info(uint32_t *path, uint16_t path_len, uint8_t *input, uin
 
 parser_error_t _parse_sign_hash_tx(uint8_t *input,  uint16_t len);
 
-_clean_up_hash();
+void _clean_up_hash();
 
-_computeV(parser_context_t *ctx, uint8_t parity, uint8_t *v);
-
-
+void _computeV(parser_context_t *ctx, uint8_t parity, uint8_t *v);

@@ -27,7 +27,7 @@ pub struct Eip2930<'b> {
     // is an u32, u8, u64
     // considering this might
     // come from an avax C-Chain
-    chain_id: Option<u64>,
+    chain_id: &'b [u8],
     pub base: BaseLegacy<'b>,
     access_list: &'b [u8],
     // R and S must be empty
@@ -37,7 +37,7 @@ pub struct Eip2930<'b> {
 }
 
 impl<'b> Eip2930<'b> {
-    pub fn chain_id(&self) -> Option<u64> {
+    pub fn chain_id(&self) -> &'b [u8] {
         self.chain_id
     }
 }
@@ -79,7 +79,7 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
         }
 
         unsafe {
-            addr_of_mut!((*out).chain_id).write(Some(chain_id));
+            addr_of_mut!((*out).chain_id).write(id_bytes);
             addr_of_mut!((*out).access_list).write(access_list);
         }
 

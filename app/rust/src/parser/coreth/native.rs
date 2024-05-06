@@ -180,7 +180,7 @@ impl<'b> EthTransaction<'b> {
         }
     }
 
-    pub fn chain_id(&self) -> Option<u64> {
+    pub fn chain_id(&self) -> &'b [u8] {
         match self {
             Self::Legacy(t) => t.chain_id(),
             Self::Eip1559(t) => t.chain_id(),

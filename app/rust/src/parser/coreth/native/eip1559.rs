@@ -35,7 +35,7 @@ use crate::{
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip1559<'b> {
-    chain_id: Option<u64>,
+    chain_id: &'b [u8],
     pub nonce: BorrowedU256<'b>,
     pub priority_fee: BorrowedU256<'b>,
     pub max_fee: BorrowedU256<'b>,
@@ -52,7 +52,7 @@ pub struct Eip1559<'b> {
 }
 
 impl<'b> Eip1559<'b> {
-    pub fn chain_id(&self) -> Option<u64> {
+    pub fn chain_id(&self) -> &'b [u8] {
         self.chain_id
     }
 }
@@ -145,7 +145,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
             addr_of_mut!((*out).gas_limit).write(gas_limit);
             addr_of_mut!((*out).to).write(address);
             addr_of_mut!((*out).value).write(value);
-            addr_of_mut!((*out).chain_id).write(Some(chain_id));
+            addr_of_mut!((*out).chain_id).write(id_bytes);
             addr_of_mut!((*out).access_list).write(access_list);
         }
 
