@@ -37,6 +37,10 @@ extern "C" {
 #define MODIFIER_NSK 0x01
 #define MODIFIER_OVK 0x02
 
+#define BLAKE2B_256_SIZE            32
+#define KECCAK_256_SIZE             32
+
+
 
 #ifdef __cplusplus
 }

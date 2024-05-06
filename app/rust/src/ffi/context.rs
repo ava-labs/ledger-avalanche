@@ -33,7 +33,14 @@ pub struct parse_tx_t {
     pub len: u16,
 }
 
-#[repr(u8)]
+// typedef enum {
+//     SignAvaxTx = 0x00,
+//     SignEthTx,
+//     SignAvaxMsg,
+//     SignEthMsg,
+//     SignAvaxHash
+// } instruction_t;
+#[repr(C)]
 pub enum Instruction {
     SignAvaxTx = 0x00,
     SignEthTx,
@@ -46,15 +53,15 @@ impl TryFrom<u8> for Instruction {
     type Error = ParserError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value == 2 {
-            crate::zlog("SignAvaxMsg\x00");
+        if value == 1 {
+            crate::zlog("Instruction::SignEthTx\n");
         }
         match value {
-            0x00 => Ok(Instruction::SignAvaxTx),
-            0x01 => Ok(Instruction::SignEthTx),
-            0x02 => Ok(Instruction::SignAvaxMsg),
-            0x03 => Ok(Instruction::SignEthMsg),
-            0x04 => Ok(Instruction::SignAvaxHash),
+            0 => Ok(Instruction::SignAvaxTx),
+            1 => Ok(Instruction::SignEthTx),
+            2 => Ok(Instruction::SignAvaxMsg),
+            3 => Ok(Instruction::SignEthMsg),
+            4 => Ok(Instruction::SignAvaxHash),
             _ => Err(ParserError::InvalidTransactionType),
         }
     }

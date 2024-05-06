@@ -35,7 +35,7 @@ use crate::{
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Eip1559<'b> {
-    chain_id: &'b [u8],
+    chain_id: Option<u64>,
     pub nonce: BorrowedU256<'b>,
     pub priority_fee: BorrowedU256<'b>,
     pub max_fee: BorrowedU256<'b>,
@@ -52,7 +52,7 @@ pub struct Eip1559<'b> {
 }
 
 impl<'b> Eip1559<'b> {
-    pub fn chain_id(&self) -> &'b [u8] {
+    pub fn chain_id(&self) -> Option<u64> {
         self.chain_id
     }
 }
@@ -117,12 +117,13 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
             return Err(ParserError::InvalidAssetCall.into());
         }
 
+        let chain_id = super::bytes_to_u64(id_bytes)?;
+
         // check for erc721 call and chainID
         #[cfg(feature = "erc721")]
         {
             let data = unsafe { &*data_out.as_ptr() };
             if matches!(data, EthData::Erc721(..)) {
-                let chain_id = super::bytes_to_u64(id_bytes)?;
                 let contract_chain_id = crate::parser::ERC721Info::get_nft_info()?.chain_id;
                 if chain_id != contract_chain_id {
                     return Err(ParserError::InvalidAssetCall.into());
@@ -144,7 +145,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
             addr_of_mut!((*out).gas_limit).write(gas_limit);
             addr_of_mut!((*out).to).write(address);
             addr_of_mut!((*out).value).write(value);
-            addr_of_mut!((*out).chain_id).write(id_bytes);
+            addr_of_mut!((*out).chain_id).write(Some(chain_id));
             addr_of_mut!((*out).access_list).write(access_list);
         }
 

@@ -27,6 +27,11 @@ extern "C" {
 #include "zxerror.h"
 
 extern uint32_t hdPath[HDPATH_LEN_DEFAULT];
+extern uint32_t hdPath_len;
+
+zxerr_t keccak_digest(const unsigned char *in, unsigned int inLen,
+                        unsigned char *out, unsigned int outLen);
+
 
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen);
 

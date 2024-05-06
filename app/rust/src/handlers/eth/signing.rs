@@ -253,7 +253,8 @@ impl Viewable for SignUI {
             tx += 1;
         } else {
             let chain_id = self.tx.chain_id();
-            if chain_id.is_empty() {
+            // if chain_id.is_empty() {
+            if chain_id.is_none() {
                 // according to app-ethereum this is the legacy non eip155 conformant
                 // so V should be made before EIP155 which had
                 // 27 + {0, 1}
@@ -267,12 +268,13 @@ impl Viewable for SignUI {
                 // this is not good but it relies on hw-eth-app lib from ledger
                 // to recover the right chain_id from the V component being computed here, and
                 // which is returned with the signature
-                let len = core::cmp::min(U32_SIZE, chain_id.len());
-                if let Ok(chain_id) = bytes_to_u64(&chain_id[..len]) {
-                    let v = (35 + flags.contains(ECCInfo::ParityOdd) as u32)
-                        .saturating_add((chain_id as u32) << 1);
-                    out[tx] = v as u8;
-                }
+                let chain_id = chain_id.unwrap();
+                // let len = core::cmp::min(U32_SIZE, chain_id.len());
+                // if let Ok(chain_id) = bytes_to_u64(&chain_id[..len]) {
+                let v = (35 + flags.contains(ECCInfo::ParityOdd) as u32)
+                    .saturating_add((chain_id as u32) << 1);
+                out[tx] = v as u8;
+                // }
             }
             tx += 1;
         }

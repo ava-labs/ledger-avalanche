@@ -19,12 +19,13 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::constants::{BIP32_PATH_SUFFIX_DEPTH, SIGN_HASH_TX_SIZE};
 use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
-use crate::parser::{parse_path_list, AvaxMessage, DisplayableItem, ObjectList, PathWrapper};
+use crate::parser::{
+    parse_path_list, AvaxMessage, DisplayableItem, EthTransaction, ObjectList, PathWrapper,
+};
 use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
 
 pub mod context;
-pub mod message;
 pub mod public_key;
 pub mod sign_hash;
 use context::{parser_context_t, Instruction};
@@ -42,11 +43,13 @@ macro_rules! avax_msg_from_state {
         unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<AvaxMessage>>()) }
     };
 }
-/// #Safety
-/// Enough space was allocated to store an Avalanche Transaction
-// unsafe fn parse_obj_from_state<'a>(tx: *mut parse_tx_t) -> Option<&'a mut Transaction<'a>> {
-//     ((*tx).state as *const u8 as *mut Transaction).as_mut()
-// }
+
+/// Cast a *mut u8 to a *mut Transaction
+macro_rules! eth_tx_from_state {
+    ($ptr:expr) => {
+        unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<EthTransaction>>()) }
+    };
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn _parser_init(
@@ -69,9 +72,7 @@ pub unsafe extern "C" fn _parser_init(
     // our global state
     let size = match ins {
         Instruction::SignAvaxTx => core::mem::size_of::<MaybeUninit<Transaction>>() as u32,
-        Instruction::SignEthTx => {
-            return ParserError::UnexpectedError as u32;
-        }
+        Instruction::SignEthTx => core::mem::size_of::<MaybeUninit<EthTransaction>>() as u32,
         Instruction::SignAvaxMsg => core::mem::size_of::<MaybeUninit<AvaxMessage>>() as u32,
         Instruction::SignEthMsg => {
             return ParserError::UnexpectedError as u32;
@@ -150,6 +151,14 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
             }
         }
 
+        Instruction::SignEthTx => {
+            let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
+            match EthTransaction::from_bytes_into(data, tx) {
+                Ok(_) => ParserError::ParserOk as u32,
+                Err(_) => ParserError::InvalidTransactionType as u32,
+            }
+        }
+
         Instruction::SignAvaxHash => {
             if let Err(e) = SignHash::parse_hash(data) {
                 return e as u32;
@@ -207,6 +216,18 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
 
         Instruction::SignAvaxMsg => {
             let tx = avax_msg_from_state!(ctx as *mut parser_context_t);
+            let obj = tx.assume_init_mut();
+            match obj.num_items() {
+                Ok(n) => {
+                    *num_items = n;
+                    ParserError::ParserOk as u32
+                }
+                Err(e) => e as u32,
+            }
+        }
+
+        Instruction::SignEthTx => {
+            let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.num_items() {
                 Ok(n) => {
@@ -288,6 +309,18 @@ pub unsafe extern "C" fn _getItem(
             }
         }
 
+        Instruction::SignEthTx => {
+            let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
+            let obj = tx.assume_init_mut();
+            match obj.render_item(display_idx, key, value, page_idx) {
+                Ok(page) => {
+                    *page_count = page;
+                    ParserError::ParserOk as _
+                }
+                Err(e) => e as _,
+            }
+        }
+
         _ => todo!(),
     }
 }
@@ -322,4 +355,37 @@ pub unsafe extern "C" fn _tx_data_offset(
     *offset = buffer_len - rem.len() as u16;
 
     ZxError::Ok as _
+}
+
+// Use to compute the V component of the signature
+// for eth transactions. this is required for the app_ethereum js application
+// to compute the real V from this bytes
+#[no_mangle]
+pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: *mut u8) {
+    let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
+    let tx = tx.assume_init_mut();
+
+    let chain_id = tx.chain_id();
+
+    // Check for typed transactions
+    if tx.raw_tx_type().is_some() {
+        //write V, which is the oddity of the signature
+        *v = parity;
+    } else if chain_id.is_none() {
+        // according to app-ethereum this is the legacy non eip155 conformant
+        // so V should be made before EIP155 which had
+        // 27 + {0, 1}
+        // 27, decided by the parity of Y
+        // see https://bitcoin.stackexchange.com/a/112489
+        //     https://ethereum.stackexchange.com/a/113505
+        //     https://eips.ethereum.org/EIPS/eip-155
+        *v = 27 + parity;
+    } else {
+        // app-ethereum reads the first 4 bytes then cast it to an u8
+        // this is not good but it relies on hw-eth-app lib from ledger
+        // to recover the right chain_id from the V component being computed here, and
+        // which is returned with the signature
+        let chain_id = chain_id.unwrap();
+        *v = (35 + parity as u32).saturating_add((chain_id as u32) << 1) as u8;
+    }
 }

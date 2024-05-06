@@ -19,6 +19,7 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
+use super::EthChainId;
 use crate::parser::U64_SIZE;
 use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
@@ -28,7 +29,7 @@ const MAX_CHAIN_LEN: usize = U64_SIZE;
 #[cfg_attr(test, derive(Debug))]
 pub struct Legacy<'b> {
     pub base: BaseLegacy<'b>,
-    chain_id: &'b [u8],
+    chain_id: Option<u64>,
     // R and S must be empty
     // so do not put and empty
     // field here, it is just to indicate
@@ -36,7 +37,7 @@ pub struct Legacy<'b> {
 }
 
 impl<'b> Legacy<'b> {
-    pub fn chain_id(&self) -> &'b [u8] {
+    pub fn chain_id(&self) -> Option<u64> {
         self.chain_id
     }
 }
@@ -61,7 +62,7 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
             unsafe {
                 // write an empty chain-id as it is used to compute the right V component
                 // when transaction is signed
-                addr_of_mut!((*out).chain_id).write(&[]);
+                addr_of_mut!((*out).chain_id).write(None);
             }
 
             return Ok(&[]);
@@ -92,6 +93,7 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         // r and s if not empty, should contain only one value
         // which must be zero.
         if !r.is_empty() && !s.is_empty() {
+            crate::sys::zemu_log_stack("r_s_not_empty\x00");
             let no_zero = r.iter().any(|v| *v != 0) && s.iter().any(|v| *v != 0);
             if no_zero || r.len() != 1 || s.len() != 1 {
                 crate::sys::zemu_log_stack("Legacy::invalid_r_s\x00");
@@ -104,8 +106,10 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
             return Err(ParserError::InvalidChainId.into());
         }
 
+        let id = super::bytes_to_u64(id_bytes)?;
+
         unsafe {
-            addr_of_mut!((*out).chain_id).write(id_bytes);
+            addr_of_mut!((*out).chain_id).write(Some(id));
         }
 
         Ok(rem)

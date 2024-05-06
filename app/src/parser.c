@@ -70,18 +70,21 @@ parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer,
 parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen) {
     ctx->tx_obj.state = NULL;
     ctx->tx_obj.len = 0;
-    CHECK_ERROR(_parser_init(ctx, data, dataLen, &(ctx->tx_obj.len )));
+    uint16_t size = 0;
 
-    if (ctx->tx_obj.len == 0) {
+    CHECK_ERROR(_parser_init(ctx, data, dataLen, &size));
+
+    if (size == 0) {
         return parser_context_unexpected_size;
     }
+    ctx->tx_obj.len = size;
 
     if(parser_allocate(&ctx->tx_obj) != zxerr_ok) {
         return parser_init_context_empty ;
     }
 
     parser_error_t err = _parser_read(ctx);
-    return err;
+    return err; 
 }
 
 parser_error_t parser_validate(parser_context_t *ctx) {
@@ -137,3 +140,12 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     zemu_log_stack("parser_getItem\n");
     return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }
+
+parser_compute_eth_v(parser_context_t *ctx, unsigned int info,
+                                    uint8_t *v) {
+
+    uint8_t parity = (info & CX_ECCINFO_PARITY_ODD) == 1;
+
+    _computeV(ctx, parity, v);
+}
+

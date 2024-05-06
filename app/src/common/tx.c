@@ -117,6 +117,13 @@ const char *tx_avax_parse_msg() {
     return tx_parse();
 }
 
+const char *tx_eth_parse() {
+    MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));
+    ctx_parsed_tx.ins = SignEthTx;
+
+    return tx_parse();
+}
+
 void tx_parse_reset()
 {
     MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));
@@ -162,3 +169,8 @@ zxerr_t tx_getItem(int8_t displayIdx,
 
     return zxerr_ok;
 }
+
+tx_compute_eth_v(unsigned int info, uint8_t *v) {
+    parser_compute_eth_v(&ctx_parsed_tx, info, v);
+}
+

@@ -30,7 +30,11 @@ extern "C" {
 #define HDPATH_3_DEFAULT (0u)
 #define HDPATH_4_DEFAULT (0u)
 
+#define HDPATH_ETH_0_DEFAULT (0x80000000u | 0x2cu)
+#define HDPATH_ETH_1_DEFAULT (0x80000000u | 0x3cu)
+
 #define SECP256K1_PK_LEN 65u
+#define SECP256K1_SK_LEN 64u
 
 #define SK_LEN_25519 64u
 #define SCALAR_LEN_ED25519 32u
@@ -49,9 +53,10 @@ extern "C" {
 #define APPVERSION_LINE1 "Avalanche"
 #define APPVERSION_LINE2 "v" APPVERSION
 
-// AVAX instructions:
 #define AVX_CLA 0x80
+#define ETH_CLA 0xE0
 
+// AVAX instructions:
 #define AVX_INS_GET_VERSION 0x00
 #define AVX_INS_GET_WALLET_ID 0x01
 #define AVX_GET_PUBLIC_KEY 0x02
@@ -59,6 +64,16 @@ extern "C" {
 #define AVX_SIGN_HASH 0x04
 #define AVX_SIGN 5
 #define AVX_SIGN_MSG 0x06
+
+
+// ETH instructions:
+#define INS_ETH_GET_PUBLIC_KEY 0x02
+#define INS_ETH_SIGN 4
+#define INS_ETH_GET_APP_CONFIGURATION 0x06
+#define INS_SET_PLUGIN 0x16
+#define INS_PROVIDE_NFT_INFORMATION 0x14
+#define INS_ETH_PROVIDE_ERC20 0x0A
+#define INS_SIGN_ETH_MSG 0x08
 // Definitions use to handle hash signing
 // if P1 == FIRST_MESSAGE, it means we have in front of a normal 
 // hash signing where the received path is the root path and a hash 
@@ -69,6 +84,13 @@ extern "C" {
 #define FIRST_MESSAGE 0x01
 #define NEXT_MESSAGE 0x03
 #define LAST_MESSAGE 0x02
+
+// transaction is sent as a blob of rlp encoded bytes,
+#define P1_ETH_FIRST                    0x00
+#define P1_ETH_MORE                     0x80
+// eth address chain_code allowed valuec
+#define P2_NO_CHAINCODE                 0x00
+#define P2_CHAINCODE                    0x01
 
 #ifdef __cplusplus
 }

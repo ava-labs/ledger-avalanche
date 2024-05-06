@@ -27,7 +27,7 @@ pub struct Eip2930<'b> {
     // is an u32, u8, u64
     // considering this might
     // come from an avax C-Chain
-    chain_id: &'b [u8],
+    chain_id: Option<u64>,
     pub base: BaseLegacy<'b>,
     access_list: &'b [u8],
     // R and S must be empty
@@ -37,7 +37,7 @@ pub struct Eip2930<'b> {
 }
 
 impl<'b> Eip2930<'b> {
-    pub fn chain_id(&self) -> &'b [u8] {
+    pub fn chain_id(&self) -> Option<u64> {
         self.chain_id
     }
 }
@@ -64,12 +64,13 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
         // access list
         let (rem, access_list) = parse_rlp_item(rem)?;
 
+        let chain_id = super::bytes_to_u64(id_bytes)?;
+
         // check for erc721 call and chainID
         #[cfg(feature = "erc721")]
         {
             let base = unsafe { &*data_out.as_ptr() };
             if matches!(base.data, crate::parser::EthData::Erc721(..)) {
-                let chain_id = super::bytes_to_u64(id_bytes)?;
                 let contract_chain_id = crate::parser::ERC721Info::get_nft_info()?.chain_id;
                 if chain_id != contract_chain_id {
                     return Err(ParserError::InvalidAssetCall.into());
@@ -78,7 +79,7 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
         }
 
         unsafe {
-            addr_of_mut!((*out).chain_id).write(id_bytes);
+            addr_of_mut!((*out).chain_id).write(Some(chain_id));
             addr_of_mut!((*out).access_list).write(access_list);
         }
 
