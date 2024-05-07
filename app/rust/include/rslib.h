@@ -94,3 +94,6 @@ parser_error_t _parse_sign_hash_tx(uint8_t *input,  uint16_t len);
 void _clean_up_hash();
 
 void _computeV(parser_context_t *ctx, uint8_t parity, uint8_t *v);
+
+zxerr_t _process_nft_info(uint8_t *buffer, uint16_t buffer_len);
+

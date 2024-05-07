@@ -21,13 +21,14 @@ use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
 use crate::parser::{
     parse_path_list, AvaxMessage, DisplayableItem, EthTransaction, ObjectList, PathWrapper,
-    U32_SIZE, U64_SIZE,
+    U32_SIZE,
 };
 use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
 
 pub mod context;
 pub mod eth_public_key;
+pub mod nft_info;
 pub mod public_key;
 pub mod sign_hash;
 use context::{parser_context_t, Instruction};

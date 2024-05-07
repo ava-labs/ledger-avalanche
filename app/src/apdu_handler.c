@@ -426,6 +426,33 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
     *flags |= IO_ASYNCH_REPLY;
 }
 
+__Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleNftInfo\n");
+
+    // the hw-app-eth sends all the data that is required for this.
+    // it is arount 90 bytes length so It should error in case It received
+    // less than that
+    zxerr_t err = _process_nft_info(&G_io_apdu_buffer[OFFSET_DATA], rx - OFFSET_DATA);
+    zemu_log("processed_nft_info\n");
+
+    CHECK_APP_CANARY()
+
+    if (err != zxerr_ok) {
+        char *error_msg = "Error processing NFT info";
+        zemu_log("processed_nft_info error\n");
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    zemu_log("processed_nft_info ok\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+
 
 __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile uint32_t *tx) {
     G_io_apdu_buffer[0] = 0;
@@ -521,13 +548,14 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
         //     break; 
         // }
         //
-        // case INS_PROVIDE_NFT_INFORMATION: {
-        //     CHECK_PIN_VALIDATED()
-        //     handleSignAvaxMsg(flags, tx, rx);
-        //
-        //     break; 
-        // }
-        //
+        case INS_PROVIDE_NFT_INFORMATION: {
+            zemu_log("INS_PROVIDE_NFT_INFORMATION\n");
+            CHECK_PIN_VALIDATED()
+            handleNftInfo(flags, tx, rx);
+
+            break; 
+        }
+
         // case INS_ETH_PROVIDE_ERC20: {
         //     CHECK_PIN_VALIDATED()
         //     handleSignAvaxMsg(flags, tx, rx);

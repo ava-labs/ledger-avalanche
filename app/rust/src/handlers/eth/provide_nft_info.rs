@@ -19,7 +19,7 @@ pub struct Info;
 
 #[cfg(feature = "erc721")]
 impl Info {
-    fn process(input: &[u8]) -> Result<(), Error> {
+    pub fn process(input: &[u8]) -> Result<(), Error> {
         // skip type and version
         let mut nft_info = core::mem::MaybeUninit::uninit();
 
