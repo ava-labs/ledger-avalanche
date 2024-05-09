@@ -21,6 +21,8 @@
 #include "parser_common.h"
 #include <string.h>
 #include "zxmacros.h"
+// TODO: Remove later
+#include "rslib.h"
 
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
 #define RAM_BUFFER_SIZE 8192
@@ -173,4 +175,3 @@ zxerr_t tx_getItem(int8_t displayIdx,
 void tx_compute_eth_v(unsigned int info, uint8_t *v) {
     parser_compute_eth_v(&ctx_parsed_tx, info, v);
 }
-

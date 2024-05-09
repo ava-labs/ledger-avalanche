@@ -38,6 +38,14 @@ impl<'b> Legacy<'b> {
     pub fn chain_id(&self) -> &'b [u8] {
         self.chain_id
     }
+
+    pub fn chain_id_u64(&self) -> u64 {
+        if self.chain_id.is_empty() {
+            0
+        } else {
+            super::bytes_to_u64(self.chain_id).unwrap()
+        }
+    }
 }
 
 impl<'b> FromBytes<'b> for Legacy<'b> {

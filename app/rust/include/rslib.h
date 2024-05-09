@@ -97,3 +97,5 @@ void _computeV(parser_context_t *ctx, uint8_t parity, uint8_t *v);
 
 zxerr_t _process_nft_info(uint8_t *buffer, uint16_t buffer_len);
 
+uint64_t _eth_chain_id(parser_context_t *ctx);
+

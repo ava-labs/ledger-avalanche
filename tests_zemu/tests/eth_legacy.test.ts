@@ -18,29 +18,29 @@ import Zemu from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
-import { Transaction } from "@ethereumjs/tx";
+import { Transaction } from '@ethereumjs/tx'
 import { Common } from '@ethereumjs/common'
-import { bufArrToArr } from "@ethereumjs/util";
-import { RLP } from "@ethereumjs/rlp";
+import { bufArrToArr } from '@ethereumjs/util'
+import { RLP } from '@ethereumjs/rlp'
 import { ec } from 'elliptic'
 
 jest.setTimeout(200000)
 
 type NftInfo = {
-  token_address: string,
-  token_name: string,
-  chain_id: number,
+  token_address: string
+  token_name: string
+  chain_id: number
 }
 
 type Op = {
-  to?: string,
-  value?: string,
-  data?: string,
+  to?: string
+  value?: string
+  data?: string
 }
 type TestData = {
-  name: string,
-  op: Op,
-  nft_info?: NftInfo,
+  name: string
+  op: Op
+  nft_info?: NftInfo
   chainId?: number
 }
 const SIGN_TEST_DATA: TestData[] = [
@@ -122,7 +122,6 @@ const SIGN_TEST_DATA: TestData[] = [
 ]
 
 const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
-
   const txParams = {
     nonce: '0x00',
     gasPrice: '0x6d6e2edc00',
@@ -143,27 +142,25 @@ const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
   unsignedTx = Buffer.from(RLP.encode(bufArrToArr(unsignedTx)))
 
   return unsignedTx
-
-};
+}
 
 // an alternative verification method for legacy transactions, taken from obsidian
 // which uses the ethereumIS library
 function check_legacy_signature(hexTx: string, signature: any, chainId: number | undefined) {
-  const ethTx = Buffer.from(hexTx, 'hex');
+  const ethTx = Buffer.from(hexTx, 'hex')
 
   const chain = Common.custom({ name: 'avalanche', networkId: 1, chainId }, { baseChain: 1 })
   const tx_options = chainId !== undefined ? { common: chain } : undefined
 
-  const txnBufsDecoded: any = RLP.decode(ethTx).slice(0, 6);
-  const txnBufsMap = [signature.v, signature.r, signature.s].map(a => Buffer.from(((a.length % 2 == 1) ? '0' + a : a), 'hex'));
+  const txnBufsDecoded: any = RLP.decode(ethTx).slice(0, 6)
+  const txnBufsMap = [signature.v, signature.r, signature.s].map(a => Buffer.from(a.length % 2 == 1 ? '0' + a : a, 'hex'))
 
-  const txnBufs = txnBufsDecoded.concat(txnBufsMap);
+  const txnBufs = txnBufsDecoded.concat(txnBufsMap)
 
-  const ethTxObj = Transaction.fromValuesArray(txnBufs, tx_options);
+  const ethTxObj = Transaction.fromValuesArray(txnBufs, tx_options)
 
   return ethTxObj.verifySignature()
 }
-
 
 describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
@@ -175,7 +172,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
 
       const currentScreen = await sim.snapshot()
-      const msg = rawUnsignedLegacyTransaction(data.op, data.chainId);
+      const msg = rawUnsignedLegacyTransaction(data.op, data.chainId)
 
       const nft = data.nft_info
       if (nft !== undefined) {
@@ -196,21 +193,6 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       expect(resp).toHaveProperty('v')
 
       //Verify signature
-      const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
-
-      const EC = new ec("secp256k1");
-      const sha3 = require('js-sha3');
-      const msgHash = sha3.keccak256(msg);
-
-      const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
-      const signature_obj = {
-        r: Buffer.from(resp.r, 'hex'),
-        s: Buffer.from(resp.s, 'hex'),
-      }
-
-      const signatureOK = EC.verify(msgHash, signature_obj, pubKey, 'hex')
-      expect(signatureOK).toEqual(true)
-
       // alternative verification to be safe
       const test = check_legacy_signature(msg.toString('hex'), resp, data.chainId)
       expect(test).toEqual(true)

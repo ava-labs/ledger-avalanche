@@ -421,6 +421,7 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
         THROW(APDU_CODE_DATA_INVALID);
     }
 
+    zemu_log("eth_sign start review*********\n");
     view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
     view_review_show(REVIEW_TXN);
     *flags |= IO_ASYNCH_REPLY;
@@ -452,7 +453,35 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
     *flags |= IO_ASYNCH_REPLY;
 }
 
+__Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSetPlugin\n");
 
+    // This instruction is sent in the process of providing
+    // more information regarding contract calls like erc721
+    // nft token information, we need to return ok for this
+    // in order the hw-app-eth package to continue with the
+    // provide_token_info/provide_erc20_info instructions
+    *tx = 0;
+
+    zemu_log("processing_set_plugin\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleProvideErc20\n");
+
+    // Nothing to do as we do not handle this information,
+    // but need to return ok to ethereumjs-wallet in order to 
+    // ontinue with signing contract calls
+    *tx = 0;
+
+    zemu_log("provide_erc20_info\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
 
 __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile uint32_t *tx) {
     G_io_apdu_buffer[0] = 0;
@@ -541,12 +570,11 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
         //     break;
         // }
         //
-        // case INS_SET_PLUGIN: {
-        //     CHECK_PIN_VALIDATED()
-        //     handleSignAvaxHash(flags, tx, rx);
-        //
-        //     break; 
-        // }
+        case INS_SET_PLUGIN: {
+            CHECK_PIN_VALIDATED()
+            handleSetPlugin(flags, tx, rx);
+            break; 
+        }
         //
         case INS_PROVIDE_NFT_INFORMATION: {
             zemu_log("INS_PROVIDE_NFT_INFORMATION\n");

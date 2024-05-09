@@ -247,7 +247,7 @@ impl Viewable for SignUI {
         // defined by EIP-155.
         //
         // Check for typed transactions
-        if self.tx.raw_tx_type().is_some() {
+        if self.tx.is_typed_tx() {
             //write V, which is the oddity of the signature
             out[tx] = flags.contains(ECCInfo::ParityOdd) as u8;
             tx += 1;
@@ -315,7 +315,7 @@ impl Viewable for SignUI {
     }
 }
 
-fn cleanup_globals() -> Result<(), Error> {
+pub fn cleanup_globals() -> Result<(), Error> {
     unsafe {
         if let Ok(path) = PATH.acquire(Sign) {
             path.take();

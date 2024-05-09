@@ -172,11 +172,10 @@ pub enum EthTransaction<'b> {
 }
 
 impl<'b> EthTransaction<'b> {
-    pub fn raw_tx_type(&self) -> Option<u8> {
+    pub fn is_typed_tx(&self) -> bool {
         match self {
-            EthTransaction::Eip1559(_) => EIP1559_TX.into(),
-            EthTransaction::Eip2930(_) => EIP2930_TX.into(),
-            _ => None,
+            EthTransaction::Legacy(_) => false,
+            _ => true,
         }
     }
 
@@ -185,6 +184,14 @@ impl<'b> EthTransaction<'b> {
             Self::Legacy(t) => t.chain_id(),
             Self::Eip1559(t) => t.chain_id(),
             Self::Eip2930(t) => t.chain_id(),
+        }
+    }
+
+    pub fn chain_id_u64(&self) -> u64 {
+        match self {
+            Self::Legacy(t) => t.chain_id_u64(),
+            Self::Eip1559(t) => t.chain_id_u64(),
+            Self::Eip2930(t) => t.chain_id_u64(),
         }
     }
 }

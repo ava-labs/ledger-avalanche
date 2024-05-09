@@ -125,7 +125,7 @@ __Z_INLINE void app_sign_eth() {
     const uint16_t messageLength = tx_get_buffer_length();
     uint16_t replyLen = 0;
 
-    MEMZERO(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    // MEMZERO(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     // zxerr_t err = crypto_sign_eth(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, message, messageLength, &replyLen);
     zxerr_t err = crypto_sign_eth(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 2, message, messageLength, &replyLen);
 
@@ -137,8 +137,6 @@ __Z_INLINE void app_sign_eth() {
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, replyLen + 2);
     }
 }
-
-
 
 __Z_INLINE void app_sign_msg() {
     zemu_log_stack("app_sign");

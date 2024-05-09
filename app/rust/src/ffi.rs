@@ -179,8 +179,6 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
 
         _ => ParserError::UnexpectedError as u32,
     }
-
-    // ParserError::ParserOk as u32
 }
 
 #[no_mangle]
@@ -367,17 +365,27 @@ pub unsafe extern "C" fn _tx_data_offset(
 pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: *mut u8) {
     let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
     let data = core::slice::from_raw_parts((*ctx).buffer, (*ctx).buffer_len as _);
+
+    _ = crate::handlers::eth::signing::cleanup_globals();
+
     // For a weird reason we need to parse again to validate internal pointers,
     // need to investigate more this.
     _ = EthTransaction::from_bytes_into(data, tx);
     let tx = tx.assume_init_mut();
 
     let chain_id = tx.chain_id();
+    let len = core::cmp::min(U32_SIZE, chain_id.len());
 
     // Check for typed transactions
-    if tx.raw_tx_type().is_some() {
-        //write V, which is the oddity of the signature
-        *v = parity;
+    if tx.is_typed_tx() {
+        // For EIP1559 and EIP2930 transactions chain_id is not empty
+        let id: u64 = crate::parser::bytes_to_u64(&chain_id[..len]).unwrap();
+        // v = (35 + parity) + (chain_id * 2)
+        let x: u32 = (35 + parity as u32).saturating_add((id as u32) << 1);
+
+        *v = x as u8;
+
+        // below for legacy transactions
     } else if chain_id.is_empty() {
         // according to app-ethereum this is the legacy non eip155 conformant
         // so V should be made before EIP155 which had
@@ -393,11 +401,10 @@ pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: 
         // to recover the right chain_id from the V component being computed here, and
         // which is returned with the signature
         // Ensure that leading is not greater than U32_SIZE
-        let len = core::cmp::min(U32_SIZE, chain_id.len());
-        // unwrap here as chain_id is not empty neither grater that u64_size
-        let id = crate::parser::bytes_to_u64(&chain_id[..len]).unwrap();
+        // unwrap here as chain_id is neither empty nor grater that u64_size
+        let id: u64 = crate::parser::bytes_to_u64(&chain_id[..len]).unwrap();
 
-        let x = (35 + parity as u32).saturating_add((id as u32) << 1);
+        let x: u32 = (35 + parity as u32).saturating_add((id as u32) << 1);
 
         *v = x as u8;
     }

@@ -84,10 +84,12 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     }
 
     parser_error_t err = _parser_read(ctx);
+
     return err; 
 }
 
 parser_error_t parser_validate(parser_context_t *ctx) {
+    zemu_log("parser_validate\n");
     // Iterate through all items to check that all can be shown and are valid
     uint8_t numItems = 0;
     CHECK_ERROR(parser_getNumItems(ctx, &numItems))
@@ -103,8 +105,6 @@ parser_error_t parser_validate(parser_context_t *ctx) {
 }
 
 parser_error_t parser_getNumItems(const parser_context_t *ctx, uint8_t *num_items) {
-    zemu_log_stack("parser_getNumItems\n");
-
     if (_getNumItems(ctx, num_items) != parser_ok) {
         return parser_unexpected_number_items;
     }
@@ -137,14 +137,13 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     CHECK_ERROR(checkSanity(numItems, displayIdx))
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
-    zemu_log_stack("parser_getItem\n");
     return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }
 
 parser_compute_eth_v(parser_context_t *ctx, unsigned int info,
                                     uint8_t *v) {
 
-    uint8_t parity = (info & CX_ECCINFO_PARITY_ODD) == 1;
+    unsigned int parity = (info & CX_ECCINFO_PARITY_ODD);
 
     _computeV(ctx, parity, v);
 }
