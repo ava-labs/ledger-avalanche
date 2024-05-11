@@ -38,6 +38,8 @@ static bool tx_initialized = false;
 
 bool
 process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx);
+bool
+process_chunk_eth_msg(__Z_UNUSED volatile uint32_t *tx, uint32_t rx);
 void
 extract_eth_path(uint32_t rx, uint32_t offset);
 
@@ -255,6 +257,94 @@ process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
     THROW(APDU_CODE_INVALIDP1P2);
 }
 
+bool process_chunk_eth_msg(volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("process_chunk_eth_msg\n");
+    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
+
+    if (G_io_apdu_buffer[OFFSET_P2] != 0) {
+        THROW(APDU_CODE_INVALIDP1P2);
+    }
+
+    if (rx < OFFSET_DATA) {
+        THROW(APDU_CODE_WRONG_LENGTH);
+    }
+
+    uint64_t read = 0;
+    uint64_t msg_len = 0;
+
+    uint8_t *data = &(G_io_apdu_buffer[OFFSET_DATA]);
+    uint32_t len = rx - OFFSET_DATA;
+    uint64_t added;
+    bool tx_init = false;
+
+    switch (payloadType) {
+        case P1_ETH_FIRST:
+            tx_initialize();
+            tx_reset();
+            extract_eth_path(rx, OFFSET_DATA);
+            uint32_t path_len = sizeof(uint32_t) * hdPath_len;
+            data += path_len + 1;
+            if (len < path_len) {
+                THROW(APDU_CODE_WRONG_LENGTH);
+            }
+
+            if (be_bytes_to_u64(data, 4, &msg_len) != 0) {
+                THROW(APDU_CODE_WRONG_LENGTH);
+            }
+            
+            uint32_t remaining_len = len - path_len - 1 - 4;
+
+            // Adjust the data buffer based on the read message length
+            max_len = MIN(msg_len, remaining_len);
+            added = tx_append(data, max_len);
+
+            if (added != max_len) {
+                THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
+            }
+
+            // Consider transaction initialized if we handle the full length
+            tx_init = true;
+            return (remaining_len - added == 0);
+
+        case P1_ETH_MORE:
+            if (!tx_init) {
+                THROW(APDU_CODE_TX_NOT_INITIALIZED);
+            }
+
+            uint32_t buff_len = tx_get_buffer_length();
+            uint8_t *buff_data = tx_get_buffer();
+            
+            // Read the expected message length from the start of the buffer
+            if (be_bytes_to_u64(buff_data, 4, &msg_len) != 0) {
+                THROW(APDU_CODE_DATA_INVALID);
+            }
+
+            // Ensure that the total data we expect is less than or equal to what's 
+            // already in the buffer plus what's incoming
+            if (msg_len > buff_len - 4 + len) {
+                THROW(APDU_CODE_WRONG_LENGTH);
+            }
+
+            // Append new data to buffer
+            added = tx_append(data, len);
+            if (added != len) {
+                THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
+            }
+
+            // Update the buffer length after appending
+            buff_len = tx_get_buffer_length();
+            
+            // Check if we've received the entire message based on the initial 
+            // message length indicator
+            if (msg_len + 4 == buff_len) {
+                return true;
+            }
+
+            return false;
+        default:
+            THROW(APDU_CODE_INVALIDP1P2);
+    }
+}
 __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleGetAddr\n");
 
@@ -402,6 +492,30 @@ __Z_INLINE void handleSignAvaxMsg(volatile uint32_t *flags, volatile uint32_t *t
     *flags |= IO_ASYNCH_REPLY;
 }
 
+__Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignEthMsg\n");
+
+    if (!process_chunk_eth_msg(tx, rx)) {
+    }
+
+    const char *error_msg = tx_eth_parse_msg();
+    zemu_log("error\n");
+
+    CHECK_APP_CANARY()
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    view_review_init(tx_getItem, tx_getNumItems, app_sign_eth_msg);
+    view_review_show(REVIEW_TXN);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
 __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthTx\n");
 
@@ -448,6 +562,15 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
 
     zemu_log("processed_nft_info ok\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleErc20(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleErc20\n");
+
+    // nothing to do here
     set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     *flags |= IO_ASYNCH_REPLY;
@@ -584,12 +707,11 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
             break; 
         }
 
-        // case INS_ETH_PROVIDE_ERC20: {
-        //     CHECK_PIN_VALIDATED()
-        //     handleSignAvaxMsg(flags, tx, rx);
-        //
-        //     break; 
-        // }
+        case INS_ETH_PROVIDE_ERC20: {
+            CHECK_PIN_VALIDATED()
+            handleErc20(flags, tx, rx);
+            break; 
+        }
         //
         // case INS_SIGN_ETH_MSG: {
         //     CHECK_PIN_VALIDATED()

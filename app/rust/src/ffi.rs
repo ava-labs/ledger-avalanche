@@ -21,9 +21,10 @@ use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
 use crate::parser::{
     parse_path_list, AvaxMessage, DisplayableItem, EthTransaction, ObjectList, PathWrapper,
-    U32_SIZE,
+    PersonalMsg, U32_SIZE,
 };
 use crate::parser::{FromBytes, ParserError, Transaction};
+use crate::utils::ApduPanic;
 use crate::ZxError;
 
 pub mod context;
@@ -44,6 +45,12 @@ macro_rules! avax_tx_from_state {
 macro_rules! avax_msg_from_state {
     ($ptr:expr) => {
         unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<AvaxMessage>>()) }
+    };
+}
+
+macro_rules! eth_msg_from_state {
+    ($ptr:expr) => {
+        unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<PersonalMsg>>()) }
     };
 }
 
@@ -77,9 +84,7 @@ pub unsafe extern "C" fn _parser_init(
         Instruction::SignAvaxTx => core::mem::size_of::<MaybeUninit<Transaction>>() as u32,
         Instruction::SignEthTx => core::mem::size_of::<MaybeUninit<EthTransaction>>() as u32,
         Instruction::SignAvaxMsg => core::mem::size_of::<MaybeUninit<AvaxMessage>>() as u32,
-        Instruction::SignEthMsg => {
-            return ParserError::UnexpectedError as u32;
-        }
+        Instruction::SignEthMsg => core::mem::size_of::<MaybeUninit<PersonalMsg>>() as u32,
         Instruction::SignAvaxHash => SIGN_HASH_TX_SIZE as u32,
     };
 
@@ -177,6 +182,14 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
             }
         }
 
+        Instruction::SignEthMsg => {
+            let tx = eth_msg_from_state!(ctx as *mut parser_context_t);
+            match PersonalMsg::from_bytes_into(data, tx) {
+                Ok(_) => ParserError::ParserOk as u32,
+                Err(_) => ParserError::InvalidAvaxMessage as u32,
+            }
+        }
+
         _ => ParserError::UnexpectedError as u32,
     }
 }
@@ -239,7 +252,17 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
             }
         }
 
-        _ => todo!(),
+        Instruction::SignEthMsg => {
+            let tx = eth_msg_from_state!(ctx as *mut parser_context_t);
+            let obj = tx.assume_init_mut();
+            match obj.num_items() {
+                Ok(n) => {
+                    *num_items = n;
+                    ParserError::ParserOk as u32
+                }
+                Err(e) => e as u32,
+            }
+        }
     };
 
     ParserError::ParserOk as u32
@@ -322,7 +345,17 @@ pub unsafe extern "C" fn _getItem(
             }
         }
 
-        _ => todo!(),
+        Instruction::SignEthMsg => {
+            let msg = eth_msg_from_state!(ctx as *mut parser_context_t);
+            let obj = msg.assume_init_mut();
+            match obj.render_item(display_idx, key, value, page_idx) {
+                Ok(page) => {
+                    *page_count = page;
+                    ParserError::ParserOk as _
+                }
+                Err(e) => e as _,
+            }
+        }
     }
 }
 
@@ -362,7 +395,7 @@ pub unsafe extern "C" fn _tx_data_offset(
 // for eth transactions. this is required for the app_ethereum js application
 // to compute the real V from this bytes
 #[no_mangle]
-pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: *mut u8) {
+pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8) -> u8 {
     let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
     let data = core::slice::from_raw_parts((*ctx).buffer, (*ctx).buffer_len as _);
 
@@ -377,13 +410,10 @@ pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: 
     let len = core::cmp::min(U32_SIZE, chain_id.len());
 
     // Check for typed transactions
+    // eip-1559 and eip-2930
     if tx.is_typed_tx() {
-        // For EIP1559 and EIP2930 transactions chain_id is not empty
-        let id: u64 = crate::parser::bytes_to_u64(&chain_id[..len]).unwrap();
-        // v = (35 + parity) + (chain_id * 2)
-        let x: u32 = (35 + parity as u32).saturating_add((id as u32) << 1);
-
-        *v = x as u8;
+        // this is what the app=ethereum does
+        parity
 
         // below for legacy transactions
     } else if chain_id.is_empty() {
@@ -394,7 +424,7 @@ pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: 
         // see https://bitcoin.stackexchange.com/a/112489
         //     https://ethereum.stackexchange.com/a/113505
         //     https://eips.ethereum.org/EIPS/eip-155
-        *v = 27 + parity;
+        27 + parity
     } else {
         // app-ethereum reads the first 4 bytes then cast it to an u8
         // this is not good but it relies on hw-eth-app lib from ledger
@@ -403,9 +433,8 @@ pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8, v: 
         // Ensure that leading is not greater than U32_SIZE
         // unwrap here as chain_id is neither empty nor grater that u64_size
         let id: u64 = crate::parser::bytes_to_u64(&chain_id[..len]).unwrap();
-
+        //
         let x: u32 = (35 + parity as u32).saturating_add((id as u32) << 1);
-
-        *v = x as u8;
+        x as u8
     }
 }

@@ -140,11 +140,10 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }
 
-parser_compute_eth_v(parser_context_t *ctx, unsigned int info,
-                                    uint8_t *v) {
+uint8_t parser_compute_eth_v(parser_context_t *ctx, unsigned int info) {
 
     unsigned int parity = (info & CX_ECCINFO_PARITY_ODD);
 
-    _computeV(ctx, parity, v);
+    return _computeV(ctx, parity);
 }
 
