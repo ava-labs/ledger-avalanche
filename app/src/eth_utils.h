@@ -53,6 +53,10 @@ rlp_error_t parse_rlp_item(const uint8_t *data, uint32_t dataLen, uint32_t *read
 // returns 0 on success, a negative number otherwise
 int be_bytes_to_u64(const uint8_t *bytes, uint8_t len, uint64_t *num);
 
+// converts a big endian stream of bytes to an u32 number.
+// returns 0 on success, a negative number otherwise
+int be_bytes_to_u32(const uint8_t *bytes, uint8_t len, uint32_t *num);
+
 #ifdef __cplusplus
 }
 #endif

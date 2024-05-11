@@ -118,7 +118,7 @@ zxerr_t _sign(uint8_t *output, uint16_t outputLen, const uint8_t *message, uint1
     CATCH_CXERROR(os_derive_bip32_with_seed_no_throw(HDW_NORMAL,
                                                      CX_CURVE_256K1,
                                                      hdPath,
-                                                     hdPath_len,
+                                                     hdPath_len, // HDPATH_LEN_DEFAULT?
                                                      privateKeyData,
                                                      NULL,
                                                      NULL,
@@ -229,12 +229,6 @@ zxerr_t crypto_sign_eth(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t
     CHECK_ZXERR(keccak_digest(message, messageLen, message_digest, KECCAK_256_SIZE))
     char data[KECCAK_256_SIZE * 2 + 1] = {0}; // Each byte needs 2 characters, plus null terminator
 
-    for (int i = 0; i < KECCAK_256_SIZE; i++) {
-        snprintf(data + i * 2, 3, "%02x", message_digest[i]);
-    }
-    zemu_log("***********digest: \n");
-    zemu_log(data);
-    zemu_log("\n");
 
     unsigned int info = 0;
     zxerr_t error = _sign(buffer, signatureMaxlen, message_digest, KECCAK_256_SIZE, sigSize, &info);
@@ -243,11 +237,6 @@ zxerr_t crypto_sign_eth(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t
 
     // we need to fix V
     uint8_t v = tx_compute_eth_v(info);
-    {
-        char data[10] = {0};
-        snprintf(data, sizeof(data), "V: %d\n", v);
-        zemu_log(data);
-    }
 
     // need to reorder signature as hw-eth-app expects v at the beginning.
     // so rsv -> vrs
@@ -269,13 +258,6 @@ zxerr_t crypto_sign_eth_msg(uint8_t *buffer, uint16_t signatureMaxlen, const uin
 
     char data[KECCAK_256_SIZE * 2 + 1] = {0}; // Each byte needs 2 characters, plus null terminator
 
-    for (int i = 0; i < KECCAK_256_SIZE; i++) {
-        snprintf(data + i * 2, 3, "%02x", message_digest[i]);
-    }
-    zemu_log("***********digest: \n");
-    zemu_log(data);
-    zemu_log("\n");
-
     unsigned int info = 0;
     zxerr_t error = _sign(buffer, signatureMaxlen, message_digest, KECCAK_256_SIZE, sigSize, &info);
     if (error != zxerr_ok)
@@ -283,17 +265,12 @@ zxerr_t crypto_sign_eth_msg(uint8_t *buffer, uint16_t signatureMaxlen, const uin
 
     // we need to fix V
     uint8_t v = 27;
+
     if (info & CX_ECCINFO_PARITY_ODD)
-        v + 1;
+        v += 1;
 
     if (info & CX_ECCINFO_xGTn)
         v += 2;
-
-    {
-        char data[10] = {0};
-        snprintf(data, sizeof(data), "V: %d\n", v);
-        zemu_log(data);
-    }
 
     // need to reorder signature as hw-eth-app expects v at the beginning.
     // so rsv -> vrs

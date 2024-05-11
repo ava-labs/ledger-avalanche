@@ -72,6 +72,28 @@ be_bytes_to_u64(const uint8_t *bytes, uint8_t len, uint64_t *num)
     return 0;
 }
 
+int
+be_bytes_to_u32(const uint8_t *bytes, uint8_t len, uint32_t *num)
+{
+    if (bytes == NULL || num == NULL || len == 0 || len > sizeof(uint32_t)) {
+        return -1;
+    }
+
+    *num = 0;
+
+    // Fast path for single byte
+    if (len == 1) {
+        *num = bytes[0];
+        return 0;
+    }
+
+    for (uint8_t i = 0; i < len; i++) {
+        *num = (*num << 8) | bytes[i];
+    }
+
+    return 0;
+}
+
 rlp_error_t
 get_tx_rlp_len(const uint8_t *buffer, uint32_t len, uint64_t *read, uint64_t *to_read)
 {

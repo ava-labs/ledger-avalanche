@@ -158,7 +158,6 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
 bool
 process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
 {
-    zemu_log("process_chunk_eth\n");
     const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
 
     if (G_io_apdu_buffer[OFFSET_P2] != 0) {
@@ -258,7 +257,6 @@ process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx)
 }
 
 bool process_chunk_eth_msg(volatile uint32_t *tx, uint32_t rx) {
-    zemu_log("process_chunk_eth_msg\n");
     const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
 
     if (G_io_apdu_buffer[OFFSET_P2] != 0) {
@@ -269,14 +267,21 @@ bool process_chunk_eth_msg(volatile uint32_t *tx, uint32_t rx) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
-    uint64_t read = 0;
-    uint64_t msg_len = 0;
+    uint32_t read = 0;
+    uint32_t msg_len = 0;
+    uint32_t max_len = 0;
 
     uint8_t *data = &(G_io_apdu_buffer[OFFSET_DATA]);
     uint32_t len = rx - OFFSET_DATA;
-    uint64_t added;
+    uint32_t added;
     bool tx_init = false;
 
+    // hw-app-eth encodes the packet type in p1
+    // with 0x00 being init and 0x80 being next
+    //
+    // moreover, it does not prepend the ethereum header
+    // for personal messages, it just structures the message as:
+    // path | msg.len() as 4-bytes big-endian integer | msg
     switch (payloadType) {
         case P1_ETH_FIRST:
             tx_initialize();
@@ -288,19 +293,28 @@ bool process_chunk_eth_msg(volatile uint32_t *tx, uint32_t rx) {
                 THROW(APDU_CODE_WRONG_LENGTH);
             }
 
-            if (be_bytes_to_u64(data, 4, &msg_len) != 0) {
+            if (be_bytes_to_u32(data, 4, &msg_len) != 0) {
                 THROW(APDU_CODE_WRONG_LENGTH);
             }
-            
+            // Add the first 4-byte message len
+            added = tx_append(data, 4);
+            if (added != 4) {
+                THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
+            }
+
+            // skip the first 4-bytes
+            data = data + 4;
+
+            // now add the remaining message data
             uint32_t remaining_len = len - path_len - 1 - 4;
 
-            // Adjust the data buffer based on the read message length
             max_len = MIN(msg_len, remaining_len);
             added = tx_append(data, max_len);
 
             if (added != max_len) {
                 THROW(APDU_CODE_OUTPUT_BUFFER_TOO_SMALL);
             }
+
 
             // Consider transaction initialized if we handle the full length
             tx_init = true;
@@ -315,7 +329,7 @@ bool process_chunk_eth_msg(volatile uint32_t *tx, uint32_t rx) {
             uint8_t *buff_data = tx_get_buffer();
             
             // Read the expected message length from the start of the buffer
-            if (be_bytes_to_u64(buff_data, 4, &msg_len) != 0) {
+            if (be_bytes_to_u32(buff_data, 4, &msg_len) != 0) {
                 THROW(APDU_CODE_DATA_INVALID);
             }
 
@@ -496,10 +510,10 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
     zemu_log("handleSignEthMsg\n");
 
     if (!process_chunk_eth_msg(tx, rx)) {
+        THROW(APDU_CODE_OK);
     }
 
     const char *error_msg = tx_eth_parse_msg();
-    zemu_log("error\n");
 
     CHECK_APP_CANARY()
 
@@ -713,12 +727,12 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
             break; 
         }
         //
-        // case INS_SIGN_ETH_MSG: {
-        //     CHECK_PIN_VALIDATED()
-        //     handleSignAvaxMsg(flags, tx, rx);
-        //
-        //     break; 
-        // }
+        case INS_SIGN_ETH_MSG: {
+            zemu_log("Ins sign eth msg\n");
+            CHECK_PIN_VALIDATED()
+            handleSignEthMsg(flags, tx, rx);
+            break; 
+        }
         default: {
             zemu_log("unknown_instruction***\n");
             THROW(APDU_CODE_INS_NOT_SUPPORTED);
