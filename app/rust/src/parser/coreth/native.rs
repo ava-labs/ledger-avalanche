@@ -217,7 +217,6 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
 
         match tx_type {
             EthTransaction__Type::Legacy => {
-                crate::zlog("**** Legacy Transaction ****");
                 let out = out.as_mut_ptr() as *mut Legacy__Variant;
 
                 let legacy = unsafe { &mut *addr_of_mut!((*out).1).cast() };
@@ -234,7 +233,6 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
                 }
             }
             EthTransaction__Type::Eip1559 => {
-                crate::zlog("**** EIP1559 Transaction ****");
                 let out = out.as_mut_ptr() as *mut Eip1559__Variant;
 
                 let eip = unsafe { &mut *addr_of_mut!((*out).1).cast() };
@@ -251,7 +249,6 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
                 }
             }
             EthTransaction__Type::Eip2930 => {
-                crate::zlog("**** EIP2930 Transaction ****");
                 let out = out.as_mut_ptr() as *mut Eip2930__Variant;
 
                 let eip = unsafe { &mut *addr_of_mut!((*out).1).cast() };

@@ -189,8 +189,6 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
                 Err(_) => ParserError::InvalidAvaxMessage as u32,
             }
         }
-
-        _ => ParserError::UnexpectedError as u32,
     }
 }
 

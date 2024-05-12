@@ -98,5 +98,15 @@ pub fn handle_apdu_raw(bytes: &[u8]) -> (u32, u32, std::vec::Vec<u8>) {
     (flags, tx, out)
 }
 
+pub fn zlog(msg: &str) {
+    unsafe {
+        zemu_log_stack(msg.as_bytes().as_ptr());
+    }
+}
+
+extern "C" {
+    fn zemu_log_stack(msg: *const u8);
+}
+
 #[cfg(test)]
 mod integration_tests;

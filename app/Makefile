@@ -24,6 +24,12 @@ DEBUG:=0
 
 MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
+# This enables automatically the ethereum application 
+# for all targets except for the nanos
+ifneq ($(TARGET_NAME), TARGET_NANOS)
+FEATURE_ETH = 1
+endif
+
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
 
 include $(BOLOS_SDK)/Makefile.defines
@@ -119,6 +125,8 @@ CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter -g
 else
 CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter
 endif
+
+CFLAGS += -DAPPVERSION_M=$(APPVERSION_M) -DAPPVERSION_N=$(APPVERSION_N) -DAPPVERSION_P=$(APPVERSION_P)
 
 AS := $(GCCPATH)arm-none-eabi-gcc
 AFLAGS +=

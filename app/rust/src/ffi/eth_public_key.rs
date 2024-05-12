@@ -14,7 +14,6 @@ pub unsafe extern "C" fn _fill_eth_address(
     addr_ui: *mut u8,
     addr_ui_len: u16,
 ) -> u16 {
-    crate::zlog("_fill_eth_address\x00");
     let Some(tx) = tx.as_mut() else {
         return ZxError::NoData as u16;
     };
@@ -24,7 +23,6 @@ pub unsafe extern "C" fn _fill_eth_address(
         return ZxError::OutOfBounds as u16;
     };
 
-    crate::zlog("calling_fill\x00");
     match GetPublicKey::fill(tx, apdu_buffer, addr_ui, addr_ui_len) {
         Ok(_) => ZxError::Ok as u16,
         Err(e) => e as u16,
@@ -33,7 +31,6 @@ pub unsafe extern "C" fn _fill_eth_address(
 
 #[no_mangle]
 pub unsafe extern "C" fn _eth_address_ui_size() -> u16 {
-    crate::zlog("eth_address_ui_size\x00");
     core::mem::size_of::<MaybeUninit<AddrUI>>() as u16
 }
 
@@ -42,13 +39,11 @@ pub unsafe extern "C" fn _eth_addr_num_items(addr_obj: *mut u8, num_items: *mut 
     if addr_obj.is_null() || num_items.is_null() {
         return ZxError::NoData as u16;
     }
-    crate::zlog("eth_addr_num_items\x00");
 
     let ui = &mut *addr_obj.cast::<MaybeUninit<AddrUI>>();
     let ui = ui.assume_init_mut();
 
     let Ok(items) = ui.num_items() else {
-        crate::zlog("eth_addr_num_items::no_data\x00");
         return ZxError::NoData as u16;
     };
 
@@ -74,7 +69,6 @@ pub unsafe extern "C" fn _eth_addr_get_item(
         || key_len == 0
         || out_key.is_null()
     {
-        crate::zlog("eth_addr_get_item::no_data\x00");
         return ZxError::NoData as u16;
     }
 
@@ -85,7 +79,6 @@ pub unsafe extern "C" fn _eth_addr_get_item(
         (ui.assume_init_mut(), out_key, out_value)
     };
 
-    crate::zlog("calling_render_item\x00");
     let Ok(page) = ui.render_item(display_idx, out_key, out_value, page_idx) else {
         return ZxError::NoData as u16;
     };

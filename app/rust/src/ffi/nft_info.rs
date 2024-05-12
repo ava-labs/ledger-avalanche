@@ -4,7 +4,6 @@ use crate::handlers::eth::provide_nft_info::Info;
 
 #[no_mangle]
 pub unsafe extern "C" fn _process_nft_info(buffer: *mut u8, buffer_len: u16) -> u16 {
-    crate::zlog("nft_info\x00");
     if buffer.is_null() {
         return ZxError::NoData as u16;
     };

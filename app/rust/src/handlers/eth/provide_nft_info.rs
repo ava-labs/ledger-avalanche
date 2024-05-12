@@ -21,12 +21,10 @@ pub struct Info;
 impl Info {
     pub fn process(input: &[u8]) -> Result<(), Error> {
         // skip type and version
-        crate::zlog("NftInfoProvider::process\x00");
         let mut nft_info = core::mem::MaybeUninit::uninit();
 
         _ = crate::parser::FromBytes::from_bytes_into(input, &mut nft_info)
             .map_err(|_| Error::DataInvalid)?;
-        crate::zlog("NftInfoProvider::process: parsed\x00");
 
         let nft_info = unsafe { nft_info.assume_init() };
 
@@ -36,7 +34,6 @@ impl Info {
                 .lock(super::signing::Sign)
                 .replace(nft_info);
         }
-        crate::zlog("NftInfoProvider::process: stored\x00");
 
         Ok(())
     }
