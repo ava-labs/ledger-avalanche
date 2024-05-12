@@ -4,6 +4,7 @@
 #include "parser_common.h"
 // #include "keys_def.h"
 #include "parser_txdef.h"
+#include "zxmacros.h"
 
 /* Interface functions with jubjub crate */
 // parser_error_t from_bytes_wide(const uint8_t input[64], uint8_t output[32]);

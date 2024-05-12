@@ -33,6 +33,9 @@
 #include "parser_common.h"
 #include "rslib.h"
 #include "eth_utils.h"
+#if defined(FEATURE_ETH)
+#include "handler.h"
+#endif
 
 static bool tx_initialized = false;
 
@@ -755,8 +758,12 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 avax_dispatch(flags, tx, rx);
             } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
-                zemu_log_stack("calling eth_dispath\n");
-                eth_dispatch(flags, tx, rx);
+                // eth_dispatch(flags, tx, rx);
+#if defined(FEATURE_ETH)
+                zemu_log_stack("calling handle_eth_apdu\n");
+                handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+#endif
+               
             } else {
                 THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }

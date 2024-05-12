@@ -71,8 +71,6 @@ ifndef ICONNAME
 $(error ICONNAME is not set)
 endif
 
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
-
 # Add SDK BLAKE2b
 DEFINES += HAVE_HASH HAVE_BLAKE2
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
@@ -95,13 +93,12 @@ RUST_TARGET:=thumbv6m-none-eabi
 APP_FULL:=1
 # Why just here and not common setting for similar targets 
 # like nanosplus and stax?
-ifeq ($(FEATURE_ETH), 1))
-# taken from ethereum app config
-APP_LOAD_PARAMS += --appFlags 0xa50
-APP_LOAD_FLAGS += --appFlags 0xa40
-else
-APP_LOAD_PARAMS += --appFlags 0x200
-endif
+# ifeq ($(FEATURE_ETH), 1))
+# APP_LOAD_PARAMS += --appFlags 0xa50
+# APP_LOAD_FLAGS += --appFlags 0xa40
+# else
+# APP_LOAD_PARAMS += --appFlags 0x200
+# endif
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOS2)
@@ -125,11 +122,15 @@ RUST_FEATURES+=--features "lite"
 endif
 
 ifeq ($(FEATURE_ETH), 1)
+
+	CHAIN_ID = 1
+	TICKER = "ETH"
+
 	# Do not compile eth app if target is nanos
 	ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
 		DEFINES += HAVE_ETH_INTEGRATION
 		DEFINES += HAVE_ETH2 
-		DEFINES_LIB = USE_LIB_ETHEREUM
+		DEFINES_LIB += USE_LIB_ETHEREUM
 
 		# EIP-712
 		DEFINES	+= HAVE_EIP712_FULL_SUPPORT
@@ -164,6 +165,9 @@ ifeq ($(FEATURE_ETH), 1)
         DEFINES += BLE_SEGMENT_SIZE=32 #max MTU, min 20
 
 		DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
+		# This should not be necessary but app-ethereum/main.c needs 
+		# it although we are not compiling it as a binary.
+		DEFINES += CHAINID_COINNAME=\"$(TICKER)\" CHAIN_ID=$(CHAIN_ID)
 
 
 		# Needed to be able to include the definition of G_cx
@@ -182,9 +186,7 @@ ifeq ($(FEATURE_ETH), 1)
 		# include bellow is necessary if HAVE_ETH2 is defined
 		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
 
-		SDK_SOURCE_PATH += lib_stusb lib_stusb_impl lib_u2f
-
-		APP_SOURCE_PATH += ${BOLOS_SDK}/lib_standard_app
+		SDK_SOURCE_PATH += lib_u2f lib_standard_app
 
 		# import rules to compile glyphs(/pone)
 		ifeq  ($(TARGET_NAME),TARGET_STAX)
@@ -204,16 +206,20 @@ ifeq ($(FEATURE_ETH), 1)
 
 		# require linker flags
 		LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
-		LDFLAGS += -L$(BOLOS_SDK)/lib_standard_app
-		# bellow does not work neither
+		# LDFLAGS += -L$(BOLOS_SDK)/lib_standard_app
 		# LDLIBS += -lcxng -lstandard_app
+
+		# Pass this flag to C for conditional compilation
+		CFLAGS += -DFEATURE_ETH=$(FEATURE_ETH)
 
 	endif #NO TARGET_NANOS OR TARGET_STAX
 endif #NO FEATURE_ETH
 
+include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
+INCLUDES_PATH += $(CURDIR)/src/common/
+
 
 # Compiler, assembler, and linker
-
 # Building Rust
 CC := $(CLANGPATH)clang
 
