@@ -77,6 +77,8 @@ const internalStorage_t N_storage_real;
 caller_app_t *caller_app = NULL;
 #endif
 // chain_config_t *chainConfig = NULL;
+chain_config_t config;
+
 
 void reset_app_context() {
     // PRINTF("!!RESET_APP_CONTEXT\n");
@@ -173,10 +175,21 @@ const uint8_t *parseBip32(const uint8_t *dataBuffer, uint8_t *dataLength, bip32_
     return dataBuffer;
 }
 
+void init_coin_config(chain_config_t *coin_config) {
+    memset(coin_config, 0, sizeof(chain_config_t));
+    strcpy(coin_config->coinName, CHAINID_COINNAME);
+    coin_config->chainId = CHAIN_ID;
+}
+
 void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
                      uint32_t rx, uint8_t *buffer, uint16_t bufferLen) {
-    zemu_log("*****handle_eth_apdu\n");
     unsigned short sw = 0;
+
+    // TODO: Check for a better place to put this
+    if (chainConfig == NULL) {
+        init_coin_config(&config);
+        chainConfig = &config;
+    }
 
     BEGIN_TRY {
         TRY {
@@ -261,7 +274,6 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
                     break;
 
                 case INS_SIGN_PERSONAL_MESSAGE:
-                    zemu_log("INS_SIGN_PERSONAL_MESSAGE\n");
                     memset(tmpCtx.transactionContext.tokenSet, 0, MAX_ITEMS);
                     *flags |= IO_ASYNCH_REPLY;
                     if (!handleSignPersonalMessage(buffer[OFFSET_P1],
