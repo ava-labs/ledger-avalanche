@@ -93,6 +93,15 @@ endif
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 RUST_TARGET:=thumbv6m-none-eabi
 APP_FULL:=1
+# Why just here and not common setting for similar targets 
+# like nanosplus and stax?
+ifeq ($(FEATURE_ETH), 1))
+# taken from ethereum app config
+APP_LOAD_PARAMS += --appFlags 0xa50
+APP_LOAD_FLAGS += --appFlags 0xa40
+else
+APP_LOAD_PARAMS += --appFlags 0x200
+endif
 endif
 
 ifeq ($(TARGET_NAME),TARGET_NANOS2)
@@ -114,6 +123,94 @@ else
 # Lite version to run on nanos
 RUST_FEATURES+=--features "lite"
 endif
+
+ifeq ($(FEATURE_ETH), 1)
+	# Do not compile eth app if target is nanos
+	ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
+		DEFINES += HAVE_ETH_INTEGRATION
+		DEFINES += HAVE_ETH2 
+		DEFINES_LIB = USE_LIB_ETHEREUM
+
+		# EIP-712
+		DEFINES	+= HAVE_EIP712_FULL_SUPPORT
+		# Feature used by EIP-712
+		DEFINES += HAVE_DOMAIN_NAME
+
+		DEFINES += TICKER="ETH"
+		DEFINES += CHAIN_ID=1
+		DEFINES += HAVE_BOLOS_APP_STACK_CANARY
+		DEFINES += HAVE_HASH3
+		# TODO: This should not be necessary 
+		# but compilation fails after enabling it with HAVE_HASH3
+		DEFINES += CX_KECCAK_256_SIZE=32
+		# Dynamic memory allocator
+		DEFINES += HAVE_DYN_MEM_ALLOC
+
+		ETH_GLYPHS = $(MY_DIR)/../deps/ethereum/glyphs
+		GLYPH_FILES += $(addprefix $(ETH_GLYPHS)/,$(sort $(notdir $(shell find $(ETH_GLYPHS)/))))
+		HAVE_EIP712_FULL_SUPPORT = 1
+
+		# The coin type bellow is not part of the eth app,
+		# but this is necesary here as avax wants support for
+		# coin_type = 60'
+		DEFINES   += BIP44_COIN_TYPE_3=60
+		DEFINES   += COIN_COINID_SHORT=\"ETH\"
+
+		DEFINES += HAVE_SNPRINTF_FORMAT_U
+		DEFINES += IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64
+
+        DEFINES += HAVE_U2F HAVE_IO_U2F
+        DEFINES += U2F_PROXY_MAGIC=\"w0w\"
+        DEFINES += BLE_SEGMENT_SIZE=32 #max MTU, min 20
+
+		DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
+
+
+		# Needed to be able to include the definition of G_cx
+		INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
+		INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/include
+
+		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src
+		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
+		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_common/
+		# include bellow is necessary if HAVE_ETH2 is defined
+		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
+
+		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src
+		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
+		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_common
+		# include bellow is necessary if HAVE_ETH2 is defined
+		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
+
+		SDK_SOURCE_PATH += lib_stusb lib_stusb_impl lib_u2f
+
+		APP_SOURCE_PATH += ${BOLOS_SDK}/lib_standard_app
+
+		# import rules to compile glyphs(/pone)
+		ifeq  ($(TARGET_NAME),TARGET_STAX)
+			APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_nbgl
+		else
+			SDK_SOURCE_PATH += lib_ux
+			APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_bagl
+			DEFINES += HAVE_BAGL
+			DEFINES += HAVE_UX_FLOW
+			DEFINES += HAVE_GLO096
+			DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64
+			DEFINES += HAVE_BAGL_ELLIPSIS # long label truncation feature
+			DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+			DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+			DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+		endif
+
+		# require linker flags
+		LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
+		LDFLAGS += -L$(BOLOS_SDK)/lib_standard_app
+		# bellow does not work neither
+		# LDLIBS += -lcxng -lstandard_app
+
+	endif #NO TARGET_NANOS OR TARGET_STAX
+endif #NO FEATURE_ETH
+
 
 # Compiler, assembler, and linker
 
