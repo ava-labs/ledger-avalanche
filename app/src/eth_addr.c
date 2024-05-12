@@ -40,7 +40,7 @@ addr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
 
 zxerr_t fill_eth_address(
     uint32_t *flags,
-    uint32_t *tx,
+    volatile uint32_t *tx,
     uint32_t rx,
     uint8_t *buffer,
     uint16_t buffer_len

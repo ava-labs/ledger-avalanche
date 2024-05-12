@@ -88,7 +88,7 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     return err; 
 }
 
-parser_error_t parser_validate(parser_context_t *ctx) {
+parser_error_t parser_validate(const parser_context_t *ctx) {
     zemu_log("parser_validate\n");
     // Iterate through all items to check that all can be shown and are valid
     uint8_t numItems = 0;
