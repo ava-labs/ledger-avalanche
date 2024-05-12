@@ -225,10 +225,8 @@ zxerr_t crypto_sign_eth(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t
         return zxerr_invalid_crypto_settings;
     }
 
-    uint8_t message_digest[KECCAK_256_SIZE] = {'\n'};
+    uint8_t message_digest[KECCAK_256_SIZE] = {0};
     CHECK_ZXERR(keccak_digest(message, messageLen, message_digest, KECCAK_256_SIZE))
-    char data[KECCAK_256_SIZE * 2 + 1] = {0}; // Each byte needs 2 characters, plus null terminator
-
 
     unsigned int info = 0;
     zxerr_t error = _sign(buffer, signatureMaxlen, message_digest, KECCAK_256_SIZE, sigSize, &info);
@@ -253,13 +251,18 @@ zxerr_t crypto_sign_eth_msg(uint8_t *buffer, uint16_t signatureMaxlen, const uin
         return zxerr_invalid_crypto_settings;
     }
 
-    uint8_t message_digest[KECCAK_256_SIZE] = {'\n'};
-    CHECK_ZXERR(keccak_digest(message, messageLen, message_digest, KECCAK_256_SIZE))
+    uint8_t message_digest[KECCAK_256_SIZE] = {0};
+    const unsigned char header[] = "\x19" "Ethereum Signed Message:\n";
 
-    char data[KECCAK_256_SIZE * 2 + 1] = {0}; // Each byte needs 2 characters, plus null terminator
+    cx_sha3_t keccak;
+    if (cx_keccak_init_no_throw(&keccak, KECCAK_256_SIZE * 8) != CX_OK) return zxerr_unknown;
+    CHECK_CX_OK(cx_hash_no_throw((cx_hash_t *)&keccak, !CX_LAST, header, sizeof(header), message_digest, KECCAK_256_SIZE));
+    CHECK_CX_OK(cx_hash_no_throw((cx_hash_t *)&keccak, CX_LAST, message, messageLen, message_digest, KECCAK_256_SIZE));
 
     unsigned int info = 0;
+
     zxerr_t error = _sign(buffer, signatureMaxlen, message_digest, KECCAK_256_SIZE, sigSize, &info);
+
     if (error != zxerr_ok)
         return zxerr_invalid_crypto_settings;
 
