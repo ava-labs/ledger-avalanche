@@ -44,7 +44,6 @@
 
 // taken from ethereum/src/main.c
 void ui_idle(void);
-chain_config_t *chainConfig = NULL;
 
 uint32_t set_result_get_publicKey(void);
 void finalizeParsing(bool);
@@ -101,21 +100,6 @@ void io_seproxyhal_send_status(uint32_t sw) {
 }
 
 // clang-format on
-extraInfo_t *getKnownToken(uint8_t *contractAddress) {
-    union extraInfo_t *currentItem = NULL;
-    // Works for ERC-20 & NFT tokens since both structs in the union have the
-    // contract address aligned
-    for (uint8_t i = 0; i < MAX_ITEMS; i++) {
-        currentItem = (union extraInfo_t *) &tmpCtx.transactionContext.extraInfo[i].token;
-        if (tmpCtx.transactionContext.tokenSet[i] &&
-            (memcmp(currentItem->token.address, contractAddress, ADDRESS_LENGTH) == 0)) {
-            PRINTF("Token found at index %d\n", i);
-            return currentItem;
-        }
-    }
-
-    return NULL;
-}
 
 const uint8_t *parseBip32(const uint8_t *dataBuffer, uint8_t *dataLength, bip32_path_t *bip32) {
     if (*dataLength < 1) {
@@ -171,7 +155,8 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
 
             switch (buffer[OFFSET_INS]) {
                 case INS_GET_PUBLIC_KEY:
-                    memset(tmpCtx.transactionContext.tokenSet, 0, MAX_ITEMS);
+
+                    forget_known_assets();
                     handleGetPublicKey(buffer[OFFSET_P1],
                                        buffer[OFFSET_P2],
                                        buffer + OFFSET_CDATA,
@@ -246,7 +231,7 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
                     break;
 
                 case INS_SIGN_PERSONAL_MESSAGE:
-                    memset(tmpCtx.transactionContext.tokenSet, 0, MAX_ITEMS);
+                    forget_known_assets();
                     *flags |= IO_ASYNCH_REPLY;
                     if (!handleSignPersonalMessage(buffer[OFFSET_P1],
                                                    buffer[OFFSET_P2],
@@ -259,7 +244,7 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
                 case INS_SIGN_EIP_712_MESSAGE:
                     switch (buffer[OFFSET_P2]) {
                         case P2_EIP712_LEGACY_IMPLEM:
-                            memset(tmpCtx.transactionContext.tokenSet, 0, MAX_ITEMS);
+                            forget_known_assets();
                             handleSignEIP712Message_v0(buffer[OFFSET_P1],
                                                        buffer[OFFSET_P2],
                                                        buffer + OFFSET_CDATA,
@@ -281,7 +266,7 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
 #ifdef HAVE_ETH2
 
                 case INS_GET_ETH2_PUBLIC_KEY:
-                    memset(tmpCtx.transactionContext.tokenSet, 0, MAX_ITEMS);
+                    forget_known_assets();
                     handleGetEth2PublicKey(buffer[OFFSET_P1],
                                            buffer[OFFSET_P2],
                                            buffer + OFFSET_CDATA,
@@ -385,7 +370,7 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
     END_TRY;
 }
 
-// Taken from ethereum app, this might be useful but need to double check if it fullfil our 
+// Taken from ethereum app, this might be useful but need to double check if it fullfil our
 // purpose for signing eip712
 /* Eth clones do not actually contain any logic, they delegate everything to the ETH application.
  * Start Eth in lib mode with the correct chain config

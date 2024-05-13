@@ -24,7 +24,7 @@ DEBUG:=0
 
 MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
-# This enables automatically the ethereum application 
+# This enables automatically the ethereum application
 # for all targets except for the nanos
 ifneq ($(TARGET_NAME), TARGET_NANOS)
 FEATURE_ETH = 1
@@ -91,7 +91,7 @@ endif
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 RUST_TARGET:=thumbv6m-none-eabi
 APP_FULL:=1
-# Why just here and not common setting for similar targets 
+# Why just here and not common setting for similar targets
 # like nanosplus and stax?
 # ifeq ($(FEATURE_ETH), 1))
 # APP_LOAD_PARAMS += --appFlags 0xa50
@@ -126,10 +126,13 @@ ifeq ($(FEATURE_ETH), 1)
 	CHAIN_ID = 1
 	TICKER = "ETH"
 
+	# These flags are needed by cmd_getAppConfiguration.c from ETH app
+	CFLAGS += -DMAJOR_VERSION=${APPVERSION_M} -DMINOR_VERSION=${APPVERSION_N} -DPATCH_VERSION=${APPVERSION_P}
+
 	# Do not compile eth app if target is nanos
 	ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
 		DEFINES += HAVE_ETH_INTEGRATION
-		DEFINES += HAVE_ETH2 
+		DEFINES += HAVE_ETH2
 		DEFINES_LIB += USE_LIB_ETHEREUM
 
 		# EIP-712
@@ -141,7 +144,7 @@ ifeq ($(FEATURE_ETH), 1)
 		DEFINES += CHAIN_ID=1
 		DEFINES += HAVE_BOLOS_APP_STACK_CANARY
 		DEFINES += HAVE_HASH3
-		# TODO: This should not be necessary 
+		# TODO: This should not be necessary
 		# but compilation fails after enabling it with HAVE_HASH3
 		DEFINES += CX_KECCAK_256_SIZE=32
 		# Dynamic memory allocator
@@ -165,7 +168,7 @@ ifeq ($(FEATURE_ETH), 1)
         DEFINES += BLE_SEGMENT_SIZE=32 #max MTU, min 20
 
 		DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
-		# This should not be necessary but app-ethereum/main.c needs 
+		# This should not be necessary but app-ethereum/main.c needs
 		# it although we are not compiling it as a binary.
 		DEFINES += CHAINID_COINNAME=\"$(TICKER)\" CHAIN_ID=$(CHAIN_ID)
 
