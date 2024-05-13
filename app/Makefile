@@ -185,6 +185,7 @@ ifeq ($(FEATURE_ETH), 1)
 		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_common
 		# include bellow is necessary if HAVE_ETH2 is defined
 		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
+		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
 
 		SDK_SOURCE_PATH += lib_u2f lib_standard_app
 
