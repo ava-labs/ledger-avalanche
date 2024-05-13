@@ -99,36 +99,8 @@ void io_seproxyhal_send_status(uint32_t sw) {
     G_io_apdu_buffer[1] = (sw & 0xff);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
 }
-// clang-format off
-// const command_descriptor_t COMMAND_DESCRIPTORS[] = {
-//     {
-//         .cla = CLA_ETH,
-//         .ins = GET_EXTENDED_PUBKEY,
-//         .handler = (command_handler_t)handler_get_extended_pubkey
-//     },
-//     {
-//         .cla = CLA_ETH,
-//         .ins = GET_WALLET_ADDRESS,
-//         .handler = (command_handler_t)handler_get_wallet_address
-//     },
-//     {
-//         .cla = CLA_ETH,
-//         .ins = SIGN_PSBT,
-//         .handler = (command_handler_t)handler_sign_psbt
-//     },
-//     {
-//         .cla = CLA_ETH,
-//         .ins = GET_MASTER_FINGERPRINT,
-//         .handler = (command_handler_t)handler_get_master_fingerprint
-//     },
-//     {
-//         .cla = CLA_ETH,
-//         .ins = SIGN_MESSAGE,
-//         .handler = (command_handler_t)handler_sign_message
-//     },
-// };
-// clang-format on
 
+// clang-format on
 extraInfo_t *getKnownToken(uint8_t *contractAddress) {
     union extraInfo_t *currentItem = NULL;
     // Works for ERC-20 & NFT tokens since both structs in the union have the

@@ -21,14 +21,14 @@ import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
 
 type NftInfo = {
-  token_address: string,
-  token_name: string,
-  chain_id: number,
+  token_address: string
+  token_name: string
+  chain_id: number
 }
 
 type TestData = {
-  name: string,
-  op: Buffer,
+  name: string
+  op: Buffer
   nft_info: NftInfo | undefined
 }
 
@@ -42,7 +42,6 @@ const SIGN_TEST_DATA = [
     nft_info: undefined,
   },
   {
-
     name: 'asset_transfer',
     op: Buffer.from(
       'f87c01856d6e2edc00830186a094010000000000000000000000000000000000000280b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080',
@@ -60,10 +59,7 @@ const SIGN_TEST_DATA = [
   },
   {
     name: 'legacy_transfer',
-    op: Buffer.from(
-      'ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080',
-      'hex',
-    ),
+    op: Buffer.from('ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex'),
   },
   {
     name: 'erc721_safe_transfer_from',
@@ -72,8 +68,8 @@ const SIGN_TEST_DATA = [
       'hex',
     ),
     nft_info: {
-      token_address: "34bc797f40df0445c8429d485232874b15561728",
-      token_name: "Lucid",
+      token_address: '34bc797f40df0445c8429d485232874b15561728',
+      token_name: 'Lucid',
       chain_id: 1,
     },
   },
@@ -123,10 +119,10 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
         expect(provide_resp.returnCode).toEqual(0x9000)
       }
 
-
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'))
       await sim.waitUntilScreenIsNot(currentScreen, 100000)
-      await sim.compareSnapshotsAndApprove('.', testcase)
+      // await sim.compareSnapshotsAndApprove('.', testcase)
+      await sim.navigateAndCompareUntilText('.', testcase, 'Accept')
 
       const resp = await respReq
 
@@ -139,9 +135,9 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
       //Verify signature
       const resp_addr = await app.getETHAddress(ETH_DERIVATION, false)
 
-      const EC = new ec("secp256k1");
-      const sha3 = require('js-sha3');
-      const msgHash = sha3.keccak256(msg);
+      const EC = new ec('secp256k1')
+      const sha3 = require('js-sha3')
+      const msgHash = sha3.keccak256(msg)
 
       const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
       const signature_obj = {
@@ -157,7 +153,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
   })
 })
 
-describe.each(models)('Ethereum [%s] - misc', function (m) {
+describe.each(models)('EthereumAppCfg [%s] - misc', function (m) {
   test.concurrent('get app configuration', async function () {
     const sim = new Zemu(m.path)
     try {
@@ -177,7 +173,7 @@ describe.each(models)('Ethereum [%s] - misc', function (m) {
     }
   })
 
-  test.concurrent('Ethereum Sign PersonalMessage%s', async function () {
+  test.concurrent('EthPersonalMsg%s', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -189,10 +185,9 @@ describe.each(models)('Ethereum [%s] - misc', function (m) {
 
       const currentScreen = await sim.snapshot()
 
-
       const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
-      await sim.compareSnapshotsAndApprove('.', testcase)
+      await sim.navigateAndCompareSnapshots('.', testcase, [2, 0])
 
       const resp = await respReq
 
@@ -203,7 +198,8 @@ describe.each(models)('Ethereum [%s] - misc', function (m) {
       expect(resp).toHaveProperty('v')
 
       //Verify signature
-      const resp_addr = await app.getAddress(ETH_DERIVATION, false, false)
+      const resp_addr = await app.eth2GetPublicKey(ETH_DERIVATION, false)
+      console.log(resp_addr, m.name)
 
       const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
       // recreate data buffer:
@@ -215,9 +211,9 @@ describe.each(models)('Ethereum [%s] - misc', function (m) {
       header.copy(msg)
       data.copy(msg, header.length)
 
-      const EC = new ec("secp256k1");
-      const sha3 = require('js-sha3');
-      const msgHash = sha3.keccak256(msg);
+      const EC = new ec('secp256k1')
+      const sha3 = require('js-sha3')
+      const msgHash = sha3.keccak256(msg)
 
       const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
       const signature_obj = {
