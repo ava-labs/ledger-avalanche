@@ -62,9 +62,9 @@ void extractHDPath(uint32_t rx, uint32_t offset) {
 
     memcpy(hdPath, G_io_apdu_buffer + offset + 1, len_bytes);
     // we need to pass this root path to rust,
-    // later we can make rust ask for it but it would change other logic 
+    // later we can make rust ask for it but it would change other logic
     // in the crypto module.
-    // len_bytes + 1 to include the first byte that tells the number  
+    // len_bytes + 1 to include the first byte that tells the number
     // of elements in the path list
     _set_root_path(&G_io_apdu_buffer[offset], len_bytes + 1);
 }
@@ -94,7 +94,7 @@ extract_eth_path(uint32_t rx, uint32_t offset)
         path_data += sizeof(uint32_t);
     }
 
-    // TODO: Do we need this checks for eth avax? 
+    // TODO: Do we need this checks for eth avax?
     // check for proper chaind ids
     // const bool mainnet =
     //   hdPath[0] == HDPATH_ETH_0_DEFAULT && hdPath[1] == HDPATH_ETH_1_DEFAULT;
@@ -109,9 +109,9 @@ extract_eth_path(uint32_t rx, uint32_t offset)
     // uint32_t len_bytes = path_len * sizeof(uint32_t);
 
     // we need to pass this root path to rust,
-    // later we can make rust ask for it but it would change other logic 
+    // later we can make rust ask for it but it would change other logic
     // in the crypto module.
-    // len_bytes + 1 to include the first byte that tells the number  
+    // len_bytes + 1 to include the first byte that tells the number
     // of elements in the path list
     // _set_root_path(&G_io_apdu_buffer[offset], len_bytes + 1);
 }
@@ -133,7 +133,7 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
             if (!tx_initialized) {
                 THROW(APDU_CODE_TX_NOT_INITIALIZED);
             }
-            // we are appending the change_path list which 
+            // we are appending the change_path list which
             // needs to be removed before signing
             added = tx_append(&(G_io_apdu_buffer[OFFSET_DATA]), rx - OFFSET_DATA);
             if (added != rx - OFFSET_DATA) {
@@ -330,13 +330,13 @@ bool process_chunk_eth_msg(volatile uint32_t *tx, uint32_t rx) {
 
             uint32_t buff_len = tx_get_buffer_length();
             uint8_t *buff_data = tx_get_buffer();
-            
+
             // Read the expected message length from the start of the buffer
             if (be_bytes_to_u32(buff_data, 4, &msg_len) != 0) {
                 THROW(APDU_CODE_DATA_INVALID);
             }
 
-            // Ensure that the total data we expect is less than or equal to what's 
+            // Ensure that the total data we expect is less than or equal to what's
             // already in the buffer plus what's incoming
             if (msg_len > buff_len - 4 + len) {
                 THROW(APDU_CODE_WRONG_LENGTH);
@@ -350,8 +350,8 @@ bool process_chunk_eth_msg(volatile uint32_t *tx, uint32_t rx) {
 
             // Update the buffer length after appending
             buff_len = tx_get_buffer_length();
-            
-            // Check if we've received the entire message based on the initial 
+
+            // Check if we've received the entire message based on the initial
             // message length indicator
             if (msg_len + 4 == buff_len) {
                 return true;
@@ -411,8 +411,8 @@ handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
 
 __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignAvaxTx\n");
-    // This is the first transaction signing stage, where we receive the root path 
-    // to be used for change_outputs and signers. so we need to tell process_chunk 
+    // This is the first transaction signing stage, where we receive the root path
+    // to be used for change_outputs and signers. so we need to tell process_chunk
     // to parse it.
     if (!process_chunk(tx, rx)) {
         THROW(APDU_CODE_OK);
@@ -438,21 +438,21 @@ __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx
 __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignAvaxHash\n");
 
-    // we do not need to process_chunk 
+    // we do not need to process_chunk
     // all data was send in one go
     // and for now we are not ussing transaction buffer for this
     // if (!process_chunk(tx, rx, is_first_message)) {
     //     THROW(APDU_CODE_OK);
     // }
 
-    // in this case we just received a path suffix 
-    // we are supposed to use the previously stored 
+    // in this case we just received a path suffix
+    // we are supposed to use the previously stored
     // root_path and hash
     if (G_io_apdu_buffer[OFFSET_P1] != FIRST_MESSAGE) {
         app_sign_hash();
     } else {
-        // this is the sign_hash transaction 
-        // we received in one go the root path 
+        // this is the sign_hash transaction
+        // we received in one go the root path
         // and 32-bytes hash
         // so append it to our internal buffer and parse it
         tx_initialize();
@@ -613,7 +613,7 @@ __Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *
     zemu_log("handleProvideErc20\n");
 
     // Nothing to do as we do not handle this information,
-    // but need to return ok to ethereumjs-wallet in order to 
+    // but need to return ok to ethereumjs-wallet in order to
     // ontinue with signing contract calls
     *tx = 0;
 
@@ -683,14 +683,14 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
             CHECK_PIN_VALIDATED()
             handleSignAvaxHash(flags, tx, rx);
 
-            break; 
+            break;
         }
 
         case AVX_SIGN_MSG: {
             CHECK_PIN_VALIDATED()
             handleSignAvaxMsg(flags, tx, rx);
 
-            break; 
+            break;
         }
         default: {
             zemu_log("unknown_instruction***\n");
@@ -719,23 +719,23 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
         case INS_SET_PLUGIN: {
             CHECK_PIN_VALIDATED()
             handleSetPlugin(flags, tx, rx);
-            break; 
+            break;
         }
         case INS_PROVIDE_NFT_INFORMATION: {
             CHECK_PIN_VALIDATED()
             handleNftInfo(flags, tx, rx);
 
-            break; 
+            break;
         }
         case INS_ETH_PROVIDE_ERC20: {
             CHECK_PIN_VALIDATED()
             handleErc20(flags, tx, rx);
-            break; 
+            break;
         }
         case INS_SIGN_ETH_MSG: {
             CHECK_PIN_VALIDATED()
             handleSignEthMsg(flags, tx, rx);
-            break; 
+            break;
         }
         default: {
             zemu_log("unknown_instruction***\n");
@@ -755,15 +755,17 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
                 THROW(APDU_CODE_WRONG_LENGTH);
             }
 
+            ZEMU_LOGF(50, "CLA: %x\n", G_io_apdu_buffer[OFFSET_CLA]);
+
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 avax_dispatch(flags, tx, rx);
             } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
                 // eth_dispatch(flags, tx, rx);
 #if defined(FEATURE_ETH)
                 zemu_log_stack("calling handle_eth_apdu\n");
-                handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+                return handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 #endif
-               
+
             } else {
                 THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }
