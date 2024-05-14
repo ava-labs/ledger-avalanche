@@ -75,12 +75,12 @@ const internalStorage_t N_storage_real;
 #ifdef HAVE_NBGL
 caller_app_t *caller_app = NULL;
 #endif
-// chain_config_t *chainConfig = NULL;
+
+const chain_config_t *chainConfig = NULL;
 chain_config_t config;
 
 
 void reset_app_context() {
-    // PRINTF("!!RESET_APP_CONTEXT\n");
     appState = APP_STATE_IDLE;
     G_called_from_swap = false;
     G_swap_response_ready = false;
