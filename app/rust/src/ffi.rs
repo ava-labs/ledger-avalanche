@@ -21,10 +21,9 @@ use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
 use crate::parser::{
     parse_path_list, AvaxMessage, DisplayableItem, EthTransaction, ObjectList, PathWrapper,
-    PersonalMsg, U32_SIZE,
+    PersonalMsg,
 };
 use crate::parser::{FromBytes, ParserError, Transaction};
-use crate::utils::ApduPanic;
 use crate::ZxError;
 
 pub mod context;
@@ -387,52 +386,4 @@ pub unsafe extern "C" fn _tx_data_offset(
     *offset = buffer_len - rem.len() as u16;
 
     ZxError::Ok as _
-}
-
-// Use to compute the V component of the signature
-// for eth transactions. this is required for the app_ethereum js application
-// to compute the real V from this bytes
-#[no_mangle]
-pub unsafe extern "C" fn _computeV(ctx: *const parser_context_t, parity: u8) -> u8 {
-    let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
-    let data = core::slice::from_raw_parts((*ctx).buffer, (*ctx).buffer_len as _);
-
-    _ = crate::handlers::eth::signing::cleanup_globals();
-
-    // For a weird reason we need to parse again to validate internal pointers,
-    // need to investigate more this.
-    _ = EthTransaction::from_bytes_into(data, tx);
-    let tx = tx.assume_init_mut();
-
-    let chain_id = tx.chain_id();
-    let len = core::cmp::min(U32_SIZE, chain_id.len());
-
-    // Check for typed transactions
-    // eip-1559 and eip-2930
-    if tx.is_typed_tx() {
-        // this is what the app=ethereum does
-        parity
-
-        // below for legacy transactions
-    } else if chain_id.is_empty() {
-        // according to app-ethereum this is the legacy non eip155 conformant
-        // so V should be made before EIP155 which had
-        // 27 + {0, 1}
-        // 27, decided by the parity of Y
-        // see https://bitcoin.stackexchange.com/a/112489
-        //     https://ethereum.stackexchange.com/a/113505
-        //     https://eips.ethereum.org/EIPS/eip-155
-        27 + parity
-    } else {
-        // app-ethereum reads the first 4 bytes then cast it to an u8
-        // this is not good but it relies on hw-eth-app lib from ledger
-        // to recover the right chain_id from the V component being computed here, and
-        // which is returned with the signature
-        // Ensure that leading is not greater than U32_SIZE
-        // unwrap here as chain_id is neither empty nor grater that u64_size
-        let id: u64 = crate::parser::bytes_to_u64(&chain_id[..len]).unwrap();
-        //
-        let x: u32 = (35 + parity as u32).saturating_add((id as u32) << 1);
-        x as u8
-    }
 }

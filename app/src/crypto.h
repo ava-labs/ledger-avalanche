@@ -36,8 +36,6 @@ zxerr_t keccak_digest(const unsigned char *in, unsigned int inLen,
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen);
 
 zxerr_t crypto_sign_avax(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *hash, uint16_t hash_len, const uint32_t *path, uint16_t path_len);
-zxerr_t crypto_sign_eth(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, uint16_t *sigSize);
-zxerr_t crypto_sign_eth_msg(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, uint16_t *sigSize);
 
 
 

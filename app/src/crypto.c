@@ -22,8 +22,6 @@
 #include "zxmacros.h"
 #include "keys_def.h"
 #include "crypto_helper.h"
-// TODO: Remove later!!!!!
-#include "tx.h"
 
 uint32_t hdPath[HDPATH_LEN_DEFAULT];
 uint32_t hdPath_len;
@@ -100,61 +98,6 @@ typedef struct {
 // https://bitcoin.stackexchange.com/questions/77191/what-is-the-maximum-size-of-a-der-encoded-ecdsa-signature#77192
 uint8_t der_signature[73];
 
-zxerr_t _sign(uint8_t *output, uint16_t outputLen, const uint8_t *message, uint16_t messageLen, uint16_t *sigSize, unsigned int *info) {
-    if (output == NULL || message == NULL || sigSize == NULL ||
-        outputLen < sizeof(signature_t) || messageLen != CX_SHA256_SIZE) {
-            return zxerr_invalid_crypto_settings;
-    }
-
-    cx_ecfp_private_key_t cx_privateKey;
-    uint8_t privateKeyData[SECP256K1_SK_LEN] = {0};
-    size_t signatureLength = sizeof(der_signature);
-    uint32_t tmpInfo = 0;
-    *sigSize = 0;
-
-    signature_t *const signature = (signature_t *) output;
-    zxerr_t error = zxerr_unknown;
-
-    CATCH_CXERROR(os_derive_bip32_with_seed_no_throw(HDW_NORMAL,
-                                                     CX_CURVE_256K1,
-                                                     hdPath,
-                                                     hdPath_len, // HDPATH_LEN_DEFAULT?
-                                                     privateKeyData,
-                                                     NULL,
-                                                     NULL,
-                                                     0));
-
-    CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_256K1, privateKeyData, 32, &cx_privateKey));
-    CATCH_CXERROR(cx_ecdsa_sign_no_throw(&cx_privateKey,
-                                         CX_RND_RFC6979 | CX_LAST,
-                                         CX_SHA256,
-                                         message,
-                                         messageLen,
-                                         der_signature,
-                                         &signatureLength, &tmpInfo));
-
-    const err_convert_e err_c = convertDERtoRSV(der_signature, tmpInfo,  signature->r, signature->s, &signature->v);
-    if (err_c == no_error) {
-        *sigSize =  sizeof_field(signature_t, r) +
-                    sizeof_field(signature_t, s) +
-                    sizeof_field(signature_t, v) +
-                    signatureLength;
-        if (info != NULL) *info = tmpInfo;
-        error = zxerr_ok;
-    }
-
-catch_cx_error:
-    MEMZERO(&cx_privateKey, sizeof(cx_privateKey));
-    MEMZERO(privateKeyData, sizeof(privateKeyData));
-
-    if (error != zxerr_ok) {
-        MEMZERO(output, outputLen);
-    }
-
-    return error;
-}
-
-
 zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
     if (signatureMaxlen < sizeof(signature_t)) {
         return zxerr_buffer_too_small;
@@ -218,73 +161,6 @@ zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_
 
     return zxerr;
 }
-
-// Sign an ethereum related transaction
-zxerr_t crypto_sign_eth(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, uint16_t *sigSize) {
-    if (buffer == NULL || message == NULL || sigSize == NULL || signatureMaxlen < sizeof(signature_t)) {
-        return zxerr_invalid_crypto_settings;
-    }
-
-    uint8_t message_digest[KECCAK_256_SIZE] = {0};
-    CHECK_ZXERR(keccak_digest(message, messageLen, message_digest, KECCAK_256_SIZE))
-
-    unsigned int info = 0;
-    zxerr_t error = _sign(buffer, signatureMaxlen, message_digest, KECCAK_256_SIZE, sigSize, &info);
-    if (error != zxerr_ok)
-        return zxerr_invalid_crypto_settings;
-
-    // we need to fix V
-    uint8_t v = tx_compute_eth_v(info);
-
-    // need to reorder signature as hw-eth-app expects v at the beginning.
-    // so rsv -> vrs
-    uint8_t rs_size = sizeof_field(signature_t, r) + sizeof_field(signature_t, s);
-    memmove(buffer + 1, buffer, rs_size);
-    buffer[0] = v;
-
-    return error;
-}
-
-// Sign an ethereum personal message
-zxerr_t crypto_sign_eth_msg(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, uint16_t *sigSize) {
-    if (buffer == NULL || message == NULL || sigSize == NULL || signatureMaxlen < sizeof(signature_t)) {
-        return zxerr_invalid_crypto_settings;
-    }
-
-    uint8_t message_digest[KECCAK_256_SIZE] = {0};
-    const unsigned char header[] = "\x19" "Ethereum Signed Message:\n";
-
-    cx_sha3_t keccak;
-    if (cx_keccak_init_no_throw(&keccak, KECCAK_256_SIZE * 8) != CX_OK) return zxerr_unknown;
-    CHECK_CX_OK(cx_hash_no_throw((cx_hash_t *)&keccak, !CX_LAST, header, sizeof(header), message_digest, KECCAK_256_SIZE));
-    CHECK_CX_OK(cx_hash_no_throw((cx_hash_t *)&keccak, CX_LAST, message, messageLen, message_digest, KECCAK_256_SIZE));
-
-    unsigned int info = 0;
-
-    zxerr_t error = _sign(buffer, signatureMaxlen, message_digest, KECCAK_256_SIZE, sigSize, &info);
-
-    if (error != zxerr_ok)
-        return zxerr_invalid_crypto_settings;
-
-    // we need to fix V
-    uint8_t v = 27;
-
-    if (info & CX_ECCINFO_PARITY_ODD)
-        v += 1;
-
-    if (info & CX_ECCINFO_xGTn)
-        v += 2;
-
-    // need to reorder signature as hw-eth-app expects v at the beginning.
-    // so rsv -> vrs
-    uint8_t rs_size = sizeof_field(signature_t, r) + sizeof_field(signature_t, s);
-    memmove(buffer + 1, buffer, rs_size);
-    buffer[0] = v;
-
-    return error;
-}
-
-
 
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen) {
     if (buffer == NULL || addrResponseLen == NULL) {

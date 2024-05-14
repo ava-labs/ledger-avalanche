@@ -22,7 +22,6 @@
 
 #include "actions.h"
 #include "addr.h"
-#include "eth_addr.h"
 #include "app_main.h"
 #include "coin.h"
 #include "crypto.h"
@@ -32,7 +31,6 @@
 #include "zxmacros.h"
 #include "parser_common.h"
 #include "rslib.h"
-#include "eth_utils.h"
 #if defined(FEATURE_ETH)
 #include "handler.h"
 #endif
