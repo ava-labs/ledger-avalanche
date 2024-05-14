@@ -26,12 +26,12 @@ import { ec } from 'elliptic'
 
 jest.setTimeout(200000)
 
-type NftInfo = {
-  token_address: string
-  token_name: string
-  chain_id: number
-}
-
+// type NftInfo = {
+//   token_address: string
+//   token_name: string
+//   chain_id: number
+// }
+//
 type Op = {
   to?: string
   value?: string
@@ -40,7 +40,7 @@ type Op = {
 type TestData = {
   name: string
   op: Op
-  nft_info?: NftInfo
+  // nft_info?: NftInfo
   chainId?: number
 }
 const SIGN_TEST_DATA: TestData[] = [
@@ -174,11 +174,11 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       const currentScreen = await sim.snapshot()
       const msg = rawUnsignedLegacyTransaction(data.op, data.chainId)
 
-      const nft = data.nft_info
-      if (nft !== undefined) {
-        const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
-        expect(provide_resp.returnCode).toEqual(0x9000)
-      }
+      // const nft = data.nft_info
+      // if (nft !== undefined) {
+      //   const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
+      //   expect(provide_resp.returnCode).toEqual(0x9000)
+      // }
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 60000)
