@@ -30,7 +30,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
       const app = new Eth(sim.getTransport())
 
       const ETH_PATH = "m/44'/60'/0'/0'/5"
-      const EXPECTED_PUBLIC_KEY = '024f1dd50f180bfd546339e75410b127331469837fa618d950f7cfb8be351b0020';
+      const EXPECTED_PUBLIC_KEY = '024f1dd50f180bfd546339e75410b127331469837fa618d950f7cfb8be351b0020'
       const resp = await app.getAddress(ETH_PATH, false)
 
       console.log(resp, m.name)
@@ -75,7 +75,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
       expect(resp).toHaveProperty('address')
       expect(resp).toHaveProperty('publicKey')
       expect(resp).toHaveProperty('chainCode')
-      expect(resp.chainCode).not.toBeUndefined();
+      expect(resp.chainCode).not.toBeUndefined()
     } finally {
       await sim.close()
     }
