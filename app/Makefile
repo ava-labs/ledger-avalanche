@@ -215,6 +215,11 @@ ifeq ($(FEATURE_ETH), 1)
 		# CFLAGS += -DFEATURE_ETH=$(FEATURE_ETH)
 		DEFINES += FEATURE_ETH=$(FEATURE_ETH)
 
+		# Note: Enables direct data signing without having to specify it in the settings.
+		# Useful when testing with speculos.
+		include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
+		
+
 	endif #NO TARGET_NANOS OR TARGET_STAX
 endif #NO FEATURE_ETH
 

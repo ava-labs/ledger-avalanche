@@ -16,7 +16,12 @@ export const models: IDeviceModel[] = [
   // { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
 ]
 
-export const btc_models: IDeviceModel[] = models.filter(m => m.name != 'nanos' && m.name != 'stax')
+// TODO: Enable nanos later
+export const eth_models: IDeviceModel[] = [
+  { name: 'nanox', prefix: 'X', path: APP_PATH_X },
+  { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
+  // { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
+]
 
 export const defaultOptions = (m: IDeviceModel, is_address = false) => {
   let approveAction = ButtonKind.ApproveHoldButton
