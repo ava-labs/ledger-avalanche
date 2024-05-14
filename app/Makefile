@@ -124,44 +124,42 @@ endif
 ifeq ($(FEATURE_ETH), 1)
 
 	CHAIN_ID = 1
-	TICKER = "ETH"
+	TICKER = "AVAX"
 
 	# These flags are needed by cmd_getAppConfiguration.c from ETH app
-	CFLAGS += -DMAJOR_VERSION=${APPVERSION_M} -DMINOR_VERSION=${APPVERSION_N} -DPATCH_VERSION=${APPVERSION_P}
+	CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATCH_VERSION=$(APPVERSION_P)
 
 	# Do not compile eth app if target is nanos
 	ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
 		DEFINES += HAVE_ETH_INTEGRATION
 		DEFINES += HAVE_ETH2
 		DEFINES_LIB += USE_LIB_ETHEREUM
-
 		# EIP-712
-		DEFINES	+= HAVE_EIP712_FULL_SUPPORT
+		HAVE_EIP712_FULL_SUPPORT = 1
+		DEFINES += HAVE_EIP712_FULL_SUPPORT=$(HAVE_EIP712_FULL_SUPPORT)
 		# Feature used by EIP-712
 		DEFINES += HAVE_DOMAIN_NAME
 
-		DEFINES += TICKER="ETH"
-		DEFINES += CHAIN_ID=1
+		DEFINES += TICKER=$(TICKER)
+		DEFINES += CHAIN_ID=$(CHAIN_ID)
+
 		DEFINES += HAVE_BOLOS_APP_STACK_CANARY
 		DEFINES += HAVE_HASH3
-		# TODO: This should not be necessary
-		# but compilation fails after enabling it with HAVE_HASH3
-		DEFINES += CX_KECCAK_256_SIZE=32
+
 		# Dynamic memory allocator
 		DEFINES += HAVE_DYN_MEM_ALLOC
 
 		ETH_GLYPHS = $(MY_DIR)/../deps/ethereum/glyphs
 		GLYPH_FILES += $(addprefix $(ETH_GLYPHS)/,$(sort $(notdir $(shell find $(ETH_GLYPHS)/))))
-		HAVE_EIP712_FULL_SUPPORT = 1
 
 		# The coin type bellow is not part of the eth app,
 		# but this is necesary here as avax wants support for
 		# coin_type = 60'
 		DEFINES   += BIP44_COIN_TYPE_3=60
-		DEFINES   += COIN_COINID_SHORT=\"ETH\"
+		DEFINES   += COIN_COINID_SHORT=\"AVAX\"
 
 		DEFINES += HAVE_SNPRINTF_FORMAT_U
-# DEFINES += IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64
+		# DEFINES += IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64
 		DEFINES += IO_HID_EP_LENGTH=64
 
         DEFINES += HAVE_U2F HAVE_IO_U2F
@@ -172,6 +170,7 @@ ifeq ($(FEATURE_ETH), 1)
 		# This should not be necessary but app-ethereum/main.c needs
 		# it although we are not compiling it as a binary.
 		DEFINES += CHAINID_COINNAME=\"$(TICKER)\" CHAIN_ID=$(CHAIN_ID)
+		DEFINES += BUILD_YEAR=\"$(shell date +%Y)\"
 
 
 		# Needed to be able to include the definition of G_cx
@@ -211,11 +210,10 @@ ifeq ($(FEATURE_ETH), 1)
 
 		# require linker flags
 		LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
-		# LDFLAGS += -L$(BOLOS_SDK)/lib_standard_app
-		# LDLIBS += -lcxng -lstandard_app
 
 		# Pass this flag to C for conditional compilation
-		CFLAGS += -DFEATURE_ETH=$(FEATURE_ETH)
+		# CFLAGS += -DFEATURE_ETH=$(FEATURE_ETH)
+		DEFINES += FEATURE_ETH=$(FEATURE_ETH)
 
 	endif #NO TARGET_NANOS OR TARGET_STAX
 endif #NO FEATURE_ETH
