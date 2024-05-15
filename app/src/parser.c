@@ -70,7 +70,7 @@ parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer,
 parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen) {
     ctx->tx_obj.state = NULL;
     ctx->tx_obj.len = 0;
-    uint16_t size = 0;
+    uint32_t size = 0;
 
     CHECK_ERROR(_parser_init(ctx, data, dataLen, &size));
 

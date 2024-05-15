@@ -26,8 +26,6 @@
 uint32_t hdPath[HDPATH_LEN_DEFAULT];
 uint32_t hdPath_len;
 
-static cx_blake2b_t *ctx_blake2b = NULL;
-
 #define CHECK_PARSER_OK(CALL)      \
   do {                         \
     cx_err_t __cx_err = CALL;  \
