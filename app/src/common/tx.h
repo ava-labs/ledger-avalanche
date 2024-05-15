@@ -44,11 +44,6 @@ uint8_t *tx_get_buffer();
 /// \return It returns NULL if data is valid or error message otherwise.
 const char *tx_avax_parse();
 
-/// Parse an eth tx stored in transaction buffer
-/// This function should be called as soon as full buffer data is loaded.
-/// \return It returns NULL if data is valid or error message otherwise.
-const char *tx_eth_parse();
-
 /// Parse a hash transaction that contains the root path 
 /// plus the hash data to be signed
 const char *tx_avax_parse_hash();
@@ -57,13 +52,9 @@ const char *tx_avax_parse_hash();
 /// plus the message data to be signed
 const char *tx_avax_parse_msg();
 
-/// Parse an ethereum message.
-const char *tx_eth_parse_msg();
-
 /// Return the number of items in the transaction
 zxerr_t tx_getNumItems(uint8_t *num_items);
 
 /// Gets an specific item from the transaction (including paging)
 zxerr_t tx_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outValue, uint16_t outValueLen,
                    uint8_t pageIdx, uint8_t *pageCount);
-uint8_t tx_compute_eth_v(unsigned int info);

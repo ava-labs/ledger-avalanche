@@ -65,7 +65,7 @@ zxerr_t _set_tx_hash(uint8_t *hash, uint16_t hash_len_bytes);
 
 // returns and offset from which the actual transaction data starts
 // in case of error, this functions returns -1
-zxerr_t _tx_data_offset(uint8_t *buffer, uint16_t buffer_len, uint16_t *offset);
+zxerr_t _tx_data_offset(const uint8_t *buffer, uint16_t buffer_len, uint16_t *offset);
 
 zxerr_t _get_hash(uint8_t *hash, uint16_t hash_len);
 // gets the path(root_path + suffix_path?) to sign a hash

@@ -28,7 +28,7 @@
 #include "rslib.h"
 
 static zxerr_t parser_allocate();
-static zxerr_t parser_deallocate();
+// static zxerr_t parser_deallocate();
 
 // This buffer will store parser_state.
 // Its size corresponds to ParsedObj (Rust struct)
@@ -139,11 +139,3 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
 
     return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }
-
-uint8_t parser_compute_eth_v(parser_context_t *ctx, unsigned int info) {
-
-    unsigned int parity = (info & CX_ECCINFO_PARITY_ODD);
-
-    return _computeV(ctx, parity);
-}
-
