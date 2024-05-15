@@ -183,7 +183,10 @@ ifeq ($(FEATURE_ETH), 1)
 		# include bellow is necessary if HAVE_ETH2 is defined
 		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
 
-		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src
+		ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
+		ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
+		APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
+		# APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src
 		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
 		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_common
 		# include bellow is necessary if HAVE_ETH2 is defined
