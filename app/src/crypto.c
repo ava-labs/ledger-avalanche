@@ -94,9 +94,6 @@ typedef struct {
     uint8_t v;
 } __attribute__((packed)) signature_t;
 
-// DER signature max size should be 73
-// https://bitcoin.stackexchange.com/questions/77191/what-is-the-maximum-size-of-a-der-encoded-ecdsa-signature#77192
-uint8_t der_signature[73];
 
 zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
     if (signatureMaxlen < sizeof(signature_t)) {
@@ -107,56 +104,49 @@ zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_
         return zxerr_out_of_bounds;
     }
 
+    // DER signature max size should be 73
+    // https://bitcoin.stackexchange.com/questions/77191/what-is-the-maximum-size-of-a-der-encoded-ecdsa-signature#77192
+    uint8_t der_signature[73] = {0};
+
     cx_ecfp_private_key_t cx_privateKey;
-    uint8_t privateKeyData[32];
-    int signatureLength = 0;
-    unsigned int info = 0;
+    uint8_t privateKeyData[64];
+    size_t signatureLength = sizeof(der_signature);
+    uint32_t info = 0;
+
 
     signature_t *const signature = (signature_t *) buffer;
 
     zxerr_t zxerr = zxerr_unknown;
-    BEGIN_TRY
-    {
-        TRY
-        {
-            // Generate keys
-            os_perso_derive_node_bip32(CX_CURVE_256K1,
-                                       path,
-                                       path_len,
-                                       privateKeyData, NULL);
 
-            cx_ecfp_init_private_key(CX_CURVE_256K1, privateKeyData, 32, &cx_privateKey);
+    CATCH_CXERROR(os_derive_bip32_with_seed_no_throw(HDW_NORMAL,
+                                                     CX_CURVE_256K1,
+                                                     path,
+                                                     path_len,
+                                                     privateKeyData,
+                                                     NULL,
+                                                     NULL,
+                                                     0));
+    CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_256K1, privateKeyData, 32, &cx_privateKey));
+    CATCH_CXERROR(cx_ecdsa_sign_no_throw(&cx_privateKey,
+                                         CX_RND_RFC6979 | CX_LAST,
+                                         CX_SHA256,
+                                         message,
+                                         CX_SHA256_SIZE,
+                                         der_signature,
+                                         &signatureLength, &info));
 
-            // Sign
-            signatureLength = cx_ecdsa_sign(&cx_privateKey,
-                                            CX_RND_RFC6979 | CX_LAST,
-                                            CX_SHA256,
-                                            message,
-                                            CX_SHA256_SIZE,
-                                            der_signature,
-                                            sizeof(der_signature),
-                                            &info);
-
-            zxerr = zxerr_ok;
-        }
-        CATCH_ALL {
-            signatureLength = 0;
-            zxerr = zxerr_ledger_api_error;
-        };
-        FINALLY {
-            MEMZERO(&cx_privateKey, sizeof(cx_privateKey));
-            MEMZERO(privateKeyData, 32);
-        }
-    }
-    END_TRY;
-
-    if(zxerr != zxerr_ok) {
-        return zxerr;
+    const err_convert_e err_c = convertDERtoRSV(der_signature, info,  signature->r, signature->s, &signature->v);
+    if (err_c == no_error) {
+        zxerr = zxerr_ok;
     }
 
-    err_convert_e err = convertDERtoRSV(der_signature, info,  signature->r, signature->s, &signature->v);
-    if (err != no_error) {
-        return zxerr_encoding_failed;
+catch_cx_error:
+    MEMZERO(&cx_privateKey, sizeof(cx_privateKey));
+    MEMZERO(privateKeyData, sizeof(privateKeyData));
+    MEMZERO(der_signature, sizeof(der_signature));
+
+    if (zxerr != zxerr_ok) {
+        MEMZERO(buffer, signatureMaxlen);
     }
 
     return zxerr;
