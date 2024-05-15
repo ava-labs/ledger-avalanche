@@ -34,7 +34,7 @@
 #define ADDR_UI_MAX_SIZE 61
 
 // Use to hold the addr_ui object, used by rust to display the address
-addr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
+uint8_t addr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
 
 
 
