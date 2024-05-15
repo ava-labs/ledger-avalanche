@@ -37,7 +37,7 @@ impl<'b> SubnetId<'b> {
 
     pub fn is_primary_network(&self) -> bool {
         let primary_net = bolos::PIC::new(Self::PRIMARY_NETWORK.0).into_inner();
-        &self.0.get(..).apdu_unwrap() == &primary_net.get(..).apdu_unwrap()
+        self.0.get(..).apdu_unwrap() == primary_net.get(..).apdu_unwrap()
     }
 }
 

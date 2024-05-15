@@ -22,7 +22,7 @@ mod sign;
 mod version;
 mod wallet_id;
 
-pub(self) mod prelude {
+pub mod prelude {
     pub use std::prelude::v1::*;
 
     pub(super) use crate::{

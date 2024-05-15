@@ -112,8 +112,6 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
             return Err(ParserError::InvalidChainId.into());
         }
 
-        let id = super::bytes_to_u64(id_bytes)?;
-
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);
         }

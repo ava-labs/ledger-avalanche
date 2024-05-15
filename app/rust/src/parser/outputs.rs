@@ -101,7 +101,7 @@ where
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("TransferableOutput::from_bytes_into\x00");
 
-        let output = out.as_mut_ptr() as *mut TransferableOutput<O>;
+        let output = out.as_mut_ptr();
         //valid pointer
         let asset = unsafe { &mut *addr_of_mut!((*output).asset_id).cast() };
         let rem = AssetId::from_bytes_into(input, asset)?;

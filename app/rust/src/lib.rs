@@ -19,7 +19,12 @@
 // later we yan rename enum_variant
 // we have some functions that we might use in the future
 // and some initializations that rust doesn't detect properly
-#![allow(clippy::enum_variant_names, dead_code)]
+#![allow(
+    clippy::enum_variant_names,
+    dead_code,
+    clippy::manual_range_contains,
+    clippy::items_after_test_module
+)]
 
 extern crate no_std_compat as std;
 use core::panic::PanicInfo;
@@ -96,16 +101,6 @@ pub fn handle_apdu_raw(bytes: &[u8]) -> (u32, u32, std::vec::Vec<u8>) {
     handle_apdu(&mut flags, &mut tx, rx as u32, &mut out);
 
     (flags, tx, out)
-}
-
-pub fn zlog(msg: &str) {
-    unsafe {
-        zemu_log_stack(msg.as_bytes().as_ptr());
-    }
-}
-
-extern "C" {
-    fn zemu_log_stack(msg: *const u8);
 }
 
 #[cfg(test)]

@@ -117,7 +117,7 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
                     title[..label.len()].copy_from_slice(label);
 
                     let content = pic_str!(b"transaction");
-                    return handle_ui_message(content, message, page);
+                    handle_ui_message(content, message, page)
                 },
                 until owner_items => self.render_owners(x as usize, title, message, page),
                 until 1 => {

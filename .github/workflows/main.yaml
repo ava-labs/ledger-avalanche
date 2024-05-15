@@ -1,0 +1,205 @@
+name: "test/build"
+on:
+  - push
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      uid_gid: ${{ steps.get-user.outputs.uid_gid }}
+    steps:
+      - id: get-user
+        run: echo "uid_gid=$(id -u):$(id -g)" >> $GITHUB_OUTPUT
+
+  checks:
+    runs-on: ubuntu-latest
+    container:
+      image: zondax/rust-ci:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      # - name: Install Miri
+      #   run: |
+      #     rustup toolchain install nightly --component miri rustfmt
+      #     cargo +nightly miri --version
+      # - name: Test with Miri
+      #   env:
+      #     MIRIFLAGS: "-Zmiri-symbolic-alignment-check \
+      #       -Zmiri-check-number-validity \
+      #       -Zmiri-permissive-provenance \
+      #       -Zmiri-backtrace=full"
+      #   run: |
+      #     cargo +nightly miri test --features "full","derive-debug"
+      - name: show versions
+        run: |
+          rustup show
+      - name: rustfmt
+        run: |
+          cd app/rust
+          cargo fmt --version
+          cargo fmt -- --check
+      - name: clippy
+        run: |
+          cd app/rust
+          # cargo clippy --version
+          # cargo clippy --all-targets --features "full","derive-debug"
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: zondax/rust-ci:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Cache/restore Cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: ./app/rust/.cargo
+          key: ${{ runner.os }}-${{ hashFiles('./Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ github.sha }}
+      - name: run rust tests
+        run: make rust_test
+
+  build_ledger:
+    needs: configure
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk:
+          - varname: NANOS_SDK
+            target: s
+          - varname: NANOX_SDK
+            target: x
+          - varname: NANOSP_SDK
+            target: s2
+          # - varname: STAX_SDK
+          #   target: fs
+    container:
+      image: zondax/ledger-app-builder:latest
+      env:
+        SDK_VARNAME: ${{ matrix.sdk.varname }}
+      options: --user ${{ needs.configure.outputs.uid_gid }}
+    env:
+      HOME: /home/zondax_circle
+    steps:
+      - run: echo "BOLOS_SDK=${!SDK_VARNAME}" >> "$GITHUB_ENV"
+        shell: bash -l {0}
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Cache/restore Cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: ./app/rust/.cargo
+          key: ${{ runner.os }}-${{ hashFiles('./Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ github.sha }}
+
+      - name: Build app
+        shell: bash -l {0}
+        run: make
+
+      - name: Upload elf
+        uses: actions/upload-artifact@v3
+        with:
+          name: app_${{ matrix.sdk.target }}
+          path: app/output/*.elf
+          if-no-files-found: error
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v3
+        with:
+          name: installer_${{ matrix.sdk.target }}
+          path: app/pkg/*.sh
+          if-no-files-found: error
+
+  tests_zemu_setup:
+    if: ${{! contains(toJSON(github.event.commits.*.message), '[skip-zemu]')}}
+    runs-on: ubuntu-latest
+    outputs:
+      tests: ${{ steps.get-tests.outputs.tests }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Install node
+        uses: actions/setup-node@v3
+
+      - name: Install yarn
+        run: npm install -g yarn
+
+      - name: Build/Install build js deps
+        run: |
+          export PATH=~/.cargo/bin:$PATH
+          make zemu_install
+
+      - name: Get test files
+        id: get-tests
+        run: |
+          cd tests_zemu
+          TESTS=`yarn test --listTests --json | head -n 3 | tail -n 1 | jq -cM 'to_entries | map({id: .key, file: .value})'`
+          echo "tests=$TESTS" >> "$GITHUB_OUTPUT"
+
+  test_zemu:
+    needs: [build_ledger, tests_zemu_setup]
+    if: ${{! contains(toJSON(github.event.commits.*.message), '[skip-zemu]')}}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test: ${{ fromJson(needs.tests_zemu_setup.outputs['tests']) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: /tmp/artifacts
+      - run: |
+          # mkdir -p build/output
+          mkdir -p app/output
+          find /tmp/artifacts -type f -name "*.elf" -exec mv {} app/output/ \;
+
+      - run: sudo apt-get update -y && sudo apt-get install -y libusb-1.0.0 libudev-dev
+      - name: Install node
+        uses: actions/setup-node@v3
+      - name: Install yarn
+        run: npm install -g yarn
+
+      - name: Build/Install build js deps
+        run: |
+          export PATH=~/.cargo/bin:$PATH
+          make zemu_install
+      - name: Run zemu tests
+        run: |
+          export PATH=~/.cargo/bin:$PATH
+          cd tests_zemu
+          yarn jest ${{ matrix.test.file }} --maxConcurrency 2 \
+                --reporters='@matteoh2o1999/github-actions-jest-reporter'
+        env:
+          FORCE_COLOR: 1
+
+      - name: Tar Zemu snapshots
+        if: always()
+        run: tar -cvf snapshots_tmp.tar ./tests_zemu/snapshots-tmp
+      - name: Upload tmp snapshots
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: snapshots-tmp_${{ matrix.test.id }}
+          path: snapshots_tmp.tar
+          #we don't need these snapshots for very long
+          retention-days: 3

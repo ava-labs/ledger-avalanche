@@ -76,7 +76,7 @@ impl<'b> FromBytes<'b> for PvmOutput<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         // initialize locktime
         let mut locktime = None;
-        let output = out.as_mut_ptr() as *mut PvmOutput;
+        let output = out.as_mut_ptr();
 
         // check first if this output is locked
         let rem = if let Ok((r, _)) =

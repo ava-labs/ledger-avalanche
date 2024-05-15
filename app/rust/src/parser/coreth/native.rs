@@ -173,10 +173,7 @@ pub enum EthTransaction<'b> {
 
 impl<'b> EthTransaction<'b> {
     pub fn is_typed_tx(&self) -> bool {
-        match self {
-            EthTransaction::Legacy(_) => false,
-            _ => true,
-        }
+        !matches!(self, EthTransaction::Legacy(_))
     }
 
     pub fn chain_id(&self) -> &'b [u8] {

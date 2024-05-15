@@ -83,7 +83,7 @@ impl<'b> FromBytes<'b> for TransferableInput<'b> {
         let tx_id = arrayref::array_ref!(tx_id, 0, TX_ID_LEN);
 
         // asset_id
-        let input = input.as_mut_ptr() as *mut TransferableInput;
+        let input = input.as_mut_ptr();
         let asset = unsafe { &mut *addr_of_mut!((*input).asset_id).cast() };
         let mut rem = AssetId::from_bytes_into(rem, asset)?;
 

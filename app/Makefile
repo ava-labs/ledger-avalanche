@@ -15,23 +15,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #*******************************************************************************
-
 ifeq ($(BOLOS_SDK),)
 $(error BOLOS_SDK is not set)
 endif
 
-DEBUG:=0
+DEBUG := 0
 
 MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
-# This enables automatically the ethereum application
-# for all targets except for the nanos
+# Enable Ethereum features for all targets except TARGET_NANOS
 ifneq ($(TARGET_NAME), TARGET_NANOS)
 FEATURE_ETH = 1
 endif
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
-
 include $(BOLOS_SDK)/Makefile.defines
 
 $(info ************ TARGET_NAME  = [$(TARGET_NAME)])
@@ -39,14 +36,14 @@ $(info ************ TARGET_NAME  = [$(TARGET_NAME)])
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.app_testing
 
 ifndef COIN
-COIN=AVAX
+COIN = AVAX
 endif
 
 include $(CURDIR)/Makefile.version
 
 $(info COIN  = [$(COIN)])
 
-ifeq ($(COIN),AVAX)
+ifeq ($(COIN), AVAX)
 # Main app configuration
 DEFINES += APP_STANDARD
 APPNAME = "Avalanche"
@@ -75,166 +72,112 @@ endif
 DEFINES += HAVE_HASH HAVE_BLAKE2
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
 
-# TODO: maybe not that useful so far?
-ifeq ($(APP_TESTING),1)
-DEFINES += APP_TESTING
-DEFINES += ZEMU_LOGGING
+ifeq ($(APP_TESTING), 1)
+DEFINES += APP_TESTING ZEMU_LOGGING
 $(info ************ LOGGING ENABLED ************)
 endif
 
 # Enable app features depending on the target device
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-RUST_TARGET:=thumbv6m-none-eabi
-APP_FULL:=1
+ifeq ($(TARGET_NAME), TARGET_NANOS)
+RUST_TARGET := thumbv6m-none-eabi
+APP_FULL := 1
 endif
 
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-RUST_TARGET:=thumbv6m-none-eabi
-APP_FULL:=1
-# Why just here and not common setting for similar targets
-# like nanosplus and stax?
-# ifeq ($(FEATURE_ETH), 1))
-# APP_LOAD_PARAMS += --appFlags 0xa50
-# APP_LOAD_FLAGS += --appFlags 0xa40
-# else
-# APP_LOAD_PARAMS += --appFlags 0x200
-# endif
+ifeq ($(TARGET_NAME), TARGET_NANOX)
+RUST_TARGET := thumbv6m-none-eabi
+APP_FULL := 1
 endif
 
-ifeq ($(TARGET_NAME),TARGET_NANOS2)
-RUST_TARGET:=thumbv6m-none-eabi
-APP_FULL:=1
+ifeq ($(TARGET_NAME), TARGET_NANOS2)
+RUST_TARGET := thumbv6m-none-eabi
+APP_FULL := 1
 endif
 
-ifeq ($(TARGET_NAME),TARGET_STAX)
-RUST_TARGET:=thumbv6m-none-eabi
-APP_FULL:=1
+ifeq ($(TARGET_NAME), TARGET_STAX)
+RUST_TARGET := thumbv6m-none-eabi
+APP_FULL := 1
 endif
 
-ifeq ($(APP_TESTING),1)
-RUST_FEATURES+=--features "dev"
+ifeq ($(APP_TESTING), 1)
+RUST_FEATURES += --features "dev"
 endif
-ifeq ($(APP_FULL),1)
-RUST_FEATURES+=--features "full"
+
+ifeq ($(APP_FULL), 1)
+RUST_FEATURES += --features "full"
 else
-# Lite version to run on nanos
-RUST_FEATURES+=--features "lite"
+RUST_FEATURES += --features "lite"
 endif
 
 ifeq ($(FEATURE_ETH), 1)
 
-	CHAIN_ID = 1
-	TICKER = "AVAX"
+CHAIN_ID = 1
+TICKER = "AVAX"
 
-	# These flags are needed by cmd_getAppConfiguration.c from ETH app
-	CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATCH_VERSION=$(APPVERSION_P)
+CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATCH_VERSION=$(APPVERSION_P)
 
-	# Do not compile eth app if target is nanos
-	ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
-		DEFINES += HAVE_ETH_INTEGRATION
-		DEFINES += HAVE_ETH2
-		DEFINES_LIB += USE_LIB_ETHEREUM
-		# EIP-712
-		HAVE_EIP712_FULL_SUPPORT = 1
-		DEFINES += HAVE_EIP712_FULL_SUPPORT=$(HAVE_EIP712_FULL_SUPPORT)
-		# Feature used by EIP-712
-		DEFINES += HAVE_DOMAIN_NAME
+ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
+DEFINES += HAVE_ETH_INTEGRATION HAVE_ETH2 USE_LIB_ETHEREUM
+HAVE_EIP712_FULL_SUPPORT = 1
+DEFINES += HAVE_EIP712_FULL_SUPPORT=$(HAVE_EIP712_FULL_SUPPORT)
+DEFINES += HAVE_DOMAIN_NAME TICKER=$(TICKER) CHAIN_ID=$(CHAIN_ID)
+DEFINES += HAVE_BOLOS_APP_STACK_CANARY HAVE_HASH3
+DEFINES += HAVE_DYN_MEM_ALLOC
 
-		DEFINES += TICKER=$(TICKER)
-		DEFINES += CHAIN_ID=$(CHAIN_ID)
+ETH_GLYPHS = $(MY_DIR)/../deps/ethereum/glyphs
+GLYPH_FILES += $(addprefix $(ETH_GLYPHS)/,$(sort $(notdir $(shell find $(ETH_GLYPHS)/))))
 
-		DEFINES += HAVE_BOLOS_APP_STACK_CANARY
-		DEFINES += HAVE_HASH3
+DEFINES += BIP44_COIN_TYPE_3=60 COIN_COINID_SHORT=\"AVAX\"
+DEFINES += HAVE_SNPRINTF_FORMAT_U IO_HID_EP_LENGTH=64
+DEFINES += HAVE_U2F HAVE_IO_U2F U2F_PROXY_MAGIC=\"w0w\"
+DEFINES += BLE_SEGMENT_SIZE=32
+DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
+DEFINES += CHAINID_COINNAME=\"$(TICKER)\" BUILD_YEAR=\"$(shell date +%Y)\"
 
-		# Dynamic memory allocator
-		DEFINES += HAVE_DYN_MEM_ALLOC
+INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
+INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/include
+INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk/src
+INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src
+INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
+INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_common/
+INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
 
-		ETH_GLYPHS = $(MY_DIR)/../deps/ethereum/glyphs
-		GLYPH_FILES += $(addprefix $(ETH_GLYPHS)/,$(sort $(notdir $(shell find $(ETH_GLYPHS)/))))
+ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
+ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
+APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
+APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
+APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_common
+APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
+APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
 
-		# The coin type bellow is not part of the eth app,
-		# but this is necesary here as avax wants support for
-		# coin_type = 60'
-		DEFINES   += BIP44_COIN_TYPE_3=60
-		DEFINES   += COIN_COINID_SHORT=\"AVAX\"
+SDK_SOURCE_PATH += lib_u2f lib_standard_app
 
-		DEFINES += HAVE_SNPRINTF_FORMAT_U
-		# DEFINES += IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64
-		DEFINES += IO_HID_EP_LENGTH=64
+ifeq ($(TARGET_NAME), TARGET_STAX)
+APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_nbgl
+else
+SDK_SOURCE_PATH += lib_ux
+APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_bagl
+DEFINES += HAVE_BAGL HAVE_UX_FLOW HAVE_GLO096
+DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64 HAVE_BAGL_ELLIPSIS
+DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+endif
 
-        DEFINES += HAVE_U2F HAVE_IO_U2F
-        DEFINES += U2F_PROXY_MAGIC=\"w0w\"
-        DEFINES += BLE_SEGMENT_SIZE=32 #max MTU, min 20
+LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
 
-		DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
-		# This should not be necessary but app-ethereum/main.c needs
-		# it although we are not compiling it as a binary.
-		DEFINES += CHAINID_COINNAME=\"$(TICKER)\" CHAIN_ID=$(CHAIN_ID)
-		DEFINES += BUILD_YEAR=\"$(shell date +%Y)\"
+DEFINES += FEATURE_ETH=$(FEATURE_ETH)
 
+include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
 
-		# Needed to be able to include the definition of G_cx
-		INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
-		INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/include
-
-		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src
-		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
-		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_common/
-		# include bellow is necessary if HAVE_ETH2 is defined
-		INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
-
-		ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
-		ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
-		APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
-		# APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src
-		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
-		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_common
-		# include bellow is necessary if HAVE_ETH2 is defined
-		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
-		APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
-
-		SDK_SOURCE_PATH += lib_u2f lib_standard_app
-
-		# import rules to compile glyphs(/pone)
-		ifeq  ($(TARGET_NAME),TARGET_STAX)
-			APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_nbgl
-		else
-			SDK_SOURCE_PATH += lib_ux
-			APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_bagl
-			DEFINES += HAVE_BAGL
-			DEFINES += HAVE_UX_FLOW
-			DEFINES += HAVE_GLO096
-			DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64
-			DEFINES += HAVE_BAGL_ELLIPSIS # long label truncation feature
-			DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-			DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-			DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-		endif
-
-		# require linker flags
-		LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
-
-		# Pass this flag to C for conditional compilation
-		# CFLAGS += -DFEATURE_ETH=$(FEATURE_ETH)
-		DEFINES += FEATURE_ETH=$(FEATURE_ETH)
-
-		# Note: Enables direct data signing without having to specify it in the settings.
-		# Useful when testing with speculos.
-		include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
-		
-
-	endif #NO TARGET_NANOS OR TARGET_STAX
-endif #NO FEATURE_ETH
+endif # NO TARGET_NANOS OR TARGET_STAX
+endif # NO FEATURE_ETH
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
 INCLUDES_PATH += $(CURDIR)/src/common/
 
-
-# Compiler, assembler, and linker
-# Building Rust
 CC := $(CLANGPATH)clang
 
-ifeq ($(DEBUG),1)
+ifeq ($(DEBUG), 1)
 CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter -g
 else
 CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter
@@ -245,9 +188,9 @@ CFLAGS += -DAPPVERSION_M=$(APPVERSION_M) -DAPPVERSION_N=$(APPVERSION_N) -DAPPVER
 AS := $(GCCPATH)arm-none-eabi-gcc
 AFLAGS +=
 
-LD       := $(GCCPATH)arm-none-eabi-gcc
+LD := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS += -z muldefs
-LDLIBS   += -lm -lgcc -lc
+LDLIBS += -lm -lgcc -lc
 LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
 
 APP_SOURCE_PATH += $(CURDIR)/rust/include
@@ -265,22 +208,14 @@ rust_clean:
 
 clean: rust_clean
 
-.PHONY: rust_test_full
-rust_test_full:
-	RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
-	cargo test --release --target $(RUST_TARGET) \
-	--no-default-features $(RUST_FEATURES)
-
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.side_loading
 
-# Import generic rules from the SDK
 include $(BOLOS_SDK)/Makefile.rules
 
-#add dependency on custom makefile filename
 dep/%.d: %.c Makefile
 
 listvariants:
-	@echo VARIANTS COIN IRON
+	@echo VARIANTS COIN AVAX
 
 .PHONY: version
 version:

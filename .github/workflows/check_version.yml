@@ -1,11 +1,9 @@
-name: Verify PRs to main
+name: "Verify PRs to main"
 
 on:
-  workflow_dispatch:
   pull_request:
     branches:
       - main
-      - dev
 
 jobs:
   configure:
@@ -23,7 +21,8 @@ jobs:
       image: zondax/ledger-app-builder:latest
       options: --user ${{ needs.configure.outputs.uid_gid }}
     env:
-      SDK_VARNAME: NANOSP_SDK
+      BOLOS_SDK: /opt/nanosplus-secure-sdk
+      HOME: /home/zondax_circle
     outputs:
       version: ${{ steps.store-version.outputs.version }}
     steps:
@@ -31,7 +30,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-      - run: make version
+
+      - name: Invoke `version`
+        shell: bash -l {0}
+        run: make version
+
       - id: store-version
         run: echo "version=$(cat ./app/app.version)" >> $GITHUB_OUTPUT
 
@@ -40,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: checkTag
-        uses: mukunku/tag-exists-action@v1.0.0
+        uses: mukunku/tag-exists-action@v1.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
