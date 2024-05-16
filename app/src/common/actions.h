@@ -161,6 +161,12 @@ __Z_INLINE void app_reply_address() {
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, action_addrResponseLen + 2);
 }
 
+__Z_INLINE void wallet_reply() {
+    set_code(G_io_apdu_buffer, action_addrResponseLen, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, action_addrResponseLen + 2);
+}
+
+
 __Z_INLINE void app_reply_error() {
     set_code(G_io_apdu_buffer, 0, APDU_CODE_DATA_INVALID);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);

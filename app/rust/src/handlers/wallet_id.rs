@@ -25,6 +25,7 @@ use crate::{
     },
     crypto,
     dispatcher::ApduHandler,
+    ffi::wallet_id,
     handlers::handle_ui_message,
     sys::{self, PIC},
     utils::{hex_encode, ApduBufferRead, ApduPanic},
@@ -38,6 +39,68 @@ impl WalletId {
 
     pub fn hmac_key() -> &'static str {
         PIC::new(Self::HMAC_KEY).into_inner()
+    }
+
+    pub fn fill(
+        tx: &mut u32,
+        buffer: ApduBufferRead<'_>,
+        ui: *mut u8,
+        ui_len: u16,
+    ) -> Result<(), Error> {
+        sys::zemu_log_stack("WalletId::handle\x00");
+
+        if ui.is_null() || ui_len != core::mem::size_of::<MaybeUninit<WalletIdUI>>() as u16 {
+            return Err(Error::DataInvalid);
+        }
+
+        *tx = 0;
+
+        //ok to unwrap as we have control over the input
+        let bip32_path =
+            sys::crypto::bip32::BIP32Path::<2>::new([BIP32_PATH_ROOT_0, BIP32_PATH_ROOT_1])
+                .apdu_unwrap();
+
+        //compute public key Sha256HMAC with path "44'/9000'"
+        // and key 'wallet-id'
+        // the hmac is truncated so the public key is not recoverable
+        // since the hmac is done with a known key
+        let hmac = {
+            let mut digest =
+                Sha256HMAC::new(Self::hmac_key().as_bytes()).map_err(|_| Error::ExecutionError)?;
+
+            let mut pkey = MaybeUninit::uninit();
+            crypto::Curve
+                .to_secret(&bip32_path)
+                .into_public_into(None, &mut pkey)
+                .map_err(|_| Error::ExecutionError)?;
+            //this is safe since we initialized it just now
+            let pkey = unsafe { pkey.assume_init() };
+
+            //we hmac the entire UNCOMPRESSED public key
+            digest
+                .update(pkey.as_ref())
+                .map_err(|_| Error::ExecutionError)?;
+
+            digest.finalize_hmac().map_err(|_| Error::ExecutionError)?
+        };
+
+        let ui = unsafe { &mut *ui.cast::<MaybeUninit<WalletIdUI>>() };
+        //we can ignore the error safely as we pass the right slice lenght
+        let _ = WalletIdUI::init_with_id(ui, &hmac[..WalletId::LEN]);
+
+        //safe because it's all initialized now
+        let ui = unsafe { ui.assume_init_mut() };
+
+        //we don't need to show so we execute the "accept" already
+        // this way the "formatting" to `buffer` is all in the ui code
+        let (sz, code) = ui.accept(buffer.write());
+
+        if code != Error::Success as u16 {
+            Err(Error::try_from(code).map_err(|_| Error::ExecutionError)?)
+        } else {
+            *tx = sz as u32;
+            Ok(())
+        }
     }
 }
 

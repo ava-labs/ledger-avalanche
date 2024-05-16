@@ -81,6 +81,18 @@ zxerr_t _xaddr_get_item(
     uint8_t page_idx,
     uint8_t *page_count);
 
+uint16_t _wallet_ui_size();
+zxerr_t _wallet_num_items(uint8_t *wallet_obj, uint8_t *num_items);
+zxerr_t _wallet_get_item(
+    uint8_t *wallet_obj,
+    uint8_t display_idx,
+    uint8_t *out_key,
+    uint16_t key_len,
+    uint8_t *out_value,
+    uint16_t out_len,
+    uint8_t page_idx,
+    uint8_t *page_count);
+
 // Set on the rust side the root path. 
 // path_len is in bytes
 void _set_root_path(const uint8_t *path, uint16_t path_len);
@@ -100,3 +112,5 @@ zxerr_t _get_signing_info(uint32_t *path, uint16_t path_len, uint8_t *input, uin
 parser_error_t _parse_sign_hash_tx(uint8_t *input,  uint16_t len);
 
 void _clean_up_hash();
+
+

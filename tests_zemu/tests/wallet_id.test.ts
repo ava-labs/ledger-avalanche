@@ -21,47 +21,41 @@ import AvalancheApp from '@zondax/ledger-avalanche-app'
 jest.setTimeout(200000)
 
 describe.each(models)('WalletID [%s] - wallet id', function (m) {
-  test.concurrent(
-    'get wallet id',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getWalletId()
+  test.concurrent('getWalletId', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const resp = await app.getWalletId()
 
-        console.log(resp, m.name)
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('id')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('id')
+    } finally {
+      await sim.close()
+    }
+  })
 
-  test.concurrent(
-    'show wallet id',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.showWalletId()
+  test.concurrent('showWalletId', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const respReq = app.showWalletId()
 
-        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-wallet-id`)
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-wallet-id`)
 
-        const resp = await respReq;
-        console.log(resp, m.name)
+      const resp = await respReq
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('id')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('id')
+    } finally {
+      await sim.close()
+    }
+  })
 })

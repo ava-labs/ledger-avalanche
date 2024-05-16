@@ -32,6 +32,7 @@ pub mod ext_public_key;
 pub mod nft_info;
 pub mod public_key;
 pub mod sign_hash;
+pub mod wallet_id;
 use context::{parser_context_t, Instruction};
 
 /// Cast a *mut u8 to a *mut Transaction
