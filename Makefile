@@ -25,7 +25,7 @@ ifeq ($(BOLOS_SDK),)
 # In this case, there is not predefined SDK and we run dockerized
 # When not using the SDK, we override and build the XL complete app
 
-# ZXLIB_COMPILE_STAX ?= 1
+ZXLIB_COMPILE_STAX ?= 1
 include $(CURDIR)/deps/ledger-zxlib/dockerized_build.mk
 
 else

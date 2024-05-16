@@ -100,6 +100,10 @@ endif
 ifeq ($(TARGET_NAME), TARGET_STAX)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
+ICON_STAX = icons/stax_app_chain_$(CHAIN_ID).gif
+DEFINES += ICONGLYPH=C_stax_chain_$(CHAIN_ID)_64px
+DEFINES += ICONBITMAP=C_stax_chain_$(CHAIN_ID)_64px_bitmap
+DEFINES += ICONGLYPH_SMALL=C_stax_chain_$(CHAIN_ID)
 endif
 
 ifeq ($(APP_TESTING), 1)
