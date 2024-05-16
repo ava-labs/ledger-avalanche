@@ -307,6 +307,14 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
             handleGetXAddr(flags, tx, rx);
             break;
         }
+        case AVX_INS_GET_WALLET_ID: {
+            CHECK_PIN_VALIDATED()
+            // For this instruction in particular delegate parsing and UI 
+            // to our rust code.
+            rs_handle_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+            break;
+        }
+
         default: {
             zemu_log("unknown_instruction***\n");
             THROW(APDU_CODE_INS_NOT_SUPPORTED);

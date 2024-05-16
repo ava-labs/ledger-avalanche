@@ -76,6 +76,7 @@ pub fn apdu_dispatch(
         (CLA, INS_SIGN_HASH) => SignHash::handle(flags, tx, apdu_buffer),
         (CLA, INS_SIGN_MSG) => AvaxSignMsg::handle(flags, tx, apdu_buffer),
 
+        // only for nanos as other targets will use app-ethereum
         (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_SET_PLUGIN) => SetPlugin::handle(flags, tx, apdu_buffer),
         #[cfg(feature = "erc20")]
