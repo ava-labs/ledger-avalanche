@@ -22,6 +22,7 @@
 
 #include "actions.h"
 #include "addr.h"
+#include "xaddr.h"
 #include "app_main.h"
 #include "coin.h"
 #include "crypto.h"
@@ -120,6 +121,25 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
     if (requireConfirmation) {
         view_review_init(addr_getItem, addr_getNumItems, app_reply_address);
+        view_review_show(REVIEW_ADDRESS);
+        *flags |= IO_ASYNCH_REPLY;
+        return;
+    }
+
+    THROW(APDU_CODE_OK);
+}
+
+__Z_INLINE void handleGetXAddr(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleGetXAddr\n");
+
+    const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
+    zxerr_t zxerr = fill_ext_address(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    if (zxerr != zxerr_ok) {
+        *tx = 0;
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+    if (requireConfirmation) {
+        view_review_init(xaddr_getItem, xaddr_getNumItems, app_reply_address);
         view_review_show(REVIEW_ADDRESS);
         *flags |= IO_ASYNCH_REPLY;
         return;
@@ -288,6 +308,12 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
             CHECK_PIN_VALIDATED()
             handleSignAvaxMsg(flags, tx, rx);
 
+            break;
+        }
+
+        case AVX_INS_GET_EXTENDED_PUBLIC_KEY: {
+            CHECK_PIN_VALIDATED()
+            handleGetXAddr(flags, tx, rx);
             break;
         }
         default: {

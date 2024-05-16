@@ -21,53 +21,47 @@ import AvalancheApp from '@zondax/ledger-avalanche-app'
 jest.setTimeout(200000)
 
 const defaultOptions = (model: any) => {
-  return { ...commonOpts(model, true), approveKeyword: model.name == 'stax' ? "Path" : "" }
+  return { ...commonOpts(model, true), approveKeyword: model.name == 'stax' ? 'Path' : '' }
 }
 
-describe.each(models)('Standard [%s] - extended pubkey', function (m) {
-  test.concurrent(
-    'get pubkey %s',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const resp = await app.getExtendedPubKey(ROOT_PATH, false)
+describe.each(models)('ExtPubkey[%s]', function (m) {
+  test.concurrent('getPubkey %s', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const resp = await app.getExtendedPubKey(ROOT_PATH, false)
 
-        console.log(resp, m.name)
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('chain_code')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('chain_code')
+    } finally {
+      await sim.close()
+    }
+  })
 
-  test.concurrent(
-    'show addr',
-    async function () {
-      const sim = new Zemu(m.path)
-      try {
-        await sim.start(defaultOptions(m))
-        const app = new AvalancheApp(sim.getTransport())
-        const respReq = app.getExtendedPubKey(ROOT_PATH, true)
+  test.concurrent('showExtAddr', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const respReq = app.getExtendedPubKey(ROOT_PATH, true)
 
-        await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
-        await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-xpub`);
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-xpub`)
 
-        const resp = await respReq;
-        console.log(resp, m.name)
+      const resp = await respReq
+      console.log(resp, m.name)
 
-        expect(resp.returnCode).toEqual(0x9000)
-        expect(resp.errorMessage).toEqual('No errors')
-        expect(resp).toHaveProperty('publicKey')
-        expect(resp).toHaveProperty('chain_code')
-      } finally {
-        await sim.close()
-      }
-    },
-  );
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('chain_code')
+    } finally {
+      await sim.close()
+    }
+  })
 })

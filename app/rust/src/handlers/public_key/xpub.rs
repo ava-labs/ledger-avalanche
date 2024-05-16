@@ -50,6 +50,48 @@ impl GetExtendedPublicKey {
 
         initializer.finalize().map_err(|_| Error::ExecutionError)
     }
+
+    pub fn fill(
+        tx: &mut u32,
+        buffer: ApduBufferRead<'_>,
+        addr_ui: *mut u8,
+        addr_ui_len: u16,
+    ) -> Result<(), Error> {
+        sys::zemu_log_stack("GetExtendedPublicKey::fill_address\x00");
+
+        if addr_ui.is_null() || addr_ui_len < core::mem::size_of::<MaybeUninit<AddrUI>>() as u16 {
+            return Err(Error::DataInvalid);
+        }
+
+        *tx = 0;
+
+        let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
+
+        let hrp = GetPublicKey::get_hrp(&mut cdata)?;
+        let chainid = GetPublicKey::get_chainid(&mut cdata)?;
+
+        let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
+            .map_err(|_| Error::DataInvalid)?;
+
+        // In this step we initialized and store in memory(allocated from C) our
+        // UI object for later address visualization
+        let ui = unsafe { &mut *addr_ui.cast::<MaybeUninit<ExtendedPubkeyUI>>() };
+        Self::initialize_ui(hrp, chainid, bip32_path, ui)?;
+
+        //safe since it's all initialized now
+        let ui = unsafe { ui.assume_init_mut() };
+
+        //we don't need to show so we execute the "accept" already
+        // this way the "formatting" to `buffer` is all in the ui code
+        let (sz, code) = ui.accept(buffer.write());
+
+        if code != Error::Success as u16 {
+            Err(Error::try_from(code).map_err(|_| Error::ExecutionError)?)
+        } else {
+            *tx = sz as u32;
+            Ok(())
+        }
+    }
 }
 
 impl ApduHandler for GetExtendedPublicKey {

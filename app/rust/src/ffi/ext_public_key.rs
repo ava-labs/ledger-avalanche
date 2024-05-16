@@ -2,14 +2,13 @@ use core::mem::MaybeUninit;
 
 use zemu_sys::Viewable;
 
+use crate::handlers::public_key::ExtendedPubkeyUI;
 use crate::{
-    handlers::public_key::{AddrUI, GetPublicKey},
-    utils::ApduBufferRead,
-    ZxError,
+    handlers::public_key::GetExtendedPublicKey as GetPublicKey, utils::ApduBufferRead, ZxError,
 };
 
 #[no_mangle]
-pub unsafe extern "C" fn _app_fill_address(
+pub unsafe extern "C" fn _app_fill_ext_address(
     tx: *mut u32,
     rx: u32,
     buffer: *mut u8,
@@ -33,17 +32,17 @@ pub unsafe extern "C" fn _app_fill_address(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn _address_ui_size() -> u16 {
-    core::mem::size_of::<MaybeUninit<AddrUI>>() as u16
+pub unsafe extern "C" fn _xaddress_ui_size() -> u16 {
+    core::mem::size_of::<MaybeUninit<ExtendedPubkeyUI>>() as u16
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn _addr_num_items(addr_obj: *mut u8, num_items: *mut u8) -> u16 {
+pub unsafe extern "C" fn _xaddr_num_items(addr_obj: *mut u8, num_items: *mut u8) -> u16 {
     if addr_obj.is_null() || num_items.is_null() {
         return ZxError::NoData as u16;
     }
 
-    let ui = &mut *addr_obj.cast::<MaybeUninit<AddrUI>>();
+    let ui = &mut *addr_obj.cast::<MaybeUninit<ExtendedPubkeyUI>>();
     let ui = ui.assume_init_mut();
 
     let Ok(items) = ui.num_items() else {
@@ -56,7 +55,7 @@ pub unsafe extern "C" fn _addr_num_items(addr_obj: *mut u8, num_items: *mut u8) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn _addr_get_item(
+pub unsafe extern "C" fn _xaddr_get_item(
     addr_obj: *mut u8,
     display_idx: u8,
     out_key: *mut u8,
@@ -76,7 +75,7 @@ pub unsafe extern "C" fn _addr_get_item(
     }
 
     let (ui, out_key, out_value) = {
-        let ui = &mut *addr_obj.cast::<MaybeUninit<AddrUI>>();
+        let ui = &mut *addr_obj.cast::<MaybeUninit<ExtendedPubkeyUI>>();
         let out_value = core::slice::from_raw_parts_mut(out_value, out_len as usize);
         let out_key = core::slice::from_raw_parts_mut(out_key, key_len as usize);
         (ui.assume_init_mut(), out_key, out_value)

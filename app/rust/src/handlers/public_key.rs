@@ -20,7 +20,7 @@ use bolos::{crypto::bip32::BIP32Path, PIC};
 use zemu_sys::{Show, Viewable};
 
 mod xpub;
-pub use xpub::GetExtendedPublicKey;
+pub use xpub::{ExtendedPubkeyUI, GetExtendedPublicKey};
 
 mod ui;
 pub use ui::{AddrUI, AddrUIInitError, AddrUIInitializer};

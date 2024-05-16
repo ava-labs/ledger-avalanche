@@ -28,6 +28,7 @@ use crate::ZxError;
 
 pub mod context;
 pub mod eth_public_key;
+pub mod ext_public_key;
 pub mod nft_info;
 pub mod public_key;
 pub mod sign_hash;

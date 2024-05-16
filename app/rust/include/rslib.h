@@ -31,6 +31,17 @@ uint16_t _app_fill_address(
     uint16_t addr_obj_len
 );
 
+// To handle an extended public key and address requests, without 
+// confirmation(UI)
+uint16_t _app_fill_ext_address(
+    uint32_t *tx,
+    uint32_t rx,
+    uint8_t *buffer,
+    uint16_t buffer_len,
+    uint8_t *addr_obj,
+    uint16_t addr_obj_len
+);
+
 // To handle an public key and address requests, without 
 // confirmation(UI)
 uint16_t _fill_eth_address(
@@ -44,9 +55,23 @@ uint16_t _fill_eth_address(
 
 uint16_t _address_ui_size();
 
+uint16_t _xaddress_ui_size();
+
 zxerr_t _addr_num_items(uint8_t *addr_obj, uint8_t *num_items);
 
 zxerr_t _addr_get_item(
+    uint8_t *addr_obj,
+    uint8_t display_idx,
+    uint8_t *out_key,
+    uint16_t key_len,
+    uint8_t *out_value,
+    uint16_t out_len,
+    uint8_t page_idx,
+    uint8_t *page_count);
+
+zxerr_t _xaddr_num_items(uint8_t *addr_obj, uint8_t *num_items);
+
+zxerr_t _xaddr_get_item(
     uint8_t *addr_obj,
     uint8_t display_idx,
     uint8_t *out_key,
