@@ -29,7 +29,12 @@
 
 extern uint16_t action_addrResponseLen;
 
+__Z_INLINE void clean_up_hash_globals() {
+    _clean_up_hash(); 
+}
+
 __Z_INLINE void app_sign_hash() {
+    zemu_log("app_sign_hash\n");
 
     uint32_t path[HDPATH_LEN_DEFAULT] = {0};
     uint8_t hash[CX_SHA256_SIZE] = {0};
@@ -41,6 +46,7 @@ __Z_INLINE void app_sign_hash() {
     err = _get_hash(hash, CX_SHA256_SIZE);
 
     if (err != zxerr_ok) {
+        zemu_log("Error getting hash\n");
         set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
         return;
@@ -50,10 +56,17 @@ __Z_INLINE void app_sign_hash() {
     uint8_t path_len = G_io_apdu_buffer[OFFSET_DATA];
     uint8_t len_bytes = path_len * sizeof(uint32_t) + 1;
 
+    { 
+        char data[100];
+        snprintf(data, sizeof(data), "Path len: %d\n", path_len);
+        zemu_log(data);
+    }
+
     // include 1-bytes for len
     err = _get_signing_info(path, HDPATH_LEN_DEFAULT, &G_io_apdu_buffer[OFFSET_DATA], len_bytes);
 
     if (err != zxerr_ok) {
+        zemu_log("Error getting signing info\n");
         set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
         return;
@@ -67,7 +80,7 @@ __Z_INLINE void app_sign_hash() {
     } else {
         // ensure we clean paths and hashes
         if (G_io_apdu_buffer[OFFSET_P1] == LAST_MESSAGE)
-            _clean_up_hash();
+            clean_up_hash_globals();
 
         set_code(G_io_apdu_buffer, SECP256K1_PK_LEN, APDU_CODE_OK);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SECP256K1_PK_LEN + 2);
@@ -101,7 +114,7 @@ __Z_INLINE void app_sign(uint16_t offset) {
 }
 
 __Z_INLINE void app_sign_tx() {
-    zemu_log_stack("app_sign");
+    zemu_log_stack("app_sign_tx");
 
     // needs to remove the change_path list
     const uint8_t *data = tx_get_buffer();
@@ -125,6 +138,16 @@ __Z_INLINE void app_sign_msg() {
 
     // no change paths list at the begining
     app_sign(0);
+}
+
+// no change paths list at the begining
+__Z_INLINE void app_sign_hash_review() {
+    zemu_log_stack("app_sign_hash_review");
+
+    // we are just returning the CODE_OK
+    // the hash signature would be returned in the next stage.
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
 }
 
 __Z_INLINE void app_reject() {

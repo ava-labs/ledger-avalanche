@@ -177,13 +177,6 @@ __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx
 __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignAvaxHash\n");
 
-    // we do not need to process_chunk
-    // all data was send in one go
-    // and for now we are not ussing transaction buffer for this
-    // if (!process_chunk(tx, rx, is_first_message)) {
-    //     THROW(APDU_CODE_OK);
-    // }
-
     // in this case we just received a path suffix
     // we are supposed to use the previously stored
     // root_path and hash
@@ -196,8 +189,6 @@ __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *
         // so append it to our internal buffer and parse it
         tx_initialize();
         tx_reset();
-        // this step is not really necessary
-        extractHDPath(rx, OFFSET_DATA);
 
         uint16_t added = tx_append(&(G_io_apdu_buffer[OFFSET_DATA]), rx - OFFSET_DATA);
 
@@ -209,14 +200,14 @@ __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *
         CHECK_APP_CANARY()
 
         if (error_msg != NULL) {
-
+            zemu_log(error_msg);
             const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
             memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
             *tx += (error_msg_length);
             THROW(APDU_CODE_DATA_INVALID);
         }
 
-        view_review_init(tx_getItem, tx_getNumItems, app_sign_hash);
+        view_review_init(tx_getItem, tx_getNumItems, app_sign_hash_review);
         view_review_show(REVIEW_TXN);
     }
 
