@@ -311,10 +311,16 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             ZEMU_LOGF(50, "CLA: %x\n", G_io_apdu_buffer[OFFSET_CLA]);
 
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
-                avax_dispatch(flags, tx, rx);
+                return avax_dispatch(flags, tx, rx);
             } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
 #if defined(FEATURE_ETH)
-                return handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+                handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+            return;
+            #else
+                // if FEATURE_ETH is disable that means the target is nanos
+                // so we use our rust default implmentation
+                rs_handle_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+            return;
 #endif
             } else {
                 THROW(APDU_CODE_CLA_NOT_SUPPORTED);
