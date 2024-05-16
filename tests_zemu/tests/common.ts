@@ -16,8 +16,8 @@ export const models: IDeviceModel[] = [
   // { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
 ]
 
-// TODO: Enable nanos later
 export const eth_models: IDeviceModel[] = [
+  { name: 'nanos', prefix: 'S', path: APP_PATH_S },
   { name: 'nanox', prefix: 'X', path: APP_PATH_X },
   { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
   // { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
