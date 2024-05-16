@@ -15,14 +15,22 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions, eth_models } from './common'
+import { ButtonKind } from '@zondax/zemu'
+import { ETH_DERIVATION, defaultOptions as commonOpts, eth_models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 import { Transaction } from '@ethereumjs/tx'
 import { Common } from '@ethereumjs/common'
 import { bufArrToArr } from '@ethereumjs/util'
 import { RLP } from '@ethereumjs/rlp'
-import { ec } from 'elliptic'
+// import { ec } from 'elliptic'
+
+const defaultOptions = (model: any) => {
+  let opts = commonOpts(model, true)
+  opts.approveKeyword = model.name !== 'nanos' ? 'Accept' : 'APPROVE'
+  opts.approveAction = ButtonKind.ApproveTapButton
+  return opts
+}
 
 jest.setTimeout(15000)
 
@@ -185,7 +193,11 @@ describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 60000)
-      await sim.navigateAndCompareUntilText('.', testcase, 'Accept')
+      if (m.name === 'nanos') {
+        await sim.compareSnapshotsAndApprove('.', testcase)
+      } else {
+        await sim.navigateAndCompareUntilText('.', testcase, 'Accept')
+      }
 
       const resp = await respReq
 

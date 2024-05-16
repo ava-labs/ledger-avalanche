@@ -28,7 +28,7 @@ const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd
 jest.setTimeout(200000)
 
 describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
-  test.concurrent('get pubkey and addr', async function () {
+  test.concurrent('getPubkeyAddr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -49,7 +49,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('show addr', async function () {
+  test.concurrent('ShowAddr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -72,7 +72,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('get addr with custom hrp & chainID addr', async function () {
+  test.concurrent('hrpChainIDAddr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))

@@ -15,12 +15,9 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions as commonOpts, models } from './common'
-import Eth from '@ledgerhq/hw-app-eth'
 
-const defaultOptions = (model: any) => {
-  return commonOpts(model, true)
-}
+import { ETH_DERIVATION, defaultOptions as commonOpts, models, defaultOptions } from './common'
+import Eth from '@ledgerhq/hw-app-eth'
 
 describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
   test.concurrent('get pubkey and addr %s', async function () {
@@ -45,6 +42,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
 
   test.concurrent('show addr %s', async function () {
     const sim = new Zemu(m.path)
+
     try {
       await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())

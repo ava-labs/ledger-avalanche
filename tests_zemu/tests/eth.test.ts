@@ -15,11 +15,19 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions, eth_models } from './common'
+import { ButtonKind } from '@zondax/zemu'
+import { ETH_DERIVATION, defaultOptions as commonOpts, eth_models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
 import { verifyMessage } from '@ethersproject/wallet'
+
+const defaultOptions = (model: any) => {
+  let opts = commonOpts(model, true)
+  opts.approveKeyword = model.name !== 'nanos' ? 'Accept' : 'APPROVE'
+  opts.approveAction = ButtonKind.ApproveTapButton
+  return opts
+}
 
 type NftInfo = {
   token_address: string
@@ -125,7 +133,7 @@ describe.each(eth_models)('EthereumTx [%s]; sign', function (m) {
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'))
       await sim.waitUntilScreenIsNot(currentScreen, 100000)
-      await sim.navigateAndCompareUntilText('.', testcase, 'Accept')
+      await sim.compareSnapshotsAndApprove('.', testcase)
 
       const resp = await respReq
 
@@ -191,7 +199,11 @@ describe.each(eth_models)('EthereumAppCfg [%s] - misc', function (m) {
 
       const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
-      await sim.navigateAndCompareSnapshots('.', testcase, [2, 0])
+      if (m.name === 'nanos') {
+        await sim.compareSnapshotsAndApprove('.', testcase)
+      } else {
+        await sim.navigateAndCompareSnapshots('.', testcase, [2, 0])
+      }
 
       const resp = await respReq
 
