@@ -44,7 +44,8 @@ uint16_t _fill_eth_address(
 
 uint16_t _address_ui_size();
 
-zxerr_t _addr_num_items(uint8_t *addr_obj, uint16_t *num_items);
+zxerr_t _addr_num_items(uint8_t *addr_obj, uint8_t *num_items);
+
 zxerr_t _addr_get_item(
     uint8_t *addr_obj,
     uint8_t display_idx,
