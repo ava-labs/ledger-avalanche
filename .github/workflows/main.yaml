@@ -78,8 +78,8 @@ jobs:
             target: x
           - varname: NANOSP_SDK
             target: s2
-          # - varname: STAX_SDK
-          #   target: fs
+          - varname: STAX_SDK
+            target: fs
     container:
       image: zondax/ledger-app-builder:latest
       env:
