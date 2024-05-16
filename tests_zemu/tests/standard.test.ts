@@ -30,18 +30,18 @@ describe.each(models)('Standard', function (m) {
     }
   })
 
-  test.concurrent('main menu', async function () {
+  test.concurrent('MainMenu', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
-      const nav = zondaxMainmenuNavigation(m.name, [1, 0, 0, 4, -5]);
+      const nav = zondaxMainmenuNavigation(m.name, [1, 0, 0, 4, -5])
       await sim.navigateAndCompareSnapshots('.', `${m.prefix.toLowerCase()}-mainmenu`, nav.schedule)
     } finally {
       await sim.close()
     }
   })
 
-  test.concurrent('get app version', async function () {
+  test.concurrent('AppVersion', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
