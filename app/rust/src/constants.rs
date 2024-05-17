@@ -145,7 +145,9 @@ pub const BIP32_PATH_PREFIX_DEPTH: usize = 3;
 // signer/owner path.
 pub const BIP32_PATH_SUFFIX_DEPTH: usize = 2;
 
+#[cfg(test)]
 pub use evm_instructions::*;
+#[cfg(test)]
 pub use instructions::*;
 
 pub mod version {

@@ -25,7 +25,6 @@ use crate::{
     },
     crypto,
     dispatcher::ApduHandler,
-    ffi::wallet_id,
     handlers::handle_ui_message,
     sys::{self, PIC},
     utils::{hex_encode, ApduBufferRead, ApduPanic},

@@ -19,7 +19,7 @@ use crate::constants::chain_alias_lookup;
 use crate::parser::constants::*;
 use crate::parser::ParserError;
 
-pub use crate::parser::{FromBytes, BLOCKCHAIN_ID_LEN};
+pub use crate::parser::BLOCKCHAIN_ID_LEN;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]

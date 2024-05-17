@@ -3,10 +3,7 @@ use core::mem::MaybeUninit;
 use zemu_sys::Viewable;
 
 use crate::{
-    handlers::{
-        public_key::{AddrUI, GetPublicKey},
-        wallet_id::{WalletId, WalletIdUI},
-    },
+    handlers::wallet_id::{WalletId, WalletIdUI},
     utils::ApduBufferRead,
     ZxError,
 };

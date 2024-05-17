@@ -24,7 +24,7 @@ mod apdu_wrapper;
 pub use apdu_wrapper::*;
 
 pub mod convert_to_rs;
-pub use convert_to_rs::{convert_der_to_rs, ConvertError};
+pub use convert_to_rs::convert_der_to_rs;
 
 mod buffer_upload;
 pub use buffer_upload::*;
@@ -206,9 +206,6 @@ mod maybe_null_terminated_to_string {
         }
     }
 }
-
-#[cfg(test)]
-pub use maybe_null_terminated_to_string::MaybeNullTerminatedToString;
 
 #[macro_export]
 /// Convert the return of Show::show into something more usable for apdu handlers

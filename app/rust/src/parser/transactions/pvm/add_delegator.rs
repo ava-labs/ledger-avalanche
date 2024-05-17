@@ -23,7 +23,7 @@ use crate::{
     checked_add,
     handlers::handle_ui_message,
     parser::{
-        nano_avax_to_fp_str, Address, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
+        nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
         OutputIdx, ParserError, PvmOutput, SECPOutputOwners, Stake, TransferableOutput, Validator,
         MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR,
     },

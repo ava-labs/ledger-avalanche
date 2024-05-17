@@ -1,4 +1,4 @@
-use core::{fmt::Display, mem::MaybeUninit};
+use core::mem::MaybeUninit;
 
 use zemu_sys::Viewable;
 
