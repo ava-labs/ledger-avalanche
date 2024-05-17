@@ -159,6 +159,9 @@ SDK_SOURCE_PATH += lib_u2f lib_standard_app
 ifeq ($(TARGET_NAME), TARGET_STAX)
 	NBGL_SRC_DIR := $(MY_DIR)/../deps/ethereum/src_nbgl
 	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/network_icons.c, $(shell find $(NBGL_SRC_DIR) -name '*.c'))
+	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/ui_idle.c, $(NBGL_SRC_FILES))
+
+	INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_nbgl
 	APP_SOURCE_PATH += $(NBGL_SRC_FILES)
 else
 	SDK_SOURCE_PATH += lib_ux
