@@ -15,7 +15,6 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ButtonKind } from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions as commonOpts, eth_models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
@@ -26,13 +25,14 @@ import { RLP } from '@ethereumjs/rlp'
 // import { ec } from 'elliptic'
 
 const defaultOptions = (model: any) => {
-  let opts = commonOpts(model, true)
-  opts.approveKeyword = model.name !== 'nanos' ? 'Accept' : 'APPROVE'
-  opts.approveAction = ButtonKind.ApproveTapButton
+  let opts = commonOpts(model, false)
+  if (model.name === 'nanosp' || model.name === 'nanox') {
+    opts.approveKeyword = 'Accept'
+  }
   return opts
 }
 
-jest.setTimeout(15000)
+jest.setTimeout(25000)
 
 // type NftInfo = {
 //   token_address: string
@@ -193,11 +193,8 @@ describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 60000)
-      if (m.name === 'nanos') {
-        await sim.compareSnapshotsAndApprove('.', testcase)
-      } else {
-        await sim.navigateAndCompareUntilText('.', testcase, 'Accept')
-      }
+
+      await sim.compareSnapshotsAndApprove('.', `${testcase}`)
 
       const resp = await respReq
 

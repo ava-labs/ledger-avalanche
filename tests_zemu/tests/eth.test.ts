@@ -23,9 +23,10 @@ import { ec } from 'elliptic'
 import { verifyMessage } from '@ethersproject/wallet'
 
 const defaultOptions = (model: any) => {
-  let opts = commonOpts(model, true)
-  opts.approveKeyword = model.name !== 'nanos' ? 'Accept' : 'APPROVE'
-  opts.approveAction = ButtonKind.ApproveTapButton
+  let opts = commonOpts(model, false)
+  if (model.name === 'nanosp' || model.name === 'nanox') {
+    opts.approveKeyword = 'Accept'
+  }
   return opts
 }
 
@@ -199,10 +200,10 @@ describe.each(eth_models)('EthereumAppCfg [%s] - misc', function (m) {
 
       const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
-      if (m.name === 'nanos') {
-        await sim.compareSnapshotsAndApprove('.', testcase)
-      } else {
+      if (m.name === 'nanosp' || m.name === 'nanox') {
         await sim.navigateAndCompareSnapshots('.', testcase, [2, 0])
+      } else {
+        await sim.compareSnapshotsAndApprove('.', testcase)
       }
 
       const resp = await respReq
