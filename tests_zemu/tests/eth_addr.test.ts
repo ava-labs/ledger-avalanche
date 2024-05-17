@@ -23,7 +23,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
   test.concurrent('get pubkey and addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start(defaultOptions(m))
+      await sim.start(defaultOptions(m, true))
       const app = new Eth(sim.getTransport())
 
       const ETH_PATH = "m/44'/60'/0'/0'/5"
@@ -40,11 +40,11 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('show addr %s', async function () {
+  test.only('show addr %s', async function () {
     const sim = new Zemu(m.path)
 
     try {
-      await sim.start(defaultOptions(m))
+      await sim.start(defaultOptions(m, true))
       const app = new Eth(sim.getTransport())
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
@@ -64,7 +64,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
   test.concurrent('get xpub and addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start(defaultOptions(m))
+      await sim.start(defaultOptions(m, true))
       const app = new Eth(sim.getTransport())
       const resp = await app.getAddress(ETH_DERIVATION, false, true)
 

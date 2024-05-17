@@ -41,7 +41,7 @@ describe.each(models)('WalletID [%s] - wallet id', function (m) {
   test.concurrent('showWalletId', async function () {
     const sim = new Zemu(m.path)
     try {
-      await sim.start(defaultOptions(m))
+      await sim.start(defaultOptions(m, true))
       const app = new AvalancheApp(sim.getTransport())
       const respReq = app.showWalletId()
 
