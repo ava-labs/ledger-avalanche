@@ -81,8 +81,8 @@ endif
 ifeq ($(TARGET_NAME), TARGET_NANOS)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
-# TODO: this could be removed when app-ethereum gets fully integrated 
-# with our TARGET_NANOS, in the meantime we redirect any eth call to our default 
+# TODO: this could be removed when app-ethereum gets fully integrated
+# with our TARGET_NANOS, in the meantime we redirect any eth call to our default
 # rust implementation.
 APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib/view_s.c
 endif
@@ -100,10 +100,9 @@ endif
 ifeq ($(TARGET_NAME), TARGET_STAX)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
-ICON_STAX = icons/stax_app_chain_$(CHAIN_ID).gif
-DEFINES += ICONGLYPH=C_stax_chain_$(CHAIN_ID)_64px
-DEFINES += ICONBITMAP=C_stax_chain_$(CHAIN_ID)_64px_bitmap
-DEFINES += ICONGLYPH_SMALL=C_stax_chain_$(CHAIN_ID)
+DEFINES += ICONGLYPH=C_icon_stax_64
+DEFINES += ICONBITMAP=C_icon_stax_64
+DEFINES += ICONGLYPH_SMALL=C_icon_stax_32
 endif
 
 ifeq ($(APP_TESTING), 1)
@@ -146,29 +145,29 @@ INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/include
 INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk/src
 INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src
 INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_common/
 INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
 
 ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
 ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
 APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
 APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_common
 APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
 APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
 
 SDK_SOURCE_PATH += lib_u2f lib_standard_app
 
 ifeq ($(TARGET_NAME), TARGET_STAX)
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_nbgl
+	NBGL_SRC_DIR := $(MY_DIR)/../deps/ethereum/src_nbgl
+	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/network_icons.c, $(shell find $(NBGL_SRC_DIR) -name '*.c'))
+	APP_SOURCE_PATH += $(NBGL_SRC_FILES)
 else
-SDK_SOURCE_PATH += lib_ux
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_bagl
-DEFINES += HAVE_BAGL HAVE_UX_FLOW HAVE_GLO096
-DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64 HAVE_BAGL_ELLIPSIS
-DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+	SDK_SOURCE_PATH += lib_ux
+	APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_bagl
+	DEFINES += HAVE_BAGL HAVE_UX_FLOW HAVE_GLO096
+	DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64 HAVE_BAGL_ELLIPSIS
+	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
 endif
 
 LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
