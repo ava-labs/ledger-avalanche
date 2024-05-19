@@ -23,7 +23,7 @@ parser_error_t _read(parser_context_t *c, parser_tx_t *v) {
     return parser_ok;
 }
 
-const char *parser_getErrorDescription(parser_error_t err) {
+ const char *parser_getErrorDescription(parser_error_t err) {
     switch (err) {
         case parser_ok:
             return "No error";
@@ -37,6 +37,8 @@ const char *parser_getErrorDescription(parser_error_t err) {
             return "Unexpected error occurred";
         case parser_init_context_empty:
             return "Context is empty";
+        case parser_context_mismatch:
+            return "Context mismatch";
         case parser_unexpected_type:
             return "Unexpected type encountered";
         case parser_unexpected_field:
@@ -97,12 +99,9 @@ const char *parser_getErrorDescription(parser_error_t err) {
             return "NFT information not provided";
         case parser_invalid_contract_address:
             return "Invalid contract address specified";
-        case     parser_context_unexpected_size:
+        case parser_context_unexpected_size:
             return "Unexpected context size";
-        case parser_context_mismatch:
-            return "Context mismatch";
         default:
             return "Unrecognized error code\n";
     }
 }
-

@@ -39,14 +39,12 @@ typedef enum {
     parser_unexpected_error,
     parser_init_context_empty,
     parser_context_mismatch,
-
     parser_unexpected_type,
     parser_unexpected_field,
     parser_unexpected_buffer_end,
     parser_value_out_of_range,
     parser_invalid_address,
     parser_unexpected_number_items,
-
     parser_invalid_hash_mode,
     parser_invalid_signature,
     parser_invalid_pubkey_encoding,
@@ -73,7 +71,6 @@ typedef enum {
     parser_invalid_contract_address,
     parser_context_unexpected_size,
 } parser_error_t;
-
 #include <stdint.h>
 
 typedef enum {
