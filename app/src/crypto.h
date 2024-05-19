@@ -29,10 +29,6 @@ extern "C" {
 extern uint32_t hdPath[HDPATH_LEN_DEFAULT];
 extern uint32_t hdPath_len;
 
-zxerr_t keccak_digest(const unsigned char *in, unsigned int inLen,
-                        unsigned char *out, unsigned int outLen);
-
-
 zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen);
 
 zxerr_t crypto_sign_avax(uint8_t *signature, uint16_t signatureMaxlen, const uint8_t *hash, uint16_t hash_len, const uint32_t *path, uint16_t path_len);

@@ -34,21 +34,6 @@ uint32_t hdPath_len;
     }                          \
   } while (0)
 
-__Z_INLINE zxerr_t keccak_hash(const unsigned char *in, unsigned int inLen,
-                          unsigned char *out, unsigned int outLen) {
-    // return actual size using value from signatureLength
-    cx_sha3_t keccak;
-    if (cx_keccak_init_no_throw(&keccak, outLen * 8) != CX_OK) return zxerr_unknown;
-    CHECK_CX_OK(cx_hash_no_throw((cx_hash_t *)&keccak, CX_LAST, in, inLen, out, outLen));
-
-    return zxerr_ok;
-}
-
-zxerr_t keccak_digest(const unsigned char *in, unsigned int inLen,
-                          unsigned char *out, unsigned int outLen) {
-    return keccak_hash(in, inLen, out, outLen);
-}
-
 zxerr_t crypto_extractPublicKey(uint8_t *pubKey, uint16_t pubKeyLen) {
     if (pubKey == NULL || pubKeyLen < PK_LEN_25519) {
         return zxerr_invalid_crypto_settings;

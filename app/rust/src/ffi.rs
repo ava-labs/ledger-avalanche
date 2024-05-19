@@ -19,15 +19,11 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::constants::{BIP32_PATH_SUFFIX_DEPTH, SIGN_HASH_TX_SIZE};
 use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
-use crate::parser::{
-    parse_path_list, AvaxMessage, DisplayableItem, EthTransaction, ObjectList, PathWrapper,
-    PersonalMsg,
-};
+use crate::parser::{parse_path_list, AvaxMessage, DisplayableItem, ObjectList, PathWrapper};
 use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
 
 pub mod context;
-pub mod eth_public_key;
 pub mod ext_public_key;
 pub mod nft_info;
 pub mod public_key;
@@ -46,19 +42,6 @@ macro_rules! avax_tx_from_state {
 macro_rules! avax_msg_from_state {
     ($ptr:expr) => {
         unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<AvaxMessage>>()) }
-    };
-}
-
-macro_rules! eth_msg_from_state {
-    ($ptr:expr) => {
-        unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<PersonalMsg>>()) }
-    };
-}
-
-/// Cast a *mut u8 to a *mut Transaction
-macro_rules! eth_tx_from_state {
-    ($ptr:expr) => {
-        unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<EthTransaction>>()) }
     };
 }
 
@@ -83,10 +66,13 @@ pub unsafe extern "C" fn _parser_init(
     // our global state
     let size = match ins {
         Instruction::SignAvaxTx => core::mem::size_of::<MaybeUninit<Transaction>>() as u32,
-        Instruction::SignEthTx => core::mem::size_of::<MaybeUninit<EthTransaction>>() as u32,
+        // Instruction::SignEthTx => core::mem::size_of::<MaybeUninit<EthTransaction>>() as u32,
         Instruction::SignAvaxMsg => core::mem::size_of::<MaybeUninit<AvaxMessage>>() as u32,
-        Instruction::SignEthMsg => core::mem::size_of::<MaybeUninit<PersonalMsg>>() as u32,
+        // Instruction::SignEthMsg => core::mem::size_of::<MaybeUninit<PersonalMsg>>() as u32,
         Instruction::SignAvaxHash => SIGN_HASH_TX_SIZE as u32,
+        // Ingnore eth transactions as they would be handled by
+        // the app-ethereum application.
+        _ => return ParserError::InvalidTransactionType as u32,
     };
 
     *alloc_size = size;
@@ -160,14 +146,6 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
             }
         }
 
-        Instruction::SignEthTx => {
-            let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
-            match EthTransaction::from_bytes_into(data, tx) {
-                Ok(_) => ParserError::ParserOk as u32,
-                Err(_) => ParserError::InvalidTransactionType as u32,
-            }
-        }
-
         Instruction::SignAvaxHash => {
             if let Err(e) = SignHash::parse_hash(data) {
                 return e as u32;
@@ -182,14 +160,9 @@ pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
                 Err(_) => ParserError::InvalidAvaxMessage as u32,
             }
         }
-
-        Instruction::SignEthMsg => {
-            let tx = eth_msg_from_state!(ctx as *mut parser_context_t);
-            match PersonalMsg::from_bytes_into(data, tx) {
-                Ok(_) => ParserError::ParserOk as u32,
-                Err(_) => ParserError::InvalidAvaxMessage as u32,
-            }
-        }
+        // Ingnore eth transactions as they would be handled by
+        // the app-ethereum application.
+        _ => ParserError::InvalidTransactionType as u32,
     }
 }
 
@@ -239,29 +212,9 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
             }
         }
 
-        Instruction::SignEthTx => {
-            let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
-            let obj = tx.assume_init_mut();
-            match obj.num_items() {
-                Ok(n) => {
-                    *num_items = n;
-                    ParserError::ParserOk as u32
-                }
-                Err(e) => e as u32,
-            }
-        }
-
-        Instruction::SignEthMsg => {
-            let tx = eth_msg_from_state!(ctx as *mut parser_context_t);
-            let obj = tx.assume_init_mut();
-            match obj.num_items() {
-                Ok(n) => {
-                    *num_items = n;
-                    ParserError::ParserOk as u32
-                }
-                Err(e) => e as u32,
-            }
-        }
+        // Ingnore eth transactions as they would be handled by
+        // the app-ethereum application.
+        _ => ParserError::InvalidTransactionType as u32,
     };
 
     ParserError::ParserOk as u32
@@ -332,29 +285,9 @@ pub unsafe extern "C" fn _getItem(
             }
         }
 
-        Instruction::SignEthTx => {
-            let tx = eth_tx_from_state!(ctx as *mut parser_context_t);
-            let obj = tx.assume_init_mut();
-            match obj.render_item(display_idx, key, value, page_idx) {
-                Ok(page) => {
-                    *page_count = page;
-                    ParserError::ParserOk as _
-                }
-                Err(e) => e as _,
-            }
-        }
-
-        Instruction::SignEthMsg => {
-            let msg = eth_msg_from_state!(ctx as *mut parser_context_t);
-            let obj = msg.assume_init_mut();
-            match obj.render_item(display_idx, key, value, page_idx) {
-                Ok(page) => {
-                    *page_count = page;
-                    ParserError::ParserOk as _
-                }
-                Err(e) => e as _,
-            }
-        }
+        // Ingnore eth transactions as they would be handled by
+        // the app-ethereum application.
+        _ => ParserError::InvalidTransactionType as u32,
     }
 }
 
