@@ -26,11 +26,15 @@ pub struct parser_context_t {
     pub tx_obj: parse_tx_t,
 }
 
+// typedef struct {
+//     uint8_t *state;
+//     uint32_t len;
+// } parser_tx_t;
 #[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct parse_tx_t {
     pub state: *mut u8,
-    pub len: u16,
+    pub len: u32,
 }
 
 // typedef enum {
