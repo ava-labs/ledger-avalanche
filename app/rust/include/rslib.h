@@ -42,17 +42,6 @@ uint16_t _app_fill_ext_address(
     uint16_t addr_obj_len
 );
 
-// To handle an public key and address requests, without 
-// confirmation(UI)
-uint16_t _fill_eth_address(
-    uint32_t *tx,
-    uint32_t rx,
-    uint8_t *buffer,
-    uint16_t buffer_len,
-    uint8_t *addr_obj,
-    uint16_t addr_obj_len
-);
-
 uint16_t _address_ui_size();
 
 uint16_t _xaddress_ui_size();
