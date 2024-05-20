@@ -121,6 +121,64 @@ jobs:
           path: app/pkg/*.sh
           if-no-files-found: error
 
+  build_ledger_production:
+    needs: configure
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk:
+          - varname: NANOS_SDK
+            target: s
+          - varname: NANOX_SDK
+            target: x
+          - varname: NANOSP_SDK
+            target: s2
+          - varname: STAX_SDK
+            target: stax
+    container:
+      image: zondax/ledger-app-builder:latest
+      env:
+        SDK_VARNAME: ${{ matrix.sdk.varname }}
+      options: --user ${{ needs.configure.outputs.uid_gid }}
+    env:
+      HOME: /home/zondax_circle
+    steps:
+      - run: echo "BOLOS_SDK=${!SDK_VARNAME}" >> "$GITHUB_ENV"
+        shell: bash -l {0}
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Cache/restore Cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: ./app/rust/.cargo
+          key: ${{ runner.os }}-${{ hashFiles('./Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ github.sha }}
+
+      - name: Build app
+        shell: bash -l {0}
+        run: |
+          make clean
+          make PRODUCTION_BUILD=1
+
+      - name: Upload elf
+        uses: actions/upload-artifact@v3
+        with:
+          name: app_${{ matrix.sdk.target }}
+          path: app/output/*.elf
+          if-no-files-found: error
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v3
+        with:
+          name: installer_${{ matrix.sdk.target }}
+          path: app/pkg/*.sh
+          if-no-files-found: error
+
   tests_zemu_setup:
     if: ${{! contains(toJSON(github.event.commits.*.message), '[skip-zemu]')}}
     runs-on: ubuntu-latest
@@ -151,7 +209,7 @@ jobs:
           echo "tests=$TESTS" >> "$GITHUB_OUTPUT"
 
   test_zemu:
-    needs: [build_ledger, tests_zemu_setup]
+    needs: [build_ledger_production, tests_zemu_setup]
     if: ${{! contains(toJSON(github.event.commits.*.message), '[skip-zemu]')}}
     runs-on: ubuntu-latest
     strategy:
@@ -169,7 +227,6 @@ jobs:
         with:
           path: /tmp/artifacts
       - run: |
-          # mkdir -p build/output
           mkdir -p app/output
           find /tmp/artifacts -type f -name "*.elf" -exec mv {} app/output/ \;
 

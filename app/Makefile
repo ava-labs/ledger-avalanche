@@ -32,16 +32,10 @@ include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
 include $(BOLOS_SDK)/Makefile.defines
 
 # Disable production builds by default
-PRODUCTION_BUILD ?= 0
-WARNING_DO_NOT_USE=0
-ifeq ($(PRODUCTION_BUILD), 0)
-WARNING_DO_NOT_USE=1
-endif
-DEFINES += WARNING_DO_NOT_USE=$(WARNING_DO_NOT_USE)
 
 $(info ************ TARGET_NAME  = [$(TARGET_NAME)])
 $(info ************ PRODUCTION_BUILD  = [$(PRODUCTION_BUILD)])
-$(info ************ WARNING_DO_NOT_USE  = [$(WARNING_DO_NOT_USE)])
+DEFINES += PRODUCTION_BUILD=$(PRODUCTION_BUILD)
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.app_testing
 

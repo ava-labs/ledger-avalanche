@@ -26,6 +26,9 @@ ifeq ($(BOLOS_SDK),)
 # When not using the SDK, we override and build the XL complete app
 
 ZXLIB_COMPILE_STAX ?= 1
+# by default builds are not production ready
+PRODUCTION_BUILD ?= 0 
+
 include $(CURDIR)/deps/ledger-zxlib/dockerized_build.mk
 
 else
@@ -33,11 +36,12 @@ default:
 	$(MAKE) -C app
 %:
 	$(info "Calling app Makefile for target $@")
-	COIN=$(COIN) $(MAKE) -C app $@
+	COIN=$(COIN) PRODUCTION_BUILD=$(PRODUCTION_BUILD) $(MAKE) -C app $@
 endif
 
 test_all:
-	make
+	make clean
+	make PRODUCTION_BUILD=1
 	make zemu_install
 	make zemu_test
 
