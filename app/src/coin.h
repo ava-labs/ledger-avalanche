@@ -47,21 +47,8 @@ extern "C" {
 #define COIN_AMOUNT_DECIMAL_PLACES 6
 #define COIN_TICKER "AVAX "
 
-#define AVALANCHE_LINE1 "Avalanche"
-#define AVALANCHE_LINE2 "Ready"
-#define WARNING_LINE1 "Avalanche DEMO"
-#define WARNING_LINE2 "DO NOT USE"
-
-// By default our builds are not production ready
-#define MENU_MAIN_APP_LINE1 WARNING_LINE1
-#define MENU_MAIN_APP_LINE2 WARNING_LINE2
-// Unless we specificaly define PRODUCTION_BUILD to 1
-#if defined(PRODUCTION_BUILD) && (PRODUCTION_BUILD == 1)
-#undef MENU_MAIN_APP_LINE1
-#undef MENU_MAIN_APP_LINE2
-#define MENU_MAIN_APP_LINE1 AVALANCHE_LINE1
-#define MENU_MAIN_APP_LINE2 AVALANCHE_LINE2
-#endif
+#define MENU_MAIN_APP_LINE1 "Avalanche"
+#define MENU_MAIN_APP_LINE2 "Ready"
 
 #define MENU_MAIN_APP_LINE2_SECRET "???"
 #define APPVERSION_LINE1 "Avalanche"
@@ -89,11 +76,11 @@ extern "C" {
 #define INS_ETH_PROVIDE_ERC20 0x0A
 #define INS_SIGN_ETH_MSG 0x08
 // Definitions use to handle hash signing
-// if P1 == FIRST_MESSAGE, it means we have in front of a normal 
-// hash signing where the received path is the root path and a hash 
+// if P1 == FIRST_MESSAGE, it means we have in front of a normal
+// hash signing where the received path is the root path and a hash
 // that must be shown to the user.
-// otherwise we use a previously stored rooth hash, and the received 
-// path prefix to compute the new path and sign the hash which was also 
+// otherwise we use a previously stored rooth hash, and the received
+// path prefix to compute the new path and sign the hash which was also
 // previously stored and sign it.
 #define FIRST_MESSAGE 0x01
 #define NEXT_MESSAGE 0x03
