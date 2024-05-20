@@ -105,7 +105,7 @@ jobs:
 
       - name: Build app
         shell: bash -l {0}
-        run: make
+        run: make PRODUCTION_BUILD=0
 
       - name: Upload elf
         uses: actions/upload-artifact@v3
