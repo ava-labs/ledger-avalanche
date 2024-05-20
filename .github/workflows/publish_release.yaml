@@ -8,6 +8,7 @@ on:
 
 jobs:
   create_release:
+    needs: build_ledger
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +21,7 @@ jobs:
         with:
           workflow: main.yaml
           commit: ${{ github.event.push.head.sha }}
-          name: .*-installer
+          name: installer_.*\.sh
           name_is_regexp: true
           path: app/pkg
 
@@ -30,7 +31,7 @@ jobs:
         with:
           workflow: main.yaml
           commit: ${{ github.event.push.head.sha }}
-          name: .*-app
+          name: app_.*\.elf
           name_is_regexp: true
           path: app/output
 
