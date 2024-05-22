@@ -41,7 +41,7 @@ import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseV
 
 import Eth from '@ledgerhq/hw-app-eth'
 
-import { LedgerEthTransactionResolution, LoadConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
+import { LedgerEthTransactionResolution, LoadConfig, ResolutionConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
 
 export * from './types'
 export { LedgerError }
@@ -538,67 +538,20 @@ export default class AvalancheApp {
     return this.eth.getAppConfiguration()
   }
 
-  // Function that provides the necessary token information to parse ERC721 transactions
-  // The implementation aligns with the reference app-ethereum does, but it is provided as
-  // an alternative to avoid writing a full NFT service provider to be use in pair with the
-  // hw-app-eth package.
-  async provideNftInfo(contract_address: string, token_name: string, chainId: number): Promise<ResponseBase> {
-    const p2 = 0
-    const p1 = 0
+  async provideERC20TokenInformation(data: string): Promise<boolean> {
+    return this.eth.provideERC20TokenInformation(data)
+  }
 
-    let offset = 0
-    // allocate version, type, name_len, name, contract_address and chain_id
-    const buffer = Buffer.alloc(1 + 1 + 1 + CHAIN_ID_SIZE + COLLECTION_NAME_MAX_LEN + CONTRACT_ADDRESS_LEN + CHAIN_ID_SIZE)
+  async provideNFTInformation(data: string): Promise<boolean> {
+    return this.eth.provideNFTInformation(data)
+  }
 
-    // write type and version
-    buffer.writeInt8(TYPE_1, offset) // type_1
-    offset += 1
-    buffer.writeInt8(VERSION_1, offset) // version
-    offset += 1
-
-    // the len prefix is just 1-byte
-    if (token_name.length > COLLECTION_NAME_MAX_LEN) {
-      return {
-        returnCode: LedgerError.WrongLength,
-        errorMessage: 'Token name too long',
-      }
-    }
-
-    buffer.writeInt8(token_name.length, offset)
-    offset += 1
-
-    // copy token name
-    const name = Buffer.from(token_name, 'utf8')
-    offset += name.copy(buffer, offset)
-
-    // copy address
-    const address = Buffer.from(contract_address, 'hex')
-    offset += address.copy(buffer, offset)
-
-    // copy chainID
-    const id = BigInt(chainId)
-    buffer.writeBigUInt64BE(id, offset)
-
-    return this.transport.send(CLA_ETH, INS.ETH_PROVIDE_NFT_INFO, p1, p2, buffer).then((response: Buffer) => {
-      const errorCodeData = response.slice(-2)
-      const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
-      let errorMessage = errorCodeToString(returnCode)
-
-      if (returnCode === LedgerError.DataIsInvalid || returnCode === LedgerError.WrongLength) {
-        errorMessage = `${errorMessage} : ${response.slice(0, response.length - 2).toString('ascii')}`
-      }
-
-      if (returnCode === LedgerError.NoErrors && response.length > 2) {
-        return {
-          returnCode: returnCode,
-          errorMessage: errorMessage,
-        }
-      }
-
-      return {
-        returnCode: returnCode,
-        errorMessage: errorMessage,
-      }
-    }, processErrorResponse)
+  async clearSignTransaction(
+    path: string,
+    rawTxHex: string,
+    resolutionConfig: ResolutionConfig,
+    throwOnError = false,
+  ): Promise<{ r: string; s: string; v: string }> {
+    return this.eth.clearSignTransaction(path, rawTxHex, resolutionConfig, throwOnError)
   }
 }
