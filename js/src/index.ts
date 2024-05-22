@@ -42,6 +42,7 @@ import { ResponseAddress, ResponseAppInfo, ResponseBase, ResponseSign, ResponseV
 import Eth from '@ledgerhq/hw-app-eth'
 
 import { LedgerEthTransactionResolution, LoadConfig, ResolutionConfig } from '@ledgerhq/hw-app-eth/lib/services/types'
+import { EIP712Message } from '@ledgerhq/types-live'
 
 export * from './types'
 export { LedgerError }
@@ -553,5 +554,17 @@ export default class AvalancheApp {
     throwOnError = false,
   ): Promise<{ r: string; s: string; v: string }> {
     return this.eth.clearSignTransaction(path, rawTxHex, resolutionConfig, throwOnError)
+  }
+
+  async signEIP712Message(path: string, jsonMessage: EIP712Message, fullImplem = false): Promise<{ v: number; s: string; r: string }> {
+    return this.eth.signEIP712Message(path, jsonMessage, fullImplem)
+  }
+
+  async signEIP712HashedMessage(
+    path: string,
+    domainSeparatorHex: string,
+    hashStructMessageHex: string,
+  ): Promise<{ v: number; s: string; r: string }> {
+    return this.eth.signEIP712HashedMessage(path, domainSeparatorHex, hashStructMessageHex)
   }
 }
