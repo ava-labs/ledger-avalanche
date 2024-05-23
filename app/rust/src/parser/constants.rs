@@ -40,6 +40,9 @@ pub const PVM_REMOVE_SUBNET_VALIDATOR: u32 = 0x00000017;
 pub const PVM_TRANSFORM_SUBNET: u32 = 0x00000018;
 pub const PVM_ADD_PERMISSIONLESS_VALIDATOR: u32 = 0x00000019;
 pub const PVM_ADD_PERMISSIONLESS_DELEGATOR: u32 = 0x0000001A;
+//  base tx for p-chain which collides with evm import tx.
+//  we should check chain-id
+pub const PVM_BASE_TX: u32 = 0x00000000;
 
 // avm transaction types
 pub const AVM_CREATE_ASSET_TX: u32 = 0x00000001;

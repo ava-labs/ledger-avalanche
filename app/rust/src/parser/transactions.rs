@@ -233,6 +233,7 @@ impl<'b> Transaction<'b> {
             Self::Transfer(tx) => tx.disable_output_if(address),
             Self::CImport(tx) => tx.disable_output_if(address),
             Self::CExport(tx) => tx.disable_output_if(address),
+            Self::PBase(tx) => tx.disable_output_if(address),
             #[cfg(feature = "add-validator")]
             Self::Validator(tx) => tx.disable_output_if(address),
             #[cfg(feature = "add-delegator")]

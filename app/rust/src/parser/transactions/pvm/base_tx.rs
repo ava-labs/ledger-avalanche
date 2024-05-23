@@ -31,8 +31,8 @@ use crate::{
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PvmBaseTx<'b> {
-    pub tx_header: Header<'b>,
-    pub base_fields: BaseTxFields<'b, PvmOutput<'b>>,
+    pub header: Header<'b>,
+    pub base: BaseTxFields<'b, PvmOutput<'b>>,
 }
 
 impl<'b> FromBytes<'b> for PvmBaseTx<'b> {
@@ -48,11 +48,11 @@ impl<'b> FromBytes<'b> for PvmBaseTx<'b> {
         let out = out.as_mut_ptr();
 
         // tx header
-        let tx_header = unsafe { &mut *addr_of_mut!((*out).tx_header).cast() };
+        let tx_header = unsafe { &mut *addr_of_mut!((*out).header).cast() };
         rem = Header::from_bytes_into(rem, tx_header)?;
 
         // base_fields
-        let base_fields = unsafe { &mut *addr_of_mut!((*out).base_fields).cast() };
+        let base_fields = unsafe { &mut *addr_of_mut!((*out).base).cast() };
         rem = BaseTxFields::<PvmOutput>::from_bytes_into(rem, base_fields)?;
 
         Ok(rem)
@@ -61,7 +61,7 @@ impl<'b> FromBytes<'b> for PvmBaseTx<'b> {
 
 impl<'b> DisplayableItem for PvmBaseTx<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
-        let outputs = self.base_fields.base_outputs_num_items()?;
+        let outputs = self.base.base_outputs_num_items()?;
 
         // Transaction description + outputs + fee
         checked_add!(ViewError::Unknown, 2u8, outputs)
@@ -81,7 +81,7 @@ impl<'b> DisplayableItem for PvmBaseTx<'b> {
             return self.render_description(title, message, page);
         }
 
-        let outputs_num_items = self.base_fields.base_outputs_num_items()?;
+        let outputs_num_items = self.base.base_outputs_num_items()?;
         let new_item_n = item_n - 1;
 
         match new_item_n {
@@ -102,17 +102,17 @@ impl<'b> DisplayableItem for PvmBaseTx<'b> {
 
 impl<'b> PvmBaseTx<'b> {
     pub fn fee(&'b self) -> Result<u64, ParserError> {
-        let inputs = self.base_fields.sum_inputs_amount()?;
-        let outputs = self.base_fields.sum_outputs_amount()?;
+        let inputs = self.base.sum_inputs_amount()?;
+        let outputs = self.base.sum_outputs_amount()?;
         inputs
             .checked_sub(outputs)
             .ok_or(ParserError::OperationOverflows)
     }
 
-    // pub fn disable_output_if(&mut self, address: &[u8]) {
-    //     self.0.disable_output_if(address);
-    // }
-    //
+    pub fn disable_output_if(&mut self, address: &[u8]) {
+        self.base.disable_output_if(address);
+    }
+
     fn render_description(
         &self,
         title: &mut [u8],
@@ -135,7 +135,7 @@ impl<'b> PvmBaseTx<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         let (obj, obj_item_n) = self
-            .base_fields
+            .base
             .base_output_with_item(item_n)
             .map_err(|_| ViewError::NoData)?;
 
@@ -163,7 +163,7 @@ impl<'b> PvmBaseTx<'b> {
                 let t = pic_str!(b"Address");
                 title[..t.len()].copy_from_slice(t);
 
-                let hrp = self.tx_header.hrp().map_err(|_| ViewError::Unknown)?;
+                let hrp = self.header.hrp().map_err(|_| ViewError::Unknown)?;
                 let mut encoded = [0; MAX_ADDRESS_ENCODED_LEN];
 
                 let addr_len = address
@@ -199,12 +199,12 @@ mod tests {
         let (rem, tx) = PvmBaseTx::from_bytes(DATA).unwrap();
         assert!(rem.is_empty());
 
-        let count = tx.base_fields.outputs().iter().count();
+        let count = tx.base.outputs().iter().count();
 
         // we know there are 1 outputs
         assert_eq!(count, 1);
 
-        let count = tx.base_fields.inputs().iter().count();
+        let count = tx.base.inputs().iter().count();
         // we know there are 1 inputs
         assert_eq!(count, 1);
 
