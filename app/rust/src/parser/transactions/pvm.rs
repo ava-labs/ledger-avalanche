@@ -1,6 +1,8 @@
+mod base_tx;
 mod export_tx;
 mod import_tx;
 
+pub use base_tx::*;
 pub use export_tx::*;
 pub use import_tx::*;
 
