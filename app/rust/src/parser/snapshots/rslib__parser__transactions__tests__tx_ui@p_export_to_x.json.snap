@@ -1,11 +1,11 @@
 ---
-source: app/src/parser/transactions.rs
+source: src/parser/transactions.rs
 expression: reduced
-input_file: app/src/parser/testvectors/p_export_to_x.json
+input_file: src/parser/testvectors/p_export_to_x.json
 ---
 [
     "Export Tx": "P to X Chain",
     "Amount": "0.000012345 AVAX to ",
     "Address": "fuji12yp9cc0melq83a5nxnurf0nd6fk4t224unmnwx",
-    "Fee": "0.123432099",
+    "Fee(AVAX)": "0.123432099",
 ]
