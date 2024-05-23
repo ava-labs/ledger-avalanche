@@ -67,5 +67,5 @@ zxerr_t wallet_getNumItems(uint8_t *num_items) {
 
 zxerr_t wallet_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
                      uint8_t *pageCount) {
-    return _wallet_get_item(addr_ui_obj, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
+    return _wallet_get_item(addr_ui_obj, displayIdx, (unsigned char*)outKey, outKeyLen, (unsigned char*)outVal, outValLen, pageIdx, pageCount);
 }

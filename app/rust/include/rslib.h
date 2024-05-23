@@ -4,6 +4,16 @@
 #include "parser_common.h"
 #include "parser_txdef.h"
 #include "zxmacros.h"
+
+/*************** APDU rust handler *************************************************/
+void rs_handle_apdu(
+    uint32_t *flags,
+    uint32_t *tx,
+    uint32_t rx,
+    uint8_t *buffer,
+    uint16_t buffer_len
+);
+
 /****************************** others ***********************************************************/
 
 parser_error_t _parser_init(parser_context_t *ctx, const uint8_t *buffer, size_t bufferSize, uint32_t *alloc_size);
@@ -102,4 +112,11 @@ parser_error_t _parse_sign_hash_tx(uint8_t *input,  uint16_t len);
 
 void _clean_up_hash();
 
-
+zxerr_t _app_fill_wallet(
+    uint32_t *tx,
+    uint32_t rx,
+    uint8_t *buffer,
+    uint16_t buffer_len,
+    uint8_t *wallet_ui,
+    uint16_t wallet_ui_len
+);

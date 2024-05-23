@@ -19,10 +19,10 @@
 
 #include "rslib.h"
 
-static void swap_endian(uint8_t *data, int8_t len) {
-    for (int8_t i = 0; i < len / 2; i++) {
-        uint8_t t = data[len - i - 1];
-        data[len - i - 1] = data[i];
-        data[i] = t;
-    }
-}
+// static void swap_endian(uint8_t *data, int8_t len) {
+//     for (int8_t i = 0; i < len / 2; i++) {
+//         uint8_t t = data[len - i - 1];
+//         data[len - i - 1] = data[i];
+//         data[i] = t;
+//     }
+// }
