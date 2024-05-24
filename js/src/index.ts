@@ -539,8 +539,55 @@ export default class AvalancheApp {
     return this.eth.getAppConfiguration()
   }
 
-  async provideERC20TokenInformation(data: string): Promise<boolean> {
-    return this.eth.provideERC20TokenInformation(data)
+  async provideERC20TokenInformation(
+    ticker: string,
+    contractName: string,
+    address: string,
+    decimals: number,
+    chainId: number,
+  ): Promise<boolean> {
+    // Calculate lengths
+    const tickerLength = Buffer.byteLength(ticker)
+    const contractNameLength = Buffer.byteLength(contractName)
+
+    // Create a buffer with the exact size needed
+    const buffer = Buffer.alloc(1 + tickerLength + 1 + contractNameLength + 20 + 4 + 4)
+
+    let offset = 0
+
+    // Ticker length and ticker
+    buffer.writeUInt8(tickerLength, offset)
+    offset += 1
+    buffer.write(ticker, offset)
+    offset += tickerLength
+
+    // Contract name length and contract name
+    buffer.writeUInt8(contractNameLength, offset)
+    offset += 1
+    buffer.write(contractName, offset)
+    offset += contractNameLength
+
+    // Address (20 bytes, hex string needs to be parsed)
+
+    var addr_offset = 0
+    if (address.startsWith('0x')) {
+      addr_offset = 2
+    }
+
+    // Slice to remove '0x'
+    const addressBuffer = Buffer.from(address.slice(addr_offset), 'hex')
+    addressBuffer.copy(buffer, offset)
+    offset += 20
+
+    // Decimals (4 bytes, big endian)
+    buffer.writeUInt32BE(decimals, offset)
+    offset += 4
+
+    // Chain ID (4 bytes, big endian)
+    buffer.writeUInt32BE(chainId, offset)
+    offset += 4
+
+    return this.eth.provideERC20TokenInformation(buffer.toString('hex'))
   }
 
   async provideNFTInformation(data: string): Promise<boolean> {
