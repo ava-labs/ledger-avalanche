@@ -45,3 +45,6 @@ test_all:
 	make zemu_install
 	make zemu_test
 
+prod:
+	make PRODUCTION_BUILD=1
+
