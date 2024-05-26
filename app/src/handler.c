@@ -48,12 +48,15 @@ void ui_idle(void);
 uint32_t set_result_get_publicKey(void);
 void finalizeParsing(bool);
 
+// Variables bellow are used by app-ethereum app 
+// to handle/manage stages during parsing and signing
 tmpCtx_t tmpCtx;
 txContext_t txContext;
 tmpContent_t tmpContent;
 dataContext_t dataContext;
 strings_t strings;
 cx_sha3_t global_sha3;
+
 
 uint8_t appState;
 uint16_t apdu_response_code;
@@ -137,11 +140,29 @@ void init_coin_config(chain_config_t *coin_config) {
     coin_config->chainId = CHAIN_ID;
 }
 
+/**
+ * Handles incoming APDU commands for Ethereum operations.
+ *
+ * This function processes a variety of Ethereum-related operations including key management,
+ * signing transactions, and token information provisioning. It is designed to respond to a set
+ * of predefined APDU instructions and manage their execution securely within a hardware wallet or similar environment.
+ *
+ * @param flags A pointer to the volatile uint32_t flags used to manage APDU response behaviors.
+ * @param tx A pointer to the volatile uint32_t transaction context, indicating the length of the response.
+ * @param rx The length of the received APDU data.
+ * @param buffer A pointer to the data buffer containing the APDU commands.
+ * @param bufferLen The total length of the data buffer.
+ *
+ * @note This function sets the blockchain configuration on the first call and logs each operation.
+ *       It includes extensive error handling to gracefully manage exceptions and reset the context as needed.
+ */
 void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
                      uint32_t rx, uint8_t *buffer, uint16_t bufferLen) {
     unsigned short sw = 0;
 
-    // TODO: Check for a better place to put this
+    // This is the best place to put this,
+    // and by checking to NULL we ensure that it is set once,
+    // after the first call to this function
     if (chainConfig == NULL) {
         init_coin_config(&config);
         chainConfig = &config;
@@ -369,67 +390,5 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
     }
     END_TRY;
 }
-
-// Taken from ethereum app, this might be useful but need to double check if it fullfil our
-// purpose for signing eip712
-/* Eth clones do not actually contain any logic, they delegate everything to the ETH application.
- * Start Eth in lib mode with the correct chain config
- */
-__attribute__((noreturn)) void clone_main(libargs_t *args) {
-    PRINTF("Starting in clone_main\n");
-    BEGIN_TRY {
-        TRY {
-            unsigned int libcall_params[5];
-            chain_config_t local_chainConfig;
-            init_coin_config(&local_chainConfig);
-
-            libcall_params[0] = (unsigned int) "Ethereum";
-            libcall_params[1] = 0x100;
-            libcall_params[3] = (unsigned int) &local_chainConfig;
-
-            // Clone called by Exchange, forward the request to Ethereum
-            if (args != NULL) {
-                if (args->id != 0x100) {
-                    os_sched_exit(0);
-                }
-                libcall_params[2] = args->command;
-                libcall_params[4] = (unsigned int) args->get_printable_amount;
-                os_lib_call((unsigned int *) &libcall_params);
-                // Ethereum fulfilled the request and returned to us. We return to Exchange.
-                os_lib_end();
-            } else {
-                // Clone called from Dashboard, start Ethereum
-                libcall_params[2] = RUN_APPLICATION;
-// On Stax, forward our icon to Ethereum
-#ifdef HAVE_NBGL
-                const char app_name[] = APPNAME;
-                caller_app_t capp;
-                nbgl_icon_details_t icon_details;
-                uint8_t bitmap[sizeof(ICONBITMAP)];
-
-                memcpy(&icon_details, &ICONGLYPH, sizeof(ICONGLYPH));
-                memcpy(&bitmap, &ICONBITMAP, sizeof(bitmap));
-                icon_details.bitmap = (const uint8_t *) bitmap;
-                capp.name = app_name;
-                capp.icon = &icon_details;
-                libcall_params[4] = (unsigned int) &capp;
-#else
-                libcall_params[4] = 0;
-#endif  // HAVE_NBGL
-                os_lib_call((unsigned int *) &libcall_params);
-                // Ethereum should not return to us
-                os_sched_exit(-1);
-            }
-        }
-        FINALLY {
-        }
-    }
-    END_TRY;
-
-    // os_lib_call will raise if Ethereum application is not installed. Do not try to recover.
-    os_sched_exit(-1);
-}
-
-
 
 #endif

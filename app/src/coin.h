@@ -19,7 +19,6 @@
 extern "C" {
 #endif
 
-// #{TODO} ---> Replace CLA, Token symbol, HDPATH, etc etc
 #define CLA 0x80
 
 #define HDPATH_LEN_DEFAULT 5

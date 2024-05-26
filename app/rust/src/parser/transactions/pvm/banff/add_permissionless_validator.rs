@@ -172,7 +172,7 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
         match_ranges! {
             match item_n alias x {
                 0 => {
-                    // FIXME: truncated due to NanoS 17 character limit
+                    // Truncated due to NanoS 17 character limit
                     let label = pic_str!(b"AddPermlessValida");
                     title[..label.len()].copy_from_slice(label);
                     let content = pic_str!(b"Transaction");
@@ -391,14 +391,14 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         match_ranges! {
             match addr_idx alias x {
                 until validators => {
-                    // FIXME: title truncated
+                    // Truncated due to NanoS 17 character limit
                     let label = pic_str!(b"Valida rewards to");
                     title[..label.len()].copy_from_slice(label);
 
                     self.validator_rewards_owner.render_address_with_hrp(hrp, x, message, page)
                 }
                 until delegators => {
-                    // FIXME: title truncated
+                    // Truncated due to NanoS 17 character limit
                     let label = pic_str!(b"Delega rewards to");
                     title[..label.len()].copy_from_slice(label);
 

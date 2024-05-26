@@ -21,8 +21,6 @@
 #include "parser_common.h"
 #include <string.h>
 #include "zxmacros.h"
-// TODO: Remove later
-#include "rslib.h"
 
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_STAX)
 #define RAM_BUFFER_SIZE 8192

@@ -208,7 +208,6 @@ impl Viewable for WalletIdUI {
             let title_content = pic_str!(b"Wallet ID");
             title[..title_content.len()].copy_from_slice(title_content);
 
-            //TODO: use proper encoding
             let mut mex = [0; WalletId::LEN * 2];
             let len = hex_encode(self.id, &mut mex).map_err(|_| ViewError::Unknown)?;
 

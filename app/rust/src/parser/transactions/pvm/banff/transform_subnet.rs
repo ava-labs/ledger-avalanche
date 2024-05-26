@@ -243,7 +243,7 @@ impl<'b> TransformSubnetTx<'b> {
                 let label = pic_str!(b"Max weight fact.");
                 title[..label.len()].copy_from_slice(label);
 
-                // TODO: determine how to display properly
+                // Determine how to display properly
                 let buffer = itoa(self.max_validator_weight_factor, &mut buffer);
                 handle_ui_message(buffer, message, page)
             }

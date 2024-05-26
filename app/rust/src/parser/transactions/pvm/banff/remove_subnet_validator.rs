@@ -90,7 +90,6 @@ impl<'b> DisplayableItem for RemoveSubnetValidatorTx<'b> {
         use lexical_core::Number;
 
         if item_n == 0 {
-            // FIXME: truncated because otherwise it doesn't fit in the
             // 17 character limit for Nano S
             let label = pic_str!(b"RemoveSubnetValid");
             title[..label.len()].copy_from_slice(label);

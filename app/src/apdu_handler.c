@@ -292,6 +292,7 @@ __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile 
 void handleTest(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) { THROW(APDU_CODE_OK); }
 #endif
 
+// Handles APDU command related to avalanche transactions, message, addresses and keys.
 __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("AVAX Dispatch\n");
     switch (G_io_apdu_buffer[OFFSET_INS]) {
@@ -355,6 +356,8 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
 
             ZEMU_LOGF(50, "CLA: %x\n", G_io_apdu_buffer[OFFSET_CLA]);
 
+            // redicerc this apdu to be dispatched by our avalanche dispatcher, 
+            // otherwise use ethereum dispatcher.
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 return avax_dispatch(flags, tx, rx);
             } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {

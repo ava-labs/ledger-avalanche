@@ -38,13 +38,14 @@ macro_rules! avax_tx_from_state {
     };
 }
 
-/// Cast a *mut u8 to a *mut Transaction
+/// Cast a *mut u8 to a *mut AvaxMessage
 macro_rules! avax_msg_from_state {
     ($ptr:expr) => {
         unsafe { &mut (*addr_of_mut!((*$ptr).tx_obj.state).cast::<MaybeUninit<AvaxMessage>>()) }
     };
 }
 
+// Innitialize internals for transaction processing
 #[no_mangle]
 pub unsafe extern "C" fn _parser_init(
     ctx: *mut parser_context_t,
@@ -71,7 +72,7 @@ pub unsafe extern "C" fn _parser_init(
         // Instruction::SignEthMsg => core::mem::size_of::<MaybeUninit<PersonalMsg>>() as u32,
         Instruction::SignAvaxHash => SIGN_HASH_TX_SIZE as u32,
         // Ingnore eth transactions as they would be handled by
-        // the app-ethereum application.
+        // either the app-ethereum application or full rust handler.
         _ => return ParserError::InvalidTransactionType as u32,
     };
 
@@ -105,6 +106,31 @@ unsafe fn parser_init_context(
     ParserError::ParserOk
 }
 
+/// Parses the transaction data from the provided context.
+///
+/// It interprets the transaction data based on the instruction type specified in the context
+/// and performs the corresponding parsing operation.
+///
+/// # Safety
+///
+/// This function is unsafe because it performs raw pointer dereferencing and assumes the provided context pointer is valid.
+/// The caller must ensure the context is properly initialized and that the memory pointed to remains valid for the duration of the function call.
+///
+/// # Arguments
+///
+/// * `ctx` - A pointer to the `parser_context_t` structure that contains the buffer and instruction type.
+///
+/// # Returns
+///
+/// Returns a `u32` indicating the result of the parse operation. The return value corresponds to values from the `ParserError` enum,
+/// encoded as `u32`.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// * The context pointer is null.
+/// * The instruction type is invalid or unsupported.
+/// * Parsing the transaction type or specific transaction components fails.
 #[no_mangle]
 pub unsafe extern "C" fn _parser_read(ctx: *const parser_context_t) -> u32 {
     if ctx.is_null() {

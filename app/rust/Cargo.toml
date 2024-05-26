@@ -2,7 +2,7 @@
 name = "avalanche-app"
 version = "0.1.0"
 edition = "2021"
-autotests = false                      #TODO: to be enabled when we can emit rlib
+autotests = false
 authors = ["Zondax <hello@zondax.ch>"]
 resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

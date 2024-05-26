@@ -28,7 +28,6 @@
 #include "rslib.h"
 
 static zxerr_t parser_allocate();
-// static zxerr_t parser_deallocate();
 
 // This buffer will store parser_state.
 // Its size corresponds to ParsedObj (Rust struct)
@@ -36,6 +35,7 @@ static zxerr_t parser_allocate();
 #define PARSER_BUFFER_SIZE 256
 static uint8_t parser_buffer[PARSER_BUFFER_SIZE];
 
+// This function is used to allocate memory for the parser state
 zxerr_t parser_allocate(parser_tx_t *parser_state) {
     if (parser_state->len % 4 != 0) {
         parser_state->len += parser_state->len % 4;
@@ -52,26 +52,33 @@ zxerr_t parser_allocate(parser_tx_t *parser_state) {
     return zxerr_ok;
 }
 
+// Initialized parser context and state
 parser_error_t parser_init_context(parser_context_t *ctx, const uint8_t *buffer, uint16_t bufferSize) {
-    ctx->offset = 0;
-    ctx->buffer = NULL;
-    ctx->bufferLen = 0;
-
-    if (bufferSize == 0 || buffer == NULL) {
+    if (bufferSize == 0 || buffer == NULL || ctx == NULL) {
         // Not available, use defaults
         return parser_init_context_empty;
     }
+
+    ctx->offset = 0;
+    ctx->buffer = NULL;
+    ctx->bufferLen = 0;
 
     ctx->buffer = buffer;
     ctx->bufferLen = bufferSize;
     return parser_ok;
 }
 
+// This function is used for parsing input data.
+// internally it takes care of initializing parser state and context.
+// some calls to rust are required, specially to get the parsed objecd size.
 parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen) {
     ctx->tx_obj.state = NULL;
     ctx->tx_obj.len = 0;
     uint32_t size = 0;
 
+    // initialized data on rust side, this include to get 
+    // the size of the object to be parsed according to the 
+    // tx type.
     CHECK_ERROR(_parser_init(ctx, data, dataLen, &size));
 
     if (size == 0) {
@@ -83,11 +90,15 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
         return parser_init_context_empty ;
     }
 
+    // Populate/Initialized parsed object 
+    // by parsing the input data.
     parser_error_t err = _parser_read(ctx);
 
     return err; 
 }
 
+// Similates UI flow, this reduces the risk of stack overflow, 
+// bad pointer aritmetic and other issues during UI.
 parser_error_t parser_validate(const parser_context_t *ctx) {
     zemu_log("parser_validate\n");
     // Iterate through all items to check that all can be shown and are valid
@@ -137,5 +148,6 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     CHECK_ERROR(checkSanity(numItems, displayIdx))
     cleanOutput(outKey, outKeyLen, outVal, outValLen);
 
+    // Calls rust getter
     return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }

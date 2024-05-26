@@ -25,9 +25,6 @@
 extern "C" {
 #endif
 
-// #{TODO} --> functions to parse, get, process transaction fields
-parser_error_t _read(parser_context_t *c, parser_tx_t *v);
-
 #ifdef __cplusplus
 }
 #endif

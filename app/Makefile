@@ -85,9 +85,6 @@ endif
 ifeq ($(TARGET_NAME), TARGET_NANOS)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
-# TODO: this could be removed when app-ethereum gets fully integrated
-# with our TARGET_NANOS, in the meantime we redirect any eth call to our default
-# rust implementation.
 APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib/view_s.c
 endif
 

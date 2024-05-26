@@ -52,12 +52,17 @@ uint16_t _app_fill_ext_address(
     uint16_t addr_obj_len
 );
 
+// Returns from rust the size of the address ui object
 uint16_t _address_ui_size();
 
+// Returns from rust the size of the address ui object
+// for extended addresses.
 uint16_t _xaddress_ui_size();
 
+// Returns the number of items to show for addresses
 zxerr_t _addr_num_items(uint8_t *addr_obj, uint8_t *num_items);
 
+// Address item getter.
 zxerr_t _addr_get_item(
     uint8_t *addr_obj,
     uint8_t display_idx,
@@ -80,6 +85,7 @@ zxerr_t _xaddr_get_item(
     uint8_t page_idx,
     uint8_t *page_count);
 
+// Wallet functions to delegate UI from rust for wallet id
 uint16_t _wallet_ui_size();
 zxerr_t _wallet_num_items(uint8_t *wallet_obj, uint8_t *num_items);
 zxerr_t _wallet_get_item(
@@ -112,6 +118,7 @@ parser_error_t _parse_sign_hash_tx(uint8_t *input,  uint16_t len);
 
 void _clean_up_hash();
 
+// Fill buffer with wallet id computed in rust.
 zxerr_t _app_fill_wallet(
     uint32_t *tx,
     uint32_t rx,
