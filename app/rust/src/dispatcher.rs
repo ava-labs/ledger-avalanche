@@ -68,13 +68,8 @@ pub fn apdu_dispatch(
 
     //common instructions
     match (cla, ins) {
-        (CLA, INS_GET_VERSION) => GetVersion::handle(flags, tx, apdu_buffer),
-        (CLA, INS_GET_PUBLIC_KEY) => GetPublicKey::handle(flags, tx, apdu_buffer),
-        (CLA, INS_GET_EXTENDED_PUBLIC_KEY) => GetExtendedPublicKey::handle(flags, tx, apdu_buffer),
-        (CLA, INS_GET_WALLET_ID) => WalletId::handle(flags, tx, apdu_buffer),
-        (CLA, INS_SIGN) => AvaxSign::handle(flags, tx, apdu_buffer),
-        (CLA, INS_SIGN_HASH) => SignHash::handle(flags, tx, apdu_buffer),
-        (CLA, INS_SIGN_MSG) => AvaxSignMsg::handle(flags, tx, apdu_buffer),
+        #[cfg(test)]
+        (CLA, _) => handle_avax_apdu(flags, tx, apdu_buffer),
 
         // only for nanos as other targets will use app-ethereum
         (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
@@ -90,6 +85,36 @@ pub fn apdu_dispatch(
         #[cfg(feature = "dev")]
         _ => Debug::handle(flags, tx, apdu_buffer),
         #[allow(unreachable_patterns)] //not unrechable for all feature configurations
+        _ => Err(ApduError::CommandNotAllowed),
+    }
+}
+
+#[cfg(test)]
+fn handle_avax_apdu(
+    flags: &mut u32,
+    tx: &mut u32,
+    apdu_buffer: ApduBufferRead<'_>,
+) -> Result<(), ApduError> {
+    crate::sys::zemu_log_stack("handle_avax_apdu\x00");
+    *flags = 0;
+    *tx = 0;
+
+    let cla = apdu_buffer.cla();
+    if cla != CLA {
+        return Err(ApduError::ClaNotSupported);
+    }
+
+    let ins = apdu_buffer.ins();
+
+    //common instructions
+    match (cla, ins) {
+        (CLA, INS_GET_VERSION) => GetVersion::handle(flags, tx, apdu_buffer),
+        (CLA, INS_GET_PUBLIC_KEY) => GetPublicKey::handle(flags, tx, apdu_buffer),
+        (CLA, INS_GET_EXTENDED_PUBLIC_KEY) => GetExtendedPublicKey::handle(flags, tx, apdu_buffer),
+        (CLA, INS_GET_WALLET_ID) => WalletId::handle(flags, tx, apdu_buffer),
+        (CLA, INS_SIGN) => AvaxSign::handle(flags, tx, apdu_buffer),
+        (CLA, INS_SIGN_HASH) => SignHash::handle(flags, tx, apdu_buffer),
+        (CLA, INS_SIGN_MSG) => AvaxSignMsg::handle(flags, tx, apdu_buffer),
         _ => Err(ApduError::CommandNotAllowed),
     }
 }
