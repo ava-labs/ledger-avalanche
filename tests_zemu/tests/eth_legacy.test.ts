@@ -182,12 +182,6 @@ describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
       const currentScreen = await sim.snapshot()
       const msg = rawUnsignedLegacyTransaction(data.op, data.chainId)
 
-      // const nft = data.nft_info
-      // if (nft !== undefined) {
-      //   const valid = await app.provideNFTInformation(nft.token_name, nft.token_address, BigInt(nft.chain_id))
-      //   expect(valid).toEqual(true)
-      // }
-
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 60000)
 
@@ -201,9 +195,6 @@ describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
       expect(resp).toHaveProperty('r')
       expect(resp).toHaveProperty('v')
 
-      // TODO: Enable later
-      //Verify signature
-      // alternative verification to be safe
       const test = check_legacy_signature(msg.toString('hex'), resp, data.chainId)
       expect(test).toEqual(true)
     } finally {
