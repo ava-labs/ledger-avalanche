@@ -205,6 +205,21 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
         return ParserError::InvalidTransactionType as u32;
     };
 
+    let num_items = &mut *num_items;
+
+    if tx_type.is_avax() {
+        num_items_avax(ctx, num_items)
+    } else {
+        num_items_eth(ctx, num_items)
+    }
+}
+
+#[inline(never)]
+unsafe fn num_items_avax(ctx: *const parser_context_t, num_items: &mut u8) -> u32 {
+    let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
+        return ParserError::InvalidTransactionType as u32;
+    };
+
     match tx_type {
         Instruction::SignAvaxTx => {
             let state = (*ctx).tx_obj.state;
@@ -230,41 +245,36 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
         }
 
         Instruction::SignAvaxMsg => {
-            let state = (*ctx).tx_obj.state;
-
-            if state.is_null() {
-                return ParserError::NoData as u32;
-            }
-
-            let tx = avax_msg_from_state!(ctx as *mut parser_context_t);
-            let obj = tx.assume_init_mut();
-            match obj.num_items() {
-                Ok(n) => {
-                    *num_items = n;
-                    ParserError::ParserOk as u32
-                }
-                Err(e) => e as u32,
-            }
+            *num_items = 1;
+            ParserError::ParserOk as u32
         }
-
-        // Ingnore eth transactions as they would be handled by
-        // the app-ethereum application.
-        _ => {
-            if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
-                match obj.num_items() {
-                    Ok(n) => {
-                        *num_items = n;
-                        ParserError::ParserOk as _
-                    }
-                    Err(e) => e as _,
-                }
-            } else {
-                ParserError::NoData as _
-            }
-        }
+        _ => ParserError::InvalidTransactionType as u32,
     };
 
     ParserError::ParserOk as u32
+}
+
+#[inline(never)]
+unsafe fn num_items_eth(ctx: *const parser_context_t, num_items: &mut u8) -> u32 {
+    let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
+        return ParserError::InvalidTransactionType as u32;
+    };
+
+    if tx_type.is_avax() {
+        return ParserError::InvalidTransactionType as u32;
+    }
+
+    if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
+        match obj.num_items() {
+            Ok(n) => {
+                *num_items = n;
+                ParserError::ParserOk as _
+            }
+            Err(e) => e as _,
+        }
+    } else {
+        ParserError::NoData as _
+    }
 }
 
 #[no_mangle]
@@ -284,6 +294,34 @@ pub unsafe extern "C" fn _getItem(
 
     let key = core::slice::from_raw_parts_mut(out_key as *mut u8, key_len as usize);
     let value = core::slice::from_raw_parts_mut(out_value as *mut u8, out_len as usize);
+
+    if ctx.is_null() {
+        return ParserError::ParserContextMismatch as _;
+    }
+
+    let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
+        return ParserError::InvalidTransactionType as u32;
+    };
+
+    if tx_type.is_avax() {
+        get_avax_item(ctx, display_idx, key, value, page_idx, page_count)
+    } else {
+        get_eth_item(ctx, display_idx, key, value, page_idx, page_count)
+    }
+}
+
+#[inline(never)]
+unsafe fn get_avax_item(
+    ctx: *const parser_context_t,
+    display_idx: u8,
+    key: &mut [u8],
+    value: &mut [u8],
+    page_idx: u8,
+    page_count: &mut u8,
+) -> u32 {
+    *page_count = 0u8;
+
+    let page_count = &mut *page_count;
 
     if ctx.is_null() {
         return ParserError::ParserContextMismatch as _;
@@ -349,21 +387,45 @@ pub unsafe extern "C" fn _getItem(
                 Err(e) => e as _,
             }
         }
+        _ => ParserError::NoData as _,
+    }
+}
 
-        // Try eth transactions
-        _ => {
-            if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
-                match obj.render_item(display_idx, key, value, page_idx) {
-                    Ok(page) => {
-                        *page_count = page;
-                        ParserError::ParserOk as _
-                    }
-                    Err(e) => e as _,
-                }
-            } else {
-                ParserError::NoData as _
+#[inline(never)]
+unsafe fn get_eth_item(
+    ctx: *const parser_context_t,
+    display_idx: u8,
+    key: &mut [u8],
+    value: &mut [u8],
+    page_idx: u8,
+    page_count: &mut u8,
+) -> u32 {
+    *page_count = 0u8;
+
+    let page_count = &mut *page_count;
+
+    if ctx.is_null() {
+        return ParserError::ParserContextMismatch as _;
+    }
+
+    let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
+        return ParserError::InvalidTransactionType as u32;
+    };
+
+    if tx_type.is_avax() {
+        return ParserError::InvalidTransactionType as _;
+    }
+
+    if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
+        match obj.render_item(display_idx, key, value, page_idx) {
+            Ok(page) => {
+                *page_count = page;
+                ParserError::ParserOk as _
             }
+            Err(e) => e as _,
         }
+    } else {
+        ParserError::NoData as _
     }
 }
 

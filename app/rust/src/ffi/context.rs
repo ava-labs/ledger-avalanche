@@ -71,6 +71,15 @@ pub enum Instruction {
     EthAddr,
 }
 
+impl Instruction {
+    pub fn is_avax(&self) -> bool {
+        matches!(
+            self,
+            Instruction::SignAvaxTx | Instruction::SignAvaxMsg | Instruction::SignAvaxHash
+        )
+    }
+}
+
 impl TryFrom<u8> for Instruction {
     type Error = ParserError;
 
