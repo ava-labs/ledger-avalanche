@@ -169,3 +169,10 @@ zxerr_t tx_getItem(int8_t displayIdx,
 
     return zxerr_ok;
 }
+
+const char *tx_err_msg_from_code(parser_error_t err) {
+    if (err != parser_ok) {
+        return parser_getErrorDescription(err);
+    }
+    return NULL;
+}

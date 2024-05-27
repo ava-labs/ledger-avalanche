@@ -18,6 +18,7 @@
 #include "coin.h"
 #include "os.h"
 #include "zxerror.h"
+#include "parser_common.h"
 
 void tx_initialize();
 
@@ -64,3 +65,6 @@ zxerr_t tx_getNumItems(uint8_t *num_items);
 /// Gets an specific item from the transaction (including paging)
 zxerr_t tx_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outValue, uint16_t outValueLen,
                    uint8_t pageIdx, uint8_t *pageCount);
+
+// Returns the error message corresponding with error
+const char *tx_err_msg_from_code(parser_error_t err);

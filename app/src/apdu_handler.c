@@ -337,12 +337,26 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
 }
 
+__Z_INLINE void handleEthConfig(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleEthConfig\n");
+    *tx = 0;
+    app_eth_configuration();
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+
 __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthMsg\n");
-    // FIXME: Error handling? write on each handler directly and MEMZERO 
-    // the buffer if there is an error.
-    uint16_t error = rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-    zemu_log("rs_eth_handle done\n");
+
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
     view_review_show(REVIEW_TXN);
@@ -353,10 +367,15 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
 __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthTx\n");
 
-    // FIXME: Error handling? write on each handler directly and MEMZERO 
-    // the buffer if there is an error.
-    uint16_t error = rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-    zemu_log("rs_eth_handle_tx done\n");
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
     view_review_show(REVIEW_TXN);

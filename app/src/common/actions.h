@@ -178,15 +178,36 @@ __Z_INLINE void app_sign_eth() {
 
     uint16_t ret = _accept_eth_tx(&action_txResponseLen, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 
+    // We expect a signature
+    if (action_txResponseLen != SECP256K1_PK_LEN) {
+        zemu_log("Invalid response length\n");
+        set_code(G_io_apdu_buffer, 0, APDU_CODE_DATA_INVALID);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+        return;
+    }
+
     if (ret != APDU_CODE_OK) {
         set_code(G_io_apdu_buffer, 0, ret);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
         return;
     }
 
-    // we are just returning the CODE_OK
-    // the hash signature would be returned in the next stage.
-    set_code(G_io_apdu_buffer, action_txResponseLen, APDU_CODE_OK);
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    set_code(G_io_apdu_buffer, SECP256K1_PK_LEN, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SECP256K1_PK_LEN + 2);
+}
+
+__Z_INLINE void app_eth_configuration() {
+    MEMZERO(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+
+    uint16_t replyLen = 4;
+
+    G_io_apdu_buffer[0] = 0x02; //needs external data for ERC20 tokens
+    G_io_apdu_buffer[1] = APPVERSION_M;
+    G_io_apdu_buffer[2] = APPVERSION_N;
+    G_io_apdu_buffer[3] = APPVERSION_P;
+
+
+    set_code(G_io_apdu_buffer, replyLen, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, replyLen + 2);
 }
 
