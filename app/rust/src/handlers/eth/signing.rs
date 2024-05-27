@@ -18,8 +18,13 @@ use core::mem::MaybeUninit;
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
+    ApduError,
 };
 use zemu_sys::{Show, ViewError, Viewable};
+use crate::handlers::eth::EthUi;
+use crate::{
+    handlers::resources::{EthAccessors, ETH_UI},
+};
 
 use crate::{
     constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
@@ -102,12 +107,17 @@ impl Sign {
         let unsigned_hash = Self::digest(to_hash)?;
         let tx = unsafe { tx.assume_init() };
 
-        let ui = SignUI {
+        let ui = EthUi::Tx(SignUI {
             hash: unsigned_hash,
             tx,
-        };
+        });
 
-        crate::show_ui!(ui.show(flags))
+        unsafe {
+            ETH_UI.lock(EthAccessors::Tx).replace(ui);
+        }
+        Ok(ApduError::Success as u32)
+
+        // crate::show_ui!(ui.show(flags))
     }
 }
 

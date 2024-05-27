@@ -28,6 +28,7 @@
 #include "rslib.h"
 
 extern uint16_t action_addrResponseLen;
+extern uint16_t action_txResponseLen;
 
 __Z_INLINE void clean_up_hash_globals() {
     _clean_up_hash(); 
@@ -171,3 +172,21 @@ __Z_INLINE void app_reply_error() {
     set_code(G_io_apdu_buffer, 0, APDU_CODE_DATA_INVALID);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
 }
+
+__Z_INLINE void app_sign_eth() {
+    zemu_log_stack("app_sign_hash_review");
+
+    uint16_t ret = _accept_eth_tx(&action_txResponseLen, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+
+    if (ret != APDU_CODE_OK) {
+        set_code(G_io_apdu_buffer, 0, ret);
+        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+        return;
+    }
+
+    // we are just returning the CODE_OK
+    // the hash signature would be returned in the next stage.
+    set_code(G_io_apdu_buffer, action_txResponseLen, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+}
+

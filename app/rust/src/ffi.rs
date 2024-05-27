@@ -29,7 +29,9 @@ pub mod nft_info;
 pub mod public_key;
 pub mod sign_hash;
 pub mod wallet_id;
+use bolos::ApduError;
 use context::{parser_context_t, Instruction};
+use zemu_sys::Viewable;
 
 /// Cast a *mut u8 to a *mut Transaction
 macro_rules! avax_tx_from_state {
@@ -240,7 +242,23 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
 
         // Ingnore eth transactions as they would be handled by
         // the app-ethereum application.
-        _ => ParserError::InvalidTransactionType as u32,
+        _ => {
+            // crate::zlog("**EthUI**\x00");
+            if let Some(obj) = crate::handlers::resources::ETH_UI
+                .lock(crate::handlers::resources::EthAccessors::Tx)
+            {
+                match obj.num_items() {
+                    Ok(n) => {
+                        *num_items = n;
+                        ParserError::ParserOk as _
+                    }
+                    Err(e) => e as _,
+                }
+            } else {
+                // crate::zlog("No ethereum transaction processed yet\x00");
+                ParserError::NoData as _
+            }
+        }
     };
 
     ParserError::ParserOk as u32
@@ -311,9 +329,23 @@ pub unsafe extern "C" fn _getItem(
             }
         }
 
-        // Ingnore eth transactions as they would be handled by
-        // the app-ethereum application.
-        _ => ParserError::InvalidTransactionType as u32,
+        // Try eth transactions
+        _ => {
+            if let Some(obj) = crate::handlers::resources::ETH_UI
+                .lock(crate::handlers::resources::EthAccessors::Tx)
+            {
+                match zemu_sys::Viewable::render_item(obj, display_idx, key, value, page_idx) {
+                    Ok(page) => {
+                        *page_count = page;
+                        ParserError::ParserOk as _
+                    }
+                    Err(e) => e as _,
+                }
+            } else {
+                // crate::zlog("No ethereum transaction processed yet\x00");
+                ParserError::NoData as _
+            }
+        }
     }
 }
 
@@ -321,6 +353,7 @@ pub unsafe extern "C" fn _getItem(
 // remember that this instruction comes with a list of change_path at the
 // begining of the buffer. those paths needs to be ignored when
 // computing transaction hash for signing.
+// this is useful for avax transactions that takes a list of change paths.
 #[no_mangle]
 pub unsafe extern "C" fn _tx_data_offset(
     buffer: *const u8,
@@ -347,4 +380,28 @@ pub unsafe extern "C" fn _tx_data_offset(
     *offset = buffer_len - rem.len() as u16;
 
     ZxError::Ok as _
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn _accept_eth_tx(tx: *mut u32, buffer: *mut u8, buffer_len: u16) -> u16 {
+    use crate::handlers::resources::ETH_UI;
+    // crate::zlog("_accept_eth_tx\x00");
+
+    if tx.is_null() || buffer.is_null() || buffer_len == 0 {
+        return ApduError::DataInvalid as u16;
+    }
+
+    let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
+
+    let code = if let Some(obj) = ETH_UI.lock(crate::handlers::resources::EthAccessors::Tx) {
+        let (_tx, code) = obj.accept(data);
+        *tx = _tx as u32;
+        code
+    } else {
+        // No ethereum transaction has been processed yet
+        // crate::zlog("No ethereum transaction processed yet\x00");
+        ApduError::DataInvalid as u16
+    };
+
+    code
 }

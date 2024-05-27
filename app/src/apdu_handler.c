@@ -33,18 +33,12 @@
 #include "zxmacros.h"
 #include "parser_common.h"
 #include "rslib.h"
+#include "commands.h"
 #if defined(FEATURE_ETH)
 #include "handler.h"
 #endif
 
 static bool tx_initialized = false;
-
-bool
-process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx);
-bool
-process_chunk_eth_msg(__Z_UNUSED volatile uint32_t *tx, uint32_t rx);
-void
-extract_eth_path(uint32_t rx, uint32_t offset);
 
 void extractHDPath(uint32_t rx, uint32_t offset) {
     tx_initialized = false;
@@ -343,6 +337,47 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
 }
 
+#if defined(FEATURE_ETH)
+__Z_INLINE void eip_712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+}
+#endif
+
+__Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("ETH Dispatch\n");
+
+    switch (G_io_apdu_buffer[OFFSET_INS]) {
+        case INS_SIGN_EIP_712_MESSAGE:
+        case INS_EIP712_STRUCT_DEF:
+        case INS_EIP712_STRUCT_IMPL:
+        case INS_EIP712_FILTERING:
+        case AVX_SIGN_HASH:
+        case AVX_SIGN_MSG:
+        case AVX_INS_GET_EXTENDED_PUBLIC_KEY:
+        case AVX_INS_GET_WALLET_ID:
+#if defined(FEATURE_ETH)
+            eip_712(flags, tx, rx);
+#else
+            THROW(APDU_CODE_INS_NOT_SUPPORTED);
+#endif
+            break;  // Although not necessary due to `return`, `break` enhances readability.
+
+        default: {
+            zemu_log("rs_eth_handle\n");
+            // FIXME: Error handling? write on each handler directly and MEMZERO 
+            // the buffer if there is an error.
+            uint16_t error = rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+
+            view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+            view_review_show(REVIEW_TXN);
+
+            *flags |= IO_ASYNCH_REPLY;
+
+            break;
+        }
+    }
+}
+
 void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     volatile uint16_t sw = 0;
     zemu_log("handleApdu\n");
@@ -361,15 +396,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 return avax_dispatch(flags, tx, rx);
             } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
-#if defined(FEATURE_ETH)
-                handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-            return;
-            #else
-                // if FEATURE_ETH is disable that means the target is nanos
-                // so we use our rust default implmentation
-                rs_handle_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-            return;
-#endif
+                return eth_dispatch(flags, tx, rx);
             } else {
                 THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }

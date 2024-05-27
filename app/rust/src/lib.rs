@@ -85,6 +85,25 @@ pub unsafe extern "C" fn rs_handle_apdu(
     handle_apdu(flags, tx, rx, data);
 }
 
+/// # Safety
+///
+/// This function is the app entry point for the minimal C stub
+#[no_mangle]
+pub unsafe extern "C" fn rs_eth_handle(
+    flags: *mut u32,
+    tx: *mut u32,
+    rx: u32,
+    buffer: *mut u8,
+    buffer_len: u16,
+) -> u16 {
+    let flags = flags.as_mut().apdu_unwrap();
+    let tx = tx.as_mut().apdu_unwrap();
+    let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
+    // crate::zlog("rs_handle_apdu\n\x00");
+
+    dispatcher::handle_eth_apdu(flags, tx, rx, data)
+}
+
 #[cfg(test)]
 pub fn handle_apdu_raw(bytes: &[u8]) -> (u32, u32, std::vec::Vec<u8>) {
     let mut flags = 0;

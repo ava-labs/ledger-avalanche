@@ -15,10 +15,12 @@
 ********************************************************************************/
 use core::mem::MaybeUninit;
 
+use crate::handlers::eth::EthUi;
+use crate::handlers::resources::{EthAccessors, ETH_UI};
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
-    pic_str, PIC,
+    pic_str, ApduError, PIC,
 };
 use nom::number::complete::be_u32;
 use zemu_sys::{Show, ViewError, Viewable};
@@ -92,12 +94,17 @@ impl Sign {
 
         let tx = unsafe { tx.assume_init() };
 
-        let ui = SignUI {
+        let ui = EthUi::Msg(SignUI {
             hash: unsigned_hash,
             tx,
-        };
+        });
 
-        crate::show_ui!(ui.show(flags))
+        unsafe {
+            ETH_UI.lock(EthAccessors::Msg).replace(ui);
+        }
+        Ok(ApduError::Success as u32)
+
+        // crate::show_ui!(ui.show(flags))
     }
 }
 
