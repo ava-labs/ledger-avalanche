@@ -124,6 +124,10 @@ void tx_eth_msg() {
     ctx_parsed_tx.ins = SignEthMsg;
 }
 
+void tx_eth_addr() {
+    ctx_parsed_tx.ins = EthAddr;
+}
+
 void tx_parse_reset()
 {
     MEMZERO(&ctx_parsed_tx.tx_obj, sizeof(parser_tx_t));

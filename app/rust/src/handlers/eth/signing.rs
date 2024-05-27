@@ -149,14 +149,8 @@ impl Sign {
         Ok(())
     }
 
-    pub fn parse(
-        flags: &mut u32,
-        tx: &mut u32,
-        buffer: ApduBufferRead<'_>,
-    ) -> Result<(), ParserError> {
+    pub fn parse(flags: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), ParserError> {
         crate::zlog("EthSign::parse\x00");
-
-        *tx = 0;
 
         // hw-app-eth encodes the packet type in p1
         // with 0x00 being init and 0x80 being next
@@ -203,7 +197,6 @@ impl Sign {
                     // we should sign directly
                     Self::start_parse(buffer.read_exact(), flags)?;
                     // FIXME: remove later we do not need this
-                    *tx = 65;
                 }
 
                 Ok(())
@@ -240,7 +233,6 @@ impl Sign {
                     // nwo
                     Self::start_parse(buffer.read_exact(), flags)?;
                     // FIXME: remove later we do not need this
-                    *tx = 65;
                 }
 
                 Ok(())

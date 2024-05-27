@@ -62,9 +62,12 @@ impl Viewable for EthUi {
         }
     }
 
-    fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
-        // let _ = cleanup_globals();
-        (0, ApduError::CommandNotAllowed as _)
+    fn reject(&mut self, out: &mut [u8]) -> (usize, u16) {
+        match self {
+            Self::Tx(obj) => obj.reject(out),
+            Self::Msg(obj) => obj.reject(out),
+            Self::Addr(obj) => obj.reject(out),
+        }
     }
 }
 

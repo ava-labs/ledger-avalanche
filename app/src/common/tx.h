@@ -50,6 +50,7 @@ const char *tx_avax_parse();
 /// \return It returns NULL if data is valid or error message otherwise.
 void tx_eth_tx();
 void tx_eth_msg();
+void tx_eth_addr();
 
 /// Parse a hash transaction that contains the root path 
 /// plus the hash data to be signed

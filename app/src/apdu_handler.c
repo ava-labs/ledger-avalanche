@@ -404,6 +404,8 @@ __Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx,
 __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthMsg\n");
 
+    tx_eth_msg();
+
     const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
 
     if (error_msg != NULL) {
@@ -420,9 +422,43 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
     *flags |= IO_ASYNCH_REPLY;
 }
 
+__Z_INLINE void
+handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
+{
+    zemu_log("handleGetAddrEth\n");
+
+    tx_eth_addr();
+
+    uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
+
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    // Set the length of the response
+    action_addrResponseLen = *tx;
+
+    if (requireConfirmation) {
+        view_review_init(tx_getItem, tx_getNumItems, app_reply_address);
+        view_review_show(REVIEW_ADDRESS);
+        *flags |= IO_ASYNCH_REPLY;
+        return;
+    }
+
+    THROW(APDU_CODE_OK);
+}
+
+
 __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthTx\n");
 
+    tx_eth_tx();
     const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
 
     if (error_msg != NULL) {
@@ -496,14 +532,12 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
 
         case INS_ETH_SIGN: {
             CHECK_PIN_VALIDATED()
-            tx_eth_tx();
             handleSignEthTx(flags, tx, rx);
             break;
         }
 
         case INS_SIGN_ETH_MSG: {
             CHECK_PIN_VALIDATED()
-            tx_eth_msg();
             handleSignEthMsg(flags, tx, rx);
             break;
         }

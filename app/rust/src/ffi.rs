@@ -19,6 +19,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::constants::{BIP32_PATH_SUFFIX_DEPTH, SIGN_HASH_TX_SIZE};
 use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
+use crate::handlers::resources::{EthAccessors, ETH_UI};
 use crate::parser::{parse_path_list, AvaxMessage, DisplayableItem, ObjectList, PathWrapper};
 use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
@@ -200,18 +201,18 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
         return ParserError::NoData as u32;
     }
 
-    let state = (*ctx).tx_obj.state;
-
-    if state.is_null() {
-        return ParserError::NoData as u32;
-    }
-
     let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
         return ParserError::InvalidTransactionType as u32;
     };
 
     match tx_type {
         Instruction::SignAvaxTx => {
+            let state = (*ctx).tx_obj.state;
+
+            if state.is_null() {
+                return ParserError::NoData as u32;
+            }
+
             let tx = avax_tx_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.num_items() {
@@ -229,6 +230,12 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
         }
 
         Instruction::SignAvaxMsg => {
+            let state = (*ctx).tx_obj.state;
+
+            if state.is_null() {
+                return ParserError::NoData as u32;
+            }
+
             let tx = avax_msg_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.num_items() {
@@ -243,10 +250,8 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
         // Ingnore eth transactions as they would be handled by
         // the app-ethereum application.
         _ => {
-            // crate::zlog("**EthUI**\x00");
-            if let Some(obj) = crate::handlers::resources::ETH_UI
-                .lock(crate::handlers::resources::EthAccessors::Tx)
-            {
+            crate::zlog("eth_ui_num_items\x00");
+            if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
                 match obj.num_items() {
                     Ok(n) => {
                         *num_items = n;
@@ -255,7 +260,7 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
                     Err(e) => e as _,
                 }
             } else {
-                // crate::zlog("No ethereum transaction processed yet\x00");
+                crate::zlog("No eth tx processed yet\x00");
                 ParserError::NoData as _
             }
         }
@@ -292,6 +297,12 @@ pub unsafe extern "C" fn _getItem(
 
     match tx_type {
         Instruction::SignAvaxTx => {
+            let state = (*ctx).tx_obj.state;
+
+            if state.is_null() {
+                return ParserError::NoData as u32;
+            }
+
             let tx = avax_tx_from_state!(ctx as *mut parser_context_t);
             let obj = tx.assume_init_mut();
             match obj.render_item(display_idx, key, value, page_idx) {
@@ -304,6 +315,12 @@ pub unsafe extern "C" fn _getItem(
         }
 
         Instruction::SignAvaxHash => {
+            let state = (*ctx).tx_obj.state;
+
+            if state.is_null() {
+                return ParserError::NoData as u32;
+            }
+
             let Ok(hash) = SignHash::get_hash() else {
                 return ParserError::NoData as _;
             };
@@ -318,6 +335,12 @@ pub unsafe extern "C" fn _getItem(
         }
 
         Instruction::SignAvaxMsg => {
+            let state = (*ctx).tx_obj.state;
+
+            if state.is_null() {
+                return ParserError::NoData as u32;
+            }
+
             let msg = avax_msg_from_state!(ctx as *mut parser_context_t);
             let obj = msg.assume_init_mut();
             match obj.render_item(display_idx, key, value, page_idx) {
@@ -331,10 +354,9 @@ pub unsafe extern "C" fn _getItem(
 
         // Try eth transactions
         _ => {
-            if let Some(obj) = crate::handlers::resources::ETH_UI
-                .lock(crate::handlers::resources::EthAccessors::Tx)
-            {
-                match zemu_sys::Viewable::render_item(obj, display_idx, key, value, page_idx) {
+            crate::zlog("eth_ui_item\x00");
+            if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
+                match obj.render_item(display_idx, key, value, page_idx) {
                     Ok(page) => {
                         *page_count = page;
                         ParserError::ParserOk as _
@@ -342,7 +364,7 @@ pub unsafe extern "C" fn _getItem(
                     Err(e) => e as _,
                 }
             } else {
-                // crate::zlog("No ethereum transaction processed yet\x00");
+                crate::zlog("No eth tx processed yet\x00");
                 ParserError::NoData as _
             }
         }
@@ -393,7 +415,7 @@ pub unsafe extern "C" fn _accept_eth_tx(tx: *mut u32, buffer: *mut u8, buffer_le
 
     let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
 
-    let code = if let Some(obj) = ETH_UI.lock(crate::handlers::resources::EthAccessors::Tx) {
+    let code = if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
         let (_tx, code) = obj.accept(data);
         *tx = _tx as u32;
         code

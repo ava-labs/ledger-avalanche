@@ -74,11 +74,12 @@ typedef enum {
 #include <stdint.h>
 
 typedef enum {
-    SignAvaxTx = 0x00, // Explicitly set to 0
-    SignEthTx,         // Implicitly set to 1
-    SignAvaxMsg,       // Implicitly set to 2
-    SignEthMsg,        // Implicitly set to 3
-    SignAvaxHash       // Implicitly set to 4
+    SignAvaxTx = 0x00,
+    SignEthTx,
+    SignAvaxMsg,
+    SignEthMsg,
+    SignAvaxHash,
+    EthAddr
 } instruction_t;
 
 
