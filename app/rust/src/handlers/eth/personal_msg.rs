@@ -54,13 +54,16 @@ impl Sign {
     #[inline(never)]
     pub fn sign<const LEN: usize>(
         path: &BIP32Path<LEN>,
-        data: &[u8],
+        // data: &[u8],
     ) -> Result<(ECCInfoFlags, usize, [u8; 100]), Error> {
         let sk = Curve.to_secret(path);
+        let buffer = unsafe { BUFFER.acquire(Self)? };
+
+        let data = Self::digest(buffer.read_exact())?;
 
         let mut out = [0; 100];
         let (flags, sz) = sk
-            .sign(data, &mut out[..])
+            .sign(&data, &mut out[..])
             .map_err(|_| Error::ExecutionError)?;
 
         Ok((flags, sz, out))
@@ -90,12 +93,12 @@ impl Sign {
         let mut tx = MaybeUninit::uninit();
         _ = PersonalMsg::from_bytes_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
 
-        let unsigned_hash = Self::digest(txdata)?;
+        // let unsigned_hash = Self::digest(txdata)?;
 
         let tx = unsafe { tx.assume_init() };
 
         let ui = SignUI {
-            hash: unsigned_hash,
+            // hash: unsigned_hash,
             tx,
         };
 
@@ -103,16 +106,16 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn start_parse(txdata: &'static [u8], flags: &mut u32) -> Result<(), ParserError> {
+    pub fn start_parse(txdata: &'static [u8], _flags: &mut u32) -> Result<(), ParserError> {
         let mut tx = MaybeUninit::uninit();
         _ = PersonalMsg::from_bytes_into(txdata, &mut tx)?;
 
-        let unsigned_hash = Self::digest(txdata).map_err(|_| ParserError::UnexpectedError)?;
+        // let unsigned_hash = Self::digest(txdata).map_err(|_| ParserError::UnexpectedError)?;
 
         let tx = unsafe { tx.assume_init() };
 
         let ui = EthUi::Msg(SignUI {
-            hash: unsigned_hash,
+            // hash: unsigned_hash,
             tx,
         });
 
@@ -264,7 +267,7 @@ impl ApduHandler for Sign {
 }
 
 pub(crate) struct SignUI {
-    hash: [u8; Sign::SIGN_HASH_SIZE],
+    // hash: [u8; Sign::SIGN_HASH_SIZE],
     tx: PersonalMsg<'static>,
 }
 
@@ -290,7 +293,8 @@ impl Viewable for SignUI {
             Ok(k) => k,
         };
 
-        let (flags, sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
+        // let (flags, sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
+        let (flags, sig_size, mut sig) = match Sign::sign(path) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };

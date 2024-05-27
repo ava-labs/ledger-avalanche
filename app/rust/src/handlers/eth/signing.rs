@@ -20,7 +20,6 @@ use crate::{handlers::eth::EthUi, parser::ParserError};
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
-    ApduError,
 };
 use zemu_sys::{Show, ViewError, Viewable};
 
@@ -54,13 +53,15 @@ impl Sign {
     #[inline(never)]
     pub fn sign<const LEN: usize>(
         path: &BIP32Path<LEN>,
-        data: &[u8],
+        // data: &[u8],
     ) -> Result<(ECCInfoFlags, usize, [u8; 100]), Error> {
         let sk = Curve.to_secret(path);
+        let buffer = unsafe { BUFFER.acquire(Self)? };
+        let data = Self::digest(buffer.read_exact())?;
 
         let mut out = [0; 100];
         let (flags, sz) = sk
-            .sign(data, &mut out[..])
+            .sign(&data, &mut out[..])
             .map_err(|_| Error::ExecutionError)?;
 
         Ok((flags, sz, out))
@@ -91,22 +92,23 @@ impl Sign {
 
         // now parse the transaction
         let mut tx = MaybeUninit::uninit();
-        let rem =
-            EthTransaction::from_bytes_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
+        let _ = EthTransaction::from_bytes_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
 
+        // This does not hold true
+        // keep it for reference only
         // some applications might append data at the end of an encoded
         // transaction, so skip it to get the right hash.
         //
         // this would also include the tx type, as required by EIP-2718
         // since the tx type is at the start of the data
-        let to_hash = txdata.len() - rem.len();
-        let to_hash = &txdata[..to_hash];
+        // let to_hash = txdata.len() - rem.len();
+        // let to_hash = &txdata[..to_hash];
 
-        let unsigned_hash = Self::digest(to_hash)?;
+        // let unsigned_hash = Self::digest(to_hash)?;
         let tx = unsafe { tx.assume_init() };
 
         let ui = SignUI {
-            hash: unsigned_hash,
+            // hash: unsigned_hash,
             tx,
         };
 
@@ -114,7 +116,7 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn start_parse(txdata: &'static [u8], flags: &mut u32) -> Result<(), ParserError> {
+    pub fn start_parse(txdata: &'static [u8], _flags: &mut u32) -> Result<(), ParserError> {
         crate::zlog("EthSign::start_parse\x00");
         // The ERC721 parser might need access to the NFT_INFO resource
         // also during the review part
@@ -125,21 +127,22 @@ impl Sign {
 
         // now parse the transaction
         let mut tx = MaybeUninit::uninit();
-        let rem = EthTransaction::from_bytes_into(txdata, &mut tx)?;
+        let _ = EthTransaction::from_bytes_into(txdata, &mut tx)?;
 
+        // This does not hold true, keep it just for reference
         // some applications might append data at the end of an encoded
         // transaction, so skip it to get the right hash.
         //
         // this would also include the tx type, as required by EIP-2718
         // since the tx type is at the start of the data
-        let to_hash = txdata.len() - rem.len();
-        let to_hash = &txdata[..to_hash];
+        // let to_hash = txdata.len() - rem.len();
+        // let to_hash = &txdata[..to_hash];
 
-        let unsigned_hash = Self::digest(to_hash).map_err(|_| ParserError::UnexpectedError)?;
+        // let unsigned_hash = Self::digest(to_hash).map_err(|_| ParserError::UnexpectedError)?;
         let tx = unsafe { tx.assume_init() };
 
         let ui = EthUi::Tx(SignUI {
-            hash: unsigned_hash,
+            // hash: unsigned_hash,
             tx,
         });
 
@@ -333,7 +336,7 @@ impl ApduHandler for Sign {
 }
 
 pub(crate) struct SignUI {
-    hash: [u8; Sign::SIGN_HASH_SIZE],
+    // hash: [u8; Sign::SIGN_HASH_SIZE],
     tx: EthTransaction<'static>,
 }
 
@@ -359,7 +362,8 @@ impl Viewable for SignUI {
             Ok(k) => k,
         };
 
-        let (flags, sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
+        // let (flags, sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
+        let (flags, sig_size, mut sig) = match Sign::sign(path) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
