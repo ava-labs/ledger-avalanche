@@ -74,16 +74,17 @@ const SIGN_TEST_DATA: TestData[] = [
     },
     chainId: 689,
   },
-  {
-    name: 'erc20_transfer',
-    op: {
-      // this is not probably the contract address but lets use it
-      to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
-      value: '0',
-      data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
-    },
-    chainId: 65089,
-  },
+  // Not supported by nanos
+  // {
+  //   name: 'erc20_transfer',
+  //   op: {
+  //     // this is not probably the contract address but lets use it
+  //     to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+  //     value: '0',
+  //     data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
+  //   },
+  //   chainId: 65089,
+  // },
   // {
   //   name: 'pangolin_contract_call',
   //   op: {

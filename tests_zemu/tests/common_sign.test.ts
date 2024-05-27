@@ -26,7 +26,6 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
-
 const SIGN_TEST_DATA = [
   {
     name: 'simple_transfer',
@@ -52,13 +51,13 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
-      const currentScreen = await sim.snapshot();
-      const signers = ["0/0", "5/8"];
+      const currentScreen = await sim.snapshot()
+      const signers = ['0/0', '5/8']
       let change_path = undefined
       if (filter === true) {
-        change_path = ["0/1", "1/100"];
+        change_path = ['0/1', '1/100']
       }
-      const respReq = app.sign(ROOT_PATH, signers, msg, change_path);
+      const respReq = app.sign(ROOT_PATH, signers, msg, change_path)
 
       await sim.waitUntilScreenIsNot(currentScreen)
 
@@ -92,18 +91,18 @@ describe.each(models)('Transfer [%s]; sign', function (m) {
 })
 
 describe.each(models)('signHash [%s]', function (m) {
-  test.concurrent('sign hash', async function () {
+  test.concurrent('signhash', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const message = "AvalancheApp"
-      const msg = Buffer.from(sha256(message), "hex");
+      const message = 'AvalancheApp'
+      const msg = Buffer.from(sha256(message), 'hex')
 
       const testcase = `${m.prefix.toLowerCase()}-sign-hash`
 
-      const signing_list = ["0/0", "4/8"];
-      const respReq = app.signHash(ROOT_PATH, signing_list, msg);
+      const signing_list = ['0/0', '4/8']
+      const respReq = app.signHash(ROOT_PATH, signing_list, msg)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
@@ -111,7 +110,7 @@ describe.each(models)('signHash [%s]', function (m) {
 
       const resp = await respReq
 
-      console.log(resp, m.name, "signHash")
+      console.log(resp, m.name, 'signHash')
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
@@ -127,7 +126,6 @@ describe.each(models)('signHash [%s]', function (m) {
         const signatureOk = secp256k1.ecdsaVerify(signatureRS, msg, pk)
         expect(signatureOk).toEqual(true)
       }
-
     } finally {
       await sim.close()
     }
@@ -138,12 +136,13 @@ describe.each(models)('signHash [%s]', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const message = "Welcome to OpenSea!\n\nClick to sign in and accept the OpenSea Terms of Service: https://opensea.io/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n0x9858effd232b4033e47d90003d41ec34ecaeda94\n\nNonce:\n2b02c8a0-f74f-4554-9821-a28054dc9121";
+      const message =
+        'Welcome to OpenSea!\n\nClick to sign in and accept the OpenSea Terms of Service: https://opensea.io/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n0x9858effd232b4033e47d90003d41ec34ecaeda94\n\nNonce:\n2b02c8a0-f74f-4554-9821-a28054dc9121'
 
       const testcase = `${m.prefix.toLowerCase()}-sign-msg`
 
-      const signing_list = ["0/0", "4/8"];
-      const respReq = app.signMsg(ROOT_PATH, signing_list, message);
+      const signing_list = ['0/0', '4/8']
+      const respReq = app.signMsg(ROOT_PATH, signing_list, message)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
@@ -151,7 +150,7 @@ describe.each(models)('signHash [%s]', function (m) {
 
       const resp = await respReq
 
-      console.log(resp, m.name, "signMsg")
+      console.log(resp, m.name, 'signMsg')
 
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
@@ -159,7 +158,7 @@ describe.each(models)('signHash [%s]', function (m) {
       expect(resp.signatures?.size).toEqual(signing_list.length)
 
       const hash = crypto.createHash('sha256')
-      const header = Buffer.from("\x1AAvalanche Signed Message:\n", 'utf8');
+      const header = Buffer.from('\x1AAvalanche Signed Message:\n', 'utf8')
       const content = Buffer.from(message, 'utf8')
       let msgSize = Buffer.alloc(4)
       msgSize.writeUInt32BE(content.length, 0)
@@ -175,10 +174,8 @@ describe.each(models)('signHash [%s]', function (m) {
         const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
         expect(signatureOk).toEqual(true)
       }
-
     } finally {
       await sim.close()
     }
   })
 })
-
