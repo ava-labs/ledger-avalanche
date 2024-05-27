@@ -344,6 +344,62 @@ __Z_INLINE void handleEthConfig(volatile uint32_t *flags, volatile uint32_t *tx,
     *flags |= IO_ASYNCH_REPLY;
 }
 
+__Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleNftInfo\n");
+
+    // the hw-app-eth sends all the data that is required for this.
+    // it is arount 90 bytes length so It should error in case It received
+    // less than that
+    zxerr_t err = _process_nft_info(&G_io_apdu_buffer[OFFSET_DATA], rx - OFFSET_DATA);
+    zemu_log("processed_nft_info\n");
+
+    CHECK_APP_CANARY()
+
+    if (err != zxerr_ok) {
+        char *error_msg = "Error processing NFT info";
+        zemu_log("processed_nft_info error\n");
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    zemu_log("processed_nft_info ok\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+
+__Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleProvideErc20\n");
+
+    // Nothing to do as we do not handle this information,
+    // but need to return ok to ethereumjs-wallet in order to
+    // ontinue with signing contract calls
+    *tx = 0;
+
+    zemu_log("provide_erc20_info\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSetPlugin\n");
+
+    // This instruction is sent in the process of providing
+    // more information regarding contract calls like erc721
+    // nft token information, we need to return ok for this
+    // in order the hw-app-eth package to continue with the
+    // provide_token_info/provide_erc20_info instructions
+    *tx = 0;
+
+    zemu_log("processing_set_plugin\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
 
 __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthMsg\n");
@@ -414,6 +470,30 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
             eip_712(flags, tx, rx);
             break;
 #endif
+        case INS_ETH_GET_APP_CONFIGURATION: {
+            CHECK_PIN_VALIDATED()
+            handleEthConfig(flags, tx, rx);
+            break;
+        }
+
+        case INS_PROVIDE_NFT_INFORMATION: {
+            CHECK_PIN_VALIDATED()
+            handleNftInfo(flags, tx, rx);
+            break;
+        }
+
+        case INS_SET_PLUGIN: {
+            CHECK_PIN_VALIDATED()
+            handleSetPlugin(flags, tx, rx);
+            break;
+        }
+
+        case INS_ETH_PROVIDE_ERC20: {
+            CHECK_PIN_VALIDATED()
+            handleProvideErc20(flags, tx, rx);
+            break;
+        }
+
         case INS_ETH_SIGN: {
             CHECK_PIN_VALIDATED()
             tx_eth_tx();
