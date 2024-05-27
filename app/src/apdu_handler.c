@@ -490,7 +490,7 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
 
 #if defined(FEATURE_ETH)
-__Z_INLINE void eip_712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handle_eip712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 }
 #endif
@@ -504,19 +504,19 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
 #if defined(FEATURE_ETH)
         case INS_SIGN_EIP_712_MESSAGE:
             custom = false;
-            eip_712(flags, tx, rx);
+            handle_eip712(flags, tx, rx);
             break;
         case INS_EIP712_STRUCT_DEF:
             custom = false;
-            eip_712(flags, tx, rx);
+            handle_eip712(flags, tx, rx);
             break;
         case INS_EIP712_STRUCT_IMPL:
             custom = false;
-            eip_712(flags, tx, rx);
+            handle_eip712(flags, tx, rx);
             break;
         case INS_EIP712_FILTERING:
             custom = false;
-            eip_712(flags, tx, rx);
+            handle_eip712(flags, tx, rx);
             break;
 #endif
         case INS_ETH_GET_APP_CONFIGURATION: {

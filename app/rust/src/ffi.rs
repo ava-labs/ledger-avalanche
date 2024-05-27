@@ -250,7 +250,6 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
         // Ingnore eth transactions as they would be handled by
         // the app-ethereum application.
         _ => {
-            crate::zlog("eth_ui_num_items\x00");
             if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
                 match obj.num_items() {
                     Ok(n) => {
@@ -260,7 +259,6 @@ pub unsafe extern "C" fn _getNumItems(ctx: *const parser_context_t, num_items: *
                     Err(e) => e as _,
                 }
             } else {
-                crate::zlog("No eth tx processed yet\x00");
                 ParserError::NoData as _
             }
         }
@@ -354,7 +352,6 @@ pub unsafe extern "C" fn _getItem(
 
         // Try eth transactions
         _ => {
-            crate::zlog("eth_ui_item\x00");
             if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
                 match obj.render_item(display_idx, key, value, page_idx) {
                     Ok(page) => {
@@ -364,7 +361,6 @@ pub unsafe extern "C" fn _getItem(
                     Err(e) => e as _,
                 }
             } else {
-                crate::zlog("No eth tx processed yet\x00");
                 ParserError::NoData as _
             }
         }
@@ -406,9 +402,6 @@ pub unsafe extern "C" fn _tx_data_offset(
 
 #[no_mangle]
 pub unsafe extern "C" fn _accept_eth_tx(tx: *mut u32, buffer: *mut u8, buffer_len: u16) -> u16 {
-    use crate::handlers::resources::ETH_UI;
-    // crate::zlog("_accept_eth_tx\x00");
-
     if tx.is_null() || buffer.is_null() || buffer_len == 0 {
         return ApduError::DataInvalid as u16;
     }
@@ -421,7 +414,6 @@ pub unsafe extern "C" fn _accept_eth_tx(tx: *mut u32, buffer: *mut u8, buffer_le
         code
     } else {
         // No ethereum transaction has been processed yet
-        // crate::zlog("No ethereum transaction processed yet\x00");
         ApduError::DataInvalid as u16
     };
 
