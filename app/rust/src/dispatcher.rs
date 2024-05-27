@@ -14,16 +14,20 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use crate::constants::{evm_instructions::*, instructions::*, ApduError};
+use crate::{
+    constants::{evm_instructions::*, instructions::*, ApduError},
+    parser::ParserError,
+};
 
 #[cfg(feature = "erc20")]
 use crate::handlers::eth::provide_erc20::ProvideERC20;
+use crate::handlers::eth::{
+    get_app_configuration::GetAppConfiguration as EthGetAppConfig,
+    personal_msg::Sign as EthSignMsg, public_key::GetPublicKey as GetEthPublicKey,
+    set_plugin::SetPlugin, signing::Sign as EthSign,
+};
+#[cfg(test)]
 use crate::handlers::{
-    eth::{
-        get_app_configuration::GetAppConfiguration as EthGetAppConfig,
-        personal_msg::Sign as EthSignMsg, public_key::GetPublicKey as GetEthPublicKey,
-        set_plugin::SetPlugin, signing::Sign as EthSign,
-    },
     public_key::{GetExtendedPublicKey, GetPublicKey},
     version::GetVersion,
     wallet_id::WalletId,
@@ -32,6 +36,7 @@ use crate::handlers::{
 #[cfg(feature = "erc721")]
 use crate::handlers::eth::provide_nft_info::Info as NftProvider;
 
+#[cfg(test)]
 use crate::handlers::avax::{
     message::Sign as AvaxSignMsg, sign_hash::Sign as SignHash, signing::Sign as AvaxSign,
 };
@@ -55,7 +60,7 @@ pub fn apdu_dispatch(
     tx: &mut u32,
     apdu_buffer: ApduBufferRead<'_>,
 ) -> Result<(), ApduError> {
-    crate::sys::zemu_log_stack("apdu_dispatch\x00");
+    crate::zlog("apdu_dispatch\x00");
     *flags = 0;
     *tx = 0;
 
@@ -89,13 +94,40 @@ pub fn apdu_dispatch(
     }
 }
 
+#[inline(never)]
+pub fn eth_dispatch(
+    flags: &mut u32,
+    tx: &mut u32,
+    apdu_buffer: ApduBufferRead<'_>,
+) -> Result<(), ParserError> {
+    crate::zlog("eth_dispatch\x00");
+    *flags = 0;
+    *tx = 0;
+
+    let cla = apdu_buffer.cla();
+    if cla != CLA_ETH {
+        return Err(ParserError::UnexpectedData);
+    }
+
+    let ins = apdu_buffer.ins();
+
+    //common instructions
+    match (cla, ins) {
+        // only for nanos as other targets will use app-ethereum
+        (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::fill(tx, apdu_buffer),
+        (CLA_ETH, INS_ETH_SIGN) => EthSign::parse(flags, apdu_buffer),
+        (CLA_ETH, INS_SIGN_ETH_MSG) => EthSignMsg::parse(flags, apdu_buffer),
+        _ => Err(ParserError::InvalidTransactionType),
+    }
+}
+
 #[cfg(test)]
 fn handle_avax_apdu(
     flags: &mut u32,
     tx: &mut u32,
     apdu_buffer: ApduBufferRead<'_>,
 ) -> Result<(), ApduError> {
-    crate::sys::zemu_log_stack("handle_avax_apdu\x00");
+    crate::zlog("handle_avax_apdu\x00");
     *flags = 0;
     *tx = 0;
 
@@ -120,7 +152,7 @@ fn handle_avax_apdu(
 }
 
 pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8]) {
-    crate::sys::zemu_log_stack("handle_apdu\x00");
+    crate::zlog("handle_apdu\x00");
 
     //construct reader
     let status_word = match ApduBufferRead::new(apdu_buffer, rx) {
@@ -147,6 +179,20 @@ pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8
         .copy_from_slice(&status_word.to_be_bytes());
 
     *tx += 2;
+}
+
+pub fn handle_eth_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8]) -> u32 {
+    crate::zlog("handle_eth_apdu\x00");
+
+    //construct reader
+    let Ok(reader) = ApduBufferRead::new(apdu_buffer, rx) else {
+        return crate::parser::ParserError::NoData as u32;
+    };
+
+    match eth_dispatch(flags, tx, reader) {
+        Ok(_) => crate::parser::ParserError::ParserOk as u32,
+        Err(e) => e as u32,
+    }
 }
 
 #[cfg(test)]

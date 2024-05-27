@@ -26,6 +26,8 @@ use crate::{
     constants::{ApduError as Error, MAX_BIP32_PATH_DEPTH},
     crypto,
     dispatcher::ApduHandler,
+    handlers::resources::EthAccessors,
+    parser::ParserError,
     sys::{self, Error as SysError},
     utils::ApduBufferRead,
 };
@@ -66,39 +68,36 @@ impl GetPublicKey {
         Ok(())
     }
 
-    pub fn fill(
-        tx: &mut u32,
-        buffer: ApduBufferRead<'_>,
-        addr_ui: *mut u8,
-        addr_ui_len: u16,
-    ) -> Result<(), Error> {
-        sys::zemu_log_stack("EthGetPublicKey::fill_address\x00");
-
-        if addr_ui.is_null() || addr_ui_len != core::mem::size_of::<MaybeUninit<AddrUI>>() as u16 {
-            return Err(Error::DataInvalid);
-        }
+    pub fn fill(tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), ParserError> {
+        crate::zlog("EthGetPublicKey::fill_address\x00");
 
         let req_chaincode = buffer.p2() >= 1;
-        let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
+        let cdata = buffer.payload().map_err(|_| ParserError::NoData)?;
 
-        let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| Error::DataInvalid)?;
+        let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| ParserError::InvalidPath)?;
 
         // In this step we initialized and store in memory(allocated from C) our
         // UI object for later address visualization
-        let ui = unsafe { &mut *addr_ui.cast::<MaybeUninit<AddrUI>>() };
-
-        Self::initialize_ui(bip32_path, req_chaincode, ui)?;
+        let mut ui = MaybeUninit::uninit();
+        Self::initialize_ui(bip32_path, req_chaincode, &mut ui).map_err(|_| ParserError::NoData)?;
 
         //safe since it's all initialized now
-        let ui = unsafe { ui.assume_init_mut() };
+        let ui = unsafe { ui.assume_init() };
+        let mut ui = super::EthUi::Addr(ui);
 
         //we don't need to show so we execute the "accept" already
         // this way the "formatting" to `buffer` is all in the ui code
         let (sz, code) = ui.accept(buffer.write());
 
         if code != Error::Success as u16 {
-            Err(Error::try_from(code).map_err(|_| Error::ExecutionError)?)
+            Err(ParserError::UnexpectedError)
         } else {
+            unsafe {
+                crate::handlers::resources::ETH_UI
+                    .lock(EthAccessors::Tx)
+                    .replace(ui);
+            }
+
             *tx = sz as u32;
             Ok(())
         }
@@ -125,7 +124,8 @@ impl ApduHandler for GetPublicKey {
         let mut ui = unsafe { ui.assume_init() };
 
         if req_confirmation {
-            crate::show_ui!(ui.show(flags), tx)
+            // crate::show_ui!(ui.show(flags), tx)
+            Ok(())
         } else {
             //we don't need to show so we execute the "accept" already
             // this way the "formatting" to `buffer` is all in the ui code

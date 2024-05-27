@@ -29,7 +29,7 @@ pub use utils::*;
 pub mod resources {
     use crate::constants::MAX_BIP32_PATH_DEPTH;
 
-    use super::lock::Lock;
+    use super::{eth::EthUi, lock::Lock};
     use bolos::{
         crypto::bip32::BIP32Path, hash::Sha256, lazy_static, new_swapping_buffer, pic::PIC,
         SwappingBuffer,
@@ -50,6 +50,9 @@ pub mod resources {
     #[lazy_static]
     pub static mut NFT_INFO: Lock<Option<crate::parser::NftInfo>, NFTInfoAccessors> =
         Lock::new(None);
+
+    #[lazy_static]
+    pub static mut ETH_UI: Lock<Option<EthUi>, EthAccessors> = Lock::new(None);
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum BUFFERAccessors {
@@ -77,6 +80,13 @@ pub mod resources {
         Sign,
         SignHash,
         SignMsg,
+    }
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum EthAccessors {
+        Tx,
+        Msg,
+        Address,
     }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
@@ -117,6 +127,22 @@ pub mod resources {
             Self::EthSignMsg
         }
     }
+
+    // *********************** ETH accessors ***********************
+
+    impl From<super::eth::signing::Sign> for EthAccessors {
+        fn from(_: super::eth::signing::Sign) -> Self {
+            Self::Tx
+        }
+    }
+
+    impl From<super::eth::personal_msg::Sign> for EthAccessors {
+        fn from(_: super::eth::personal_msg::Sign) -> Self {
+            Self::Msg
+        }
+    }
+
+    // *********************** NfT accessors ***********************
 
     #[cfg(feature = "erc721")]
     impl From<super::eth::provide_nft_info::Info> for NFTInfoAccessors {

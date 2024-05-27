@@ -26,9 +26,6 @@ import { RLP } from '@ethereumjs/rlp'
 
 const defaultOptions = (model: any) => {
   let opts = commonOpts(model, false)
-  if (model.name === 'nanosp' || model.name === 'nanox') {
-    opts.approveKeyword = 'Accept'
-  }
   return opts
 }
 
@@ -39,7 +36,7 @@ jest.setTimeout(25000)
 //   token_name: string
 //   chain_id: number
 // }
-//
+
 type Op = {
   to?: string
   value?: string
@@ -60,33 +57,33 @@ const SIGN_TEST_DATA: TestData[] = [
     },
     chainId: 9867,
   },
-  // {
-  //   name: 'legacy_contract_deploy',
-  //   op: {
-  //     value: 'abcdef00',
-  //     data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-  //   },
-  //   chainId: 5,
-  // },
-  // {
-  //   name: 'legacy_contract_call',
-  //   op: {
-  //     to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
-  //     value: 'abcdef01',
-  //     data: 'ee919d500000000000000000000000000000000000000000000000000000000000000001',
-  //   },
-  //   chainId: 689,
-  // },
-  // {
-  //   name: 'erc20_transfer',
-  //   op: {
-  //     // this is not probably the contract address but lets use it
-  //     to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
-  //     value: '0',
-  //     data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
-  //   },
-  //   chainId: 65089,
-  // },
+  {
+    name: 'legacy_contract_deploy',
+    op: {
+      value: 'abcdef00',
+      data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+    },
+    chainId: 5,
+  },
+  {
+    name: 'legacy_contract_call',
+    op: {
+      to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+      value: 'abcdef01',
+      data: 'ee919d500000000000000000000000000000000000000000000000000000000000000001',
+    },
+    chainId: 689,
+  },
+  {
+    name: 'erc20_transfer',
+    op: {
+      // this is not probably the contract address but lets use it
+      to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
+      value: '0',
+      data: 'a9059cbb0000000000000000000000005f658a6d1928c39b286b48192fea8d46d87ad07700000000000000000000000000000000000000000000000000000000000f4240',
+    },
+    chainId: 65089,
+  },
   // {
   //   name: 'pangolin_contract_call',
   //   op: {
@@ -120,13 +117,13 @@ const SIGN_TEST_DATA: TestData[] = [
       to: 'df073477da421520cf03af261b782282c304ad66',
     },
   },
-  // {
-  //   name: 'contract_deploy_no_eip155',
-  //   op: {
-  //     value: '1',
-  //     data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-  //   },
-  // },
+  {
+    name: 'contract_deploy_no_eip155',
+    op: {
+      value: '1',
+      data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+    },
+  },
 ]
 
 const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
@@ -185,12 +182,6 @@ describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
       const currentScreen = await sim.snapshot()
       const msg = rawUnsignedLegacyTransaction(data.op, data.chainId)
 
-      // const nft = data.nft_info
-      // if (nft !== undefined) {
-      //   const provide_resp = await app.provideNftInfo(nft.token_address, nft.token_name, nft.chain_id)
-      //   expect(provide_resp.returnCode).toEqual(0x9000)
-      // }
-
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 60000)
 
@@ -204,11 +195,8 @@ describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
       expect(resp).toHaveProperty('r')
       expect(resp).toHaveProperty('v')
 
-      // TODO: Enable later
-      //Verify signature
-      // alternative verification to be safe
-      // const test = check_legacy_signature(msg.toString('hex'), resp, data.chainId)
-      expect(true).toEqual(true)
+      const test = check_legacy_signature(msg.toString('hex'), resp, data.chainId)
+      expect(test).toEqual(true)
     } finally {
       await sim.close()
     }

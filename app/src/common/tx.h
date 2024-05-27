@@ -18,6 +18,7 @@
 #include "coin.h"
 #include "os.h"
 #include "zxerror.h"
+#include "parser_common.h"
 
 void tx_initialize();
 
@@ -44,6 +45,13 @@ uint8_t *tx_get_buffer();
 /// \return It returns NULL if data is valid or error message otherwise.
 const char *tx_avax_parse();
 
+/// Parse message stored in transaction buffer
+/// This function should be called as soon as full buffer data is loaded.
+/// \return It returns NULL if data is valid or error message otherwise.
+void tx_eth_tx();
+void tx_eth_msg();
+void tx_eth_addr();
+
 /// Parse a hash transaction that contains the root path 
 /// plus the hash data to be signed
 const char *tx_avax_parse_hash();
@@ -58,3 +66,6 @@ zxerr_t tx_getNumItems(uint8_t *num_items);
 /// Gets an specific item from the transaction (including paging)
 zxerr_t tx_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outValue, uint16_t outValueLen,
                    uint8_t pageIdx, uint8_t *pageCount);
+
+// Returns the error message corresponding with error
+const char *tx_err_msg_from_code(parser_error_t err);

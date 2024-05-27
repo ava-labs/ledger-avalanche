@@ -22,6 +22,55 @@ pub mod public_key;
 pub mod set_plugin;
 pub mod signing;
 
+use zemu_sys::{ViewError, Viewable};
+
+pub enum EthUi {
+    Tx(crate::handlers::eth::signing::SignUI),
+    Msg(crate::handlers::eth::personal_msg::SignUI),
+    Addr(crate::handlers::eth::public_key::AddrUI),
+}
+
+impl Viewable for EthUi {
+    fn num_items(&mut self) -> Result<u8, ViewError> {
+        match self {
+            Self::Tx(obj) => obj.num_items(),
+            Self::Msg(obj) => obj.num_items(),
+            Self::Addr(obj) => obj.num_items(),
+        }
+    }
+
+    #[inline(never)]
+    fn render_item(
+        &mut self,
+        item_n: u8,
+        title: &mut [u8],
+        message: &mut [u8],
+        page: u8,
+    ) -> Result<u8, ViewError> {
+        match self {
+            Self::Tx(obj) => obj.render_item(item_n, title, message, page),
+            Self::Msg(obj) => obj.render_item(item_n, title, message, page),
+            Self::Addr(obj) => obj.render_item(item_n, title, message, page),
+        }
+    }
+
+    fn accept(&mut self, out: &mut [u8]) -> (usize, u16) {
+        match self {
+            Self::Tx(obj) => obj.accept(out),
+            Self::Msg(obj) => obj.accept(out),
+            Self::Addr(obj) => obj.accept(out),
+        }
+    }
+
+    fn reject(&mut self, out: &mut [u8]) -> (usize, u16) {
+        match self {
+            Self::Tx(obj) => obj.reject(out),
+            Self::Msg(obj) => obj.reject(out),
+            Self::Addr(obj) => obj.reject(out),
+        }
+    }
+}
+
 mod utils {
     pub mod u256;
 
@@ -100,4 +149,5 @@ mod utils {
         }
     }
 }
+use bolos::ApduError;
 pub use utils::u256::{u256, BorrowedU256};

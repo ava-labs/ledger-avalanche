@@ -59,6 +59,7 @@ pub struct parse_tx_t {
 //     SignAvaxMsg,
 //     SignEthMsg,
 //     SignAvaxHash
+//     EthAddr,
 // } instruction_t;
 #[repr(C)]
 pub enum Instruction {
@@ -67,6 +68,7 @@ pub enum Instruction {
     SignAvaxMsg,
     SignEthMsg,
     SignAvaxHash,
+    EthAddr,
 }
 
 impl TryFrom<u8> for Instruction {
@@ -79,6 +81,7 @@ impl TryFrom<u8> for Instruction {
             2 => Ok(Instruction::SignAvaxMsg),
             3 => Ok(Instruction::SignEthMsg),
             4 => Ok(Instruction::SignAvaxHash),
+            5 => Ok(Instruction::EthAddr),
             _ => Err(ParserError::InvalidTransactionType),
         }
     }

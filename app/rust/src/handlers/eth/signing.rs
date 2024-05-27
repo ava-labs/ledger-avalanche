@@ -15,9 +15,12 @@
 ********************************************************************************/
 use core::mem::MaybeUninit;
 
+use crate::handlers::resources::{EthAccessors, ETH_UI};
+use crate::{handlers::eth::EthUi, parser::ParserError};
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
+    ApduError,
 };
 use zemu_sys::{Show, ViewError, Viewable};
 
@@ -108,6 +111,134 @@ impl Sign {
         };
 
         crate::show_ui!(ui.show(flags))
+    }
+
+    #[inline(never)]
+    pub fn start_parse(txdata: &'static [u8], flags: &mut u32) -> Result<(), ParserError> {
+        crate::zlog("EthSign::start_sign\x00");
+        // The ERC721 parser might need access to the NFT_INFO resource
+        // also during the review part
+        #[cfg(feature = "erc721")]
+        unsafe {
+            crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
+        };
+
+        // now parse the transaction
+        let mut tx = MaybeUninit::uninit();
+        let rem = EthTransaction::from_bytes_into(txdata, &mut tx)?;
+
+        // some applications might append data at the end of an encoded
+        // transaction, so skip it to get the right hash.
+        //
+        // this would also include the tx type, as required by EIP-2718
+        // since the tx type is at the start of the data
+        let to_hash = txdata.len() - rem.len();
+        let to_hash = &txdata[..to_hash];
+
+        let unsigned_hash = Self::digest(to_hash).map_err(|_| ParserError::UnexpectedError)?;
+        let tx = unsafe { tx.assume_init() };
+
+        let ui = EthUi::Tx(SignUI {
+            hash: unsigned_hash,
+            tx,
+        });
+
+        unsafe {
+            ETH_UI.lock(EthAccessors::Tx).replace(ui);
+        }
+        Ok(())
+    }
+
+    pub fn parse(flags: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), ParserError> {
+        crate::zlog("EthSign::parse\x00");
+
+        // hw-app-eth encodes the packet type in p1
+        // with 0x00 being init and 0x80 being next
+        //
+        // the end of the transmission is implicit based on the received data
+        // an eth transaction is RLP encoded (https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/#definition)
+        // with the first byte being the version (0x01 EIP2930 or 0x02 EIP1559 or legacy if neither/missing)
+        // and then a RLP list
+        //
+        // therefore, the data received self-describes how many bytes the app can expect and
+        // when all data has been received
+
+        let packet_type = buffer.p1();
+
+        match packet_type {
+            //init
+            0x00 => {
+                let payload = buffer.payload().map_err(|_| ParserError::NoData)?;
+                //parse path to verify it's the data we expect
+                let (rest, bip32_path) =
+                    parse_bip32_eth(payload).map_err(|_| ParserError::InvalidPath)?;
+
+                unsafe {
+                    PATH.lock(Self).replace(bip32_path);
+                }
+
+                //parse the length of the RLP message
+                let (read, to_read) =
+                    get_tx_rlp_len(rest).map_err(|_| ParserError::UnexpectedBufferEnd)?;
+                let len = core::cmp::min((to_read as usize).saturating_add(read), rest.len());
+
+                //write the rest to the swapping buffer so we persist this data
+                let buffer = unsafe { BUFFER.lock(Self) };
+                buffer.reset();
+
+                buffer
+                    .write(&rest[..len])
+                    .map_err(|_| ParserError::UnexpectedError)?;
+
+                //if the number of bytes read and the number of bytes to read
+                // is the same as what we read...
+                if (to_read as usize).saturating_add(read).saturating_sub(len) == 0 {
+                    //then we actually had all bytes in this tx!
+                    // we should sign directly
+                    Self::start_parse(buffer.read_exact(), flags)?;
+                    // FIXME: remove later we do not need this
+                }
+
+                Ok(())
+            }
+            //next
+            0x80 => {
+                let payload = buffer.payload().map_err(|_| ParserError::NoData)?;
+
+                let buffer = unsafe {
+                    BUFFER
+                        .acquire(Self)
+                        .map_err(|_| ParserError::UnexpectedError)?
+                };
+
+                //we could unwrap here as this data should be guaranteed correct
+                // we read back what we wrote to see how many bytes we expect
+                // to have to collect
+                let (read, to_read) = get_tx_rlp_len(buffer.read_exact())
+                    .map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+                // let's ignore the little header at the start
+                let rlp_read = buffer.read_exact().len() - read;
+
+                //either the entire buffer of the remaining bytes we expect
+                let missing = to_read as usize - rlp_read;
+                let len = core::cmp::min(missing, payload.len());
+
+                buffer
+                    .write(&payload[..len])
+                    .map_err(|_| ParserError::UnexpectedError)?;
+
+                if missing - len == 0 {
+                    //we read all the missing bytes so we can proceed with the signature
+                    // nwo
+                    Self::start_parse(buffer.read_exact(), flags)?;
+                    // FIXME: remove later we do not need this
+                }
+
+                Ok(())
+            }
+            _ => Err(ParserError::UnexpectedData),
+        }
     }
 }
 

@@ -33,18 +33,12 @@
 #include "zxmacros.h"
 #include "parser_common.h"
 #include "rslib.h"
+#include "commands.h"
 #if defined(FEATURE_ETH)
 #include "handler.h"
 #endif
 
 static bool tx_initialized = false;
-
-bool
-process_chunk_eth(__Z_UNUSED volatile uint32_t *tx, uint32_t rx);
-bool
-process_chunk_eth_msg(__Z_UNUSED volatile uint32_t *tx, uint32_t rx);
-void
-extract_eth_path(uint32_t rx, uint32_t offset);
 
 void extractHDPath(uint32_t rx, uint32_t offset) {
     tx_initialized = false;
@@ -343,6 +337,223 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
 }
 
+__Z_INLINE void handleEthConfig(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleEthConfig\n");
+    *tx = 0;
+    app_eth_configuration();
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleNftInfo\n");
+
+    // the hw-app-eth sends all the data that is required for this.
+    // it is arount 90 bytes length so It should error in case It received
+    // less than that
+    zxerr_t err = _process_nft_info(&G_io_apdu_buffer[OFFSET_DATA], rx - OFFSET_DATA);
+    zemu_log("processed_nft_info\n");
+
+    CHECK_APP_CANARY()
+
+    if (err != zxerr_ok) {
+        char *error_msg = "Error processing NFT info";
+        zemu_log("processed_nft_info error\n");
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    zemu_log("processed_nft_info ok\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+
+__Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleProvideErc20\n");
+
+    // Nothing to do as we do not handle this information,
+    // but need to return ok to ethereumjs-wallet in order to
+    // ontinue with signing contract calls
+    *tx = 0;
+
+    zemu_log("provide_erc20_info\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSetPlugin\n");
+
+    // This instruction is sent in the process of providing
+    // more information regarding contract calls like erc721
+    // nft token information, we need to return ok for this
+    // in order the hw-app-eth package to continue with the
+    // provide_token_info/provide_erc20_info instructions
+    *tx = 0;
+
+    zemu_log("processing_set_plugin\n");
+    set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignEthMsg\n");
+
+    tx_eth_msg();
+
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+    view_review_show(REVIEW_TXN);
+
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void
+handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
+{
+
+    tx_eth_addr();
+
+    uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
+
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    // Set the length of the response
+    action_addrResponseLen = *tx;
+
+    if (requireConfirmation) {
+        view_review_init(tx_getItem, tx_getNumItems, app_reply_address);
+        view_review_show(REVIEW_ADDRESS);
+        *flags |= IO_ASYNCH_REPLY;
+        return;
+    }
+
+    THROW(APDU_CODE_OK);
+}
+
+
+__Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignEthTx\n");
+
+    tx_eth_tx();
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+
+    if (error_msg != NULL) {
+        zemu_log(error_msg);
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+    view_review_show(REVIEW_TXN);
+
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+
+#if defined(FEATURE_ETH)
+__Z_INLINE void eip_712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+}
+#endif
+
+__Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("ETH Dispatch\n");
+
+    bool custom = true;
+
+    switch (G_io_apdu_buffer[OFFSET_INS]) {
+#if defined(FEATURE_ETH)
+        case INS_SIGN_EIP_712_MESSAGE:
+            custom = false;
+            eip_712(flags, tx, rx);
+            break;
+        case INS_EIP712_STRUCT_DEF:
+            custom = false;
+            eip_712(flags, tx, rx);
+            break;
+        case INS_EIP712_STRUCT_IMPL:
+            custom = false;
+            eip_712(flags, tx, rx);
+            break;
+        case INS_EIP712_FILTERING:
+            custom = false;
+            eip_712(flags, tx, rx);
+            break;
+#endif
+        case INS_ETH_GET_APP_CONFIGURATION: {
+            CHECK_PIN_VALIDATED()
+            handleEthConfig(flags, tx, rx);
+            break;
+        }
+
+        case INS_PROVIDE_NFT_INFORMATION: {
+            CHECK_PIN_VALIDATED()
+            handleNftInfo(flags, tx, rx);
+            break;
+        }
+
+        case INS_SET_PLUGIN: {
+            CHECK_PIN_VALIDATED()
+            handleSetPlugin(flags, tx, rx);
+            break;
+        }
+
+        case INS_ETH_PROVIDE_ERC20: {
+            CHECK_PIN_VALIDATED()
+            handleProvideErc20(flags, tx, rx);
+            break;
+        }
+
+        case INS_ETH_SIGN: {
+            CHECK_PIN_VALIDATED()
+            handleSignEthTx(flags, tx, rx);
+            break;
+        }
+
+        case INS_SIGN_ETH_MSG: {
+            CHECK_PIN_VALIDATED()
+            handleSignEthMsg(flags, tx, rx);
+            break;
+        }
+
+        case INS_ETH_GET_PUBLIC_KEY: {
+            CHECK_PIN_VALIDATED()
+            handleGetAddrEth(flags, tx, rx);
+            break;
+        }
+
+        default: {
+            zemu_log("unknown_eth_instruction***\n");
+            THROW(APDU_CODE_INS_NOT_SUPPORTED);
+        }
+    }
+}
+
 void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     volatile uint16_t sw = 0;
     zemu_log("handleApdu\n");
@@ -361,15 +572,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 return avax_dispatch(flags, tx, rx);
             } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
-#if defined(FEATURE_ETH)
-                handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-            return;
-            #else
-                // if FEATURE_ETH is disable that means the target is nanos
-                // so we use our rust default implmentation
-                rs_handle_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-            return;
-#endif
+                return eth_dispatch(flags, tx, rx);
             } else {
                 THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }
