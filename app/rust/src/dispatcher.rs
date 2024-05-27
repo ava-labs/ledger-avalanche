@@ -14,7 +14,10 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use crate::constants::{evm_instructions::*, instructions::*, ApduError};
+use crate::{
+    constants::{evm_instructions::*, instructions::*, ApduError},
+    parser::ParserError,
+};
 
 #[cfg(feature = "erc20")]
 use crate::handlers::eth::provide_erc20::ProvideERC20;
@@ -89,6 +92,55 @@ pub fn apdu_dispatch(
     }
 }
 
+#[inline(never)]
+pub fn eth_dispatch(
+    flags: &mut u32,
+    tx: &mut u32,
+    apdu_buffer: ApduBufferRead<'_>,
+) -> Result<(), ParserError> {
+    crate::zlog("apdu_dispatch\x00");
+    *flags = 0;
+    *tx = 0;
+
+    let cla = apdu_buffer.cla();
+    if cla != CLA && cla != CLA_ETH {
+        return Err(ParserError::UnexpectedData);
+    }
+
+    let ins = apdu_buffer.ins();
+
+    //common instructions
+    match (cla, ins) {
+        // only for nanos as other targets will use app-ethereum
+        // (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_SET_PLUGIN) => {
+            SetPlugin::handle(flags, tx, apdu_buffer).map_err(|_| ParserError::UnexpectedError)?;
+
+            Ok(())
+        }
+        #[cfg(feature = "erc20")]
+        (CLA_ETH, INS_ETH_PROVIDE_ERC20) => {
+            ProvideERC20::handle(flags, tx, apdu_buffer)
+                .map_err(|_| ParserError::UnexpectedError)?;
+            Ok(())
+        }
+        #[cfg(feature = "erc721")]
+        (CLA_ETH, INS_PROVIDE_NFT_INFORMATION) => {
+            NftProvider::handle(flags, tx, apdu_buffer)
+                .map_err(|_| ParserError::NftInfoNotProvided)?;
+            Ok(())
+        }
+        // (CLA_ETH, INS_ETH_GET_APP_CONFIGURATION) => EthGetAppConfig::handle(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_ETH_SIGN) => EthSign::parse(flags, tx, apdu_buffer),
+        (CLA_ETH, INS_SIGN_ETH_MSG) => EthSignMsg::parse(flags, tx, apdu_buffer),
+
+        // #[cfg(feature = "dev")]
+        // _ => Debug::handle(flags, tx, apdu_buffer),
+        #[allow(unreachable_patterns)] //not unrechable for all feature configurations
+        _ => Err(ParserError::InvalidTransactionType),
+    }
+}
+
 #[cfg(test)]
 fn handle_avax_apdu(
     flags: &mut u32,
@@ -149,36 +201,18 @@ pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8
     *tx += 2;
 }
 
-pub fn handle_eth_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8]) -> u16 {
-    // crate::zlog("handle_apdu\x00");
+pub fn handle_eth_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8]) -> u32 {
+    crate::zlog("handle_eth_apdu\x00");
 
     //construct reader
-    let status_word = match ApduBufferRead::new(apdu_buffer, rx) {
-        Ok(reader) => match apdu_dispatch(flags, tx, reader)
-            .and(Err::<(), _>(ApduError::Success))
-            .map_err(|e| e as u16)
-        {
-            Err(_) if (*tx + 2) as usize >= apdu_buffer.len() => {
-                //sw won't fit in the buffer
-                // set tx to 0 and override error
-                *tx = 0;
-                ApduError::OutputBufferTooSmall as u16
-            }
-            Err(e) => e,
-            Ok(_) => ApduError::Success as u16,
-        },
-        Err(_) => ApduError::WrongLength as u16,
+    let Ok(reader) = ApduBufferRead::new(apdu_buffer, rx) else {
+        return crate::parser::ParserError::NoData as u32;
     };
 
-    //     let txu = *tx as usize;
-    //     apdu_buffer
-    //         .get_mut(txu..txu + 2)
-    //         .apdu_unwrap()
-    //         .copy_from_slice(&status_word.to_be_bytes());
-    //
-    *tx += 2;
-
-    status_word
+    match eth_dispatch(flags, tx, reader) {
+        Ok(_) => crate::parser::ParserError::ParserOk as u32,
+        Err(e) => e as u32,
+    }
 }
 
 #[cfg(test)]

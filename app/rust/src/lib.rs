@@ -95,7 +95,8 @@ pub unsafe extern "C" fn rs_eth_handle(
     rx: u32,
     buffer: *mut u8,
     buffer_len: u16,
-) -> u16 {
+) -> u32 {
+    crate::zlog("rs_eth_handle\n\x00");
     let flags = flags.as_mut().apdu_unwrap();
     let tx = tx.as_mut().apdu_unwrap();
     let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
@@ -120,6 +121,16 @@ pub fn handle_apdu_raw(bytes: &[u8]) -> (u32, u32, std::vec::Vec<u8>) {
     handle_apdu(&mut flags, &mut tx, rx as u32, &mut out);
 
     (flags, tx, out)
+}
+
+pub fn zlog(msg: &str) {
+    unsafe {
+        zemu_log_stack(msg.as_bytes().as_ptr());
+    }
+}
+
+extern "C" {
+    fn zemu_log_stack(s: *const u8);
 }
 
 #[cfg(test)]

@@ -337,6 +337,34 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
 }
 
+__Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignEthMsg\n");
+    // FIXME: Error handling? write on each handler directly and MEMZERO 
+    // the buffer if there is an error.
+    uint16_t error = rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    zemu_log("rs_eth_handle done\n");
+
+    view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+    view_review_show(REVIEW_TXN);
+
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+__Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    zemu_log("handleSignEthTx\n");
+
+    // FIXME: Error handling? write on each handler directly and MEMZERO 
+    // the buffer if there is an error.
+    uint16_t error = rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    zemu_log("rs_eth_handle_tx done\n");
+
+    view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+    view_review_show(REVIEW_TXN);
+
+    *flags |= IO_ASYNCH_REPLY;
+}
+
+
 #if defined(FEATURE_ETH)
 __Z_INLINE void eip_712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
@@ -346,34 +374,44 @@ __Z_INLINE void eip_712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_
 __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("ETH Dispatch\n");
 
+    bool custom = true;
+
     switch (G_io_apdu_buffer[OFFSET_INS]) {
-        case INS_SIGN_EIP_712_MESSAGE:
-        case INS_EIP712_STRUCT_DEF:
-        case INS_EIP712_STRUCT_IMPL:
-        case INS_EIP712_FILTERING:
-        case AVX_SIGN_HASH:
-        case AVX_SIGN_MSG:
-        case AVX_INS_GET_EXTENDED_PUBLIC_KEY:
-        case AVX_INS_GET_WALLET_ID:
 #if defined(FEATURE_ETH)
+        case INS_SIGN_EIP_712_MESSAGE:
+            custom = false;
             eip_712(flags, tx, rx);
-#else
-            THROW(APDU_CODE_INS_NOT_SUPPORTED);
+            break;
+        case INS_EIP712_STRUCT_DEF:
+            custom = false;
+            eip_712(flags, tx, rx);
+            break;
+        case INS_EIP712_STRUCT_IMPL:
+            custom = false;
+            eip_712(flags, tx, rx);
+            break;
+        case INS_EIP712_FILTERING:
+            custom = false;
+            eip_712(flags, tx, rx);
+            break;
 #endif
-            break;  // Although not necessary due to `return`, `break` enhances readability.
+        case INS_ETH_SIGN: {
+            CHECK_PIN_VALIDATED()
+            tx_eth_tx();
+            handleSignEthTx(flags, tx, rx);
+            break;
+        }
+
+        case INS_SIGN_ETH_MSG: {
+            CHECK_PIN_VALIDATED()
+            tx_eth_msg();
+            handleSignEthMsg(flags, tx, rx);
+            break;
+        }
 
         default: {
-            zemu_log("rs_eth_handle\n");
-            // FIXME: Error handling? write on each handler directly and MEMZERO 
-            // the buffer if there is an error.
-            uint16_t error = rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
-
-            view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
-            view_review_show(REVIEW_TXN);
-
-            *flags |= IO_ASYNCH_REPLY;
-
-            break;
+            zemu_log("unknown_eth_instruction***\n");
+            THROW(APDU_CODE_INS_NOT_SUPPORTED);
         }
     }
 }

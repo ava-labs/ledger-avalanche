@@ -116,6 +116,13 @@ const char *tx_avax_parse_msg() {
 
     return tx_parse();
 }
+void tx_eth_tx() {
+    ctx_parsed_tx.ins = SignEthTx;
+}
+
+void tx_eth_msg() {
+    ctx_parsed_tx.ins = SignEthMsg;
+}
 
 void tx_parse_reset()
 {

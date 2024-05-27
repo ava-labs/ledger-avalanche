@@ -44,6 +44,12 @@ uint8_t *tx_get_buffer();
 /// \return It returns NULL if data is valid or error message otherwise.
 const char *tx_avax_parse();
 
+/// Parse message stored in transaction buffer
+/// This function should be called as soon as full buffer data is loaded.
+/// \return It returns NULL if data is valid or error message otherwise.
+void tx_eth_tx();
+void tx_eth_msg();
+
 /// Parse a hash transaction that contains the root path 
 /// plus the hash data to be signed
 const char *tx_avax_parse_hash();

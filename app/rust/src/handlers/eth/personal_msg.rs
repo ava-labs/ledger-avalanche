@@ -94,6 +94,23 @@ impl Sign {
 
         let tx = unsafe { tx.assume_init() };
 
+        let ui = SignUI {
+            hash: unsigned_hash,
+            tx,
+        };
+
+        crate::show_ui!(ui.show(flags))
+    }
+
+    #[inline(never)]
+    pub fn start_parse(txdata: &'static [u8], flags: &mut u32) -> Result<(), ParserError> {
+        let mut tx = MaybeUninit::uninit();
+        _ = PersonalMsg::from_bytes_into(txdata, &mut tx)?;
+
+        let unsigned_hash = Self::digest(txdata).map_err(|_| ParserError::UnexpectedError)?;
+
+        let tx = unsafe { tx.assume_init() };
+
         let ui = EthUi::Msg(SignUI {
             hash: unsigned_hash,
             tx,
@@ -102,9 +119,88 @@ impl Sign {
         unsafe {
             ETH_UI.lock(EthAccessors::Msg).replace(ui);
         }
-        Ok(ApduError::Success as u32)
+        Ok(())
+    }
 
-        // crate::show_ui!(ui.show(flags))
+    #[inline(never)]
+    pub fn parse(
+        flags: &mut u32,
+        tx: &mut u32,
+        buffer: ApduBufferRead<'_>,
+    ) -> Result<(), ParserError> {
+        crate::zlog("EthSignMessage::parse\x00");
+
+        *tx = 0;
+
+        // hw-app-eth encodes the packet type in p1
+        // with 0x00 being init and 0x80 being next
+        //
+        // moreover, it does not prepend the ethereum header
+        // for personal messages, it just structures the message as:
+        // path | msg.len() as 4-bytes big-indian integer | msg
+
+        let packet_type = buffer.p1();
+
+        match packet_type {
+            //init
+            0x00 => {
+                let payload = buffer
+                    .payload()
+                    .map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+                //parse path to verify it's the data we expect
+                let (rest, bip32_path) =
+                    parse_bip32_eth(payload).map_err(|_| ParserError::InvalidPath)?;
+
+                unsafe {
+                    PATH.lock(Self).replace(bip32_path);
+                }
+
+                let (msg, len) =
+                    be_u32::<_, ParserError>(rest).map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+                //write( msg.len and msg) to the swapping buffer so we persist this data
+                let buffer = unsafe { BUFFER.lock(Self) };
+                buffer.reset();
+
+                buffer
+                    .write(rest)
+                    .map_err(|_| ParserError::UnexpectedError)?;
+
+                if len as usize == msg.len() {
+                    // The message is completed so we can proceed with the signature
+                    Self::start_parse(buffer.read_exact(), flags)?;
+                    // FIXME: This is a hack
+                    *tx = 65;
+                }
+
+                Ok(())
+            }
+            //next
+            0x80 => {
+                let payload = buffer
+                    .payload()
+                    .map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+                let buffer = unsafe { BUFFER.acquire(Self).map_err(|_| ParserError::NoData)? };
+
+                buffer
+                    .write(payload)
+                    .map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+                let (msg, len) = be_u32::<_, ParserError>(buffer.read_exact())
+                    .map_err(|_| ParserError::UnexpectedBufferEnd)?;
+
+                if msg.len() == len as usize {
+                    //we read all the missing bytes so we can proceed with the signature
+                    Self::start_parse(buffer.read_exact(), flags)?;
+                    *tx = 65;
+                }
+
+                Ok(())
+            }
+            _ => Err(ParserError::UnexpectedData),
+        }
     }
 }
 
