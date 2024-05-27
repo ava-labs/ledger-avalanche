@@ -20,11 +20,14 @@ pub struct Info;
 #[cfg(feature = "erc721")]
 impl Info {
     pub fn process(input: &[u8]) -> Result<(), Error> {
+        crate::zlog("NftInfo::process\x00");
         // skip type and version
         let mut nft_info = core::mem::MaybeUninit::uninit();
 
         _ = crate::parser::FromBytes::from_bytes_into(input, &mut nft_info)
             .map_err(|_| Error::DataInvalid)?;
+
+        crate::zlog("NftInfo parsed\x00");
 
         let nft_info = unsafe { nft_info.assume_init() };
 

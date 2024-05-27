@@ -68,7 +68,7 @@ impl GetPublicKey {
         Ok(())
     }
 
-    pub fn fill(tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), ParserError> {
+    pub fn fill(tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<bool, ParserError> {
         crate::zlog("EthGetPublicKey::fill_address\x00");
 
         let req_chaincode = buffer.p2() >= 1;
@@ -99,7 +99,7 @@ impl GetPublicKey {
             }
 
             *tx = sz as u32;
-            Ok(())
+            Ok(true)
         }
     }
 }

@@ -115,7 +115,7 @@ impl Sign {
 
     #[inline(never)]
     pub fn start_parse(txdata: &'static [u8], flags: &mut u32) -> Result<(), ParserError> {
-        crate::zlog("EthSign::start_sign\x00");
+        crate::zlog("EthSign::start_parse\x00");
         // The ERC721 parser might need access to the NFT_INFO resource
         // also during the review part
         #[cfg(feature = "erc721")]
@@ -149,7 +149,7 @@ impl Sign {
         Ok(())
     }
 
-    pub fn parse(flags: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), ParserError> {
+    pub fn parse(flags: &mut u32, buffer: ApduBufferRead<'_>) -> Result<bool, ParserError> {
         crate::zlog("EthSign::parse\x00");
 
         // hw-app-eth encodes the packet type in p1
@@ -196,10 +196,11 @@ impl Sign {
                     //then we actually had all bytes in this tx!
                     // we should sign directly
                     Self::start_parse(buffer.read_exact(), flags)?;
-                    // FIXME: remove later we do not need this
+
+                    return Ok(true);
                 }
 
-                Ok(())
+                Ok(false)
             }
             //next
             0x80 => {
@@ -232,10 +233,10 @@ impl Sign {
                     //we read all the missing bytes so we can proceed with the signature
                     // nwo
                     Self::start_parse(buffer.read_exact(), flags)?;
-                    // FIXME: remove later we do not need this
+                    return Ok(true);
                 }
 
-                Ok(())
+                Ok(false)
             }
             _ => Err(ParserError::UnexpectedData),
         }

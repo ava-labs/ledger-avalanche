@@ -94,13 +94,15 @@ pub unsafe extern "C" fn rs_eth_handle(
     rx: u32,
     buffer: *mut u8,
     buffer_len: u16,
+    done: *mut bool,
 ) -> u32 {
     let flags = flags.as_mut().apdu_unwrap();
     let tx = tx.as_mut().apdu_unwrap();
+    let done = done.as_mut().apdu_unwrap();
     let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
     crate::zlog("rs_handle_apdu\n\x00");
 
-    dispatcher::handle_eth_apdu(flags, tx, rx, data)
+    dispatcher::handle_eth_apdu(flags, tx, rx, data, done)
 }
 
 #[cfg(test)]

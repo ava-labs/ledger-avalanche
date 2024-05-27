@@ -99,7 +99,7 @@ pub fn eth_dispatch(
     flags: &mut u32,
     tx: &mut u32,
     apdu_buffer: ApduBufferRead<'_>,
-) -> Result<(), ParserError> {
+) -> Result<bool, ParserError> {
     crate::zlog("eth_dispatch\x00");
     *flags = 0;
     *tx = 0;
@@ -181,7 +181,13 @@ pub fn handle_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8
     *tx += 2;
 }
 
-pub fn handle_eth_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut [u8]) -> u32 {
+pub fn handle_eth_apdu(
+    flags: &mut u32,
+    tx: &mut u32,
+    rx: u32,
+    apdu_buffer: &mut [u8],
+    done: &mut bool,
+) -> u32 {
     crate::zlog("handle_eth_apdu\x00");
 
     //construct reader
@@ -190,7 +196,10 @@ pub fn handle_eth_apdu(flags: &mut u32, tx: &mut u32, rx: u32, apdu_buffer: &mut
     };
 
     match eth_dispatch(flags, tx, reader) {
-        Ok(_) => crate::parser::ParserError::ParserOk as u32,
+        Ok(ready) => {
+            *done = ready;
+            crate::parser::ParserError::ParserOk as u32
+        }
         Err(e) => e as u32,
     }
 }

@@ -123,7 +123,7 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn parse(flags: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), ParserError> {
+    pub fn parse(flags: &mut u32, buffer: ApduBufferRead<'_>) -> Result<bool, ParserError> {
         crate::zlog("EthSignMessage::parse\x00");
 
         // hw-app-eth encodes the packet type in p1
@@ -164,9 +164,10 @@ impl Sign {
                 if len as usize == msg.len() {
                     // The message is completed so we can proceed with the signature
                     Self::start_parse(buffer.read_exact(), flags)?;
+                    return Ok(true);
                 }
 
-                Ok(())
+                Ok(false)
             }
             //next
             0x80 => {
@@ -185,9 +186,10 @@ impl Sign {
 
                 if msg.len() == len as usize {
                     Self::start_parse(buffer.read_exact(), flags)?;
+                    return Ok(true);
                 }
 
-                Ok(())
+                Ok(false)
             }
             _ => Err(ParserError::UnexpectedData),
         }

@@ -406,7 +406,13 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
 
     tx_eth_msg();
 
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+    bool done = false;
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
+
+    // Wait for all transaction data to be processed
+    if (!done) {
+        THROW(APDU_CODE_OK);
+    }
 
     if (error_msg != NULL) {
         zemu_log(error_msg);
@@ -430,7 +436,9 @@ handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
 
     uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
 
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+    // not needed as address data is not that large
+    bool done = false;
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
 
     if (error_msg != NULL) {
         zemu_log(error_msg);
@@ -458,7 +466,8 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
     zemu_log("handleSignEthTx\n");
 
     tx_eth_tx();
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE));
+    bool done = false;
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
 
     if (error_msg != NULL) {
         zemu_log(error_msg);
@@ -466,6 +475,11 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
         THROW(APDU_CODE_DATA_INVALID);
+    }
+
+    // Wait for all transaction data to be processed
+    if (!done) {
+        THROW(APDU_CODE_OK);
     }
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);

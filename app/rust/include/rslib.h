@@ -14,6 +14,15 @@ void rs_handle_apdu(
     uint16_t buffer_len
 );
 
+uint32_t rs_eth_handle(
+    uint32_t *flags,
+    uint32_t *tx,
+    uint32_t rx,
+    uint8_t *buffer,
+    uint16_t buffer_len,
+    bool *done
+);
+
 /****************************** others ***********************************************************/
 
 parser_error_t _parser_init(parser_context_t *ctx, const uint8_t *buffer, size_t bufferSize, uint32_t *alloc_size);
