@@ -69,7 +69,7 @@ impl GetPublicKey {
     }
 
     pub fn fill(tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), ParserError> {
-        sys::zemu_log_stack("EthGetPublicKey::fill_address\x00");
+        crate::zlog("EthGetPublicKey::fill_address\x00");
 
         let req_chaincode = buffer.p2() >= 1;
         let cdata = buffer.payload().map_err(|_| ParserError::NoData)?;
@@ -78,12 +78,12 @@ impl GetPublicKey {
 
         // In this step we initialized and store in memory(allocated from C) our
         // UI object for later address visualization
-
         let mut ui = MaybeUninit::uninit();
         Self::initialize_ui(bip32_path, req_chaincode, &mut ui).map_err(|_| ParserError::NoData)?;
 
         //safe since it's all initialized now
-        let mut ui = unsafe { ui.assume_init() };
+        let ui = unsafe { ui.assume_init() };
+        let mut ui = super::EthUi::Addr(ui);
 
         //we don't need to show so we execute the "accept" already
         // this way the "formatting" to `buffer` is all in the ui code
@@ -92,7 +92,6 @@ impl GetPublicKey {
         if code != Error::Success as u16 {
             Err(ParserError::UnexpectedError)
         } else {
-            let ui = super::EthUi::Addr(ui);
             unsafe {
                 crate::handlers::resources::ETH_UI
                     .lock(EthAccessors::Tx)
@@ -100,7 +99,6 @@ impl GetPublicKey {
             }
 
             *tx = sz as u32;
-
             Ok(())
         }
     }

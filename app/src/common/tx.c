@@ -178,5 +178,5 @@ const char *tx_err_msg_from_code(parser_error_t err) {
     if (err != parser_ok) {
         return parser_getErrorDescription(err);
     }
-    return NULL;
+   return NULL;
 }

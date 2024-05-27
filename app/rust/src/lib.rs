@@ -79,7 +79,6 @@ pub unsafe extern "C" fn rs_handle_apdu(
     let flags = flags.as_mut().apdu_unwrap();
     let tx = tx.as_mut().apdu_unwrap();
     let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
-    // zlog_stack("rs_handle_apdu\n\x00");
     sys::zemu_log_stack("rs_handle_apdu\n\x00");
 
     handle_apdu(flags, tx, rx, data);

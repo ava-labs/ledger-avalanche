@@ -81,6 +81,7 @@ impl TryFrom<u8> for Instruction {
             2 => Ok(Instruction::SignAvaxMsg),
             3 => Ok(Instruction::SignEthMsg),
             4 => Ok(Instruction::SignAvaxHash),
+            5 => Ok(Instruction::EthAddr),
             _ => Err(ParserError::InvalidTransactionType),
         }
     }

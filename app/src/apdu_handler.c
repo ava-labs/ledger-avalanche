@@ -425,7 +425,6 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
 __Z_INLINE void
 handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
 {
-    zemu_log("handleGetAddrEth\n");
 
     tx_eth_addr();
 
@@ -539,6 +538,12 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
         case INS_SIGN_ETH_MSG: {
             CHECK_PIN_VALIDATED()
             handleSignEthMsg(flags, tx, rx);
+            break;
+        }
+
+        case INS_ETH_GET_PUBLIC_KEY: {
+            CHECK_PIN_VALIDATED()
+            handleGetAddrEth(flags, tx, rx);
             break;
         }
 
