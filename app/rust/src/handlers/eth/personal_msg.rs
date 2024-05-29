@@ -106,7 +106,7 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn start_parse(txdata: &'static [u8], _flags: &mut u32) -> Result<(), ParserError> {
+    pub fn start_parse(txdata: &'static [u8]) -> Result<(), ParserError> {
         let mut tx = MaybeUninit::uninit();
         _ = PersonalMsg::from_bytes_into(txdata, &mut tx)?;
 
@@ -126,7 +126,7 @@ impl Sign {
     }
 
     #[inline(never)]
-    pub fn parse(flags: &mut u32, buffer: ApduBufferRead<'_>) -> Result<bool, ParserError> {
+    pub fn parse(buffer: ApduBufferRead<'_>) -> Result<bool, ParserError> {
         crate::zlog("EthSignMessage::parse\x00");
 
         // hw-app-eth encodes the packet type in p1
@@ -166,7 +166,7 @@ impl Sign {
 
                 if len as usize == msg.len() {
                     // The message is completed so we can proceed with the signature
-                    Self::start_parse(buffer.read_exact(), flags)?;
+                    Self::start_parse(buffer.read_exact())?;
                     return Ok(true);
                 }
 
@@ -188,7 +188,7 @@ impl Sign {
                     .map_err(|_| ParserError::UnexpectedBufferEnd)?;
 
                 if msg.len() == len as usize {
-                    Self::start_parse(buffer.read_exact(), flags)?;
+                    Self::start_parse(buffer.read_exact())?;
                     return Ok(true);
                 }
 

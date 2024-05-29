@@ -137,4 +137,4 @@ zxerr_t _app_fill_wallet(
     uint16_t wallet_ui_len
 );
 
-uint16_t _accept_eth_tx(uint32_t *tx, uint8_t *buffer, uint16_t buffer_len);
+uint16_t _accept_eth_tx(uint16_t *tx, uint8_t *buffer, uint32_t buffer_len);

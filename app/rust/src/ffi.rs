@@ -463,7 +463,7 @@ pub unsafe extern "C" fn _tx_data_offset(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn _accept_eth_tx(tx: *mut u32, buffer: *mut u8, buffer_len: u16) -> u16 {
+unsafe extern "C" fn _accept_eth_tx(tx: *mut u16, buffer: *mut u8, buffer_len: u32) -> u16 {
     if tx.is_null() || buffer.is_null() || buffer_len == 0 {
         return ApduError::DataInvalid as u16;
     }
@@ -472,7 +472,7 @@ pub unsafe extern "C" fn _accept_eth_tx(tx: *mut u32, buffer: *mut u8, buffer_le
 
     let code = if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
         let (_tx, code) = obj.accept(data);
-        *tx = _tx as u32;
+        *tx = _tx as u16;
         code
     } else {
         // No ethereum transaction has been processed yet

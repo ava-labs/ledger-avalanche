@@ -17,7 +17,7 @@ use core::mem::MaybeUninit;
 use std::convert::TryFrom;
 
 use bolos::crypto::bip32::BIP32Path;
-use zemu_sys::{Show, Viewable};
+use zemu_sys::Viewable;
 
 mod ui;
 pub use ui::{AddrUI, AddrUIInitializer};

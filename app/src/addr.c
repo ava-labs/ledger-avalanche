@@ -66,5 +66,5 @@ zxerr_t addr_getNumItems(uint8_t *num_items) {
 
 zxerr_t addr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
                      uint8_t *pageCount) {
-    return _addr_get_item(addr_ui_obj, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
+    return _addr_get_item(addr_ui_obj, displayIdx, (uint8_t*)outKey, outKeyLen, (uint8_t*)outVal, outValLen, pageIdx, pageCount);
 }

@@ -115,8 +115,8 @@ pub fn eth_dispatch(
     match (cla, ins) {
         // only for nanos as other targets will use app-ethereum
         (CLA_ETH, INS_ETH_GET_PUBLIC_KEY) => GetEthPublicKey::fill(tx, apdu_buffer),
-        (CLA_ETH, INS_ETH_SIGN) => EthSign::parse(flags, apdu_buffer),
-        (CLA_ETH, INS_SIGN_ETH_MSG) => EthSignMsg::parse(flags, apdu_buffer),
+        (CLA_ETH, INS_ETH_SIGN) => EthSign::parse(apdu_buffer),
+        (CLA_ETH, INS_SIGN_ETH_MSG) => EthSignMsg::parse(apdu_buffer),
         _ => Err(ParserError::InvalidTransactionType),
     }
 }
