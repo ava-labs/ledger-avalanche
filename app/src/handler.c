@@ -36,6 +36,7 @@
 #include "challenge.h"
 #include "domain_name.h"
 #include "lib_standard_app/crypto_helpers.h"
+#include "manage_asset_info.h"
 
 
 #include "handler.h"
@@ -156,7 +157,7 @@ void init_coin_config(chain_config_t *coin_config) {
  * @note This function sets the blockchain configuration on the first call and logs each operation.
  *       It includes extensive error handling to gracefully manage exceptions and reset the context as needed.
  */
-void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
+void handle_eth_apdu(uint32_t *flags, volatile uint32_t *tx,
                      uint32_t rx, uint8_t *buffer, uint16_t bufferLen) {
     unsigned short sw = 0;
 
@@ -175,92 +176,92 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
             }
 
             switch (buffer[OFFSET_INS]) {
-                case INS_GET_PUBLIC_KEY:
+                // case INS_GET_PUBLIC_KEY:
+                //
+                //     forget_known_assets();
+                //     handleGetPublicKey(buffer[OFFSET_P1],
+                //                        buffer[OFFSET_P2],
+                //                        buffer + OFFSET_CDATA,
+                //                        buffer[OFFSET_LC],
+                //                        flags,
+                //                        tx);
+                //     break;
 
-                    forget_known_assets();
-                    handleGetPublicKey(buffer[OFFSET_P1],
-                                       buffer[OFFSET_P2],
-                                       buffer + OFFSET_CDATA,
-                                       buffer[OFFSET_LC],
-                                       flags,
-                                       tx);
-                    break;
-
-                case INS_PROVIDE_ERC20_TOKEN_INFORMATION:
-                    handleProvideErc20TokenInformation(buffer[OFFSET_P1],
-                                                       buffer[OFFSET_P2],
-                                                       buffer + OFFSET_CDATA,
-                                                       buffer[OFFSET_LC],
-                                                       flags,
-                                                       tx);
-                    break;
+                // case INS_PROVIDE_ERC20_TOKEN_INFORMATION:
+                //     handleProvideErc20TokenInformation(buffer[OFFSET_P1],
+                //                                        buffer[OFFSET_P2],
+                //                                        buffer + OFFSET_CDATA,
+                //                                        buffer[OFFSET_LC],
+                //                                        flags,
+                //                                        tx);
+                //     break;
 
 #ifdef HAVE_NFT_SUPPORT
-                case INS_PROVIDE_NFT_INFORMATION:
-                    handleProvideNFTInformation(buffer[OFFSET_P1],
-                                                buffer[OFFSET_P2],
-                                                buffer + OFFSET_CDATA,
-                                                buffer[OFFSET_LC],
-                                                flags,
-                                                tx);
-                    break;
+                // case INS_PROVIDE_NFT_INFORMATION:
+                //     handleProvideNFTInformation(buffer[OFFSET_P1],
+                //                                 buffer[OFFSET_P2],
+                //                                 buffer + OFFSET_CDATA,
+                //                                 buffer[OFFSET_LC],
+                //                                 flags,
+                //                                 tx);
+                //     break;
 #endif  // HAVE_NFT_SUPPORT
 
-                case INS_SET_EXTERNAL_PLUGIN:
-                    handleSetExternalPlugin(buffer[OFFSET_P1],
-                                            buffer[OFFSET_P2],
-                                            buffer + OFFSET_CDATA,
-                                            buffer[OFFSET_LC],
-                                            flags,
-                                            tx);
-                    break;
+                // case INS_SET_EXTERNAL_PLUGIN:
+                //     handleSetExternalPlugin(buffer[OFFSET_P1],
+                //                             buffer[OFFSET_P2],
+                //                             buffer + OFFSET_CDATA,
+                //                             buffer[OFFSET_LC],
+                //                             flags,
+                //                             tx);
+                //     break;
 
-                case INS_SET_PLUGIN:
-                    handleSetPlugin(buffer[OFFSET_P1],
-                                    buffer[OFFSET_P2],
-                                    buffer + OFFSET_CDATA,
-                                    buffer[OFFSET_LC],
-                                    flags,
-                                    tx);
-                    break;
+                // case INS_SET_PLUGIN:
+                //     handleSetPlugin(buffer[OFFSET_P1],
+                //                     buffer[OFFSET_P2],
+                //                     buffer + OFFSET_CDATA,
+                //                     buffer[OFFSET_LC],
+                //                     flags,
+                //                     tx);
+                //     break;
 
-                case INS_PERFORM_PRIVACY_OPERATION:
-                    handlePerformPrivacyOperation(buffer[OFFSET_P1],
-                                                  buffer[OFFSET_P2],
-                                                  buffer + OFFSET_CDATA,
-                                                  buffer[OFFSET_LC],
-                                                  flags,
-                                                  tx);
-                    break;
+                // case INS_PERFORM_PRIVACY_OPERATION:
+                //     handlePerformPrivacyOperation(buffer[OFFSET_P1],
+                //                                   buffer[OFFSET_P2],
+                //                                   buffer + OFFSET_CDATA,
+                //                                   buffer[OFFSET_LC],
+                //                                   flags,
+                //                                   tx);
+                //     break;
 
-                case INS_SIGN:
-                    handleSign(buffer[OFFSET_P1],
-                               buffer[OFFSET_P2],
-                               buffer + OFFSET_CDATA,
-                               buffer[OFFSET_LC],
-                               flags,
-                               tx);
-                    break;
-
-                case INS_GET_APP_CONFIGURATION:
-                    handleGetAppConfiguration(buffer[OFFSET_P1],
-                                              buffer[OFFSET_P2],
-                                              buffer + OFFSET_CDATA,
-                                              buffer[OFFSET_LC],
-                                              flags,
-                                              tx);
-                    break;
-
-                case INS_SIGN_PERSONAL_MESSAGE:
-                    forget_known_assets();
-                    *flags |= IO_ASYNCH_REPLY;
-                    if (!handleSignPersonalMessage(buffer[OFFSET_P1],
-                                                   buffer[OFFSET_P2],
-                                                   buffer + OFFSET_CDATA,
-                                                   buffer[OFFSET_LC])) {
-                        reset_app_context();
-                    }
-                    break;
+                // case INS_SIGN:
+                //     handleSign(buffer[OFFSET_P1],
+                //                buffer[OFFSET_P2],
+                //                buffer + OFFSET_CDATA,
+                //                buffer[OFFSET_LC],
+                //                flags,
+                //                tx);
+                //     break;
+                //
+                // case INS_GET_APP_CONFIGURATION:
+                //     handleGetAppConfiguration(buffer[OFFSET_P1],
+                //                               buffer[OFFSET_P2],
+                //                               buffer + OFFSET_CDATA,
+                //                               buffer[OFFSET_LC],
+                //                               flags,
+                //                               tx);
+                //     break;
+                //
+                // case INS_SIGN_PERSONAL_MESSAGE:
+                //     forget_known_assets();
+                //     *flags |= IO_ASYNCH_REPLY;
+                //     if (!handleSignPersonalMessage(buffer[OFFSET_P1],
+                //                                    buffer[OFFSET_P2],
+                //                                    buffer + OFFSET_CDATA,
+                //                                    buffer[OFFSET_LC])) {
+                //         reset_app_context();
+                //     }
+                //     break;
 
                 case INS_SIGN_EIP_712_MESSAGE:
                     switch (buffer[OFFSET_P2]) {
@@ -284,28 +285,28 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
                     }
                     break;
 
-#ifdef HAVE_ETH2
-
-                case INS_GET_ETH2_PUBLIC_KEY:
-                    forget_known_assets();
-                    handleGetEth2PublicKey(buffer[OFFSET_P1],
-                                           buffer[OFFSET_P2],
-                                           buffer + OFFSET_CDATA,
-                                           buffer[OFFSET_LC],
-                                           flags,
-                                           tx);
-                    break;
-
-                case INS_SET_ETH2_WITHDRAWAL_INDEX:
-                    handleSetEth2WithdrawalIndex(buffer[OFFSET_P1],
-                                                 buffer[OFFSET_P2],
-                                                 buffer + OFFSET_CDATA,
-                                                 buffer[OFFSET_LC],
-                                                 flags,
-                                                 tx);
-                    break;
-
-#endif
+// #ifdef HAVE_ETH2
+//
+//                 case INS_GET_ETH2_PUBLIC_KEY:
+//                     forget_known_assets();
+//                     handleGetEth2PublicKey(buffer[OFFSET_P1],
+//                                            buffer[OFFSET_P2],
+//                                            buffer + OFFSET_CDATA,
+//                                            buffer[OFFSET_LC],
+//                                            flags,
+//                                            tx);
+//                     break;
+//
+//                 case INS_SET_ETH2_WITHDRAWAL_INDEX:
+//                     handleSetEth2WithdrawalIndex(buffer[OFFSET_P1],
+//                                                  buffer[OFFSET_P2],
+//                                                  buffer + OFFSET_CDATA,
+//                                                  buffer[OFFSET_LC],
+//                                                  flags,
+//                                                  tx);
+//                     break;
+//
+// #endif
 
 #ifdef HAVE_EIP712_FULL_SUPPORT
                 case INS_EIP712_STRUCT_DEF:
@@ -324,18 +325,18 @@ void handle_eth_apdu(volatile uint32_t *flags, volatile uint32_t *tx,
                     break;
 #endif  // HAVE_EIP712_FULL_SUPPORT
 
-#ifdef HAVE_DOMAIN_NAME
-                case INS_ENS_GET_CHALLENGE:
-                    handle_get_challenge();
-                    break;
-
-                case INS_ENS_PROVIDE_INFO:
-                    handle_provide_domain_name(buffer[OFFSET_P1],
-                                               buffer[OFFSET_P2],
-                                               buffer + OFFSET_CDATA,
-                                               buffer[OFFSET_LC]);
-                    break;
-#endif  // HAVE_DOMAIN_NAME
+// #ifdef HAVE_DOMAIN_NAME
+//                 case INS_ENS_GET_CHALLENGE:
+//                     handle_get_challenge();
+//                     break;
+//
+//                 case INS_ENS_PROVIDE_INFO:
+//                     handle_provide_domain_name(buffer[OFFSET_P1],
+//                                                buffer[OFFSET_P2],
+//                                                buffer + OFFSET_CDATA,
+//                                                buffer[OFFSET_LC]);
+//                     break;
+// #endif  // HAVE_DOMAIN_NAME
 
 #if 0
         case 0xFF: // return to dashboard
