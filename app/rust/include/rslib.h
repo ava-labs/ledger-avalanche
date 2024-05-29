@@ -138,3 +138,5 @@ zxerr_t _app_fill_wallet(
 );
 
 uint16_t _accept_eth_tx(uint16_t *tx, uint8_t *buffer, uint32_t buffer_len);
+uint16_t _process_nft_info(uint8_t *buffer, uint16_t buffer_len);
+

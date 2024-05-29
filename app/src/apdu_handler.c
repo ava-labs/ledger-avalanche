@@ -109,7 +109,7 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
     zemu_log("handleGetAddr\n");
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
-    zxerr_t zxerr = fill_address(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     if (zxerr != zxerr_ok) {
         *tx = 0;
         THROW(APDU_CODE_DATA_INVALID);
@@ -128,7 +128,7 @@ __Z_INLINE void handleGetXAddr(volatile uint32_t *flags, volatile uint32_t *tx, 
     zemu_log("handleGetXAddr\n");
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
-    zxerr_t zxerr = fill_ext_address(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    zxerr_t zxerr = fill_ext_address((uint32_t*)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     if (zxerr != zxerr_ok) {
         *tx = 0;
         THROW(APDU_CODE_DATA_INVALID);
@@ -148,7 +148,7 @@ __Z_INLINE void handleGetWalletId(volatile uint32_t *flags, volatile uint32_t *t
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
 
-    zxerr_t zxerr = fill_wallet_id(tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    zxerr_t zxerr = fill_wallet_id((uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 
     if (zxerr != zxerr_ok) {
         *tx = 0;
@@ -356,8 +356,7 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
     CHECK_APP_CANARY()
 
     if (err != zxerr_ok) {
-        char *error_msg = "Error processing NFT info";
-        zemu_log("processed_nft_info error\n");
+        const char *error_msg = "Error processing NFT info";
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
@@ -503,24 +502,18 @@ __Z_INLINE void handle_eip712(volatile uint32_t *flags, volatile uint32_t *tx, u
 __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("ETH Dispatch\n");
 
-    bool custom = true;
-
     switch (G_io_apdu_buffer[OFFSET_INS]) {
 #if defined(FEATURE_ETH)
         case INS_SIGN_EIP_712_MESSAGE:
-            custom = false;
             handle_eip712(flags, tx, rx);
             break;
         case INS_EIP712_STRUCT_DEF:
-            custom = false;
             handle_eip712(flags, tx, rx);
             break;
         case INS_EIP712_STRUCT_IMPL:
-            custom = false;
             handle_eip712(flags, tx, rx);
             break;
         case INS_EIP712_FILTERING:
-            custom = false;
             handle_eip712(flags, tx, rx);
             break;
 #endif
