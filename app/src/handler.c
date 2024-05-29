@@ -33,8 +33,8 @@
 #include "handle_get_printable_amount.h"
 #include "handle_check_address.h"
 #include "commands_712.h"
-#include "challenge.h"
-#include "domain_name.h"
+// #include "challenge.h"
+// #include "domain_name.h"
 #include "lib_standard_app/crypto_helpers.h"
 #include "manage_asset_info.h"
 
@@ -67,7 +67,7 @@ pluginType_t pluginType;
 
 #ifdef HAVE_ETH2
 uint32_t eth2WithdrawalIndex;
-#include "withdrawal_index.h"
+// #include "withdrawal_index.h"
 #endif
 
 #include "ux.h"
@@ -157,7 +157,7 @@ void init_coin_config(chain_config_t *coin_config) {
  * @note This function sets the blockchain configuration on the first call and logs each operation.
  *       It includes extensive error handling to gracefully manage exceptions and reset the context as needed.
  */
-void handle_eth_apdu(uint32_t *flags, volatile uint32_t *tx,
+void handle_eth_apdu(uint32_t *flags, uint32_t *tx,
                      uint32_t rx, uint8_t *buffer, uint16_t bufferLen) {
     unsigned short sw = 0;
 

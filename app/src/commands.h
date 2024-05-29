@@ -36,7 +36,8 @@
 
 // Commands bellow from Ethereum app
 #define INS_GET_PUBLIC_KEY                  0x02
-#define INS_SIGN                            0x04
+// Not used so far
+// #define INS_SIGN                            0x04
 #define INS_GET_APP_CONFIGURATION           0x06
 #define INS_SIGN_PERSONAL_MESSAGE           0x08
 #define INS_PROVIDE_ERC20_TOKEN_INFORMATION 0x0A

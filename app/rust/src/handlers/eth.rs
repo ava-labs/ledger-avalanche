@@ -149,5 +149,4 @@ mod utils {
         }
     }
 }
-use bolos::ApduError;
 pub use utils::u256::{u256, BorrowedU256};

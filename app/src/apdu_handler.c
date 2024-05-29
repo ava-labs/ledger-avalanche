@@ -407,7 +407,8 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
     tx_eth_msg();
 
     bool done = false;
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
+    // cast to integer pointer, because app-ethereum expects them as plain pointers
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
 
     // Wait for all transaction data to be processed
     if (!done) {
@@ -438,7 +439,8 @@ handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
 
     // not needed as address data is not that large
     bool done = false;
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
+    // cast to integer pointer, because app-ethereum expects them as plain pointers
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
 
     if (error_msg != NULL) {
         zemu_log(error_msg);
@@ -467,7 +469,8 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
     tx_eth_tx();
     bool done = false;
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
+    // cast to integer pointer, because app-ethereum expects them as plain pointers
+    const char *error_msg = tx_err_msg_from_code(rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
 
     if (error_msg != NULL) {
         zemu_log(error_msg);
@@ -491,7 +494,9 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
 #if defined(FEATURE_ETH)
 __Z_INLINE void handle_eip712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    handle_eth_apdu(flags, tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    // Cast volatile pointers to plain pointers due to app-ethereum implementations that takes 
+    // them is as plain pointers.
+    handle_eth_apdu((uint32_t*)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 }
 #endif
 
