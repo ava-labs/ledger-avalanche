@@ -23,7 +23,18 @@
     clippy::enum_variant_names,
     dead_code,
     clippy::manual_range_contains,
-    clippy::items_after_test_module
+    clippy::items_after_test_module,
+    // bellow lints are allowed due 
+    // to the macro match_ranges! 
+    // expressions like:
+    // Some(parse_quote! { (#ident >= #base) && (#ident < (#base + #expr)) })
+    // are triggering the clippy issue. but it is meant to work not just with y < x + 1
+    // but with y < x + 2
+    clippy::int_plus_one,
+    // numeric values in rust macros are handled as literals, so 
+    // clippy complains because 0 and be also part of the definition of  
+    // and octal number. but this get fixes at macro to code translation.
+    clippy::zero_prefixed_literal
 )]
 
 extern crate no_std_compat as std;
