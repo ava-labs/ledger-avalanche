@@ -147,7 +147,7 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
 
         match_ranges! {
             match item_n alias x {
-                0x00 => {
+                0 => {
                     // 17 character limit for Nano S
                     let label = pic_str!(b"AddPermlessDelega");
                     title[..label.len()].copy_from_slice(label);

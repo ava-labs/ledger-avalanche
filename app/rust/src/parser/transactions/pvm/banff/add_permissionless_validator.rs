@@ -171,7 +171,7 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
 
         match_ranges! {
             match item_n alias x {
-                0x00 => {
+                0 => {
                     // Truncated due to NanoS 17 character limit
                     let label = pic_str!(b"AddPermlessValida");
                     title[..label.len()].copy_from_slice(label);

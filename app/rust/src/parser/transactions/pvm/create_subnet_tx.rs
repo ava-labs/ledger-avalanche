@@ -112,7 +112,7 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
 
         match_ranges! {
             match item_n alias x {
-                0x00 => {
+                0 => {
                     let label = pic_str!(b"CreateSubnet");
                     title[..label.len()].copy_from_slice(label);
 
