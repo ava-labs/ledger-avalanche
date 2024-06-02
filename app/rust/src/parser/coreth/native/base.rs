@@ -106,41 +106,30 @@ impl<'b> BaseLegacy<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         let render_funding = !self.value.is_empty();
-
-        match_ranges! {
-            match item_n alias x {
-                0 => {
-                    let label = pic_str!(b"Contract");
-                    title[..label.len()].copy_from_slice(label);
-
-                    let content = pic_str!(b"Creation");
-                    handle_ui_message(&content[..], message, page)
-                }
-
-                1 => {
-                    let label = pic_str!(b"Gas Limit");
-                    title[..label.len()].copy_from_slice(label);
-
-                    render_u256(&self.gas_limit, 0, message, page)
-                }
-
-                2 if render_funding => {
-                    let label = pic_str!(b"Funding Contract");
-                    title[..label.len()].copy_from_slice(label);
-
-                    render_u256(&self.value, WEI_NAVAX_DIGITS, message, page)
-                }
-                until 1 => {
-                    self.data.render_item(0, title, message, page)
-                }
-                until 1 => {
-                    let label = pic_str!(b"Maximum Fee(GWEI)");
-                    title[..label.len()].copy_from_slice(label);
-
-                    self.render_fee(message, page)
-                }
-                _ => Err(ViewError::NoData),
+        match item_n {
+            0 => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
+                let content = pic_str!(b"Creation");
+                handle_ui_message(&content[..], message, page)
             }
+            1 => {
+                let label = pic_str!(b"Gas Limit");
+                title[..label.len()].copy_from_slice(label);
+                render_u256(&self.gas_limit, 0, message, page)
+            }
+            2 if render_funding => {
+                let label = pic_str!(b"Funding Contract");
+                title[..label.len()].copy_from_slice(label);
+                render_u256(&self.value, WEI_NAVAX_DIGITS, message, page)
+            }
+            3 => self.data.render_item(0, title, message, page),
+            4 => {
+                let label = pic_str!(b"Maximum Fee(GWEI)");
+                title[..label.len()].copy_from_slice(label);
+                self.render_fee(message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 
