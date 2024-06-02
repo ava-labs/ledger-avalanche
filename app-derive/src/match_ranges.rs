@@ -314,7 +314,20 @@ pub fn match_ranges(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as MatchRanges);
 
     let expr = input.expr.clone();
-    let arms = input.arms();
+    let arms = input.arms().map(|arm| {
+        if let syn::Pat::Lit(syn::PatLit {
+            lit: syn::Lit::Int(ref lit_int),
+            ..
+        }) = arm.pat
+        {
+            if lit_int.base10_digits() == "0" {
+                let mut new_arm = arm.clone();
+                new_arm.pat = syn::parse_quote! { #lit_int };
+                return new_arm;
+            }
+        }
+        arm
+    });
 
     quote! {
         #[allow(unused_variables)]
