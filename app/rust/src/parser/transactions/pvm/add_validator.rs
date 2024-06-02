@@ -139,20 +139,32 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
 
         let total_items = self.num_items()?;
 
-        match_ranges! {
-            match item_n alias x {
-                0 => {
-                    let label = pic_str!(b"AddValidator");
-                    title[..label.len()].copy_from_slice(label);
-                    let content = pic_str!(b"Transaction");
-                    handle_ui_message(content, message, page)
-                },
-                until base_outputs_items => self.render_base_outputs(x, title, message, page),
-                until validator_items => self.validator.render_item(x, title, message, page),
-                until stake_outputs_items => self.render_stake_outputs(x, title, message, page),
-                until total_items => self.render_last_items(x, title, message, page),
-                _ => Err(ViewError::NoData),
+        match item_n {
+            0 => {
+                let label = pic_str!(b"AddValidator");
+                title[..label.len()].copy_from_slice(label);
+                let content = pic_str!(b"Transaction");
+                handle_ui_message(content, message, page)
             }
+            x if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
+            x if x < base_outputs_items + validator_items => {
+                self.validator
+                    .render_item(x - base_outputs_items, title, message, page)
+            }
+            x if x < base_outputs_items + validator_items + stake_outputs_items => self
+                .render_stake_outputs(
+                    x - base_outputs_items - validator_items,
+                    title,
+                    message,
+                    page,
+                ),
+            x if x < total_items => self.render_last_items(
+                x - base_outputs_items - validator_items - stake_outputs_items,
+                title,
+                message,
+                page,
+            ),
+            _ => Err(ViewError::NoData),
         }
     }
 }

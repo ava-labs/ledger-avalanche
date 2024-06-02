@@ -13,7 +13,6 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use avalanche_app_derive::match_ranges;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
@@ -133,25 +132,24 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
 
         let addr_items = self.addresses.len() as u8;
 
-        match_ranges! {
-            match item_n alias x {
-                0 if self.locktime > 0 => {
-                    let title_content = pic_str!(b"Locktime");
-                    title[..title_content.len()].copy_from_slice(title_content);
-
-                    let buffer =
-                        u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
-
-                    handle_ui_message(buffer, message, page)
-                },
-                until addr_items => {
+        match item_n {
+            0 if self.locktime > 0 => {
+                let title_content = pic_str!(b"Locktime");
+                title[..title_content.len()].copy_from_slice(title_content);
+                let buffer =
+                    u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
+                handle_ui_message(buffer, message, page)
+            }
+            x if (x > 0 && self.locktime > 0) || (x >= 0 && self.locktime == 0) => {
+                if x < addr_items {
                     let label = pic_str!(b"Owner address");
                     title[..label.len()].copy_from_slice(label);
-
                     self.render_address_with_hrp("", x as usize, message, page)
-                },
-                _ => Err(ViewError::NoData)
+                } else {
+                    Err(ViewError::NoData)
+                }
             }
+            _ => Err(ViewError::NoData),
         }
     }
 }

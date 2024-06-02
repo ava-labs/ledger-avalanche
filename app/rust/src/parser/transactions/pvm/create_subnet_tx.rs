@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use avalanche_app_derive::match_ranges;
+
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
 use zemu_sys::ViewError;
@@ -110,29 +110,24 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
 
         let owner_items = self.owners.num_items()?;
 
-        match_ranges! {
-            match item_n alias x {
-                0 => {
-                    let label = pic_str!(b"CreateSubnet");
-                    title[..label.len()].copy_from_slice(label);
-
-                    let content = pic_str!(b"transaction");
-                    handle_ui_message(content, message, page)
-                },
-                until owner_items => self.render_owners(x as usize, title, message, page),
-                until 1 => {
-                    let label = pic_str!(b"Fee(AVAX)");
-                    title[..label.len()].copy_from_slice(label);
-
-                    let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
-                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                    let fee_buff =
-                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-
-                    handle_ui_message(fee_buff, message, page)
-                }
-                _ => Err(ViewError::NoData),
+        match item_n {
+            0 => {
+                let label = pic_str!(b"CreateSubnet");
+                title[..label.len()].copy_from_slice(label);
+                let content = pic_str!(b"transaction");
+                handle_ui_message(content, message, page)
             }
+            x if x < owner_items => self.render_owners(x as usize, title, message, page),
+            x if x == owner_items => {
+                let label = pic_str!(b"Fee(AVAX)");
+                title[..label.len()].copy_from_slice(label);
+                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                let fee_buff =
+                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                handle_ui_message(fee_buff, message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 }
