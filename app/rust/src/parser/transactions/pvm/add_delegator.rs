@@ -141,7 +141,7 @@ impl<'b> DisplayableItem for AddDelegatorTx<'b> {
 
         match_ranges! {
             match item_n alias x {
-                0 => {
+                0x00 => {
                     let label = pic_str!(b"AddDelegator");
                     title[..label.len()].copy_from_slice(label);
                     let content = pic_str!(b"Transaction");

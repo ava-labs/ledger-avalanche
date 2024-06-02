@@ -135,7 +135,7 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
 
         match_ranges! {
             match item_n alias x {
-                0 if self.locktime > 0 => {
+                0x00 if self.locktime > 0 => {
                     let title_content = pic_str!(b"Locktime");
                     title[..title_content.len()].copy_from_slice(title_content);
 
