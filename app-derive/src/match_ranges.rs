@@ -192,9 +192,15 @@ impl MatchRanges {
         let base = self.base_for_arm(idx);
 
         let is_wild = next.pat.is_wild();
+        let is_until_one = matches!(
+            next.pat,
+            RangePat::Lit(Some(_), Lit::Int(ref lit_int))
+            if lit_int.base10_digits() == "1"
+        );
         let guard = match (base, next.as_base_expr()) {
             _ if is_wild => None,
             (None, None) => None,
+            (Some(base), None) if is_until_one => Some(parse_quote! { #ident == #base }),
             (Some(base), None) => Some(parse_quote! { #ident < #base }),
             (Some(base), Some(expr)) => {
                 Some(parse_quote! { (#ident >= #base) && (#ident < #base + #expr) })
@@ -209,7 +215,6 @@ impl MatchRanges {
             (Some(expr), Some((_, extra_guard))) => Some(parse_quote! { (#expr) && #extra_guard }),
         }
     }
-
     fn pat_for_arm(&self, idx: usize) -> Option<syn::Pat> {
         let ident = &self.ident_name;
         let arm = self.arms.get(idx).expect("arm idx in range");
