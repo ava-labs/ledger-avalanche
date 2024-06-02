@@ -140,7 +140,7 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
                     u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(buffer, message, page)
             }
-            x if (x > 0 && self.locktime > 0) || (x >= 0 && self.locktime == 0) => {
+            x if (x > 0 && self.locktime > 0) || self.locktime == 0 => {
                 if x < addr_items {
                     let label = pic_str!(b"Owner address");
                     title[..label.len()].copy_from_slice(label);

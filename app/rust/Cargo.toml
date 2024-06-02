@@ -22,6 +22,7 @@ full = [
     "add-subnet-validator",
     "banff",
 ]
+clippy = []
 
 #features
 create-asset = []

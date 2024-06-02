@@ -23,15 +23,11 @@
     clippy::enum_variant_names,
     dead_code,
     clippy::manual_range_contains,
-    clippy::items_after_test_module,
-    // numeric values in rust macros are handled as literals, so 
-    // clippy complains because 0 and be also part of the definition of  
-    // and octal number. the solution is to replace 0 with zero in macro and macro invokation 
-    // but this could make the code more confusing
-    clippy::zero_prefixed_literal
+    clippy::items_after_test_module
 )]
 
 extern crate no_std_compat as std;
+#[cfg(all(not(test), not(feature = "clippy")))]
 use core::panic::PanicInfo;
 
 mod constants;
@@ -46,7 +42,7 @@ pub use zxerror::ZxError;
 
 pub(crate) use sys::*;
 
-#[cfg(not(test))]
+#[cfg(all(not(test), not(feature = "clippy")))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
