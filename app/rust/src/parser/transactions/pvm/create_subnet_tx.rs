@@ -109,6 +109,8 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
         use lexical_core::Number;
 
         let owner_items = self.owners.num_items()?;
+        let start_owner = 1;
+        let end_owner = start_owner + owner_items;
 
         match item_n {
             0 => {
@@ -117,8 +119,10 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
                 let content = pic_str!(b"transaction");
                 handle_ui_message(content, message, page)
             }
-            x if x < owner_items => self.render_owners(x as usize, title, message, page),
-            x if x == owner_items => {
+            x if (start_owner..end_owner).contains(&x) => {
+                self.render_owners((x - 1) as usize, title, message, page)
+            }
+            x if x == end_owner => {
                 let label = pic_str!(b"Fee(AVAX)");
                 title[..label.len()].copy_from_slice(label);
                 let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
