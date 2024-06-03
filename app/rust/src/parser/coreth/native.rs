@@ -336,6 +336,7 @@ mod tests {
         use crate::parser::snapshots_common::{with_leaked, ReducedPage};
 
         insta::glob!("eth_testvectors/*.json", |path| {
+            std::println!("Running test for {:?}", path);
             let file = std::fs::File::open(path)
                 .unwrap_or_else(|e| panic!("Unable to open file {:?}: {:?}", path, e));
             let input: Vec<u8> = serde_json::from_reader(file)

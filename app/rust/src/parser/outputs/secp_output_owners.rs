@@ -131,25 +131,25 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
 
         let addr_items = self.addresses.len() as u8;
+        let mut item_index = item_n;
 
-        match item_n {
-            0 if self.locktime > 0 => {
+        if self.locktime > 0 {
+            if item_index == 0 {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);
                 let buffer =
                     u64_to_str(self.locktime, &mut buffer).map_err(|_| ViewError::Unknown)?;
-                handle_ui_message(buffer, message, page)
+                return handle_ui_message(buffer, message, page);
             }
-            x if (x > 0 && self.locktime > 0) || self.locktime == 0 => {
-                if x < addr_items {
-                    let label = pic_str!(b"Owner address");
-                    title[..label.len()].copy_from_slice(label);
-                    self.render_address_with_hrp("", x as usize, message, page)
-                } else {
-                    Err(ViewError::NoData)
-                }
-            }
-            _ => Err(ViewError::NoData),
+            item_index -= 1;
+        }
+
+        if item_index < addr_items {
+            let label = pic_str!(b"Owner address");
+            title[..label.len()].copy_from_slice(label);
+            self.render_address_with_hrp("", item_index as usize, message, page)
+        } else {
+            Err(ViewError::NoData)
         }
     }
 }

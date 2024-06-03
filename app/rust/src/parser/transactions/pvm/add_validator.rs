@@ -29,8 +29,6 @@ use crate::{
     },
 };
 
-use avalanche_app_derive::match_ranges;
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
@@ -139,6 +137,13 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
 
         let total_items = self.num_items()?;
 
+        let start_base = 1;
+        let end_base = start_base + base_outputs_items;
+        let start_validator = end_base;
+        let end_validator = start_validator + validator_items;
+        let start_stake = end_validator;
+        let end_stake = start_stake + stake_outputs_items;
+
         match item_n {
             0 => {
                 let label = pic_str!(b"AddValidator");
@@ -146,24 +151,19 @@ impl<'b> DisplayableItem for AddValidatorTx<'b> {
                 let content = pic_str!(b"Transaction");
                 handle_ui_message(content, message, page)
             }
-            x if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
-            x if x < base_outputs_items + validator_items => {
-                self.validator
-                    .render_item(x - base_outputs_items, title, message, page)
+            x if (start_base..end_base).contains(&x) => {
+                self.render_base_outputs(x - start_base, title, message, page)
             }
-            x if x < base_outputs_items + validator_items + stake_outputs_items => self
-                .render_stake_outputs(
-                    x - base_outputs_items - validator_items,
-                    title,
-                    message,
-                    page,
-                ),
-            x if x < total_items => self.render_last_items(
-                x - base_outputs_items - validator_items - stake_outputs_items,
-                title,
-                message,
-                page,
-            ),
+            x if (start_validator..end_validator).contains(&x) => {
+                self.validator
+                    .render_item(x - start_validator, title, message, page)
+            }
+            x if (start_stake..end_stake).contains(&x) => {
+                self.render_stake_outputs(x - start_stake, title, message, page)
+            }
+            x if (end_stake..total_items).contains(&x) => {
+                self.render_last_items(x - end_stake, title, message, page)
+            }
             _ => Err(ViewError::NoData),
         }
     }
@@ -382,30 +382,30 @@ impl<'b> AddValidatorTx<'b> {
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
 
-        match_ranges! {
-            match item_n alias x {
-                until num_addresses => self.render_rewards_to(x as usize, title, message, page),
-                until 1 => {
-                    let label = pic_str!(b"Delegate fee(%)");
-                    title[..label.len()].copy_from_slice(label);
-                    u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-
-                    let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
-                        .map_err(|_| ViewError::Unknown)?;
-
-                    handle_ui_message(buffer, message, page)
-                },
-                until 1 => {
-                    let label = pic_str!(b"Fee(AVAX)");
-                    title[..label.len()].copy_from_slice(label);
-
-                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                    let fee_buff =
-                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-                    handle_ui_message(fee_buff, message, page)
-                }
-                _ => Err(ViewError::NoData)
+        match item_n {
+            x if (0..num_addresses).contains(&x) => {
+                self.render_rewards_to(x as usize, title, message, page)
             }
+            x if x == num_addresses => {
+                let label = pic_str!(b"Delegate fee(%)");
+                title[..label.len()].copy_from_slice(label);
+                u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+
+                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                    .map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(buffer, message, page)
+            }
+            x if x == num_addresses + 1 => {
+                let label = pic_str!(b"Fee(AVAX)");
+                title[..label.len()].copy_from_slice(label);
+
+                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                let fee_buff =
+                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                handle_ui_message(fee_buff, message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 

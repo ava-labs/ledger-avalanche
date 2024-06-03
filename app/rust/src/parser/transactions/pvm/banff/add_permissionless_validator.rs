@@ -163,61 +163,54 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         let signer_items = self.signer.num_items()?;
-        let validator_items = self.validator.num_items()? - 1;
+        let validator_items = self.validator.num_items()?;
         let base_outputs_items = self.base_tx.base_outputs_num_items()?;
         let stake_outputs_items = self.num_stake_items()?;
+
+        let start_validator = 1 + base_outputs_items;
+        // header + base_outputs + first_validator_item
+        let subnet_at = start_validator + 1;
+        // 1 + base_outputs + 1(first validator item) + 1(subnet_id)
+        let continue_validator = subnet_at + 1;
+        // substract the first validator items which was already rendered
+        let end_validator = continue_validator + validator_items - 1;
+        let start_signer = end_validator;
+        let end_signer = end_validator + signer_items;
+        let stake_start = end_signer;
+        let stake_end = stake_start + stake_outputs_items;
 
         let total_items = self.num_items()?;
 
         match item_n {
             0 => {
-                // Truncated due to NanoS 17 character limit
                 let label = pic_str!(b"AddPermlessValida");
                 title[..label.len()].copy_from_slice(label);
                 let content = pic_str!(b"Transaction");
                 handle_ui_message(content, message, page)
             }
-            x if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
-            x if x == base_outputs_items => {
-                self.validator
-                    .render_item(x - base_outputs_items, title, message, page)
+            x if (1..=base_outputs_items).contains(&x) => {
+                self.render_base_outputs(x - 1, title, message, page)
             }
-            x if x == base_outputs_items + 1 => {
-                self.subnet_id
-                    .render_item(x - base_outputs_items - 1, title, message, page)
+            x if x == start_validator => self.validator.render_item(0, title, message, page),
+            x if x == subnet_at => self.subnet_id.render_item(0, title, message, page),
+            x if (continue_validator..end_validator).contains(&x) => {
+                let i = x - continue_validator + 1;
+                self.validator.render_item(i, title, message, page)
             }
-            x if x < base_outputs_items + 2 + validator_items => {
-                self.validator
-                    .render_item(x - base_outputs_items - 1, title, message, page)
+            x if (start_signer..end_signer).contains(&x) => {
+                let i = x - start_signer;
+                self.signer.render_item(i, title, message, page)
             }
-            x if x < base_outputs_items + 2 + validator_items + signer_items => {
-                self.signer.render_item(
-                    x - base_outputs_items - 2 - validator_items,
-                    title,
-                    message,
-                    page,
-                )
+            x if (stake_start..stake_end).contains(&x) => {
+                let i = x - stake_start;
+                self.render_stake_outputs(i, title, message, page)
             }
-            x if x < base_outputs_items
-                + 2
-                + validator_items
-                + signer_items
-                + stake_outputs_items =>
-            {
-                self.render_stake_outputs(
-                    x - base_outputs_items - 2 - validator_items - signer_items,
-                    title,
-                    message,
-                    page,
-                )
+            x if (stake_end..total_items).contains(&x) => {
+                let i = x - stake_end;
+                let g = total_items - stake_end;
+                self.render_last_items(i, title, message, page)
             }
-            x if x < total_items => self.render_last_items(
-                x - base_outputs_items - 2 - validator_items - signer_items - stake_outputs_items,
-                title,
-                message,
-                page,
-            ),
-            _ => Err(ViewError::NoData),
+            _ => Err(zemu_sys::ViewError::NoData),
         }
     }
 }
@@ -452,30 +445,30 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         let num_addresses = (self.validator_rewards_owner.num_addresses()
             + self.delegator_rewards_owner.num_addresses()) as u8;
 
-        match_ranges! {
-            match item_n alias x {
-                until num_addresses => self.render_rewards_to(x as usize, title, message, page),
-                until 1 => {
-                    let label = pic_str!(b"Delegate fee(%)");
-                    title[..label.len()].copy_from_slice(label);
-                    u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-
-                    let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
-                        .map_err(|_| ViewError::Unknown)?;
-
-                    handle_ui_message(buffer, message, page)
-                },
-                until 1 => {
-                    let label = pic_str!(b"Fee(AVAX)");
-                    title[..label.len()].copy_from_slice(label);
-
-                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                    let fee_buff =
-                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-                    handle_ui_message(fee_buff, message, page)
-                }
-                _ => Err(ViewError::NoData)
+        match item_n {
+            x if (0..num_addresses).contains(&x) => {
+                self.render_rewards_to(x as usize, title, message, page)
             }
+            x if x == num_addresses => {
+                let label = pic_str!(b"Delegate fee(%)");
+                title[..label.len()].copy_from_slice(label);
+                u64_to_str(self.shares as _, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+
+                let buffer = intstr_to_fpstr_inplace(&mut buffer[..], DELEGATION_FEE_DIGITS)
+                    .map_err(|_| ViewError::Unknown)?;
+
+                handle_ui_message(buffer, message, page)
+            }
+            x if x == num_addresses + 1 => {
+                let label = pic_str!(b"Fee(AVAX)");
+                title[..label.len()].copy_from_slice(label);
+
+                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                let fee_buff =
+                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                handle_ui_message(fee_buff, message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 

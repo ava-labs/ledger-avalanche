@@ -218,29 +218,27 @@ impl<'b> BaseLegacy<'b> {
             _ => unsafe { core::hint::unreachable_unchecked() },
         };
 
-        let num_items = erc20.num_items()?;
+        let erc_num_items = erc20.num_items()?;
 
-        match_ranges! {
-            match item_n  alias x {
-                until num_items => erc20.render_item(item_n, title, message, page),
-                until 1 => {
-                    let label = pic_str!(b"Contract");
-                    title[..label.len()].copy_from_slice(label);
+        match item_n {
+            x if (0..erc_num_items).contains(&x) => erc20.render_item(item_n, title, message, page),
+            x if x == erc_num_items => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
 
-                    // should not panic as address was check
-                    self.to
-                        .as_ref()
-                        .apdu_unwrap()
-                        .render_eth_address(message, page)
-                }
-                until 1 => {
-                    let label = pic_str!(b"Maximun Fee(GWEI)");
-                    title[..label.len()].copy_from_slice(label);
-
-                    self.render_fee(message, page)
-                }
-                _ => Err(ViewError::NoData),
+                // should not panic as address was check
+                self.to
+                    .as_ref()
+                    .apdu_unwrap()
+                    .render_eth_address(message, page)
             }
+            x if x == erc_num_items + 1 => {
+                let label = pic_str!(b"Maximun Fee(GWEI)");
+                title[..label.len()].copy_from_slice(label);
+
+                self.render_fee(message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 
@@ -258,29 +256,29 @@ impl<'b> BaseLegacy<'b> {
             _ => unsafe { core::hint::unreachable_unchecked() },
         };
 
-        let num_items = erc721.num_items()?;
+        let erc_num_items = erc721.num_items()?;
 
-        match_ranges! {
-            match item_n alias x {
-                until num_items => erc721.render_item(item_n, title, message, page),
-                until 1 => {
-                    let label = pic_str!(b"Contract");
-                    title[..label.len()].copy_from_slice(label);
-
-                    // should not panic as address was check
-                    self.to
-                        .as_ref()
-                        .apdu_unwrap()
-                        .render_eth_address(message, page)
-                }
-                until 1 => {
-                    let label = pic_str!(b"Maximun Fee(GWEI)");
-                    title[..label.len()].copy_from_slice(label);
-
-                    self.render_fee(message, page)
-                }
-                _ => Err(ViewError::NoData),
+        match item_n {
+            x if (0..erc_num_items).contains(&x) => {
+                erc721.render_item(item_n, title, message, page)
             }
+            x if x == erc_num_items => {
+                let label = pic_str!(b"Contract");
+                title[..label.len()].copy_from_slice(label);
+
+                // should not panic as address was check
+                self.to
+                    .as_ref()
+                    .apdu_unwrap()
+                    .render_eth_address(message, page)
+            }
+            x if x == erc_num_items + 1 => {
+                let label = pic_str!(b"Maximun Fee(GWEI)");
+                title[..label.len()].copy_from_slice(label);
+
+                self.render_fee(message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 

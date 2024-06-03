@@ -29,8 +29,6 @@ use crate::{
     },
 };
 
-use avalanche_app_derive::match_ranges;
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
@@ -124,7 +122,9 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
 
         checked_add!(
             ViewError::Unknown,
-            3u8,
+            1u8, // tx header
+            1u8, // Fee
+            1u8, // SubnetID
             base_outputs,
             validator_items,
             owners,
@@ -139,11 +139,21 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        let validator_items = self.validator.num_items()? - 1;
+        let total_items = self.num_items()?;
+        let validator_items = self.validator.num_items()?;
         let base_outputs_items = self.base_tx.base_outputs_num_items()?;
         let stake_outputs_items = self.num_stake_items()?;
 
-        let total_items = self.num_items()?;
+        let start_base = 1;
+        let end_base = start_base + base_outputs_items;
+
+        let start_validator = end_base;
+        let subnet_at = start_validator + 1;
+        let continue_validator = subnet_at + 1;
+        // substract the first validator items which was already rendered
+        let end_validator = continue_validator + validator_items - 1;
+        let start_stake = end_validator;
+        let end_stake = start_stake + stake_outputs_items;
 
         match item_n {
             0 => {
@@ -153,33 +163,28 @@ impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
                 let content = pic_str!(b"Transaction");
                 handle_ui_message(content, message, page)
             }
-            x if x < base_outputs_items => self.render_base_outputs(x, title, message, page),
-            x if x == base_outputs_items => {
-                self.validator
-                    .render_item(x - base_outputs_items, title, message, page)
+            x if (start_base..end_base).contains(&x) => {
+                // Adjust x to start from 0
+                let i = x - start_base;
+                self.render_base_outputs(i, title, message, page)
             }
-            x if x == base_outputs_items + 1 => {
-                self.subnet_id
-                    .render_item(x - base_outputs_items - 1, title, message, page)
+            x if x == start_validator => self.validator.render_item(0, title, message, page),
+            x if x == subnet_at => self.subnet_id.render_item(0, title, message, page),
+            x if (continue_validator..end_validator).contains(&x) => {
+                let i = x - continue_validator + 1;
+                self.validator.render_item(i, title, message, page)
             }
-            x if x < base_outputs_items + 2 + validator_items => {
-                self.validator
-                    .render_item(x - base_outputs_items - 1, title, message, page)
+            x if (start_stake..end_stake).contains(&x) => {
+                // Adjust x for rendering stake outputs
+                let i = x - start_stake;
+                self.render_stake_outputs(i, title, message, page)
             }
-            x if x < base_outputs_items + 2 + validator_items + stake_outputs_items => self
-                .render_stake_outputs(
-                    x - base_outputs_items - 2 - validator_items,
-                    title,
-                    message,
-                    page,
-                ),
-            x if x < total_items => self.render_last_items(
-                x - base_outputs_items - 2 - validator_items - stake_outputs_items,
-                title,
-                message,
-                page,
-            ),
-            _ => Err(ViewError::NoData),
+            x if (end_stake..total_items).contains(&x) => {
+                // Render last items, adjusting x accordingly
+                let i = x - end_stake;
+                self.render_last_items(i, title, message, page)
+            }
+            _ => Err(zemu_sys::ViewError::NoData),
         }
     }
 }
@@ -397,23 +402,21 @@ impl<'b> AddPermissionlessDelegatorTx<'b> {
         let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
 
-        match_ranges! {
-            match item_n alias x {
-                // render rewards
-                until num_addresses => {
-                    self.render_rewards_to(x as usize, title, message, page)
-                }
-                until 1 => {
-                    let label = pic_str!(b"Fee(AVAX)");
-                    title[..label.len()].copy_from_slice(label);
-
-                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                    let fee_buff =
-                        nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-                    handle_ui_message(fee_buff, message, page)
-                }
-                _ => Err(ViewError::NoData),
+        match item_n {
+            // render rewards
+            x if (0..num_addresses).contains(&x) => {
+                self.render_rewards_to(x as usize, title, message, page)
             }
+            x if x == num_addresses => {
+                let label = pic_str!(b"Fee(AVAX)");
+                title[..label.len()].copy_from_slice(label);
+
+                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                let fee_buff =
+                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
+                handle_ui_message(fee_buff, message, page)
+            }
+            _ => Err(ViewError::NoData),
         }
     }
 

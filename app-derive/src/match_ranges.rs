@@ -165,42 +165,22 @@ struct MatchRanges {
 impl MatchRanges {
     fn base_for_arm(&self, idx: usize) -> Option<Box<Expr>> {
         let arms = self.arms.get(..idx).expect("arm idx in range");
-        let is_until_one = match arms.last() {
-            Some(arm) => match &arm.pat {
-                RangePat::Lit(Some(_), Lit::Int(ref lit_int)) if lit_int.base10_digits() == "1" => {
-                    true
-                }
-                RangePat::Ident(_, ident) if ident == "1" => true,
-                _ => false,
-            },
-            None => false,
-        };
-
         match arms {
             [] => None,
             [first] => first.as_base_expr().map(Box::new),
             [first, rest @ ..] => {
                 let first = first.as_base_expr().map(Box::new).unwrap_or_else(|| {
                     let span = first.pat.span();
-                    abort!(span, "wildcard is only allowed in the last arm")
+                    abort!(span, "wilcard is only allowed in the last arm")
                 });
-                let base = rest.iter().fold(first, |acc, x| {
+                Some(rest.iter().fold(first, |acc, x| {
                     let acc = expr_to_paren_expr(acc);
                     if let Some(expr) = x.as_base_expr().map(Box::new) {
-                        if is_until_one {
-                            parse_quote! { #acc }
-                        } else {
-                            parse_quote! { #acc + #expr }
-                        }
+                        parse_quote! { #acc + #expr }
                     } else {
                         acc
                     }
-                });
-                Some(if is_until_one {
-                    parse_quote! { #base - 1 }
-                } else {
-                    base
-                })
+                }))
             }
         }
     }
@@ -212,20 +192,10 @@ impl MatchRanges {
         let base = self.base_for_arm(idx);
 
         let is_wild = next.pat.is_wild();
-        let is_until_one = match &next.pat {
-            RangePat::Lit(Some(_), Lit::Int(ref lit_int)) if lit_int.base10_digits() == "1" => true,
-            RangePat::Ident(_, ident) if ident == "1" => true,
-            _ => false,
-        };
-
         let guard = match (base, next.as_base_expr()) {
             _ if is_wild => None,
             (None, None) => None,
-            (Some(base), None) if is_until_one => Some(parse_quote! { #ident == #base }),
             (Some(base), None) => Some(parse_quote! { #ident < #base }),
-            (Some(base), Some(expr)) if is_until_one => {
-                Some(parse_quote! { #ident == #base + #expr - 1 })
-            }
             (Some(base), Some(expr)) => {
                 Some(parse_quote! { (#ident >= #base) && (#ident < #base + #expr) })
             }
@@ -239,6 +209,7 @@ impl MatchRanges {
             (Some(expr), Some((_, extra_guard))) => Some(parse_quote! { (#expr) && #extra_guard }),
         }
     }
+
     fn pat_for_arm(&self, idx: usize) -> Option<syn::Pat> {
         let ident = &self.ident_name;
         let arm = self.arms.get(idx).expect("arm idx in range");
@@ -314,20 +285,7 @@ pub fn match_ranges(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as MatchRanges);
 
     let expr = input.expr.clone();
-    let arms = input.arms().map(|arm| {
-        if let syn::Pat::Lit(syn::PatLit {
-            lit: syn::Lit::Int(ref lit_int),
-            ..
-        }) = arm.pat
-        {
-            if lit_int.base10_digits() == "0" {
-                let mut new_arm = arm.clone();
-                new_arm.pat = syn::parse_quote! { #lit_int };
-                return new_arm;
-            }
-        }
-        arm
-    });
+    let arms = input.arms();
 
     quote! {
         #[allow(unused_variables)]
@@ -337,3 +295,4 @@ pub fn match_ranges(input: TokenStream) -> TokenStream {
     }
     .into()
 }
+
