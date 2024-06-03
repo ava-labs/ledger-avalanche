@@ -98,8 +98,6 @@ use super::PVM_ADD_VALIDATOR;
 #[cfg(feature = "add-delegator")]
 use super::PVM_ADD_DELEGATOR;
 
-use super::PVM_BASE_TX;
-
 cfg_if! {
     if #[cfg(feature = "banff")] {
         use super::{
