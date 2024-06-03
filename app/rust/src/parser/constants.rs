@@ -43,6 +43,7 @@ pub const PVM_ADD_PERMISSIONLESS_DELEGATOR: u32 = 0x0000001A;
 //  base tx for p-chain which collides with evm import tx.
 //  we should check chain-id
 pub const PVM_BASE_TX: u32 = 0x00000000;
+pub const PVM_BASE_TX_TRANSFER: u32 = 0x00000022;
 
 // avm transaction types
 pub const AVM_CREATE_ASSET_TX: u32 = 0x00000001;

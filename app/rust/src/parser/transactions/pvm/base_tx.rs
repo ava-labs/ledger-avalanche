@@ -24,7 +24,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, MAX_ADDRESS_ENCODED_LEN, PVM_BASE_TX,
+        PvmOutput, MAX_ADDRESS_ENCODED_LEN, PVM_BASE_TX, PVM_BASE_TX_TRANSFER,
     },
 };
 
@@ -43,7 +43,12 @@ impl<'b> FromBytes<'b> for PvmBaseTx<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         crate::sys::zemu_log_stack("PvmBaseTx::from_bytes_into\x00");
 
-        let (mut rem, _) = tag(PVM_BASE_TX.to_be_bytes())(input)?;
+        // THIS base transaction could be use as a base trransaction type
+        // for other tx(PVM_BASE_TX) or as a transfer tx(PVM_BASE_TX_TRANSFER)
+        // so fallback and check for the second condition.
+        let (mut rem, _) = tag(PVM_BASE_TX.to_be_bytes())(input)
+            .map_err(|_: nom::Err<ParserError>| ParserError::InvalidTypeId)
+            .or_else(|_| tag(PVM_BASE_TX_TRANSFER.to_be_bytes())(input))?;
 
         let out = out.as_mut_ptr();
 

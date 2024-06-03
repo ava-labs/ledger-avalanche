@@ -38,8 +38,8 @@ mod avm;
 mod pvm;
 
 use crate::parser::{
-    DisplayableItem, ExportTx as EvmExport, ImportTx as EvmImport, EVM_IMPORT_TX, PVM_EXPORT_TX,
-    PVM_IMPORT_TX,
+    DisplayableItem, ExportTx as EvmExport, ImportTx as EvmImport, EVM_IMPORT_TX,
+    PVM_BASE_TX_TRANSFER, PVM_EXPORT_TX, PVM_IMPORT_TX,
 };
 pub use avm::{AvmExportTx, AvmImportTx, OperationTx};
 pub use pvm::{PvmExportTx, PvmImportTx};
@@ -116,7 +116,7 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
         let tx_type = match value.0 {
             PVM_EXPORT_TX => Transaction__Type::PExport,
             PVM_IMPORT_TX => Transaction__Type::PImport,
-            PVM_BASE_TX if matches!(value.1.chain_id, ChainId::PChain) => Transaction__Type::PBase,
+            PVM_BASE_TX_TRANSFER => Transaction__Type::PBase,
             AVM_EXPORT_TX => Transaction__Type::XExport,
             AVM_IMPORT_TX => Transaction__Type::XImport,
             AVM_OPERATION_TX => Transaction__Type::XOperation,
