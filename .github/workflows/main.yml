@@ -34,10 +34,7 @@ jobs:
             ${{ runner.os }}-${{ github.sha }}
       - name: run rust tests
         run: make rust_test
-      - name: clippy
-        run: |
-          cd ./app/rust 
-          cargo clippy --all-targets --features "full"
+
   clippy:
     runs-on: ubuntu-latest
     container:
