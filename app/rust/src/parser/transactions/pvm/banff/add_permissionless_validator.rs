@@ -207,7 +207,6 @@ impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
             }
             x if (stake_end..total_items).contains(&x) => {
                 let i = x - stake_end;
-                let g = total_items - stake_end;
                 self.render_last_items(i, title, message, page)
             }
             _ => Err(zemu_sys::ViewError::NoData),

@@ -124,10 +124,10 @@ pub fn handle_apdu_raw(bytes: &[u8]) -> (u32, u32, std::vec::Vec<u8>) {
     (flags, tx, out)
 }
 
-pub fn zlog(msg: &str) {
+pub fn zlog(_msg: &str) {
     #[cfg(not(test))]
     unsafe {
-        zemu_log_stack(msg.as_bytes().as_ptr());
+        zemu_log_stack(_msg.as_bytes().as_ptr());
     }
 }
 
