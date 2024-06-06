@@ -23,6 +23,8 @@ DEBUG := 0
 
 MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
+include $(CURDIR)/Makefile.conf
+
 # Enable Ethereum features for all targets except TARGET_NANOS
 ifneq ($(TARGET_NAME), TARGET_NANOS)
 FEATURE_ETH = 1
@@ -31,10 +33,13 @@ endif
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
 include $(BOLOS_SDK)/Makefile.defines
 
-# Disable production builds by default
+## Display whether this is a production build or for internal use
+ifeq ($(PRODUCTION_BUILD), 1)
+    $(info ************ PRODUCTION_BUILD  = [PRODUCTION BUILD])
+else
+    $(info ************ PRODUCTION_BUILD  = [INTERNAL USE])
+endif 
 
-$(info ************ TARGET_NAME  = [$(TARGET_NAME)])
-$(info ************ PRODUCTION_BUILD  = [$(PRODUCTION_BUILD)])
 DEFINES += PRODUCTION_BUILD=$(PRODUCTION_BUILD)
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.app_testing
@@ -154,6 +159,7 @@ INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
 INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
 
 ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
+# With the line bellow we remove app-ethereum/src/main.c file from our sources 
 ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
 APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
 APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
@@ -212,6 +218,7 @@ LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
 APP_SOURCE_PATH += $(CURDIR)/rust/include
 APP_CUSTOM_LINK_DEPENDENCIES := rust
 
+
 .PHONY: rust
 rust:
 	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
@@ -227,6 +234,12 @@ clean: rust_clean
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.side_loading
 
 include $(BOLOS_SDK)/Makefile.rules
+
+# Re-export under a different env name for 
+# ledger_guidelines script
+APPPATH_MODIFIED = $(subst --path, ,$(APPPATH))
+PATH_APP_LOAD_PARAMS = "$(subst ",,$(word 1,$(APPPATH_MODIFIED)))" "$(subst ",,$(word 2,$(APPPATH_MODIFIED)))"
+
 
 dep/%.d: %.c Makefile
 
