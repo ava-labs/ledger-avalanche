@@ -57,6 +57,7 @@ ifeq ($(COIN), AVAX)
 DEFINES += APP_STANDARD
 APPNAME = "Avalanche"
 APPPATH = "44'/9000'" --path "44'/60'"
+PATH_APP_LOAD_PARAMS = "44'/9000'" "44'/60'"
 else
 define error_message
 
@@ -234,11 +235,6 @@ clean: rust_clean
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.side_loading
 
 include $(BOLOS_SDK)/Makefile.rules
-
-# Re-export under a different env name for 
-# ledger_guidelines script
-APPPATH_MODIFIED = $(subst --path, ,$(APPPATH))
-PATH_APP_LOAD_PARAMS = "$(subst ",,$(word 1,$(APPPATH_MODIFIED)))" "$(subst ",,$(word 2,$(APPPATH_MODIFIED)))"
 
 
 dep/%.d: %.c Makefile
