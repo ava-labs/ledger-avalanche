@@ -137,11 +137,60 @@ func (ledger *LedgerAvalanche) GetPubKey(path string, show bool, hrp string, cha
 
 	// [publicKeyLen | publicKey | hash | address | errorCode]
 	publicKeyLen := response[0]
-	publicKey := response[1 : publicKeyLen+1]
-	hash := response[publicKeyLen+1 : publicKeyLen+1+20]
+	publicKey := append([]byte{}, response[1:publicKeyLen+1]...)
+	hash := append([]byte{}, response[publicKeyLen+1:publicKeyLen+1+20]...)
 	address := string(response[publicKeyLen+1+20:])
 
 	return &ResponseAddr{publicKey, hash, address}, nil
+}
+
+// GetExtPubKey returns the extended pubkey
+func (ledger *LedgerAvalanche) GetExtPubKey(path string, show bool, hrp string, chainid string) ([]byte, []byte, error) {
+	if len(hrp) > 83 {
+		return nil, nil, errors.New("hrp len should be < 83 chars")
+	}
+
+	serializedHRP, err := SerializeHrp(hrp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	serializedPath, err := SerializePath(path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	serializedChainID, err := SerializeChainID(chainid)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	p1 := byte(P1_ONLY_RETRIEVE)
+	if show {
+		p1 = byte(P1_SHOW_ADDRESS_IN_DEVICE)
+	}
+
+	// Prepare message
+	header := []byte{CLA, INS_GET_EXTENDED_PUBLIC_KEY, p1, 0, 0}
+	message := append(header, serializedHRP...)
+	message = append(message, serializedChainID...)
+	message = append(message, serializedPath...)
+	message[4] = byte(len(message) - len(header)) // update length
+
+	response, err := ledger.api.Exchange(message)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(response) < 32 {
+		return nil, nil, errors.New("Invalid response")
+	}
+
+	publicKeyLen := response[0]
+	publicKey := append([]byte{}, response[1:publicKeyLen+1]...)
+	chainCode := append([]byte{}, response[publicKeyLen+1:]...)
+
+	return publicKey, chainCode, nil
 }
 
 func (ledger *LedgerAvalanche) Sign(pathPrefix string, signingPaths []string, message []byte, changePaths []string) (*ResponseSign, error) {
