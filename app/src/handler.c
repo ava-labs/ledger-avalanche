@@ -36,7 +36,8 @@
 // #include "challenge.h"
 // #include "domain_name.h"
 #include "lib_standard_app/crypto_helpers.h"
-#include "manage_asset_info.h"
+// not use in master branch
+// #include "manage_asset_info.h"
 
 
 #include "handler.h"
@@ -80,8 +81,35 @@ const internalStorage_t N_storage_real;
 caller_app_t *caller_app = NULL;
 #endif
 
-const chain_config_t *chainConfig = NULL;
+chain_config_t *chainConfig = NULL;
 chain_config_t config;
+
+// This function is only present in master branch
+// was moved/removed in develop branch.
+// to keep in mind when develop gets merged into master 
+// later.
+void format_signature_out(const uint8_t *signature) {
+    memset(G_io_apdu_buffer + 1, 0x00, 64);
+    uint8_t offset = 1;
+    uint8_t xoffset = 4;  // point to r value
+    // copy r
+    uint8_t xlength = signature[xoffset - 1];
+    if (xlength == 33) {
+        xlength = 32;
+        xoffset++;
+    }
+    memmove(G_io_apdu_buffer + offset + 32 - xlength, signature + xoffset, xlength);
+    offset += 32;
+    xoffset += xlength + 2;  // move over rvalue and TagLEn
+    // copy s value
+    xlength = signature[xoffset - 1];
+    if (xlength == 33) {
+        xlength = 32;
+        xoffset++;
+    }
+    memmove(G_io_apdu_buffer + offset + 32 - xlength, signature + xoffset, xlength);
+}
+
 
 
 void reset_app_context() {
@@ -176,6 +204,8 @@ void handle_eth_apdu(uint32_t *flags, uint32_t *tx,
             }
 
             switch (buffer[OFFSET_INS]) {
+                // From app-ethereum only EIP-712 functionality is used 
+                // we decided to keep below cases for future use.
                 // case INS_GET_PUBLIC_KEY:
                 //
                 //     forget_known_assets();
@@ -266,7 +296,10 @@ void handle_eth_apdu(uint32_t *flags, uint32_t *tx,
                 case INS_SIGN_EIP_712_MESSAGE:
                     switch (buffer[OFFSET_P2]) {
                         case P2_EIP712_LEGACY_IMPLEM:
-                            forget_known_assets();
+                            // use in develop but not present in master
+                            // forget_known_assets();
+                            // use in master instead of the above
+                            memset(tmpCtx.transactionContext.tokenSet, 0, MAX_ITEMS);
                             handleSignEIP712Message_v0(buffer[OFFSET_P1],
                                                        buffer[OFFSET_P2],
                                                        buffer + OFFSET_CDATA,

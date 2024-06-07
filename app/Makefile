@@ -133,7 +133,9 @@ CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATC
 ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
 DEFINES += HAVE_ETH_INTEGRATION HAVE_ETH2 USE_LIB_ETHEREUM
 DEFINES += HAVE_BYPASS_SIGNATURES
-DEFINES += HAVE_CONTRACT_NAME_IN_DESCRIPTOR
+# commented out as we no longer use app-ethereum 
+# for handling erc20 tokens.
+# DEFINES += HAVE_CONTRACT_NAME_IN_DESCRIPTOR
 HAVE_EIP712_FULL_SUPPORT = 1
 DEFINES += HAVE_EIP712_FULL_SUPPORT=$(HAVE_EIP712_FULL_SUPPORT)
 DEFINES += HAVE_DOMAIN_NAME
@@ -190,7 +192,9 @@ LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
 
 DEFINES += FEATURE_ETH=$(FEATURE_ETH)
 
-include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
+# not present in app-ethereum/master but in develop branch 
+# so it could be needed once develop gets revased onto master
+# include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
 
 endif # NO TARGET_NANOS OR TARGET_STAX
 endif # NO FEATURE_ETH
