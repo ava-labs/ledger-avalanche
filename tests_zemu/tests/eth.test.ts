@@ -253,6 +253,8 @@ describe.each(eth_models)('EthereumAppCfg [%s] - misc', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new Eth(sim.getTransport())
+      // Put the app in expert mode
+      await sim.toggleExpertMode()
 
       let msgData = Buffer.from('Hello World', 'utf8')
 

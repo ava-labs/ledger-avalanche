@@ -176,7 +176,7 @@ describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
 
       const app = new AvalancheApp(sim.getTransport())
       // Put the app in expert mode
-      // await sim.toggleExpertMode()
+      await sim.toggleExpertMode()
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
 
