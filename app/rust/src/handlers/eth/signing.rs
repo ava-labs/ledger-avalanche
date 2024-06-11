@@ -137,8 +137,6 @@ impl Sign {
         // since the tx type is at the start of the data
         // let to_hash = txdata.len() - rem.len();
         // let to_hash = &txdata[..to_hash];
-
-        // let unsigned_hash = Self::digest(to_hash).map_err(|_| ParserError::UnexpectedError)?;
         let tx = unsafe { tx.assume_init() };
 
         let ui = EthUi::Tx(SignUI {
@@ -337,7 +335,7 @@ impl ApduHandler for Sign {
 
 pub(crate) struct SignUI {
     // hash: [u8; Sign::SIGN_HASH_SIZE],
-    tx: EthTransaction<'static>,
+    pub(crate) tx: EthTransaction<'static>,
 }
 
 impl Viewable for SignUI {

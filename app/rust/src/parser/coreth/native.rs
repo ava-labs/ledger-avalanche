@@ -38,10 +38,6 @@ pub use eip1559::Eip1559;
 mod eip2930;
 pub use eip2930::Eip2930;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(test, derive(Debug))]
-pub struct EthChainId<'b>(&'b [u8]);
-
 /// Renders an u256 in bytes.
 /// `input`: The big-indian bytes of the number to
 /// be rendered
