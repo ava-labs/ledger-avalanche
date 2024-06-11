@@ -14,13 +14,14 @@
  *  limitations under the License.
  ******************************************************************************* */
 
-import Zemu from '@zondax/zemu'
+import Zemu, { ClickNavigation, TouchNavigation } from '@zondax/zemu'
 // import { ButtonKind } from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions as commonOpts, eth_models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
 import { verifyMessage } from '@ethersproject/wallet'
+import { ButtonKind, IButton } from '@zondax/zemu/dist/types'
 
 const defaultOptions = (model: any) => {
   let opts = commonOpts(model, false)
@@ -37,6 +38,12 @@ type TestData = {
   name: string
   op: Buffer
   nft_info: NftInfo | undefined
+}
+
+// copied from python tests
+const EIP712_TRANSACTION = {
+  domain_hash: 'c24f499b8c957196651b13edd64aaccc3980009674b2aea0966c8a56ba81278e',
+  msg_hash: '9d96be8a7cca396e711a3ba356bd9878df02a726d753ddb6cda3c507d888bc77',
 }
 
 const SIGN_TEST_DATA: TestData[] = [
@@ -117,6 +124,10 @@ describe.each(eth_models.slice(1))('EthereumTx [%s]; sign', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
+
+      // Put the app in expert mode
+      await sim.toggleExpertMode()
+
       const msg = data.op
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
@@ -159,6 +170,58 @@ describe.each(eth_models.slice(1))('EthereumTx [%s]; sign', function (m) {
       // TODO: Enable later
       const ok = EC.verify(msgHash, signature_obj, pubKey, 'hex')
       expect(ok).toEqual(true)
+    } finally {
+      await sim.close()
+    }
+  })
+
+  test.concurrent('Eip712Hash', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+
+      // Put the app in expert mode
+      await sim.toggleExpertMode()
+
+      const testcase = `${m.prefix.toLowerCase()}-eth-sign-eip712_hashed_message`
+
+      const currentScreen = await sim.snapshot()
+
+      const respReq = app.signEIP712HashedMessage(ETH_DERIVATION, EIP712_TRANSACTION.domain_hash, EIP712_TRANSACTION.msg_hash)
+      await sim.waitUntilScreenIsNot(currentScreen, 100000)
+      if (m.name === 'stax') {
+        await sim.compareSnapshotsAndApprove('.', testcase)
+      } else {
+        const nav = new ClickNavigation([5, 0])
+        await sim.navigateAndCompareSnapshots('.', testcase, nav.schedule)
+      }
+
+      const resp = await respReq
+
+      console.log(resp, m.name)
+
+      expect(resp).toHaveProperty('s')
+      expect(resp).toHaveProperty('r')
+      expect(resp).toHaveProperty('v')
+    } finally {
+      await sim.close()
+    }
+  })
+
+  // This check ensure that app returns an error
+  // if transaction is meant to target ethereum mainnet with out expert
+  // mode enable.
+  test.concurrent('TxFailNoExpertMode', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+
+      const data = '02f5018402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0'
+      await app.signEVMTransaction(ETH_DERIVATION, data)
+    } catch (error) {
+      expect(error).toBeDefined()
     } finally {
       await sim.close()
     }

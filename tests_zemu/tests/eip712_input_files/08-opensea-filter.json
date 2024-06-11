@@ -1,9 +1,0 @@
-{
-    "name": "OpenSea",
-    "fields": {
-        "maker": "Maker",
-        "taker": "Taker",
-        "basePrice": "Base Price",
-        "expirationTime": "Expiration Time"
-    }
-}
