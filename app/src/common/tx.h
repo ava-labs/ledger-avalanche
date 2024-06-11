@@ -51,6 +51,7 @@ const char *tx_avax_parse();
 void tx_eth_tx();
 void tx_eth_msg();
 void tx_eth_addr();
+bool tx_eth_mainnet();
 
 /// Parse a hash transaction that contains the root path 
 /// plus the hash data to be signed

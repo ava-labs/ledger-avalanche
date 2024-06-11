@@ -41,8 +41,8 @@
 
 static bool tx_initialized = false;
 
-void
-check_eth_path(uint32_t rx, uint32_t offset)
+bool
+is_eth_path(uint32_t rx, uint32_t offset)
 {
     uint32_t path_len = *(G_io_apdu_buffer + offset);
 
@@ -66,10 +66,7 @@ check_eth_path(uint32_t rx, uint32_t offset)
     const bool mainnet =
       ethPath[0] == HDPATH_ETH_0_DEFAULT && ethPath[1] == HDPATH_ETH_1_DEFAULT;
 
-    // Ethereum mainnet tx only possible in expert mode
-    if (mainnet && !app_mode_expert()) {
-        THROW(APDU_CODE_DATA_INVALID);
-    }
+    return mainnet;
 }
 
 void extractHDPath(uint32_t rx, uint32_t offset) {
@@ -435,14 +432,6 @@ __Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx,
 __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthMsg\n");
 
-    // check if target is ethereum Mainnet
-    // this call throws if it is mainnet and not in expert mode
-    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
-    if (payloadType == P1_INIT) {
-        check_eth_path(rx, OFFSET_DATA);
-    }
-
-
     tx_eth_msg();
 
     bool done = false;
@@ -505,19 +494,16 @@ handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
 
 __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthTx\n");
-    // check if target is ethereum Mainnet
-    // this calls throws if it is mainnet and no in expert mode
-    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
-    if (payloadType == P1_INIT) {
-        check_eth_path(rx, OFFSET_DATA);
-    }
 
     tx_eth_tx();
+
     bool done = false;
     // cast to integer pointer, because app-ethereum expects them as plain pointers
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
+    parser_error_t err = rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done);
 
-    if (error_msg != NULL) {
+    const char *error_msg = tx_err_msg_from_code(err);
+
+    if (err != parser_ok && error_msg != NULL) {
         zemu_log(error_msg);
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
         memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
@@ -530,6 +516,7 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
         THROW(APDU_CODE_OK);
     }
 
+
     view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
     view_review_show(REVIEW_TXN);
 
@@ -539,11 +526,6 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
 #if defined(FEATURE_ETH)
 __Z_INLINE void handle_eip712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
-
-    if (G_io_apdu_buffer[OFFSET_INS] == INS_SIGN_EIP_712_MESSAGE && payloadType == P1_INIT) {
-        check_eth_path(rx, OFFSET_DATA);
-    }
     // Cast volatile pointers to plain pointers due to app-ethereum implementations that takes 
     // them as plain pointers.
     handle_eth_apdu((uint32_t*)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);

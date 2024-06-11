@@ -27,7 +27,7 @@ use crate::{
     },
     parser::{
         intstr_to_fpstr_inplace, Address, DisplayableItem, EthData, FromBytes, ParserError,
-        ADDRESS_LEN, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
+        ADDRESS_LEN, ETH_MAINNET_ID, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
     },
     utils::ApduPanic,
 };
@@ -70,7 +70,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("Eip1559::from_bytes_into\x00");
+        crate::zlog("Eip1559::from_bytes_into\x00");
 
         // get out pointer
         let out = out.as_mut_ptr();
@@ -126,6 +126,10 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         }
 
         let chain_id = super::bytes_to_u64(id_bytes)?;
+        if chain_id == ETH_MAINNET_ID {
+            crate::zlog("Mainnet not allowed\x00");
+            return Err(ParserError::InvalidChainId.into());
+        }
 
         // check for erc721 call and chainID
         #[cfg(feature = "erc721")]
@@ -477,7 +481,7 @@ mod tests {
     #[test]
     fn parse_eip1559() {
         // market..
-        let data = "02f871018347eae184773594008517bfac7c008303291894dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000bb98f2a83d78310342da3e63278ce7515d52619d00000000000000000000000000000000000000000000000000000006e0456cd0c0";
+        let data = "02f871028347eae184773594008517bfac7c008303291894dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000bb98f2a83d78310342da3e63278ce7515d52619d00000000000000000000000000000000000000000000000000000006e0456cd0c0";
         let data = hex::decode(data).unwrap();
 
         // remove the transaction type and get the transaction bytes as

@@ -301,7 +301,7 @@ impl<'b> FromBytes<'b> for BaseLegacy<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("EthBase::from_bytes_into\x00");
+        crate::zlog("EthBase::from_bytes_into\x00");
 
         // get out pointer
         let out = out.as_mut_ptr();
