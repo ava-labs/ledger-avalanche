@@ -19,6 +19,7 @@
 #include <os_io_seproxyhal.h>
 #include <string.h>
 #include <ux.h>
+#include <app_mode.h>
 
 #include "actions.h"
 #include "addr.h"
@@ -39,6 +40,37 @@
 #endif
 
 static bool tx_initialized = false;
+
+void
+check_eth_path(uint32_t rx, uint32_t offset)
+{
+    uint32_t path_len = *(G_io_apdu_buffer + offset);
+
+    if (path_len > MAX_BIP32_PATH || path_len < 1)
+        THROW(APDU_CODE_WRONG_LENGTH);
+
+    if ((rx - offset - 1) < sizeof(uint32_t) * path_len) {
+        THROW(APDU_CODE_WRONG_LENGTH);
+    }
+
+    // first byte at OFFSET_DATA is the path len, so we skip this
+    uint8_t *path_data = G_io_apdu_buffer + offset + 1;
+    uint32_t ethPath[HDPATH_LEN_DEFAULT] = {0};
+
+    // hw-app-eth serializes path as BE numbers
+    for (uint8_t i = 0; i < path_len; i++) {
+        ethPath[i] = U4BE(path_data, 0);
+        path_data += sizeof(uint32_t);
+    }
+
+    const bool mainnet =
+      ethPath[0] == HDPATH_ETH_0_DEFAULT && ethPath[1] == HDPATH_ETH_1_DEFAULT;
+
+    // Ethereum mainnet tx only possible in expert mode
+    if (mainnet && !app_mode_expert()) {
+        THROW(APDU_CODE_DATA_INVALID);
+    }
+}
 
 void extractHDPath(uint32_t rx, uint32_t offset) {
     tx_initialized = false;
@@ -403,6 +435,14 @@ __Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx,
 __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthMsg\n");
 
+    // check if target is ethereum Mainnet
+    // this call throws if it is mainnet and not in expert mode
+    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
+    if (payloadType == P1_INIT) {
+        check_eth_path(rx, OFFSET_DATA);
+    }
+
+
     tx_eth_msg();
 
     bool done = false;
@@ -465,6 +505,12 @@ handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
 
 __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthTx\n");
+    // check if target is ethereum Mainnet
+    // this calls throws if it is mainnet and no in expert mode
+    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
+    if (payloadType == P1_INIT) {
+        check_eth_path(rx, OFFSET_DATA);
+    }
 
     tx_eth_tx();
     bool done = false;
@@ -493,8 +539,13 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
 #if defined(FEATURE_ETH)
 __Z_INLINE void handle_eip712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+    const uint8_t payloadType = G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE];
+
+    if (G_io_apdu_buffer[OFFSET_INS] == INS_SIGN_EIP_712_MESSAGE && payloadType == P1_INIT) {
+        check_eth_path(rx, OFFSET_DATA);
+    }
     // Cast volatile pointers to plain pointers due to app-ethereum implementations that takes 
-    // them is as plain pointers.
+    // them as plain pointers.
     handle_eth_apdu((uint32_t*)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 }
 #endif
