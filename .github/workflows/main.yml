@@ -1,6 +1,13 @@
-name: "test/build"
+name: Build
 on:
-  - push
+  workflow_dispatch:
+  push:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - master # for safety reasons
+      - dev  # for safety reasons
 
 jobs:
   configure:
@@ -48,7 +55,7 @@ jobs:
             ${{ runner.os }}-${{ github.sha }}
       - name: clippy
         run: |
-          cd ./app/rust 
+          cd ./app/rust
           cargo clippy --all-targets --features "full,clippy"
 
   build_ledger:
