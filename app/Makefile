@@ -82,6 +82,13 @@ endif
 DEFINES += HAVE_HASH HAVE_BLAKE2
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
 
+# Configure minimun stack size
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+	APP_STACK_MIN_SIZE := 1752
+else
+	APP_STACK_MIN_SIZE := 2000
+endif
+
 ifeq ($(APP_TESTING), 1)
 DEFINES += APP_TESTING ZEMU_LOGGING
 $(info ************ LOGGING ENABLED ************)
