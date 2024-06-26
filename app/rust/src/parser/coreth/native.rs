@@ -126,6 +126,29 @@ pub fn parse_rlp_item(data: &[u8]) -> Result<(&[u8], &[u8]), nom::Err<ParserErro
     take(to_read as usize)(&data[read..])
 }
 
+pub fn render_chain_id(
+    title: &mut [u8],
+    message: &mut [u8],
+    page: u8,
+    chain_id: &[u8],
+) -> Result<u8, ViewError> {
+    use lexical_core::Number;
+
+    let title_content = b"Chain ID";
+    title[..title_content.len()].copy_from_slice(title_content);
+
+    if chain_id.len() <= core::mem::size_of::<u64>() {
+        let chain_id = bytes_to_u64(chain_id).map_err(|_| ViewError::NoData)?;
+        let mut chain_id_str = [0u8; u64::FORMATTED_SIZE_DECIMAL + 1];
+
+        crate::parser::u64_to_str(chain_id, &mut chain_id_str).map_err(|_| ViewError::NoData)?;
+
+        handle_ui_message(&chain_id_str, message, page)
+    } else {
+        render_u256(chain_id, 0, message, page)
+    }
+}
+
 impl From<u8> for EthTransaction__Type {
     fn from(value: u8) -> Self {
         match value {
@@ -172,19 +195,11 @@ impl<'b> EthTransaction<'b> {
         !matches!(self, EthTransaction::Legacy(_))
     }
 
-    pub fn chain_id(&self) -> &'b [u8] {
+    pub fn chain_id(&self) -> &[u8] {
         match self {
             Self::Legacy(t) => t.chain_id(),
             Self::Eip1559(t) => t.chain_id(),
             Self::Eip2930(t) => t.chain_id(),
-        }
-    }
-
-    pub fn chain_id_u64(&self) -> u64 {
-        match self {
-            Self::Legacy(t) => t.chain_id_u64(),
-            Self::Eip1559(t) => t.chain_id_u64(),
-            Self::Eip2930(t) => t.chain_id_u64(),
         }
     }
 }

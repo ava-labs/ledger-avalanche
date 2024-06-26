@@ -30,23 +30,16 @@ const MAINNET_ID: u64 = ETH_MAINNET_ID * 2 + 35;
 #[cfg_attr(test, derive(Debug))]
 pub struct Legacy<'b> {
     pub base: BaseLegacy<'b>,
+    // It is possible that the chain_id is missing
+    // in some legacy transactions. But because of the
+    // fact that all avax subnets have a chainID,
+    // we must error if it is missing.
     chain_id: &'b [u8],
-    // so do not put and empty
-    // field here, it is just to indicate
-    // that they are expected
 }
 
 impl<'b> Legacy<'b> {
     pub fn chain_id(&self) -> &'b [u8] {
         self.chain_id
-    }
-
-    pub fn chain_id_u64(&self) -> u64 {
-        if self.chain_id.is_empty() {
-            0
-        } else {
-            super::bytes_to_u64(self.chain_id).unwrap()
-        }
     }
 }
 
@@ -64,15 +57,12 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         let rem = BaseLegacy::from_bytes_into(input, data_out)?;
 
         // Handle cases based on the presence of RLP-encoded chain ID.
+        // Since displaying the chainID is required and all Avalanche subnets have a chainID,
+        // We must error if the chainID is missing.
+        // This issue might occur on the Ethereum network with legacy transactions that don't comply with EIP-155
         if rem.is_empty() {
-            crate::zlog("chain_id_empty\x00");
-            unsafe {
-                // write an empty chain-id as it is used to compute the right V component
-                // when transaction is signed
-                addr_of_mut!((*out).chain_id).write(&[]);
-            }
-
-            return Ok(&[]);
+            crate::zlog("ERR:Non EIP155 legacy tx\x00");
+            return Err(ParserError::InvalidChainId.into());
         }
 
         // Transaction comes with a chainID so it is EIP155 compliant
@@ -132,7 +122,8 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
 
 impl<'b> DisplayableItem for Legacy<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
-        self.base.num_items()
+        // chain_id is also mandatory
+        Ok(self.base.num_items()? + 1)
     }
 
     fn render_item(
@@ -142,6 +133,12 @@ impl<'b> DisplayableItem for Legacy<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        if item_n == 0 {
+            return super::render_chain_id(title, message, page, self.chain_id);
+        }
+
+        let item_n = item_n - 1;
+
         self.base.render_item(item_n, title, message, page)
     }
 }
