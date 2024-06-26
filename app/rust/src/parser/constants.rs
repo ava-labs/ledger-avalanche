@@ -19,6 +19,7 @@ pub const NETWORK_ID_MAINNET: u32 = 1;
 pub const NETWORK_ID_FUJI: u32 = 5;
 pub const NETWORK_ID_LOCAL: u32 = 12345;
 pub const NETWORK_ID_CUSTOM: u32 = 1337;
+pub const ETH_MAINNET_ID: u64 = 1;
 
 // hrp
 pub const HRP_MAINNET: &str = "avax";

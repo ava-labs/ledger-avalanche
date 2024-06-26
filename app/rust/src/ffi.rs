@@ -19,20 +19,19 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::constants::{BIP32_PATH_SUFFIX_DEPTH, SIGN_HASH_TX_SIZE};
 use crate::handlers::avax::sign_hash::{Sign as SignHash, SignUI};
 use crate::handlers::avax::signing::Sign;
-use crate::handlers::resources::{EthAccessors, ETH_UI};
 use crate::parser::{parse_path_list, AvaxMessage, DisplayableItem, ObjectList, PathWrapper};
 use crate::parser::{FromBytes, ParserError, Transaction};
 use crate::ZxError;
 
 pub mod context;
+mod eth_tx;
 pub mod ext_public_key;
 pub mod nft_info;
 pub mod public_key;
 pub mod sign_hash;
 pub mod wallet_id;
-use bolos::ApduError;
 use context::{parser_context_t, Instruction};
-use zemu_sys::Viewable;
+use eth_tx::{get_eth_item, num_items_eth};
 
 /// Cast a *mut u8 to a *mut Transaction
 macro_rules! avax_tx_from_state {
@@ -254,29 +253,6 @@ unsafe fn num_items_avax(ctx: *const parser_context_t, num_items: &mut u8) -> u3
     ParserError::ParserOk as u32
 }
 
-#[inline(never)]
-unsafe fn num_items_eth(ctx: *const parser_context_t, num_items: &mut u8) -> u32 {
-    let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
-        return ParserError::InvalidTransactionType as u32;
-    };
-
-    if tx_type.is_avax() {
-        return ParserError::InvalidTransactionType as u32;
-    }
-
-    if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
-        match obj.num_items() {
-            Ok(n) => {
-                *num_items = n;
-                ParserError::ParserOk as _
-            }
-            Err(e) => e as _,
-        }
-    } else {
-        ParserError::NoData as _
-    }
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn _getItem(
     ctx: *const parser_context_t,
@@ -391,44 +367,6 @@ unsafe fn get_avax_item(
     }
 }
 
-#[inline(never)]
-unsafe fn get_eth_item(
-    ctx: *const parser_context_t,
-    display_idx: u8,
-    key: &mut [u8],
-    value: &mut [u8],
-    page_idx: u8,
-    page_count: &mut u8,
-) -> u32 {
-    *page_count = 0u8;
-
-    let page_count = &mut *page_count;
-
-    if ctx.is_null() {
-        return ParserError::ParserContextMismatch as _;
-    }
-
-    let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
-        return ParserError::InvalidTransactionType as u32;
-    };
-
-    if tx_type.is_avax() {
-        return ParserError::InvalidTransactionType as _;
-    }
-
-    if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
-        match obj.render_item(display_idx, key, value, page_idx) {
-            Ok(page) => {
-                *page_count = page;
-                ParserError::ParserOk as _
-            }
-            Err(e) => e as _,
-        }
-    } else {
-        ParserError::NoData as _
-    }
-}
-
 // Returns the offset at which transaction data starts.
 // remember that this instruction comes with a list of change_path at the
 // begining of the buffer. those paths needs to be ignored when
@@ -460,24 +398,4 @@ pub unsafe extern "C" fn _tx_data_offset(
     *offset = buffer_len - rem.len() as u16;
 
     ZxError::Ok as _
-}
-
-#[no_mangle]
-unsafe extern "C" fn _accept_eth_tx(tx: *mut u16, buffer: *mut u8, buffer_len: u32) -> u16 {
-    if tx.is_null() || buffer.is_null() || buffer_len == 0 {
-        return ApduError::DataInvalid as u16;
-    }
-
-    let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
-
-    let code = if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
-        let (_tx, code) = obj.accept(data);
-        *tx = _tx as u16;
-        code
-    } else {
-        // No ethereum transaction has been processed yet
-        ApduError::DataInvalid as u16
-    };
-
-    code
 }

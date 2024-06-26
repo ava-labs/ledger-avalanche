@@ -19,10 +19,12 @@ use zemu_sys::ViewError;
 
 use super::parse_rlp_item;
 use super::BaseLegacy;
+use crate::parser::ETH_MAINNET_ID;
 use crate::parser::U64_SIZE;
 use crate::parser::{DisplayableItem, FromBytes, ParserError};
 
 const MAX_CHAIN_LEN: usize = U64_SIZE;
+const MAINNET_ID: u64 = ETH_MAINNET_ID * 2 + 35;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
@@ -53,7 +55,7 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
-        crate::sys::zemu_log_stack("Legacy::from_bytes_into\x00");
+        crate::zlog("Legacy::from_bytes_into\x00");
 
         // get out pointer
         let out = out.as_mut_ptr();
@@ -61,10 +63,9 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
         let data_out = unsafe { &mut *addr_of_mut!((*out).base).cast() };
         let rem = BaseLegacy::from_bytes_into(input, data_out)?;
 
-        // two cases:
-        // - legacy no EIP155 compliant which should be supported
-        // - legacy EIP155 in which case should come with empty r and s values
+        // Handle cases based on the presence of RLP-encoded chain ID.
         if rem.is_empty() {
+            crate::zlog("chain_id_empty\x00");
             unsafe {
                 // write an empty chain-id as it is used to compute the right V component
                 // when transaction is signed
@@ -96,19 +97,28 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
             }
         }
 
-        // r and s if not empty, should contain only one value
-        // which must be zero.
+        // Validate R and S are either empty or zero.
         if !r.is_empty() && !s.is_empty() {
-            crate::sys::zemu_log_stack("r_s_not_empty\x00");
+            crate::zlog("r_s_not_empty\x00");
             let no_zero = r.iter().any(|v| *v != 0) && s.iter().any(|v| *v != 0);
             if no_zero || r.len() != 1 || s.len() != 1 {
-                crate::sys::zemu_log_stack("Legacy::invalid_r_s\x00");
+                crate::zlog("Legacy::invalid_r_s\x00");
                 return Err(ParserError::UnexpectedData.into());
             }
         }
 
         // to align with ledger's original ethereum app
         if id_bytes.len() > MAX_CHAIN_LEN {
+            return Err(ParserError::InvalidChainId.into());
+        }
+
+        // Check that tx is not targeting ethereum mainnet
+        let chain_id = super::bytes_to_u64(id_bytes)?;
+
+        // Check for one in case a wallet does not follow EIP-155
+        // and just append directly the chainId value at the end of the transaction.
+        if chain_id == 1 || chain_id == MAINNET_ID {
+            crate::zlog("Mainnet not allowed\x00");
             return Err(ParserError::InvalidChainId.into());
         }
 
@@ -152,7 +162,7 @@ mod tests {
 
     #[test]
     fn parse_legacy_deploy() {
-        let deploy = "f5808609184e72a0008227108080a47f7465737432000000000000000000000000000000000000000000000000000000600057018080";
+        let deploy = "f5808609184e72a0008227108080a47f7465737432000000000000000000000000000000000000000000000000000000600057028080";
         let bytes = hex::decode(deploy).unwrap();
 
         // get transaction bytes
