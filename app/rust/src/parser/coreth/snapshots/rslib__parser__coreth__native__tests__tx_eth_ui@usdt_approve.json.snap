@@ -1,9 +1,10 @@
 ---
-source: app/src/parser/coreth/native.rs
+source: src/parser/coreth/native.rs
 expression: reduced
-input_file: app/src/parser/coreth/eth_testvectors/usdt_approve.json
+input_file: src/parser/coreth/eth_testvectors/usdt_approve.json
 ---
 [
+    "Chain ID": "38",
     "ERC-20": "approve",
     "To": "0x945de0f44ca827bf03f87a87985bf08669050c73",
     "Amount": "411256436224324320870982430867023952481793415358246197461731293",

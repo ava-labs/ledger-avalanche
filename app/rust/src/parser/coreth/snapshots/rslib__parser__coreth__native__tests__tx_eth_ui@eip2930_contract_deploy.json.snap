@@ -1,9 +1,10 @@
 ---
-source: app/src/parser/coreth/native.rs
+source: src/parser/coreth/native.rs
 expression: reduced
-input_file: app/src/parser/coreth/eth_testvectors/eip2930_contract_deploy.json
+input_file: src/parser/coreth/eth_testvectors/eip2930_contract_deploy.json
 ---
 [
+    "Chain ID": "2",
     "Contract": "Creation",
     "Gas Limit": "40000000",
     "Funding Contract": "0.000000001",

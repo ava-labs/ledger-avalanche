@@ -1,9 +1,10 @@
 ---
-source: app/src/parser/coreth/native.rs
+source: src/parser/coreth/native.rs
 expression: reduced
-input_file: app/src/parser/coreth/eth_testvectors/usdt_transfer.json
+input_file: src/parser/coreth/eth_testvectors/usdt_transfer.json
 ---
 [
+    "Chain ID": "2",
     "ERC-20": "transfer",
     "To": "0xc59943ad9b699155bffbe553681e3f62795958f9",
     "Amount": "31800000000",
