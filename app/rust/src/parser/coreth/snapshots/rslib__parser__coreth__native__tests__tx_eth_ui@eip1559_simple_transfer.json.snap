@@ -1,9 +1,10 @@
 ---
-source: app/src/parser/coreth/native.rs
+source: src/parser/coreth/native.rs
 expression: reduced
-input_file: app/src/parser/coreth/eth_testvectors/eip1559_simple_transfer.json
+input_file: src/parser/coreth/eth_testvectors/eip1559_simple_transfer.json
 ---
 [
+    "Chain ID": "2",
     "Transfer": "AVAX 0.000000004886718345",
     "To": "0x0102030400000000000000000000000000000002",
     "Fee(GWEI)": "0.08",

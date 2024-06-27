@@ -38,16 +38,8 @@ pub struct Eip2930<'b> {
 }
 
 impl<'b> Eip2930<'b> {
-    pub fn chain_id(&self) -> &'b [u8] {
+    pub fn chain_id(&self) -> &[u8] {
         self.chain_id
-    }
-
-    pub fn chain_id_u64(&self) -> u64 {
-        if self.chain_id.is_empty() {
-            0
-        } else {
-            super::bytes_to_u64(self.chain_id).unwrap()
-        }
     }
 }
 
@@ -103,7 +95,10 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
 
 impl<'b> DisplayableItem for Eip2930<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
-        self.base.num_items()
+        let items = self.base.num_items()?;
+
+        // Includes chain_id in the list
+        Ok(items + 1)
     }
 
     fn render_item(
@@ -113,6 +108,11 @@ impl<'b> DisplayableItem for Eip2930<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        if item_n == 0 {
+            return super::render_chain_id(title, message, page, self.chain_id);
+        }
+
+        let item_n = item_n - 1;
         self.base.render_item(item_n, title, message, page)
     }
 }

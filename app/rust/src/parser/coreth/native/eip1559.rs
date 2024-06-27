@@ -51,20 +51,6 @@ pub struct Eip1559<'b> {
     // that they are expected
 }
 
-impl<'b> Eip1559<'b> {
-    pub fn chain_id(&self) -> &'b [u8] {
-        self.chain_id
-    }
-
-    pub fn chain_id_u64(&self) -> u64 {
-        if self.chain_id.is_empty() {
-            0
-        } else {
-            super::bytes_to_u64(self.chain_id).unwrap()
-        }
-    }
-}
-
 impl<'b> FromBytes<'b> for Eip1559<'b> {
     fn from_bytes_into(
         input: &'b [u8],
@@ -166,6 +152,10 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
 }
 
 impl<'b> Eip1559<'b> {
+    pub fn chain_id(&self) -> &[u8] {
+        self.chain_id
+    }
+
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
         let f = u256::pic_from_big_endian();
@@ -431,7 +421,7 @@ impl<'b> DisplayableItem for Eip1559<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // The type of the data field defines how a transaction
         // info is displayed.
-        match self.data {
+        let items = match self.data {
             // render a simple Transfer, to, fee
             EthData::None => Ok(1 + 1 + 1),
             // description, gas limit, funding contract(if value != zero), maximun fee and data.items
@@ -451,7 +441,10 @@ impl<'b> DisplayableItem for Eip1559<'b> {
             // address, fee
             #[cfg(feature = "erc721")]
             EthData::Erc721(d) => checked_add!(ViewError::Unknown, 2u8, d.num_items()?),
-        }
+        };
+
+        // Render chain_id as well
+        Ok(items? + 1)
     }
 
     fn render_item(
@@ -461,6 +454,12 @@ impl<'b> DisplayableItem for Eip1559<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        if item_n == 0 {
+            return super::render_chain_id(title, message, page, self.chain_id);
+        }
+
+        let item_n = item_n - 1;
+
         match self.data {
             EthData::None => self.render_transfer(item_n, title, message, page),
             EthData::Deploy(..) => self.render_deploy(item_n, title, message, page),
