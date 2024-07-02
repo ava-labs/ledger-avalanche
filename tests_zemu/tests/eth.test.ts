@@ -229,14 +229,8 @@ describe.each(eth_models)('EthereumOthers [%s] - misc', function (m) {
       console.log(resp_addr, m.name)
 
       const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
-      // recreate data buffer:
-      // header + msg.len() + msg
-      let data = Buffer.alloc(4 + msgData.length)
-      let msg = Buffer.alloc(data.length + header.length)
-      data.writeInt32BE(msgData.length)
-      msgData.copy(data, 4)
-      header.copy(msg)
-      data.copy(msg, header.length)
+      const msgLengthString = String(msgData.length)
+      const msg = Buffer.concat([header, Buffer.from(msgLengthString, 'utf8'), msgData])
 
       const sha3 = require('js-sha3')
       const msgHash = sha3.keccak256(msg)
