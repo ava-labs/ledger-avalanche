@@ -1,0 +1,13 @@
+---
+source: src/parser/coreth/native.rs
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/eip2930_contract_call.json
+---
+[
+    "Chain ID": "2",
+    "Contract": "Call",
+    "Transfer": "AVAX 0.0000000000001",
+    "To": "0xcccccccccccccccccccccccccccccccccccccccc",
+    "Contract Data: ": "0x7f7465737432000000000000000000000000000000000000000000000000...",
+    "Maximun Fee(GWEI)": "0.04",
+]

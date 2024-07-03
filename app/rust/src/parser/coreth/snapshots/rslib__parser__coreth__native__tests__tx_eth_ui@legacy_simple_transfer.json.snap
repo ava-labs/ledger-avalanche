@@ -1,0 +1,11 @@
+---
+source: src/parser/coreth/native.rs
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/legacy_simple_transfer.json
+---
+[
+    "Chain ID": "2",
+    "Transfer": "AVAX 14.12582170622427136",
+    "To": "0xcccccccccccccccccccccccccccccccccccccccc",
+    "Fee(GWEI)": "100000000",
+]

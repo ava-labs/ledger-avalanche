@@ -1,5 +1,5 @@
 #*******************************************************************************
-#*   (c) 2019 Zondax GmbH
+#*   (c) 2018 -2024 Zondax AG
 #*
 #*  Licensed under the Apache License, Version 2.0 (the "License");
 #*  you may not use this file except in compliance with the License.
@@ -18,69 +18,33 @@
 # BOLOS_SDK IS  DEFINED	 	We use the plain Makefile for Ledger
 # BOLOS_SDK NOT DEFINED		We use a containerized build approach
 
-TESTS_JS_PACKAGE = "@zondax/ledger-avalanche-app"
+TESTS_JS_PACKAGE = "@zondax/ledger-avalanche"
 TESTS_JS_DIR = $(CURDIR)/js
 
 ifeq ($(BOLOS_SDK),)
-	include $(CURDIR)/deps/dockerized_build.mk
+# In this case, there is not predefined SDK and we run dockerized
+# When not using the SDK, we override and build the XL complete app
 
-.PHONY: init
-init:
-	cd deps; sh get_sdk.sh
-	$(MAKE) deps
-	$(MAKE) zemu_install
+ZXLIB_COMPILE_STAX ?= 1
+# by default builds are not production ready
+PRODUCTION_BUILD ?= 1
 
-build:
-	$(MAKE)
-.PHONY: build
-
-lint:
-	cargo fmt
-.PHONY: lint
-
-clippy:
-	cargo clippy --all-targets
-.PHONY: clippy
-
-.PHONY: zemu_debug
-zemu_debug:
-	cd $(TESTS_ZEMU_DIR) && yarn run debug
-
-.PHONY: rust_test
-rust_test:
-	cargo test --features "full","derive-debug"
-
-test_all:
-	make rust_test
-	make zemu_install
-	make clean_build
-	make build
-	make zemu_test
-
-.PHONY: fuzz clean_fuzz restore_fuzz
-FUZZ_CMD = cd hfuzz && cargo hfuzz run apdu
-
-fuzz:
-	@echo "Adding \"rslib\" to crate-type"
-	@sed -i.bak '/crate-type = \["staticlib"\]/ s/\]/, "rlib"\]/' app/Cargo.toml
-	@trap "make -C $(CURDIR) restore_fuzz" INT; \
-		$(FUZZ_CMD)
-	$(MAKE) restore_fuzz
-
-clean_fuzz:
-	cd hfuzz && cargo hfuzz clean
-
-restore_fuzz:
-	@echo "Reverting crate-type to original"
-	@mv app/Cargo.toml.bak app/Cargo.toml
+include $(CURDIR)/deps/ledger-zxlib/dockerized_build.mk
 
 else
-
 default:
 	$(MAKE) -C app
-
 %:
 	$(info "Calling app Makefile for target $@")
-	COIN=$(COIN) $(MAKE) -C app $@
-
+	COIN=$(COIN) PRODUCTION_BUILD=$(PRODUCTION_BUILD) $(MAKE) -C app $@
 endif
+
+test_all:
+	make clean
+	make PRODUCTION_BUILD=1
+	make zemu_install
+	make zemu_test
+
+prod:
+	make PRODUCTION_BUILD=1
+
