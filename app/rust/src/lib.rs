@@ -23,7 +23,8 @@
     clippy::enum_variant_names,
     dead_code,
     clippy::manual_range_contains,
-    clippy::items_after_test_module
+    clippy::items_after_test_module,
+    dropping_references
 )]
 
 extern crate no_std_compat as std;
