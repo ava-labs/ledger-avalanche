@@ -1,0 +1,13 @@
+---
+source: src/parser/coreth/native.rs
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/legacy_contract_call.json
+---
+[
+    "Chain ID": "2",
+    "Contract": "Call",
+    "Transfer": "AVAX 14.12582170622427136",
+    "To": "0xcccccccccccccccccccccccccccccccccccccccc",
+    "Contract Data: ": "0x7f7465737432000000000000000000000000000000000000000000000000...",
+    "Maximun Fee(GWEI)": "100000000",
+]

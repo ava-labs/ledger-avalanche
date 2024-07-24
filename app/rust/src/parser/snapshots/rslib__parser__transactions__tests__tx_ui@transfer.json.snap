@@ -1,0 +1,13 @@
+---
+source: src/parser/transactions.rs
+expression: reduced
+input_file: src/parser/testvectors/transfer.json
+---
+[
+    "Transfer": "Transaction",
+    "Transfer": "1 AVAX to ",
+    "Address": "fuji1vdhmjcdchnjdqqu8jm6akvc0anywxmmjtymktq",
+    "Transfer": "4.098 AVAX to ",
+    "Address": "fuji1qll98k8d9vqymuavw5t45nnj0fkagcwcawx48y",
+    "Fee(AVAX)": "0.001",
+]

@@ -1,8 +1,10 @@
 [package]
 name = "avalanche-app-derive"
 version = "0.1.0"
-authors.workspace = true
-edition.workspace = true
+edition = "2021"
+autotests = false
+authors = ["Zondax <hello@zondax.ch>"]
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -15,5 +17,7 @@ quote = "1.0"
 proc-macro2 = { version = "1.0.29" }
 serde_json = "1.0.79"
 serde = { version = "1.0.136", features = ["derive"] }
-bs58 = { version = "0.4.0", features = ["cb58"], git = "https://github.com/Zondax/bs58-rs", branch = "cb58" }
+bs58 = { version = "0.4.0", features = [
+    "cb58",
+], git = "https://github.com/Zondax/bs58-rs", branch = "cb58" }
 convert_case = "0.6"
