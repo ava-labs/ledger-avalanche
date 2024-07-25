@@ -14,14 +14,14 @@
  *  limitations under the License.
  ******************************************************************************* */
 
-import Zemu from '@zondax/zemu'
+import Zemu, { ButtonKind, isTouchDevice } from '@zondax/zemu'
 import { defaultOptions as commonOpts, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 jest.setTimeout(200000)
 
 const defaultOptions = (model: any) => {
-  return { ...commonOpts(model, true), approveKeyword: model.name == 'stax' ? 'Path' : '' }
+  return { ...commonOpts(model, true), approveKeyword: isTouchDevice(model.name) ? 'Confirm' : '', approveAction: ButtonKind.DynamicTapButton }
 }
 
 describe.each(models)('ExtPubkey[%s]', function (m) {

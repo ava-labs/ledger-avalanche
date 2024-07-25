@@ -14,8 +14,8 @@
  *  limitations under the License.
  ******************************************************************************* */
 
-import Zemu, { ClickNavigation, TouchNavigation } from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions as commonOpts, eth_models } from './common'
+import Zemu, { ClickNavigation, isTouchDevice } from '@zondax/zemu'
+import { ETH_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
@@ -102,8 +102,7 @@ const SIGN_TEST_DATA: TestData[] = [
 jest.setTimeout(60000)
 
 // Nanos does not support erc721
-// describe.each(eth_models.slice(1))('EthereumTx [%s]; sign', function (m) {
-describe.each(eth_models)('EthereumTx [%s]; sign', function (m) {
+describe.each(models)('EthereumTx [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
@@ -178,7 +177,7 @@ describe.each(eth_models)('EthereumTx [%s]; sign', function (m) {
   })
 })
 
-describe.each(eth_models)('EthereumOthers [%s] - misc', function (m) {
+describe.each(models)('EthereumOthers [%s] - misc', function (m) {
   test.concurrent('getAppConfig', async function () {
     const sim = new Zemu(m.path)
     try {
@@ -252,7 +251,7 @@ describe.each(eth_models)('EthereumOthers [%s] - misc', function (m) {
 })
 
 // Eip712 transactions are not supported by nanos
-describe.each(eth_models.slice(1))('EIP712 [%s]; sign', function (m) {
+describe.each(models.filter(m => m.name !== 'nanos'))('EIP712 [%s]; sign', function (m) {
   test.concurrent('Eip712Hash', async function () {
     const sim = new Zemu(m.path)
     try {
@@ -268,7 +267,7 @@ describe.each(eth_models.slice(1))('EIP712 [%s]; sign', function (m) {
 
       const respReq = app.signEIP712HashedMessage(ETH_DERIVATION, EIP712_TRANSACTION.domain_hash, EIP712_TRANSACTION.msg_hash)
       await sim.waitUntilScreenIsNot(currentScreen, 100000)
-      if (m.name === 'stax') {
+      if (isTouchDevice(m.name)) {
         await sim.compareSnapshotsAndApprove('.', testcase)
       } else {
         const nav = new ClickNavigation([5, 0])
