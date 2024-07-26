@@ -1,4 +1,4 @@
-import { DEFAULT_START_OPTIONS, IDeviceModel, ButtonKind } from '@zondax/zemu'
+import { DEFAULT_START_OPTIONS, IDeviceModel, ButtonKind, isTouchDevice } from '@zondax/zemu'
 
 const Resolve = require('path').resolve
 
@@ -9,28 +9,23 @@ const APP_PATH_S = Resolve('../app/output/app_s.elf')
 const APP_PATH_X = Resolve('../app/output/app_x.elf')
 const APP_PATH_SP = Resolve('../app/output/app_s2.elf')
 const APP_PATH_ST = Resolve('../app/output/app_stax.elf')
+const APP_PATH_FL = Resolve('../app/output/app_flex.elf')
 
 export const models: IDeviceModel[] = [
   { name: 'nanos', prefix: 'S', path: APP_PATH_S },
   { name: 'nanox', prefix: 'X', path: APP_PATH_X },
   { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
   { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
-]
-
-export const eth_models: IDeviceModel[] = [
-  { name: 'nanos', prefix: 'S', path: APP_PATH_S },
-  { name: 'nanox', prefix: 'X', path: APP_PATH_X },
-  { name: 'nanosp', prefix: 'SP', path: APP_PATH_SP },
-  { name: 'stax', prefix: 'ST', path: APP_PATH_ST },
+  { name: 'flex', prefix: 'FL', path: APP_PATH_FL },
 ]
 
 export const defaultOptions = (m: IDeviceModel, is_address = false) => {
   let approveAction = ButtonKind.ApproveHoldButton
   let approveKeyword = ''
 
-  if (m.name == 'stax' && is_address) {
-    approveKeyword = 'Show as QR'
-    approveAction = ButtonKind.ApproveTapButton
+  if (isTouchDevice(m.name) && is_address) {
+    approveKeyword = 'Confirm'
+    approveAction = ButtonKind.DynamicTapButton
   }
 
   return {
