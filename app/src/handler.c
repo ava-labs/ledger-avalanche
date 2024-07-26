@@ -81,7 +81,7 @@ const internalStorage_t N_storage_real;
 caller_app_t *caller_app = NULL;
 #endif
 
-chain_config_t *chainConfig = NULL;
+const chain_config_t *chainConfig = NULL;
 chain_config_t config;
 
 // This function is only present in master branch
@@ -299,7 +299,6 @@ void handle_eth_apdu(uint32_t *flags, uint32_t *tx,
                             // use in develop but not present in master
                             // forget_known_assets();
                             // use in master instead of the above
-                            memset(tmpCtx.transactionContext.tokenSet, 0, MAX_ITEMS);
                             handleSignEIP712Message_v0(buffer[OFFSET_P1],
                                                        buffer[OFFSET_P2],
                                                        buffer + OFFSET_CDATA,

@@ -69,6 +69,13 @@ endif
 
 APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1
 
+# Configure minimun stack size
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+	APP_STACK_MIN_SIZE := 1752
+else
+	APP_STACK_MIN_SIZE := 2000
+endif
+
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.devices
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
@@ -82,13 +89,6 @@ endif
 DEFINES += HAVE_HASH HAVE_BLAKE2
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
 
-# Configure minimun stack size
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-	APP_STACK_MIN_SIZE := 1752
-else
-	APP_STACK_MIN_SIZE := 2000
-endif
-
 ifeq ($(APP_TESTING), 1)
 DEFINES += APP_TESTING ZEMU_LOGGING
 $(info ************ LOGGING ENABLED ************)
@@ -99,24 +99,29 @@ ifeq ($(TARGET_NAME), TARGET_NANOS)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
 APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib/view_s.c
+RUST_TARGET_NAME := TARGET_NANOS
 endif
 
 ifeq ($(TARGET_NAME), TARGET_NANOX)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
+RUST_TARGET_NAME := TARGET_NANOX
 endif
 
 ifeq ($(TARGET_NAME), TARGET_NANOS2)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
+RUST_TARGET_NAME := TARGET_NANOS2
 endif
 
-ifeq ($(TARGET_NAME), TARGET_STAX)
+NBGL_TARGETS := TARGET_STAX TARGET_FLEX
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
 DEFINES += ICONGLYPH=C_icon_stax_64
 DEFINES += ICONBITMAP=C_icon_stax_64
 DEFINES += ICONGLYPH_SMALL=C_icon_stax_32
+RUST_TARGET_NAME := TARGET_STAX
 endif
 
 ifeq ($(APP_TESTING), 1)
@@ -175,7 +180,7 @@ APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
 
 SDK_SOURCE_PATH += lib_u2f lib_standard_app
 
-ifeq ($(TARGET_NAME), TARGET_STAX)
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
 	NBGL_SRC_DIR := $(MY_DIR)/../deps/ethereum/src_nbgl
 	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/network_icons.c, $(shell find $(NBGL_SRC_DIR) -name '*.c'))
 	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/ui_idle.c, $(NBGL_SRC_FILES))
@@ -230,7 +235,7 @@ APP_CUSTOM_LINK_DEPENDENCIES := rust
 
 .PHONY: rust
 rust:
-	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(RUST_TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
 	cargo build --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
 
