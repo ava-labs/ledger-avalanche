@@ -16,10 +16,10 @@
 
 import Zemu from '@zondax/zemu'
 
-import { ETH_DERIVATION, defaultOptions as commonOpts, eth_models, defaultOptions } from './common'
+import { ETH_DERIVATION, defaultOptions, models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 
-describe.each(eth_models)('EthereumKeys [%s] - pubkey', function (m) {
+describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
   test.concurrent('get pubkey and addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
@@ -40,7 +40,7 @@ describe.each(eth_models)('EthereumKeys [%s] - pubkey', function (m) {
     }
   })
 
-  test.only('show addr %s', async function () {
+  test.concurrent('show addr %s', async function () {
     const sim = new Zemu(m.path)
 
     try {

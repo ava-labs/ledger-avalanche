@@ -31,7 +31,7 @@ const MAX_ETH_MESSAGE_SIZE: usize = 100;
 pub struct PersonalMsg<'b>(Message<'b>);
 
 impl<'b> PersonalMsg<'b> {
-    fn msg(&self) -> &[u8] {
+    pub fn msg(&self) -> &[u8] {
         self.0.msg()
     }
 }

@@ -15,7 +15,7 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions as commonOpts, eth_models } from './common'
+import { ETH_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 import { Transaction } from '@ethereumjs/tx'
@@ -29,7 +29,7 @@ const defaultOptions = (model: any) => {
   return opts
 }
 
-jest.setTimeout(25000)
+jest.setTimeout(90000)
 
 // type NftInfo = {
 //   token_address: string
@@ -141,7 +141,7 @@ function check_legacy_signature(hexTx: string, signature: any, chainId: number |
   return ethTxObj.verifySignature()
 }
 
-describe.each(eth_models)('EthereumLegacy [%s]; sign', function (m) {
+describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {

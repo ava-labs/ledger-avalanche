@@ -1,24 +1,15 @@
 [submodule "deps/ledger-rust"]
 	path = deps/ledger-rust
 	url = https://github.com/Zondax/ledger-rust
-[submodule "deps/nanos-secure-sdk"]
-	path = deps/nanos-secure-sdk
-	url = https://github.com/LedgerHQ/nanos-secure-sdk
-[submodule "deps/nanox-secure-sdk"]
-	path = deps/nanox-secure-sdk
-	url = https://github.com/LedgerHQ/ledger-secure-sdk
-[submodule "deps/nanosplus-secure-sdk"]
-	path = deps/nanosplus-secure-sdk
-	url = https://github.com/LedgerHQ/ledger-secure-sdk
 [submodule "deps/ledger-zxlib"]
 	path = deps/ledger-zxlib
 	url = https://github.com/Zondax/ledger-zxlib.git
-[submodule "deps/stax-secure-sdk"]
-	path = deps/stax-secure-sdk
-	url = https://github.com/LedgerHQ/ledger-secure-sdk
 [submodule "cmake/cmake-modules"]
 	path = cmake/cmake-modules
 	url = https://github.com/bilke/cmake-modules
 [submodule "deps/ethereum"]
 	path = deps/ethereum
 	url = https://github.com/Zondax/app-ethereum.git
+[submodule "deps/ledger-secure-sdk"]
+	path = deps/ledger-secure-sdk
+	url = https://github.com/LedgerHQ/ledger-secure-sdk

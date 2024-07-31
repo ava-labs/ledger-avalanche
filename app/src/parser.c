@@ -151,10 +151,3 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     // Calls rust getter
     return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }
-
-bool parser_isEthMainnet(const parser_context_t *ctx) {
-    if ( ctx->ins != SignEthMsg )
-        return false;
-
-    return _is_eth_mainnet_tx();
-}
