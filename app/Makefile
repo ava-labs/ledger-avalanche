@@ -38,7 +38,7 @@ ifeq ($(PRODUCTION_BUILD), 1)
     $(info ************ PRODUCTION_BUILD  = [PRODUCTION BUILD])
 else
     $(info ************ PRODUCTION_BUILD  = [INTERNAL USE])
-endif 
+endif
 
 DEFINES += PRODUCTION_BUILD=$(PRODUCTION_BUILD)
 
@@ -69,6 +69,13 @@ endif
 
 APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1
 
+# Configure minimun stack size
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+	APP_STACK_MIN_SIZE := 1752
+else
+	APP_STACK_MIN_SIZE := 2000
+endif
+
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.devices
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
@@ -82,13 +89,6 @@ endif
 DEFINES += HAVE_HASH HAVE_BLAKE2
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
 
-# Configure minimun stack size
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-	APP_STACK_MIN_SIZE := 1752
-else
-	APP_STACK_MIN_SIZE := 2000
-endif
-
 ifeq ($(APP_TESTING), 1)
 DEFINES += APP_TESTING ZEMU_LOGGING
 $(info ************ LOGGING ENABLED ************)
@@ -99,24 +99,29 @@ ifeq ($(TARGET_NAME), TARGET_NANOS)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
 APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib/view_s.c
+RUST_TARGET_NAME := TARGET_NANOS
 endif
 
 ifeq ($(TARGET_NAME), TARGET_NANOX)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
+RUST_TARGET_NAME := TARGET_NANOX
 endif
 
 ifeq ($(TARGET_NAME), TARGET_NANOS2)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
+RUST_TARGET_NAME := TARGET_NANOS2
 endif
 
-ifeq ($(TARGET_NAME), TARGET_STAX)
+NBGL_TARGETS := TARGET_STAX TARGET_FLEX
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
 DEFINES += ICONGLYPH=C_icon_stax_64
 DEFINES += ICONBITMAP=C_icon_stax_64
 DEFINES += ICONGLYPH_SMALL=C_icon_stax_32
+RUST_TARGET_NAME := TARGET_STAX
 endif
 
 ifeq ($(APP_TESTING), 1)
@@ -140,7 +145,7 @@ CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATC
 ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
 DEFINES += HAVE_ETH_INTEGRATION HAVE_ETH2 USE_LIB_ETHEREUM
 DEFINES += HAVE_BYPASS_SIGNATURES
-# commented out as we no longer use app-ethereum 
+# commented out as we no longer use app-ethereum
 # for handling erc20 tokens.
 # DEFINES += HAVE_CONTRACT_NAME_IN_DESCRIPTOR
 HAVE_EIP712_FULL_SUPPORT = 1
@@ -150,9 +155,6 @@ DEFINES += CHAIN_ID=$(CHAIN_ID)
 DEFINES += TICKER=\"$(TICKER)\"
 DEFINES += HAVE_BOLOS_APP_STACK_CANARY HAVE_HASH3
 DEFINES += HAVE_DYN_MEM_ALLOC
-
-ETH_GLYPHS = $(MY_DIR)/../deps/ethereum/glyphs
-GLYPH_FILES += $(addprefix $(ETH_GLYPHS)/,$(sort $(notdir $(shell find $(ETH_GLYPHS)/))))
 
 DEFINES += BIP44_COIN_TYPE_3=60 COIN_COINID_SHORT=\"AVAX\"
 DEFINES += HAVE_SNPRINTF_FORMAT_U IO_HID_EP_LENGTH=64
@@ -169,7 +171,7 @@ INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
 INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
 
 ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
-# With the line bellow we remove app-ethereum/src/main.c file from our sources 
+# With the line bellow we remove app-ethereum/src/main.c file from our sources
 ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
 APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
 APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
@@ -178,7 +180,7 @@ APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
 
 SDK_SOURCE_PATH += lib_u2f lib_standard_app
 
-ifeq ($(TARGET_NAME), TARGET_STAX)
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
 	NBGL_SRC_DIR := $(MY_DIR)/../deps/ethereum/src_nbgl
 	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/network_icons.c, $(shell find $(NBGL_SRC_DIR) -name '*.c'))
 	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/ui_idle.c, $(NBGL_SRC_FILES))
@@ -199,7 +201,7 @@ LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
 
 DEFINES += FEATURE_ETH=$(FEATURE_ETH)
 
-# not present in app-ethereum/master but in develop branch 
+# not present in app-ethereum/master but in develop branch
 # so it could be needed once develop gets revased onto master
 # include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
 
@@ -233,7 +235,7 @@ APP_CUSTOM_LINK_DEPENDENCIES := rust
 
 .PHONY: rust
 rust:
-	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
+	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(RUST_TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
 	cargo build --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
 

@@ -17,10 +17,10 @@ use core::mem::MaybeUninit;
 
 use crate::handlers::eth::EthUi;
 use crate::handlers::resources::{EthAccessors, ETH_UI};
+use crate::parser::u32_to_str;
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
-    pic_str, PIC,
 };
 use nom::number::complete::be_u32;
 use zemu_sys::{Show, ViewError, Viewable};
@@ -31,7 +31,6 @@ use crate::{
     dispatcher::ApduHandler,
     handlers::resources::{BUFFER, PATH},
     parser::{DisplayableItem, FromBytes, ParserError, PersonalMsg},
-    sys,
     utils::ApduBufferRead,
 };
 
@@ -50,16 +49,14 @@ impl Sign {
         }
     }
 
-    //(actual_size, [u8; MAX_SIGNATURE_SIZE])
     #[inline(never)]
     pub fn sign<const LEN: usize>(
         path: &BIP32Path<LEN>,
-        // data: &[u8],
+        data: &[u8],
     ) -> Result<(ECCInfoFlags, usize, [u8; 100]), Error> {
         let sk = Curve.to_secret(path);
-        let buffer = unsafe { BUFFER.acquire(Self)? };
 
-        let data = Self::digest(buffer.read_exact())?;
+        let data = Self::digest(data)?;
 
         let mut out = [0; 100];
         let (flags, sz) = sk
@@ -71,6 +68,8 @@ impl Sign {
 
     #[inline(never)]
     fn digest(buffer: &[u8]) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
+        use lexical_core::Number;
+
         let mut hasher = {
             let mut k = MaybeUninit::uninit();
             Keccak::<32>::new_gce(&mut k).map_err(|_| Error::Unknown)?;
@@ -78,11 +77,16 @@ impl Sign {
             //safe: initialized
             unsafe { k.assume_init() }
         };
+        let mut len_str = [0u8; u32::FORMATTED_SIZE_DECIMAL];
+
+        let len_str =
+            u32_to_str(buffer.len() as u32, &mut len_str).map_err(|_| Error::ExecutionError)?;
         // The ethereum app does not expect the "header" as part of the apdu
         // instruction as it is prepended when hashing, that is why the hw-app-eth
         // sends only the msg size and the msg itself.
-        let header = pic_str!(b"\x19Ethereum Signed Message:\n"!);
+        let header = b"\x19Ethereum Signed Message:\n";
         hasher.update(&header[..]).map_err(|_| Error::Unknown)?;
+        hasher.update(len_str).map_err(|_| Error::Unknown)?;
         hasher.update(buffer).map_err(|_| Error::Unknown)?;
 
         hasher.finalize().map_err(|_| Error::Unknown)
@@ -92,8 +96,6 @@ impl Sign {
     pub fn start_sign(txdata: &'static [u8], flags: &mut u32) -> Result<u32, Error> {
         let mut tx = MaybeUninit::uninit();
         _ = PersonalMsg::from_bytes_into(txdata, &mut tx).map_err(|_| Error::DataInvalid)?;
-
-        // let unsigned_hash = Self::digest(txdata)?;
 
         let tx = unsafe { tx.assume_init() };
 
@@ -110,14 +112,9 @@ impl Sign {
         let mut tx = MaybeUninit::uninit();
         _ = PersonalMsg::from_bytes_into(txdata, &mut tx)?;
 
-        // let unsigned_hash = Self::digest(txdata).map_err(|_| ParserError::UnexpectedError)?;
-
         let tx = unsafe { tx.assume_init() };
 
-        let ui = EthUi::Msg(SignUI {
-            // hash: unsigned_hash,
-            tx,
-        });
+        let ui = EthUi::Msg(SignUI { tx });
 
         unsafe {
             ETH_UI.lock(EthAccessors::Msg).replace(ui);
@@ -135,6 +132,9 @@ impl Sign {
         // moreover, it does not prepend the ethereum header
         // for personal messages, it just structures the message as:
         // path | msg.len() as 4-bytes big-indian integer | msg
+        // later the 4-bytes mesage len must be converted to
+        // a string and prepended after the header:
+        // keccak(header + len_str + msg)
 
         let packet_type = buffer.p1();
 
@@ -202,7 +202,7 @@ impl Sign {
 impl ApduHandler for Sign {
     #[inline(never)]
     fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
-        sys::zemu_log_stack("EthSignMessage::handle\x00");
+        crate::zlog("EthSignMessage::handle\x00");
 
         *tx = 0;
 
@@ -294,7 +294,7 @@ impl Viewable for SignUI {
         };
 
         // let (flags, sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
-        let (flags, sig_size, mut sig) = match Sign::sign(path) {
+        let (flags, sig_size, mut sig) = match Sign::sign(path, self.tx.msg()) {
             Err(e) => return (0, e as _),
             Ok(k) => k,
         };
