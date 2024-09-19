@@ -17,7 +17,7 @@
 import Zemu from '@zondax/zemu'
 import { APP_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
-import { encode as bs58_encode } from 'bs58'
+import bs58 from 'bs58'
 
 const defaultOptions = (model: any) => {
   return commonOpts(model, true)
@@ -77,7 +77,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 'zemu', bs58_encode(Buffer.alloc(32, 42)))
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       console.log(resp, m.name)
 
@@ -97,7 +97,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 'zemu', bs58_encode(Buffer.alloc(32, 42)))
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`)
