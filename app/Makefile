@@ -249,6 +249,7 @@ include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.side_loading
 
 include $(BOLOS_SDK)/Makefile.rules
 
+
 dep/%.d: %.c Makefile
 
 listvariants:

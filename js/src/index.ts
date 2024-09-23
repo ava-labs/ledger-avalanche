@@ -127,9 +127,7 @@ export default class AvalancheApp {
       chunks.push(serializedPathBuffer)
     }
 
-    const messageBuffer = Buffer.from(message)
-
-    const buffer = Buffer.concat([messageBuffer])
+    const buffer = Buffer.from(message)
     for (let i = 0; i < buffer.length; i += CHUNK_SIZE) {
       let end = i + CHUNK_SIZE
       if (i > buffer.length) {
@@ -151,19 +149,19 @@ export default class AvalancheApp {
 
   private concatMessageAndChangePath(message: Buffer, path?: Array<string>): Buffer {
     // data
-    const msg = Buffer.concat([message])
+    const msg = message
     // no change_path
     if (path === undefined) {
       const buffer = Buffer.alloc(1)
       buffer.writeUInt8(0)
-      return Buffer.concat([buffer, msg])
+      return Buffer.concat([new Uint8Array(buffer), new Uint8Array(msg)])
     } else {
       let buffer = Buffer.alloc(1)
       buffer.writeUInt8(path.length)
       path.forEach(element => {
-        buffer = Buffer.concat([buffer, serializePathSuffix(element)])
+        buffer = Buffer.concat([new Uint8Array(buffer), new Uint8Array(serializePathSuffix(element))])
       })
-      return Buffer.concat([buffer, msg])
+      return Buffer.concat([new Uint8Array(buffer), new Uint8Array(msg)])
     }
   }
 
@@ -230,7 +228,7 @@ export default class AvalancheApp {
 
     //send hash and path
     const first_response = await this.transport
-      .send(CLA, INS.SIGN_HASH, FIRST_MESSAGE, 0x00, Buffer.concat([serializePath(path_prefix), hash]), [LedgerError.NoErrors])
+      .send(CLA, INS.SIGN_HASH, FIRST_MESSAGE, 0x00, Buffer.concat([new Uint8Array(serializePath(path_prefix)), new Uint8Array(hash)]), [LedgerError.NoErrors])
       .then((response: Buffer) => {
         const errorCodeData = response.slice(-2)
         const returnCode = errorCodeData[0] * 256 + errorCodeData[1]
@@ -463,7 +461,7 @@ export default class AvalancheApp {
     const serializedChainID = serializeChainID(chainid)
 
     return this.transport
-      .send(CLA, INS.GET_ADDR, p1, 0, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [LedgerError.NoErrors])
+      .send(CLA, INS.GET_ADDR, p1, 0, Buffer.concat([new Uint8Array(serializedHrp), new Uint8Array(serializedChainID), new Uint8Array(serializedPath)]), [LedgerError.NoErrors])
       .then(processGetAddrResponse, processErrorResponse)
   }
 
@@ -478,7 +476,7 @@ export default class AvalancheApp {
     const serializedChainID = serializeChainID(chainid)
 
     return this.transport
-      .send(CLA, INS.GET_EXTENDED_PUBLIC_KEY, p1, 0, Buffer.concat([serializedHrp, serializedChainID, serializedPath]), [
+      .send(CLA, INS.GET_EXTENDED_PUBLIC_KEY, p1, 0, Buffer.concat([new Uint8Array(serializedHrp), new Uint8Array(serializedChainID), new Uint8Array(serializedPath)]), [
         LedgerError.NoErrors,
       ])
       .then(processGetXPubResponse, processErrorResponse)
@@ -582,7 +580,7 @@ export default class AvalancheApp {
 
     // Slice to remove '0x'
     const addressBuffer = Buffer.from(address.slice(addr_offset), 'hex')
-    addressBuffer.copy(buffer, offset)
+    addressBuffer.copy(new Uint8Array(buffer), offset)
     offset += 20
 
     // Decimals (4 bytes, big endian)
@@ -637,7 +635,7 @@ export default class AvalancheApp {
     buffer.write(collectionName, offset, 'utf8')
     offset += collectionNameLength
 
-    Buffer.from(contractAddress.slice(2), 'hex').copy(buffer, offset) // Remove '0x' from address
+    Buffer.from(contractAddress.slice(2), 'hex').copy(new Uint8Array(buffer), offset) // Remove '0x' from address
     offset += ADDRESS_LENGTH
 
     buffer.writeBigUInt64BE(chainId, offset)
@@ -652,7 +650,7 @@ export default class AvalancheApp {
     buffer.writeUInt8(fakeDerSignature.length, offset)
     offset += SIGNATURE_LENGTH_SIZE
 
-    fakeDerSignature.copy(buffer, offset)
+    fakeDerSignature.copy(new Uint8Array(buffer), offset)
 
     return this.eth.provideNFTInformation(buffer.toString('hex'))
   }
@@ -712,13 +710,13 @@ export default class AvalancheApp {
     buffer.writeUInt8(pluginNameLength, offset)
     offset += PLUGIN_NAME_LENGTH_SIZE
 
-    pluginNameBuffer.copy(buffer, offset)
+    pluginNameBuffer.copy(new Uint8Array(buffer), offset)
     offset += pluginNameLength
 
-    contractAddressBuffer.copy(buffer, offset)
+    contractAddressBuffer.copy(new Uint8Array(buffer), offset)
     offset += contractAddressBuffer.length
 
-    methodSelectorBuffer.copy(buffer, offset)
+    methodSelectorBuffer.copy(new Uint8Array(buffer), offset)
     offset += methodSelectorBuffer.length
 
     buffer.writeBigUInt64BE(BigInt(chainId), offset)
@@ -735,7 +733,7 @@ export default class AvalancheApp {
     buffer.writeUInt8(signatureLength, offset)
     offset += SIGNATURE_LENGTH_SIZE
 
-    signatureBuffer.copy(buffer, offset)
+    signatureBuffer.copy(new Uint8Array(buffer), offset)
 
     return this.eth.setPlugin(buffer.toString('hex'))
   }
