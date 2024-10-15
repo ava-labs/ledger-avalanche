@@ -19,7 +19,7 @@ package ledger_avalanche_go
 import (
 	"fmt"
 
-	ledger_go "github.com/zondax/ledger-go"
+	ledger_go "github.com/felipemadero/ledger-go"
 )
 
 const (

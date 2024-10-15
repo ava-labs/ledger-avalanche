@@ -22,7 +22,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
-	ledger_go "github.com/zondax/ledger-go"
+	ledger_go "github.com/felipemadero/ledger-go"
 )
 
 // FindLedgerAvalancheApp FindLedgerAvalancheUserApp finds a Avax user app running in a ledger device
