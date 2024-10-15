@@ -6,7 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
-	github.com/felipemadero/ledger-go v0.0.0-20241015030130-68f69d0f83c5
+	github.com/felipemadero/ledger-go v0.0.0-20241015033116-016a86b7a8a8
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.9.0
 )

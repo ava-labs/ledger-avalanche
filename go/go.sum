@@ -11,6 +11,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 h1:YLtO71vCjJRCBcrPMtQ9nqBsqpA1
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1/go.mod h1:hyedUtir6IdtD/7lIxGeCxkaw7y45JueMRL4DIyJDKs=
 github.com/felipemadero/ledger-go v0.0.0-20241015030130-68f69d0f83c5 h1:VOAxZchMhdu5C/IBt3a2xgoas/wcrDkiepE+tv/ThJI=
 github.com/felipemadero/ledger-go v0.0.0-20241015030130-68f69d0f83c5/go.mod h1:pN0SnHwpBjRgQXcYGjW9yEFoLJZ62RoeSnruktUJ3R0=
+github.com/felipemadero/ledger-go v0.0.0-20241015033116-016a86b7a8a8 h1:yjzbIYbTIOn8vkxxqotoeatRFaspa6spSv+EyWxwrHo=
+github.com/felipemadero/ledger-go v0.0.0-20241015033116-016a86b7a8a8/go.mod h1:pN0SnHwpBjRgQXcYGjW9yEFoLJZ62RoeSnruktUJ3R0=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
 github.com/golang/protobuf v1.5.4/go.mod h1:lnTiLA8Wa4RWRcIUkrtSVa5nRhsEGBg48fD6rSs7xps=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
