@@ -13,3 +13,9 @@
 [submodule "deps/ledger-secure-sdk"]
 	path = deps/ledger-secure-sdk
 	url = https://github.com/LedgerHQ/ledger-secure-sdk
+[submodule "js"]
+	path = js
+	url = https://github.com/ava-labs/ledger-avalanche-js.git
+[submodule "go"]
+	path = go
+	url = https://github.com/ava-labs/ledger-avalanche-go.git
