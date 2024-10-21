@@ -62,12 +62,6 @@ fn u8_to_hex_array(value: u8) -> [u8; 4] {
 #[cfg_attr(test, derive(Debug))]
 pub struct Message<'b> {
     data: &'b [u8],
-    // This is not necessary at all
-    // but would help us to keep track of bytes read
-    // without the need to change traits definitions
-    // or the usage of something that implements Reader
-    // which is not available in core
-    start: RefCell<usize>,
     chunk_count: u8,
 }
 
@@ -83,14 +77,23 @@ impl<'b> Message<'b> {
         if chunk.len() < MSG_MAX_CHUNK_LEN {
             return 0;
         }
-
         let msg = self.msg();
-
         let mut chunk_len = 0;
-        let start = self.start.take();
-        let mut read = 0;
 
-        for &byte in msg.iter().skip(start) {
+        // Calculate starting point for reading
+        let mut cumulative_chunk_len = 0;
+        let mut start_byte = 0;
+
+        for _ in 0..chunk_idx {
+            while cumulative_chunk_len < MSG_MAX_CHUNK_LEN && start_byte < msg.len() {
+                let byte = msg[start_byte];
+                cumulative_chunk_len += if byte.is_ascii() { 1 } else { HEX_REPR_LEN };
+                start_byte += 1;
+            }
+            cumulative_chunk_len = 0;
+        }
+
+        for &byte in msg.iter().skip(start_byte) {
             let bytes_to_add = if byte.is_ascii_whitespace() {
                 chunk[chunk_len] = b' ';
                 1
@@ -107,14 +110,11 @@ impl<'b> Message<'b> {
             };
 
             chunk_len += bytes_to_add;
-            read += 1;
-            // msg_idx = i + 1;
 
             if chunk_len >= MSG_MAX_CHUNK_LEN {
                 break;
             }
         }
-        self.start.replace(start + read);
 
         chunk_len
     }
@@ -122,9 +122,9 @@ impl<'b> Message<'b> {
     fn render_msg(&self, message: &mut [u8], item_n: u8, page: u8) -> Result<u8, ViewError> {
         let mut chunk = [0u8; MSG_MAX_CHUNK_LEN];
         let len = self.get_chunk(item_n as usize, &mut chunk);
+
         handle_ui_message(&chunk[..len], message, page)
-        // handle_ui_message(&chunk[..len], message, page)
-        //     .map(|pages| pages + (len != MSG_MAX_CHUNK_LEN) as u8)
+            .map(|pages| pages + (len != MSG_MAX_CHUNK_LEN) as u8)
     }
 
     pub fn is_ascii(&self) -> bool {
@@ -136,9 +136,7 @@ impl<'b> Message<'b> {
         for &byte in msg {
             total_len += if byte.is_ascii() { 1 } else { HEX_REPR_LEN };
         }
-        let count = ((total_len + MSG_MAX_CHUNK_LEN - 1) / MSG_MAX_CHUNK_LEN).min(255) as u8;
-
-        count
+        ((total_len + MSG_MAX_CHUNK_LEN - 1) / MSG_MAX_CHUNK_LEN).min(255) as u8
     }
 }
 
@@ -168,7 +166,6 @@ impl<'b> FromBytes<'b> for Message<'b> {
         unsafe {
             addr_of_mut!((*out).data).write(msg);
             addr_of_mut!((*out).chunk_count).write(chunk_count);
-            addr_of_mut!((*out).start).write(RefCell::new(0));
         }
 
         Ok(rem)
@@ -437,11 +434,12 @@ mod tests_message_render {
         }
 
         // Verify the content of the last chunk
+        let last_chunk_len = msg.get_chunk(1, chunk);
+        assert!(std::str::from_utf8(&chunk[..last_chunk_len])
+            .unwrap()
+            .ends_with("91chunk "));
+
         let last_chunk_len = msg.get_chunk(2, chunk);
-        std::println!(
-            "Last chunk: '{}'",
-            std::str::from_utf8(&chunk[..last_chunk_len]).unwrap()
-        );
         assert!(std::str::from_utf8(&chunk[..last_chunk_len])
             .unwrap()
             .ends_with("and format."));
