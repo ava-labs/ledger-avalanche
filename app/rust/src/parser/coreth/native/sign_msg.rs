@@ -19,14 +19,14 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::{
     checked_add,
     handlers::handle_ui_message,
-    parser::{DisplayableItem, FromBytes, Message},
+    parser::{DisplayableItem, FromBytes, Message, MSG_MAX_CHUNK_LEN},
 };
 use bolos::{pic_str, PIC};
 use zemu_sys::ViewError;
 
 const MAX_ETH_MESSAGE_SIZE: usize = 100;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PersonalMsg<'b>(Message<'b>);
 
@@ -57,6 +57,17 @@ impl<'b> DisplayableItem for PersonalMsg<'b> {
         checked_add!(ViewError::Unknown, 1u8, self.0.num_items()?)
     }
 
+    // We must do the same as app-ethereum where, It has an auxiliary buffer where
+    // data to be rendered is copied, this data is "modified" from the original
+    // as follows:
+    // 1. process the message character per character
+    // 2. Printable ascii characters are displayed as it is.
+    // 3. Whitespace characters are displayed as they are
+    // 4. non printable ascii characters are displayed as hex codes: \x00
+    // for example for the null character
+    //
+    // so we are going to do this for every current chunk of data
+
     fn render_item(
         &self,
         item_n: u8,
@@ -64,6 +75,7 @@ impl<'b> DisplayableItem for PersonalMsg<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        let mut ui_buffer = [0; MSG_MAX_CHUNK_LEN];
         match item_n {
             0 => {
                 let label = pic_str!(b"Sign");

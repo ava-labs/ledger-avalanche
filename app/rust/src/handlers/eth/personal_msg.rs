@@ -37,6 +37,18 @@ use crate::{
 use super::utils::parse_bip32_eth;
 use crate::utils::convert_der_to_rs;
 
+extern "C" {
+    /// Prints the buffer in hexadecimal format with a given title.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it calls an external C function.
+    /// Ensure that:
+    /// - `ptr` points to a valid memory region of at least `len` bytes.
+    /// - `title` is a valid null-terminated C string.
+    pub fn print_buffer(ptr: *const u8, len: u16, title: *const u8);
+}
+
 pub struct Sign;
 
 impl Sign {
@@ -89,7 +101,14 @@ impl Sign {
         hasher.update(len_str).map_err(|_| Error::Unknown)?;
         hasher.update(buffer).map_err(|_| Error::Unknown)?;
 
-        hasher.finalize().map_err(|_| Error::Unknown)
+        let hash = hasher.finalize().map_err(|_| Error::Unknown)?;
+
+        #[cfg(not(test))]
+        unsafe {
+            print_buffer(hash.as_ptr(), hash.len() as u16, b"***hash**:\x00".as_ptr());
+        }
+
+        Ok(hash)
     }
 
     #[inline(never)]
