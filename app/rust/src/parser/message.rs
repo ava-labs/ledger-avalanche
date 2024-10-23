@@ -14,11 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
-use core::{
-    cell::{Cell, RefCell},
-    mem::MaybeUninit,
-    ptr::addr_of_mut,
-};
+use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
     number::complete::be_u32,
@@ -29,6 +25,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{error::ParserError, DisplayableItem, FromBytes},
     utils::ApduPanic,
+    zlog,
 };
 use bolos::{pic_str, PIC};
 
@@ -93,6 +90,17 @@ impl<'b> Message<'b> {
             cumulative_chunk_len = 0;
         }
 
+        // We must do the same as app-ethereum where, It has an auxiliary buffer where
+        // data to be rendered is copied, this data is "modified" from the original
+        // as follows:
+        // 1. process the message character per character
+        // 2. Printable ascii characters are displayed as it is.
+        // 3. Whitespace characters are displayed as they are
+        // 4. non printable ascii characters are displayed as hex codes: \x00
+        // for example for the null character
+        //
+        // so we are going to do this for every current chunk of data
+        // and for either eth PersonalMessage eip-191 or avax personal messages
         for &byte in msg.iter().skip(start_byte) {
             let bytes_to_add = if byte.is_ascii_whitespace() {
                 chunk[chunk_len] = b' ';
@@ -101,6 +109,8 @@ impl<'b> Message<'b> {
                 chunk[chunk_len] = byte;
                 1
             } else {
+                // check if current chunk has space for this hex character
+                // which requires 4-bytes
                 let hex = u8_to_hex_array(byte);
                 if chunk_len + HEX_REPR_LEN > MSG_MAX_CHUNK_LEN {
                     break;
@@ -124,7 +134,6 @@ impl<'b> Message<'b> {
         let len = self.get_chunk(item_n as usize, &mut chunk);
 
         handle_ui_message(&chunk[..len], message, page)
-            .map(|pages| pages + (len != MSG_MAX_CHUNK_LEN) as u8)
     }
 
     pub fn is_ascii(&self) -> bool {
@@ -145,7 +154,7 @@ impl<'b> FromBytes<'b> for Message<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<crate::parser::ParserError>> {
-        crate::sys::zemu_log_stack("Message::from_bytes_into\x00");
+        zlog("Message::from_bytes_into\x00");
 
         if input.is_empty() {
             return Err(ParserError::InvalidEthMessage.into());
@@ -185,9 +194,7 @@ impl<'b> DisplayableItem for Message<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        if item_n != 0 {
-            return Err(ViewError::NoData);
-        }
+        zlog("Message::render_item\x00");
         let label = pic_str!(b"Message");
         title[..label.len()].copy_from_slice(label);
         self.render_msg(message, item_n, page)
@@ -311,7 +318,7 @@ mod tests_message_render {
         data
     }
 
-    fn test1(chunk: &mut [u8]) {
+    fn msg_test1(chunk: &mut [u8]) {
         // Test Vector 1: Fits in two items exactly
         let msg1 = create_message(&[b'A'; 200]);
         let msg1 = Message::from_bytes(msg1.as_slice()).unwrap().1;
@@ -327,7 +334,7 @@ mod tests_message_render {
         assert_eq!(&chunk[..len2], &[b'A'; MSG_MAX_CHUNK_LEN]);
     }
 
-    fn test2(chunk: &mut [u8]) {
+    fn msg_test2(chunk: &mut [u8]) {
         // Test Vector 2: Uses 3 items, last one half full
         let msg2 = create_message(&[b'B'; 250]);
         let msg2 = Message::from_bytes(msg2.as_slice()).unwrap().1;
@@ -346,7 +353,7 @@ mod tests_message_render {
         assert_eq!(&chunk[..len3], &[b'B'; 50]);
     }
 
-    fn test3(chunk: &mut [u8]) {
+    fn msg_test3(chunk: &mut [u8]) {
         // Test Vector 3: Non-ASCII characters in the middle
         let mut msg3_content = vec![b'C'; 180];
         msg3_content.extend_from_slice(&[0x80, 0x81, 0x82, 0x83, 0x84]); // 5 non-ASCII chars
@@ -375,7 +382,7 @@ mod tests_message_render {
         assert_eq!(&chunk[..len3], &[b'D'; 15]);
     }
 
-    fn test4(chunk: &mut [u8]) {
+    fn msg_test4(chunk: &mut [u8]) {
         // Create a complex message with 236 bytes
         let mut msg_content = Vec::with_capacity(236);
         msg_content.extend_from_slice(b"Hello, ");
@@ -445,13 +452,28 @@ mod tests_message_render {
             .ends_with("and format."));
     }
 
+    fn msg_test5(chunk: &mut [u8]) {
+        // Test Vector 1: Fits in two items exactly
+        let msg = b"Hello World";
+        let msg1 = create_message(msg.as_ref());
+        let msg1 = Message::from_bytes(msg1.as_slice()).unwrap().1;
+        // We expect three chunks
+        assert_eq!(msg1.num_items().unwrap(), 1);
+        assert_eq!(msg1.chunk_count, 1);
+
+        let len1 = msg1.get_chunk(0, chunk);
+        assert_eq!(len1, msg.len());
+        assert_eq!(&chunk[..len1], msg.as_ref());
+    }
+
     #[test]
     fn test_message_chunking() {
         let mut chunk = [0u8; MSG_MAX_CHUNK_LEN + 1];
 
-        // test1(&mut chunk);
-        // test2(&mut chunk);
-        // test3(&mut chunk);
-        test4(&mut chunk);
+        msg_test1(&mut chunk);
+        msg_test2(&mut chunk);
+        msg_test3(&mut chunk);
+        msg_test4(&mut chunk);
+        msg_test5(&mut chunk);
     }
 }

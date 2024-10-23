@@ -18,6 +18,7 @@ use core::mem::MaybeUninit;
 use crate::handlers::eth::EthUi;
 use crate::handlers::resources::{EthAccessors, ETH_UI};
 use crate::parser::u32_to_str;
+use crate::zlog;
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
