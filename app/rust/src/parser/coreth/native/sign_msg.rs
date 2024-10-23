@@ -20,6 +20,7 @@ use crate::{
     checked_add,
     handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, Message, MSG_MAX_CHUNK_LEN},
+    zlog,
 };
 use bolos::{pic_str, PIC};
 use zemu_sys::ViewError;
@@ -41,7 +42,7 @@ impl<'b> FromBytes<'b> for PersonalMsg<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<crate::parser::ParserError>> {
-        crate::sys::zemu_log_stack("PersonalMessage::from_bytes_into\x00");
+        zlog("PersonalMessage::from_bytes_into\x00");
         // read message len
         let out = out.as_mut_ptr();
 
@@ -57,17 +58,6 @@ impl<'b> DisplayableItem for PersonalMsg<'b> {
         checked_add!(ViewError::Unknown, 1u8, self.0.num_items()?)
     }
 
-    // We must do the same as app-ethereum where, It has an auxiliary buffer where
-    // data to be rendered is copied, this data is "modified" from the original
-    // as follows:
-    // 1. process the message character per character
-    // 2. Printable ascii characters are displayed as it is.
-    // 3. Whitespace characters are displayed as they are
-    // 4. non printable ascii characters are displayed as hex codes: \x00
-    // for example for the null character
-    //
-    // so we are going to do this for every current chunk of data
-
     fn render_item(
         &self,
         item_n: u8,
@@ -75,19 +65,22 @@ impl<'b> DisplayableItem for PersonalMsg<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        let mut ui_buffer = [0; MSG_MAX_CHUNK_LEN];
         match item_n {
-            0 => {
-                let label = pic_str!(b"Sign");
-                title[..label.len()].copy_from_slice(label);
-                let content = pic_str!("PersonalMessage");
-                handle_ui_message(content.as_bytes(), message, page)
-            }
+            0 => zlog("render_title"),
+            1 => zlog("msg_1_chunk"),
+            2 => zlog("msg_2_chunk"),
+            3 => zlog("msg_3_chunk"),
+            _ => zlog("unexpected chunk???"),
+        }
 
-            x @ 1.. => {
-                let idx = x - 1;
-                self.0.render_item(idx, title, message, page)
-            }
+        if item_n == 0 {
+            let label = pic_str!(b"Sign");
+            title[..label.len()].copy_from_slice(label);
+            let content = pic_str!("PersonalMessage");
+            handle_ui_message(content.as_bytes(), message, page)
+        } else {
+            let idx = item_n - 1;
+            self.0.render_item(idx, title, message, page)
         }
     }
 }
