@@ -392,7 +392,6 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
         THROW(APDU_CODE_DATA_INVALID);
     }
 
-    zemu_log("processed_nft_info ok\n");
     set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     *flags |= IO_ASYNCH_REPLY;
@@ -407,7 +406,6 @@ __Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *
     // ontinue with signing contract calls
     *tx = 0;
 
-    zemu_log("provide_erc20_info\n");
     set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     *flags |= IO_ASYNCH_REPLY;
@@ -451,7 +449,6 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
         THROW(APDU_CODE_DATA_INVALID);
     }
 
-    // view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
     view_review_init_progressive(tx_getItem, tx_getNumItems, app_sign_eth);
     view_review_show(REVIEW_TXN);
 
