@@ -234,6 +234,94 @@ describe.each(models)('EthereumOthers [%s] - misc', function (m) {
       const sha3 = require('js-sha3')
       const msgHash = sha3.keccak256(msg)
 
+      console.log('***msgHash:', msgHash.toString('hex'))
+
+      const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
+      const signature_obj = {
+        r: Buffer.from(resp.r, 'hex'),
+        s: Buffer.from(resp.s, 'hex'),
+      }
+
+      const EC = new ec('secp256k1')
+      const ok = EC.verify(msgHash, signature_obj, pubKey, 'hex')
+
+      expect(ok).toEqual(true)
+    } finally {
+      await sim.close()
+    }
+  })
+
+  test.concurrent('EthMsgWithBytes%s', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new Eth(sim.getTransport())
+      // Put the app in expert mode
+      await sim.toggleExpertMode()
+
+      // Initialize array to hold the message content
+      const msgRaw: number[] = []
+
+      // Add content following the same pattern as the Rust test
+      msgRaw.push(...Buffer.from('Hello, ', 'utf8'))
+      msgRaw.push(0x80)
+      msgRaw.push(...Buffer.from('World! ', 'utf8'))
+      msgRaw.push(0x81)
+      msgRaw.push(...Buffer.from('This is a ', 'utf8'))
+      msgRaw.push(0x82)
+      msgRaw.push(...Buffer.from('complex ', 'utf8'))
+      msgRaw.push(0x83)
+      msgRaw.push(...Buffer.from('test ', 'utf8'))
+      msgRaw.push(0x84)
+      msgRaw.push(...Buffer.from('vector with ', 'utf8'))
+      msgRaw.push(0x85, 0x86, 0x87)
+      msgRaw.push(...Buffer.from(' multiple non-ASCII ', 'utf8'))
+      msgRaw.push(0x88, 0x89)
+      msgRaw.push(...Buffer.from(' characters ', 'utf8'))
+      msgRaw.push(0x8a)
+      msgRaw.push(...Buffer.from('scattered ', 'utf8'))
+      msgRaw.push(0x8b)
+      msgRaw.push(...Buffer.from('throughout. ', 'utf8'))
+      msgRaw.push(0x8c, 0x8d, 0x8e, 0x8f)
+      msgRaw.push(...Buffer.from('It should ', 'utf8'))
+      msgRaw.push(0x90)
+      msgRaw.push(...Buffer.from('properly ', 'utf8'))
+      msgRaw.push(0x91)
+      msgRaw.push(...Buffer.from('chunk ', 'utf8'))
+      msgRaw.push(0x92)
+      msgRaw.push(...Buffer.from('and format.', 'utf8'))
+
+      let msgData = Buffer.from(msgRaw)
+
+      const testcase = `${m.prefix.toLowerCase()}-eth-sign-message-with-bytes`
+
+      const currentScreen = await sim.snapshot()
+
+      const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
+      await sim.waitUntilScreenIsNot(currentScreen, 20000)
+      await sim.compareSnapshotsAndApprove('.', testcase)
+
+      const resp = await respReq
+
+      console.log(resp, m.name, msgData)
+
+      expect(resp).toHaveProperty('s')
+      expect(resp).toHaveProperty('r')
+      expect(resp).toHaveProperty('v')
+
+      //Verify signature
+      const resp_addr = await app.getAddress(ETH_DERIVATION, false)
+      console.log(resp_addr, m.name)
+
+      const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
+      const msgLengthString = String(msgData.length)
+      const msg = Buffer.concat([header, Buffer.from(msgLengthString, 'utf8'), msgData])
+
+      const sha3 = require('js-sha3')
+      const msgHash = sha3.keccak256(msg)
+
+      console.log('***msgHash:', msgHash.toString('hex'))
+
       const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
       const signature_obj = {
         r: Buffer.from(resp.r, 'hex'),
