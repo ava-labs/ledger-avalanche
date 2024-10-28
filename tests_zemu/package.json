@@ -12,7 +12,7 @@
   "scripts": {
     "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*|btc.*'",
     "test_dev": "jest",
-    "try": "node try.mjs",
+    "try": "ts-node try.ts",
     "debug": "node debug/debug.mjs debug"
   },
   "dependencies": {
