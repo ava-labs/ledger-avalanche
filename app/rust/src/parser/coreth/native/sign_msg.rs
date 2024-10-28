@@ -19,7 +19,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use crate::{
     checked_add,
     handlers::handle_ui_message,
-    parser::{DisplayableItem, FromBytes, Message, MSG_MAX_CHUNK_LEN},
+    parser::{DisplayableItem, FromBytes, Message},
     zlog,
 };
 use bolos::{pic_str, PIC};
@@ -65,14 +65,6 @@ impl<'b> DisplayableItem for PersonalMsg<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        match item_n {
-            0 => zlog("render_title"),
-            1 => zlog("msg_1_chunk"),
-            2 => zlog("msg_2_chunk"),
-            3 => zlog("msg_3_chunk"),
-            _ => zlog("unexpected chunk???"),
-        }
-
         if item_n == 0 {
             let label = pic_str!(b"Sign");
             title[..label.len()].copy_from_slice(label);
