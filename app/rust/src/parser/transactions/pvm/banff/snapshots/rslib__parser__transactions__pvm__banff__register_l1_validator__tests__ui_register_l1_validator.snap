@@ -1,0 +1,15 @@
+---
+source: src/parser/transactions/pvm/banff/register_l1_validator.rs
+assertion_line: 281
+expression: reduced
+---
+[
+    "RegisterL1Val": "Transaction",
+    "Validator": "NodeID-42CCEK87FaF7gXXffmcB67hvQ3prvtbf2",
+    "Weight": "11357690822530343844",
+    "Balance (AVAX)": "1",
+    "Fee(AVAX)": "1152921505.606846974",
+    "Remaining Owner": "0x7172737475767778797a7b7c7d7e7f8081828384",
+    "Disable Owner": "0x898a8b8c8d8e8f909192939495969798999a9b9c",
+    "Disable Owner": "0x898a8b8c8d8e8f909192939495969798aaaaaaaa",
+]
