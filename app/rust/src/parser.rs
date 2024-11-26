@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -20,18 +20,21 @@ use zemu_sys::ViewError;
 mod address;
 mod asset_id;
 mod avm_output;
+mod chain_id;
 mod constants;
 mod coreth;
 mod defer;
 mod error;
 mod initial_state;
 mod inputs;
+mod l1_validator;
 mod message;
 mod network_info;
 mod node_id;
 mod object_list;
 mod operations;
 mod outputs;
+mod pchain_owner;
 mod pvm_output;
 mod subnet_auth;
 mod subnet_id;

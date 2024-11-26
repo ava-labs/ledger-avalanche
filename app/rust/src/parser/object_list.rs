@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -230,6 +230,26 @@ where
     /// of this method is most likely the cause
     pub unsafe fn set_data_index(&mut self, read: usize) {
         self.read = read;
+    }
+
+    pub fn get(&self, index: usize) -> Option<Obj> {
+        let mut out = MaybeUninit::uninit();
+        let mut this = *self;
+
+        // Reset the internal cursor to the beginning
+        unsafe {
+            this.set_data_index(0);
+        }
+
+        for _ in 0..index {
+            // Attempt to parse the next object
+            if this.parse_next(&mut out).is_none() {
+                return None; // Return None if the index is out of bounds
+            }
+        }
+
+        // Return the object at the specified index
+        Some(unsafe { out.assume_init() })
     }
 }
 

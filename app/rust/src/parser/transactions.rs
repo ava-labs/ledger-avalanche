@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -69,6 +69,14 @@ cfg_if! {
             TransformSubnetTx,
             AddPermissionlessValidatorTx,
             AddPermissionlessDelegatorTx,
+
+            // ACP-77
+            ConvertSubnetToL1Tx,
+            RegisterL1ValidatorTx,
+            SetL1ValidatorWeightTx,
+            DisableL1ValidatorTx,
+            IncreaseL1ValidatorBalanceTx
+
         };
     }
 }
@@ -101,7 +109,8 @@ use super::PVM_ADD_DELEGATOR;
 cfg_if! {
     if #[cfg(feature = "banff")] {
         use super::{
-            PVM_ADD_PERMISSIONLESS_DELEGATOR, PVM_ADD_PERMISSIONLESS_VALIDATOR, PVM_TRANSFORM_SUBNET, PVM_REMOVE_SUBNET_VALIDATOR
+            PVM_ADD_PERMISSIONLESS_DELEGATOR, PVM_ADD_PERMISSIONLESS_VALIDATOR, PVM_TRANSFORM_SUBNET, PVM_REMOVE_SUBNET_VALIDATOR,
+            PVM_CONVERT_SUBNET_L1, PVM_INCREASE_L1_VALIDATOR_BALANCE, PVM_DISABLE_L1_VALIDATOR, PVM_SET_L1_VALIDATOR_WEIGHT, PVM_REGISTER_L1_VALIDATOR
         };
     }
 }
@@ -150,6 +159,16 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
             PVM_ADD_PERMISSIONLESS_VALIDATOR => Transaction__Type::PermissionlessValidator,
             #[cfg(feature = "banff")]
             PVM_ADD_PERMISSIONLESS_DELEGATOR => Transaction__Type::PermissionlessDelegator,
+            #[cfg(feature = "banff")]
+            PVM_CONVERT_SUBNET_L1 => Transaction__Type::ConvertSubnetToL1,
+            #[cfg(feature = "banff")]
+            PVM_REGISTER_L1_VALIDATOR => Transaction__Type::RegisterL1Validator,
+            #[cfg(feature = "banff")]
+            PVM_SET_L1_VALIDATOR_WEIGHT => Transaction__Type::SetL1ValidatorWeight,
+            #[cfg(feature = "banff")]
+            PVM_DISABLE_L1_VALIDATOR => Transaction__Type::DisableL1Validator,
+            #[cfg(feature = "banff")]
+            PVM_INCREASE_L1_VALIDATOR_BALANCE => Transaction__Type::IncreaseL1ValidatorBalance,
             _ => return Err(ParserError::InvalidTransactionType),
         };
 
@@ -190,6 +209,16 @@ pub enum Transaction<'b> {
     PermissionlessValidator(AddPermissionlessValidatorTx<'b>),
     #[cfg(feature = "banff")]
     PermissionlessDelegator(AddPermissionlessDelegatorTx<'b>),
+    #[cfg(feature = "banff")]
+    ConvertSubnetToL1(ConvertSubnetToL1Tx<'b>),
+    #[cfg(feature = "banff")]
+    RegisterL1Validator(RegisterL1ValidatorTx<'b>),
+    #[cfg(feature = "banff")]
+    SetL1ValidatorWeight(SetL1ValidatorWeightTx<'b>),
+    #[cfg(feature = "banff")]
+    DisableL1Validator(DisableL1ValidatorTx<'b>),
+    #[cfg(feature = "banff")]
+    IncreaseL1ValidatorBalance(IncreaseL1ValidatorBalanceTx<'b>),
 }
 
 impl<'b> Transaction<'b> {
@@ -325,6 +354,33 @@ impl<'b> Transaction<'b> {
                 |out| AddPermissionlessDelegatorTx::from_bytes_into(input, out),
                 out,
             ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::ConvertSubnetToL1 => Self::init_as_convert_subnet_to_l_1(
+                |out| ConvertSubnetToL1Tx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::RegisterL1Validator => Self::init_as_register_l_1_validator(
+                |out| RegisterL1ValidatorTx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::SetL1ValidatorWeight => Self::init_as_set_l_1_validator_weight(
+                |out| SetL1ValidatorWeightTx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::DisableL1Validator => Self::init_as_disable_l_1_validator(
+                |out| DisableL1ValidatorTx::from_bytes_into(input, out),
+                out,
+            ),
+            #[cfg(feature = "banff")]
+            Transaction__Type::IncreaseL1ValidatorBalance => {
+                Self::init_as_increase_l_1_validator_balance(
+                    |out| IncreaseL1ValidatorBalanceTx::from_bytes_into(input, out),
+                    out,
+                )
+            }
         }
     }
 
@@ -366,6 +422,16 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::PermissionlessValidator(tx) => tx.num_items(),
             #[cfg(feature = "banff")]
             Self::PermissionlessDelegator(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::ConvertSubnetToL1(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::IncreaseL1ValidatorBalance(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::DisableL1Validator(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::SetL1ValidatorWeight(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::RegisterL1Validator(tx) => tx.num_items(),
         }
     }
 
@@ -406,6 +472,16 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::PermissionlessValidator(tx) => tx.render_item(item_n, title, message, page),
             #[cfg(feature = "banff")]
             Self::PermissionlessDelegator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::ConvertSubnetToL1(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::IncreaseL1ValidatorBalance(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::DisableL1Validator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::SetL1ValidatorWeight(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::RegisterL1Validator(tx) => tx.render_item(item_n, title, message, page),
         }
     }
 }

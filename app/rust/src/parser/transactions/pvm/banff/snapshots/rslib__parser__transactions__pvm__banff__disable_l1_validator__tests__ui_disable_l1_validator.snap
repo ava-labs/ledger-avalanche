@@ -1,0 +1,10 @@
+---
+source: src/parser/transactions/pvm/banff/disable_l1_validator.rs
+assertion_line: 187
+expression: reduced
+---
+[
+    "DisableL1Val": "transaction",
+    "Validator": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "Fee(AVAX)": "1152921506.606846974",
+]

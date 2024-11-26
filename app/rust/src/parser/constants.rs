@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -41,6 +41,13 @@ pub const PVM_REMOVE_SUBNET_VALIDATOR: u32 = 0x00000017;
 pub const PVM_TRANSFORM_SUBNET: u32 = 0x00000018;
 pub const PVM_ADD_PERMISSIONLESS_VALIDATOR: u32 = 0x00000019;
 pub const PVM_ADD_PERMISSIONLESS_DELEGATOR: u32 = 0x0000001A;
+
+pub const PVM_CONVERT_SUBNET_L1: u32 = 0x00000023;
+pub const PVM_REGISTER_L1_VALIDATOR: u32 = 0x00000024;
+pub const PVM_SET_L1_VALIDATOR_WEIGHT: u32 = 0x00000025;
+pub const PVM_DISABLE_L1_VALIDATOR: u32 = 0x00000027;
+pub const PVM_INCREASE_L1_VALIDATOR_BALANCE: u32 = 0x00000026;
+
 //  base tx for p-chain which collides with evm import tx.
 //  we should check chain-id
 pub const PVM_BASE_TX: u32 = 0x00000000;

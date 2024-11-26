@@ -1,0 +1,11 @@
+---
+source: src/parser/transactions/pvm/banff/set_l1_validator_weight.rs
+assertion_line: 204
+expression: reduced
+---
+[
+    "SetL1ValWeight": "Transaction",
+    "Validator": "0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+    "Nonce": "2387509390608836392",
+    "Weight": "2966230773313449776",
+]

@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2022 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -220,7 +220,7 @@ macro_rules! show_ui {
                 Ok(())
             }
             Ok((size, err)) => {
-                use ::core::convert::TryInto;
+                use core::convert::TryInto;
                 *$tx = size as _;
 
                 match err.try_into() {
@@ -235,7 +235,7 @@ macro_rules! show_ui {
         match unsafe { $show } {
             Ok((size, err)) if err == $crate::constants::ApduError::Success as u16 => Ok(size as _),
             Ok((_, err)) => {
-                use ::core::convert::TryInto;
+                use core::convert::TryInto;
 
                 match err.try_into() {
                     Ok(err) => Err(err),
