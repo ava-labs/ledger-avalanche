@@ -6,7 +6,7 @@ expression: reduced
 [
     "ConvertSubnetToL1": "Transaction",
     "Chain ID": "0x3132333435363738212223242526272811121314151617180102030405060708",
-    "Validator Manager": "0x000000000000000000000000000000000000dead",
+    "Validator": "0x000000000000000000000000000000000000dead",
     "Fee(AVAX)": "1152921504.606846975",
     "Validator": "NodeID-2ZbTY9GatRTrfinAoYiYLcf6CvrPAUYgo",
 ]

@@ -5,7 +5,7 @@ expression: reduced
 ---
 [
     "IncreaseL1ValBal": "Transaction",
-    "Validation ID": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "Validator": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "Amount(AVAX)": "1",
     "Fee(AVAX)": "1152921505.606846974",
 ]

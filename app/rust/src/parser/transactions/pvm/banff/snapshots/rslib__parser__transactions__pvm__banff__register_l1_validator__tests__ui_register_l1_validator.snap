@@ -1,6 +1,6 @@
 ---
 source: src/parser/transactions/pvm/banff/register_l1_validator.rs
-assertion_line: 281
+assertion_line: 282
 expression: reduced
 ---
 [
@@ -9,7 +9,7 @@ expression: reduced
     "Weight": "11357690822530343844",
     "Balance (AVAX)": "1",
     "Fee(AVAX)": "1152921505.606846974",
-    "Remaining Owner": "0x7172737475767778797a7b7c7d7e7f8081828384",
-    "Disable Owner": "0x898a8b8c8d8e8f909192939495969798999a9b9c",
-    "Disable Owner": "0x898a8b8c8d8e8f909192939495969798aaaaaaaa",
+    "Rem Addr": "0x7172737475767778797a7b7c7d7e7f8081828384",
+    "Disabler": "0x898a8b8c8d8e8f909192939495969798999a9b9c",
+    "Disabler": "0x898a8b8c8d8e8f909192939495969798aaaaaaaa",
 ]
