@@ -422,10 +422,15 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::PermissionlessValidator(tx) => tx.num_items(),
             #[cfg(feature = "banff")]
             Self::PermissionlessDelegator(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
             Self::ConvertSubnetToL1(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
             Self::IncreaseL1ValidatorBalance(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
             Self::DisableL1Validator(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
             Self::SetL1ValidatorWeight(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
             Self::RegisterL1Validator(tx) => tx.num_items(),
         }
     }
@@ -467,10 +472,15 @@ impl<'b> DisplayableItem for Transaction<'b> {
             Self::PermissionlessValidator(tx) => tx.render_item(item_n, title, message, page),
             #[cfg(feature = "banff")]
             Self::PermissionlessDelegator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
             Self::ConvertSubnetToL1(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
             Self::IncreaseL1ValidatorBalance(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
             Self::DisableL1Validator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
             Self::SetL1ValidatorWeight(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
             Self::RegisterL1Validator(tx) => tx.render_item(item_n, title, message, page),
         }
     }
