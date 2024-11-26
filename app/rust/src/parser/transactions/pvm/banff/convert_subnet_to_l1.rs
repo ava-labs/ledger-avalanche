@@ -160,7 +160,7 @@ impl<'b> DisplayableItem for ConvertSubnetToL1Tx<'b> {
             }
             1 => self.chain_id.render_item(0, title, message, page),
             2 => {
-                let label = pic_str!(b"Validator Manager");
+                let label = pic_str!(b"Validator");
                 title[..label.len()].copy_from_slice(label);
 
                 // prefix

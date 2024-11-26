@@ -117,7 +117,7 @@ impl<'b> DisplayableItem for SetL1ValidatorWeightTx<'b> {
             }
             1 => {
                 let prefix = pic_str!(b"0x"!);
-                let label = pic_str!(b"Validation ID");
+                let label = pic_str!(b"Validator");
                 title[..label.len()].copy_from_slice(label);
 
                 // prefix

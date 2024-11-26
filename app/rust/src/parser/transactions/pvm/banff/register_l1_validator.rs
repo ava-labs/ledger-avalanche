@@ -189,7 +189,7 @@ impl<'b> DisplayableItem for RegisterL1ValidatorTx<'b> {
                 handle_ui_message(fee_buff, message, page)
             }
             x if x >= 5 && x < (5 + n_remain_addresses as u8) => {
-                let label = pic_str!(b"Remaining Owner");
+                let label = pic_str!(b"Rem Addr");
                 title[..label.len()].copy_from_slice(label);
 
                 let mut out = [0; ADDRESS_LEN * 2 + 2];
@@ -207,7 +207,7 @@ impl<'b> DisplayableItem for RegisterL1ValidatorTx<'b> {
             x if x >= (5 + n_remain_addresses as u8)
                 && x < (5 + n_remain_addresses as u8 + n_disable_addresses as u8) =>
             {
-                let label = pic_str!(b"Disable Owner");
+                let label = pic_str!(b"Disabler");
                 title[..label.len()].copy_from_slice(label);
 
                 let mut out = [0; ADDRESS_LEN * 2 + 2];
