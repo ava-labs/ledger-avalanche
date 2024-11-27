@@ -24,3 +24,18 @@ pub use add_permissionless_validator::*;
 
 mod add_permissionless_delegator;
 pub use add_permissionless_delegator::*;
+
+mod convert_subnet_to_l1;
+pub use convert_subnet_to_l1::*;
+
+mod increase_l1_validator_balance;
+pub use increase_l1_validator_balance::*;
+
+mod disable_l1_validator;
+pub use disable_l1_validator::*;
+
+mod set_l1_validator_weight;
+pub use set_l1_validator_weight::*;
+
+mod register_l1_validator;
+pub use register_l1_validator::*;
