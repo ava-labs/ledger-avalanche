@@ -30,7 +30,7 @@ describe.each(models)('Standard', function (m) {
     }
   })
 
-  test.concurrent('MainMenu', async function () {
+  test('MainMenu', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -41,7 +41,7 @@ describe.each(models)('Standard', function (m) {
     }
   })
 
-  test.concurrent('AppVersion', async function () {
+  test('AppVersion', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
