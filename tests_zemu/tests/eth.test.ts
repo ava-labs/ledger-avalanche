@@ -99,6 +99,42 @@ const SIGN_TEST_DATA: TestData[] = [
   },
 ]
 
+const ETH_MSG_RAW: number[] = [
+  ...Buffer.from('Hello, ', 'utf8'),
+  0x80,
+  ...Buffer.from('World! ', 'utf8'),
+  0x81,
+  ...Buffer.from('This is a ', 'utf8'),
+  0x82,
+  ...Buffer.from('complex ', 'utf8'),
+  0x83,
+  ...Buffer.from('test ', 'utf8'),
+  0x84,
+  ...Buffer.from('vector with ', 'utf8'),
+  0x85,
+  0x86,
+  0x87,
+  ...Buffer.from(' multiple non-ASCII ', 'utf8'),
+  0x88,
+  0x89,
+  ...Buffer.from(' characters ', 'utf8'),
+  0x8a,
+  ...Buffer.from('scattered ', 'utf8'),
+  0x8b,
+  ...Buffer.from('throughout. ', 'utf8'),
+  0x8c,
+  0x8d,
+  0x8e,
+  0x8f,
+  ...Buffer.from('It should ', 'utf8'),
+  0x90,
+  ...Buffer.from('properly ', 'utf8'),
+  0x91,
+  ...Buffer.from('chunk ', 'utf8'),
+  0x92,
+  ...Buffer.from('and format.', 'utf8'),
+]
+
 jest.setTimeout(60000)
 
 // Nanos does not support erc721
@@ -196,8 +232,10 @@ describe.each(models)('EthereumOthers [%s] - misc', function (m) {
       await sim.close()
     }
   })
+})
 
-  test.concurrent('EthPersonalMsg%s', async function () {
+describe.each(models)('Ethereum Personal Message [%s] - misc', function (m) {
+  test.concurrent('eth_msg sign%s', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -205,13 +243,15 @@ describe.each(models)('EthereumOthers [%s] - misc', function (m) {
       // Put the app in expert mode
       await sim.toggleExpertMode()
 
-      let msgData = Buffer.from('Hello World', 'utf8')
+      // Initialize array to hold the message content
+      let msgData = Buffer.from(ETH_MSG_RAW)
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-message`
 
       const currentScreen = await sim.snapshot()
 
       const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
+
       await sim.waitUntilScreenIsNot(currentScreen, 20000)
       await sim.compareSnapshotsAndApprove('.', testcase)
 
@@ -222,28 +262,46 @@ describe.each(models)('EthereumOthers [%s] - misc', function (m) {
       expect(resp).toHaveProperty('s')
       expect(resp).toHaveProperty('r')
       expect(resp).toHaveProperty('v')
+    } finally {
+      await sim.close()
+    }
+  })
 
-      //Verify signature
-      const resp_addr = await app.getAddress(ETH_DERIVATION, false)
-      console.log(resp_addr, m.name)
+  test.concurrent('eth_msg sign complex nav approve%s', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new Eth(sim.getTransport())
+      // Put the app in expert mode
+      await sim.toggleExpertMode()
 
-      const header = Buffer.from('\x19Ethereum Signed Message:\n', 'utf8')
-      const msgLengthString = String(msgData.length)
-      const msg = Buffer.concat([header, Buffer.from(msgLengthString, 'utf8'), msgData])
+      // Initialize array to hold the message content
+      let msgData = Buffer.from(ETH_MSG_RAW)
 
-      const sha3 = require('js-sha3')
-      const msgHash = sha3.keccak256(msg)
+      const testcase = `${m.prefix.toLowerCase()}-eth-sign-message-complex_nav`
 
-      const pubKey = Buffer.from(resp_addr.publicKey, 'hex')
-      const signature_obj = {
-        r: Buffer.from(resp.r, 'hex'),
-        s: Buffer.from(resp.s, 'hex'),
+      const currentScreen = await sim.snapshot()
+
+      const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
+
+      if (m.name === 'nanos') {
+        await sim.navigateAndCompareSnapshots('.', testcase, [5, -4, 3, 0, 0])
+      } else if (m.name === 'nanox' || m.name === 'nanosp') {
+        await sim.navigateAndCompareSnapshots('.', testcase, [9, -4, 3, 0, 0])
+      } else {
+        // skip menu is not available for larger devices
+        // like stax and flex
+        await sim.waitUntilScreenIsNot(currentScreen, 20000)
+        await sim.compareSnapshotsAndApprove('.', testcase)
       }
 
-      const EC = new ec('secp256k1')
-      const ok = EC.verify(msgHash, signature_obj, pubKey, 'hex')
+      const resp = await respReq
 
-      expect(ok).toEqual(true)
+      console.log(resp, m.name, msgData)
+
+      expect(resp).toHaveProperty('s')
+      expect(resp).toHaveProperty('r')
+      expect(resp).toHaveProperty('v')
     } finally {
       await sim.close()
     }

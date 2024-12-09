@@ -89,7 +89,9 @@ impl Sign {
         hasher.update(len_str).map_err(|_| Error::Unknown)?;
         hasher.update(buffer).map_err(|_| Error::Unknown)?;
 
-        hasher.finalize().map_err(|_| Error::Unknown)
+        let hash = hasher.finalize().map_err(|_| Error::Unknown)?;
+
+        Ok(hash)
     }
 
     #[inline(never)]

@@ -138,7 +138,7 @@ function check_legacy_signature(hexTx: string, signature: any, chainId: number |
 }
 
 describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
-  test.concurrent.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
+  test.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))

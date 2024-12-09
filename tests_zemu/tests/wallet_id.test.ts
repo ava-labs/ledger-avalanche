@@ -21,7 +21,7 @@ import AvalancheApp from '@zondax/ledger-avalanche-app'
 jest.setTimeout(200000)
 
 describe.each(models)('WalletID [%s] - wallet id', function (m) {
-  test.concurrent('getWalletId', async function () {
+  test('getWalletId', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -38,7 +38,7 @@ describe.each(models)('WalletID [%s] - wallet id', function (m) {
     }
   })
 
-  test.concurrent('showWalletId', async function () {
+  test('showWalletId', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m, true))

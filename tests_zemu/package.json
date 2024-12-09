@@ -12,14 +12,14 @@
   "scripts": {
     "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*|btc.*'",
     "test_dev": "jest",
-    "try": "node try.mjs",
+    "try": "ts-node try.ts",
     "debug": "node debug/debug.mjs debug"
   },
   "dependencies": {
     "@ethersproject/wallet": "^5.7.0",
     "@types/node": "^22.10.0",
     "@zondax/ledger-avalanche-app": "link:../js",
-    "@zondax/zemu": "0.52.0",
+    "@zondax/zemu": "0.53.0",
     "ethers": "^6.13.4"
   },
   "devDependencies": {
