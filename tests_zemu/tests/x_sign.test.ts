@@ -49,7 +49,7 @@ const FULL_SIGN_TEST_DATA = [
 ]
 
 describe.each(models)('X_Sign[%s]; sign', function (m) {
-  test.concurrent.each(FULL_SIGN_TEST_DATA)('[full] sign x-chain $name', async function ({ name, op }) {
+  test.each(FULL_SIGN_TEST_DATA)('[full] sign x-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -58,8 +58,8 @@ describe.each(models)('X_Sign[%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
-      const signers = ["0/1", "5/8"];
-      const respReq = app.sign(ROOT_PATH, signers, msg);
+      const signers = ['0/1', '5/8']
+      const respReq = app.sign(ROOT_PATH, signers, msg)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
@@ -86,13 +86,12 @@ describe.each(models)('X_Sign[%s]; sign', function (m) {
         const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
         expect(signatureOk).toEqual(true)
       }
-
     } finally {
       await sim.close()
     }
   })
 
-  test.concurrent.each(LITE_SIGN_TEST_DATA)('sign x-chain $name', async function ({ name, op }) {
+  test.each(LITE_SIGN_TEST_DATA)('sign x-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -101,8 +100,8 @@ describe.each(models)('X_Sign[%s]; sign', function (m) {
 
       const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
 
-      const signers = ["0/1", "5/8"];
-      const respReq = app.sign(ROOT_PATH, signers, msg);
+      const signers = ['0/1', '5/8']
+      const respReq = app.sign(ROOT_PATH, signers, msg)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
@@ -129,10 +128,8 @@ describe.each(models)('X_Sign[%s]; sign', function (m) {
         const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
         expect(signatureOk).toEqual(true)
       }
-
     } finally {
       await sim.close()
     }
   })
 })
-

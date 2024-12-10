@@ -38,7 +38,7 @@ const SIGN_TEST_DATA = [
 jest.setTimeout(200000)
 
 describe.each(models)('C_Sign[%s]; sign', function (m) {
-  test.concurrent.each(SIGN_TEST_DATA)('sign c-chain $name transaction', async function ({ name, op }) {
+  test.each(SIGN_TEST_DATA)('sign c-chain $name transaction', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))

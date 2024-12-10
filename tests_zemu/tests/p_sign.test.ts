@@ -124,7 +124,7 @@ const FULL_SIGN_TEST_DATA = [
 ]
 
 describe.each(models)('P_Sign[$name]; sign', function (m) {
-  test.concurrent.each(FULL_SIGN_TEST_DATA)('[full] sign p-chain $name', async function ({ name, op }) {
+  test.each(FULL_SIGN_TEST_DATA)('[full] sign p-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
 
     try {
@@ -171,7 +171,7 @@ describe.each(models)('P_Sign[$name]; sign', function (m) {
     }
   })
 
-  test.concurrent.each(LITE_SIGN_TEST_DATA)('sign p-chain $name', async function ({ name, op }) {
+  test.each(LITE_SIGN_TEST_DATA)('sign p-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))

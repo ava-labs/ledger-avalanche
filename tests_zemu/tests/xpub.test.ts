@@ -21,11 +21,15 @@ import AvalancheApp from '@zondax/ledger-avalanche-app'
 jest.setTimeout(200000)
 
 const defaultOptions = (model: any) => {
-  return { ...commonOpts(model, true), approveKeyword: isTouchDevice(model.name) ? 'Confirm' : '', approveAction: ButtonKind.DynamicTapButton }
+  return {
+    ...commonOpts(model, true),
+    approveKeyword: isTouchDevice(model.name) ? 'Confirm' : '',
+    approveAction: ButtonKind.DynamicTapButton,
+  }
 }
 
 describe.each(models)('ExtPubkey[%s]', function (m) {
-  test.concurrent('getPubkey %s', async function () {
+  test('getPubkey %s', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -43,7 +47,7 @@ describe.each(models)('ExtPubkey[%s]', function (m) {
     }
   })
 
-  test.concurrent('showExtAddr', async function () {
+  test('showExtAddr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))

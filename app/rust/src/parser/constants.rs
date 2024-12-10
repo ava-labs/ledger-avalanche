@@ -92,5 +92,12 @@ pub const CB58_CHECKSUM_LEN: usize = 4;
 pub const U32_SIZE: usize = std::mem::size_of::<u32>();
 pub const U64_SIZE: usize = std::mem::size_of::<u64>();
 
+// The maximun lenght of a message chunk
+// to be displayed on the device. each chunk
+// would contain a formatted part of the original message
+// this applies only in cases where the received
+// message is in ASCII format
+pub const MSG_MAX_CHUNK_LEN: usize = 100;
+
 // types
 pub type OutputIdx = u64;
