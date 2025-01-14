@@ -295,7 +295,6 @@ impl Viewable for SignUI {
             Ok(k) => k,
         };
 
-        // let (flags, sig_size, mut sig) = match Sign::sign(path, &self.hash[..]) {
         let (flags, sig_size, mut sig) = match Sign::sign(path, self.tx.msg()) {
             Err(e) => return (0, e as _),
             Ok(k) => k,

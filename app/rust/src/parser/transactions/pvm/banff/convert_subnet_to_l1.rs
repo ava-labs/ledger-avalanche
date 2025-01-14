@@ -43,6 +43,8 @@ pub struct ConvertSubnetToL1Tx<'b> {
     pub subnet_auth: SubnetAuth<'b>,
 }
 
+pub const BASE_FIELDS_LEN: u8 = 4;
+
 impl<'b> ConvertSubnetToL1Tx<'b> {
     /// Sums the balances of all L1 validators in the list.
     fn sum_validators_balances(&self) -> Result<u64, ParserError> {
@@ -136,7 +138,7 @@ impl<'b> FromBytes<'b> for ConvertSubnetToL1Tx<'b> {
 impl<'b> DisplayableItem for ConvertSubnetToL1Tx<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx description, chain_id, address, fee, validators
-        let num_validators = 4u8 + self.num_validators() as u8;
+        let num_validators = BASE_FIELDS_LEN + self.num_validators() as u8;
         Ok(num_validators)
     }
 

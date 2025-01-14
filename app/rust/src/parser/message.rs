@@ -184,7 +184,6 @@ impl<'b> FromBytes<'b> for Message<'b> {
 impl<'b> DisplayableItem for Message<'b> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(self.chunk_count)
-        // Ok(1)
     }
 
     fn render_item(
