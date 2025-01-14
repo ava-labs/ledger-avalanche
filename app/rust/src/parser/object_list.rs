@@ -243,9 +243,7 @@ where
 
         for _ in 0..index {
             // Attempt to parse the next object
-            if this.parse_next(&mut out).is_none() {
-                return None; // Return None if the index is out of bounds
-            }
+            this.parse_next(&mut out)?;
         }
 
         // Return the object at the specified index

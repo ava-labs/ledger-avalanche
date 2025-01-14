@@ -215,7 +215,7 @@ impl<'b> DisplayableItem for RegisterL1ValidatorTx<'b> {
                 out[..prefix.len()].copy_from_slice(&prefix[..]);
 
                 sz += hex_encode(
-                    self.disable_owner.addresses[x as usize - 5 - n_remain_addresses as usize],
+                    self.disable_owner.addresses[x as usize - 5 - n_remain_addresses],
                     &mut out[prefix.len()..],
                 )
                 .map_err(|_| ViewError::Unknown)?;

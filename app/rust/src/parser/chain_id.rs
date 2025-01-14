@@ -49,7 +49,7 @@ impl<'b> FromBytes<'b> for ChainId<'b> {
         //good ptr and no uninit reads
         let out = out.as_mut_ptr();
         unsafe {
-            addr_of_mut!((*out).0).write(&chain_id);
+            addr_of_mut!((*out).0).write(chain_id);
         }
 
         Ok(rem)
