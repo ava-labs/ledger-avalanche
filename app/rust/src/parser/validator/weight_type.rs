@@ -5,7 +5,7 @@ use zemu_sys::ViewError;
 
 use crate::{
     handlers::handle_ui_message,
-    parser::{nano_avax_to_fp_str, u64_to_str, DisplayableItem, FromBytes},
+    parser::{nano_avax_to_fp_str, u64_to_str, DisplayableItem, FromBytes, U64_FORMATTED_SIZE},
 };
 
 pub trait StakeTrait {
@@ -56,14 +56,13 @@ impl DisplayableItem for Stake {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         match item_n {
             0 => {
                 let label = pic_str!(b"Total stake(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let num =
                     nano_avax_to_fp_str(self.0, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
@@ -114,14 +113,13 @@ impl DisplayableItem for Weight {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         match item_n {
             0 => {
                 let label = pic_str!(b"Weight");
                 title[..label.len()].copy_from_slice(label);
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL];
+                let mut buffer = [0; U64_FORMATTED_SIZE];
                 let num = u64_to_str(self.0, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
 
                 handle_ui_message(num, message, page)

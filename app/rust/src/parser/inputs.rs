@@ -130,9 +130,9 @@ impl<'b> DisplayableItem for TransferableInput<'b> {
             hash::{Hasher, Sha256},
             pic_str, PIC,
         };
-        use lexical_core::{write as itoa, Number};
+        use itoa::Buffer;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut itoa_buffer = Buffer::new();
 
         match item_n {
             0 => {
@@ -147,9 +147,9 @@ impl<'b> DisplayableItem for TransferableInput<'b> {
             1 => {
                 let title_content = pic_str!(b"Utxo index");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.utxo_index, &mut buffer);
+                let buffer = itoa_buffer.format(self.utxo_index);
 
-                handle_ui_message(buffer, message, page)
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
 
             2 => self.asset_id.render_item(0, title, message, page),

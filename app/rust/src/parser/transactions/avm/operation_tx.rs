@@ -17,7 +17,7 @@ use crate::checked_add;
 use crate::handlers::handle_ui_message;
 use crate::parser::{
     nano_avax_to_fp_str, AvmOutput, BaseTxFields, ChainId, DisplayableItem, FromBytes, Header,
-    ObjectList, ParserError, TransferableOp, AVM_OPERATION_TX, MAX_ADDRESS_ENCODED_LEN,
+    ObjectList, ParserError, TransferableOp, AVM_OPERATION_TX, MAX_ADDRESS_ENCODED_LEN, U64_FORMATTED_SIZE
 };
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::bytes::complete::tag;
@@ -211,7 +211,6 @@ impl<'b> DisplayableItem for OperationTx<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         if item_n == 0 {
             let title_content = pic_str!(b"Operation");
@@ -235,7 +234,7 @@ impl<'b> DisplayableItem for OperationTx<'b> {
                 let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
 
                 let fee_str =

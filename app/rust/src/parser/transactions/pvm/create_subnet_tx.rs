@@ -23,7 +23,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, SECPOutputOwners, PVM_CREATE_SUBNET,
+        PvmOutput, SECPOutputOwners, PVM_CREATE_SUBNET, U64_FORMATTED_SIZE
     },
 };
 
@@ -106,7 +106,6 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         let owner_items = self.owners.num_items()?;
         let start_owner = 1;
@@ -125,7 +124,7 @@ impl<'b> DisplayableItem for CreateSubnetTx<'b> {
             x if x == end_owner => {
                 let label = pic_str!(b"Fee(AVAX)");
                 title[..label.len()].copy_from_slice(label);
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_buff =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
