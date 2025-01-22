@@ -23,7 +23,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         u8_to_str, AvmOutput, BaseTxFields, DisplayableItem, FromBytes, Header, InitialState,
-        ObjectList, ParserError, AVM_CREATE_ASSET_TX,
+        ObjectList, ParserError, AVM_CREATE_ASSET_TX, U64_FORMATTED_SIZE, U8_FORMATTED_SIZE
     },
 };
 
@@ -129,9 +129,8 @@ impl<'b> DisplayableItem for CreateAssetTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
 
         match item_n {
             0 => {
@@ -154,7 +153,7 @@ impl<'b> DisplayableItem for CreateAssetTx<'b> {
                 let label = pic_str!(b"Denomination");
                 title[..label.len()].copy_from_slice(label);
 
-                let mut buffer = [0; u8::FORMATTED_SIZE + 2];
+                let mut buffer = [0; U8_FORMATTED_SIZE + 2];
                 let num = u8_to_str(self.denomination, &mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?;
 

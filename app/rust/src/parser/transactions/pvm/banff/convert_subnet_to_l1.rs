@@ -25,7 +25,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         l1_validator::L1Validator, nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes,
-        Header, ObjectList, ParserError, PvmOutput, SubnetAuth, SubnetId, PVM_CONVERT_SUBNET_L1,
+        Header, ObjectList, ParserError, PvmOutput, SubnetAuth, SubnetId, PVM_CONVERT_SUBNET_L1, U64_FORMATTED_SIZE
     },
 };
 
@@ -150,8 +150,7 @@ impl<'b> DisplayableItem for ConvertSubnetToL1Tx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::pic_str;
-        use lexical_core::Number;
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
         let prefix = pic_str!(b"0x"!);
         match item_n {
             0 => {

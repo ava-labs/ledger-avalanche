@@ -21,9 +21,8 @@ mod time;
 pub use self::time::timestamp_to_str_date;
 pub use path_wrapper::{parse_path_list, PathWrapper};
 
-use crate::parser::{ParserError, CB58_CHECKSUM_LEN, NANO_AVAX_DECIMAL_DIGITS};
+use crate::parser::{ParserError, CB58_CHECKSUM_LEN, NANO_AVAX_DECIMAL_DIGITS, U64_FORMATTED_SIZE, U32_FORMATTED_SIZE, U8_FORMATTED_SIZE};
 use crate::sys::PIC;
-use lexical_core::Number;
 
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub enum IntStrToFpStrError {
@@ -48,7 +47,7 @@ pub const fn cb58_output_len<const I: usize>() -> usize {
 
 pub fn nano_avax_to_fp_str(value: u64, out_str: &mut [u8]) -> Result<&mut [u8], ParserError> {
     // the number plus '0.'
-    if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
+    if out_str.len() < U64_FORMATTED_SIZE + 2 {
         return Err(ParserError::UnexpectedBufferEnd);
     }
 
@@ -63,10 +62,17 @@ macro_rules! num_to_str {
     // but lets do it later.
     ($int_type:ty, $_name: ident) => {
         pub fn $_name(number: $int_type, output: &mut [u8]) -> Result<&mut [u8], ParserError> {
-            if output.len() < <$int_type>::FORMATTED_SIZE_DECIMAL {
+            let required_size = match std::any::TypeId::of::<$int_type>() {
+                // Match the type to the corresponding constant
+                id if id == std::any::TypeId::of::<u64>() => U64_FORMATTED_SIZE,
+                id if id == std::any::TypeId::of::<u32>() => U32_FORMATTED_SIZE,
+                id if id == std::any::TypeId::of::<u8>() => U8_FORMATTED_SIZE,
+                _ => return Err(ParserError::UnexpectedBufferEnd), // Handle unexpected types
+            };
+
+            if output.len() < required_size {
                 return Err(ParserError::UnexpectedBufferEnd);
             }
-
             if number == 0 {
                 output[0] = b'0';
                 return Ok(&mut output[..1]);
@@ -244,8 +250,7 @@ macro_rules! checked_add {
 
 #[cfg(test)]
 mod tests {
-    use super::{intstr_to_fpstr_inplace, u64_to_str};
-    use lexical_core::Number;
+    use super::{intstr_to_fpstr_inplace, u64_to_str, U64_FORMATTED_SIZE};
     use rand::Rng;
     use std::{format, string::String, vec::Vec};
 
@@ -295,7 +300,7 @@ mod tests {
 
     #[test]
     fn int_to_str() {
-        let mut output = [0; u64::FORMATTED_SIZE_DECIMAL];
+        let mut output = [0; U64_FORMATTED_SIZE];
         let test = create_number_table();
         for (number, dat) in test {
             let res = {

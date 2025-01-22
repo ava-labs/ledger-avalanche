@@ -18,7 +18,7 @@ use crate::{
     parser::{
         error::ParserError, nano_avax_to_fp_str, timestamp_to_str_date, Address, DisplayableItem,
         FromBytes, Output, OutputType, SECPOutputOwners, SECPTransferOutput,
-        FORMATTED_STR_DATE_LEN,
+        FORMATTED_STR_DATE_LEN, U64_FORMATTED_SIZE
     },
 };
 use core::ops::Deref;
@@ -149,7 +149,6 @@ impl<'b> DisplayableItem for PvmOutput<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         let num_inner_items = self.output.num_items()?;
         match item_n {
@@ -173,7 +172,7 @@ impl<'b> DisplayableItem for PvmOutput<'b> {
                 let avax_until = PIC::new(AVAX_UNTIL).into_inner();
                 let mut content = [0; AVAX_UNTIL.len()
                     + FORMATTED_STR_DATE_LEN
-                    + u64::FORMATTED_SIZE_DECIMAL
+                    + U64_FORMATTED_SIZE
                     + 2];
                 // write the amount
                 let amount = self.amount().ok_or(ViewError::Unknown)?;

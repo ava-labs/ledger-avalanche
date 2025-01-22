@@ -101,3 +101,6 @@ pub const MSG_MAX_CHUNK_LEN: usize = 100;
 
 // types
 pub type OutputIdx = u64;
+pub const U64_FORMATTED_SIZE: usize = 20;
+pub const U32_FORMATTED_SIZE: usize = 10;
+pub const U8_FORMATTED_SIZE: usize = 3;

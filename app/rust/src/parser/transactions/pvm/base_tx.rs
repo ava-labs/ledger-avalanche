@@ -24,7 +24,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, MAX_ADDRESS_ENCODED_LEN, PVM_BASE_TX, PVM_BASE_TX_TRANSFER,
+        PvmOutput, MAX_ADDRESS_ENCODED_LEN, PVM_BASE_TX, PVM_BASE_TX_TRANSFER, U64_FORMATTED_SIZE
     },
 };
 
@@ -79,7 +79,6 @@ impl<'b> DisplayableItem for PvmBaseTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::Number;
 
         if item_n == 0 {
             // render export title and network info
@@ -94,7 +93,7 @@ impl<'b> DisplayableItem for PvmBaseTx<'b> {
             x if x == outputs_num_items => {
                 let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_str =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;

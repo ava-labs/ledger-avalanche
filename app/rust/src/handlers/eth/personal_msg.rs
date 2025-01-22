@@ -17,7 +17,7 @@ use core::mem::MaybeUninit;
 
 use crate::handlers::eth::EthUi;
 use crate::handlers::resources::{EthAccessors, ETH_UI};
-use crate::parser::u32_to_str;
+use crate::parser::{u32_to_str, U32_FORMATTED_SIZE};
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
     hash::{Hasher, Keccak},
@@ -68,7 +68,6 @@ impl Sign {
 
     #[inline(never)]
     fn digest(buffer: &[u8]) -> Result<[u8; Self::SIGN_HASH_SIZE], Error> {
-        use lexical_core::Number;
 
         let mut hasher = {
             let mut k = MaybeUninit::uninit();
@@ -77,7 +76,7 @@ impl Sign {
             //safe: initialized
             unsafe { k.assume_init() }
         };
-        let mut len_str = [0u8; u32::FORMATTED_SIZE_DECIMAL];
+        let mut len_str = [0u8; U32_FORMATTED_SIZE];
 
         let len_str =
             u32_to_str(buffer.len() as u32, &mut len_str).map_err(|_| Error::ExecutionError)?;

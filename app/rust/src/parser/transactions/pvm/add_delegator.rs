@@ -25,7 +25,7 @@ use crate::{
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList,
         OutputIdx, ParserError, PvmOutput, SECPOutputOwners, Stake, TransferableOutput, Validator,
-        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR,
+        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_DELEGATOR, U64_FORMATTED_SIZE,
     },
 };
 
@@ -366,9 +366,8 @@ impl<'b> AddDelegatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
 
         match_ranges! {

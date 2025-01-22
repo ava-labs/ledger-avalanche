@@ -3,7 +3,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, PVM_SET_L1_VALIDATOR_WEIGHT,
+        PvmOutput, PVM_SET_L1_VALIDATOR_WEIGHT, U64_FORMATTED_SIZE
     },
 };
 use bolos::PIC;
@@ -105,9 +105,10 @@ impl<'b> DisplayableItem for SetL1ValidatorWeightTx<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::pic_str;
-        use lexical_core::{write as itoa, Number};
-        let mut buffer = [0; u64::FORMATTED_SIZE + 2];
+        use itoa::Buffer;
 
+        let mut itoa_buffer = Buffer::new();
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
         match item_n {
             0 => {
                 let label = pic_str!(b"SetL1ValWeight");
@@ -133,14 +134,14 @@ impl<'b> DisplayableItem for SetL1ValidatorWeightTx<'b> {
             2 => {
                 let label = pic_str!(b"Nonce");
                 title[..label.len()].copy_from_slice(label);
-                let buffer = itoa(self.nonce, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.nonce);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             3 => {
                 let label = pic_str!(b"Weight");
                 title[..label.len()].copy_from_slice(label);
-                let buffer = itoa(self.weight, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.weight);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             4 => {
                 let label = pic_str!(b"Fee(AVAX)");

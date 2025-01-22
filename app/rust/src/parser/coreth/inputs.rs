@@ -103,10 +103,11 @@ impl<'b> DisplayableItem for EVMInput<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+           use itoa::Buffer;
 
         let expert = is_app_mode_expert();
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut itoa_buffer = Buffer::new(); // Reusable buffer for integer to string conversion
+
 
         match item_n as usize {
             0 => {
@@ -119,9 +120,8 @@ impl<'b> DisplayableItem for EVMInput<'b> {
             2 => {
                 let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.amount, &mut buffer);
-
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.amount);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             3 if expert => {
                 //does it make sense to render all EVM input addrs
@@ -134,9 +134,8 @@ impl<'b> DisplayableItem for EVMInput<'b> {
             4 if expert => {
                 let title_content = pic_str!(b"Nonce");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.nonce, &mut buffer);
-
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.amount);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             _ => Err(ViewError::NoData),
         }

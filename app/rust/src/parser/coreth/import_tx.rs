@@ -29,7 +29,7 @@ use crate::{
     parser::{
         coreth::outputs::EVMOutput, nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes,
         Header, ObjectList, OutputIdx, ParserError, TransferableInput, BLOCKCHAIN_ID_LEN,
-        EVM_IMPORT_TX,
+        EVM_IMPORT_TX, U64_FORMATTED_SIZE,
     },
 };
 
@@ -135,12 +135,11 @@ impl<'b> ImportTx<'b> {
     }
 
     fn fee_to_fp_str(&self, out_str: &'b mut [u8]) -> Result<&mut [u8], ParserError> {
-        use lexical_core::Number;
 
         let fee = self.fee()?;
 
         // the number plus '0.'
-        if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
+        if out_str.len() < U64_FORMATTED_SIZE + 2 {
             return Err(ParserError::UnexpectedBufferEnd);
         }
 
@@ -270,7 +269,6 @@ impl<'b> DisplayableItem for ImportTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::Number;
 
         if item_n == 0 {
             let title_content = pic_str!(b"ImportTx");
@@ -287,7 +285,7 @@ impl<'b> DisplayableItem for ImportTx<'b> {
             x if x == (outputs_num_items + 1) => {
                 let title_content = pic_str!(b"Fee");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee_str = self
                     .fee_to_fp_str(&mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?;

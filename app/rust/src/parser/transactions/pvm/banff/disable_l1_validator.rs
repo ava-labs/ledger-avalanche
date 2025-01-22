@@ -24,7 +24,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, SubnetAuth, PVM_DISABLE_L1_VALIDATOR,
+        PvmOutput, SubnetAuth, PVM_DISABLE_L1_VALIDATOR, U64_FORMATTED_SIZE
     },
 };
 
@@ -100,8 +100,7 @@ impl<'b> DisplayableItem for DisableL1ValidatorTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
 
         match item_n {
             0 => {
