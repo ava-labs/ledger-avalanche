@@ -48,7 +48,7 @@ avalanche-app-derive = { path = "../../app-derive" }
 arrayvec = { version = "0.7", default-features = false }
 arrayref = "0.3.6"
 nom = { version = "7.1.1", default-features = false }
-bytemuck = { version = "1" }
+bytemuck = { version = "1.15.0" }
 lexical-core = { version = "0.7", features = [
     "libm",
 ], default-features = false }
