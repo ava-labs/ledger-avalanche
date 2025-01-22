@@ -86,7 +86,7 @@ impl<'b> DisplayableItem for PvmImportTx<'b> {
         if item_n == 0 {
             let title_content = pic_str!(b"ImportTx");
             title[..title_content.len()].copy_from_slice(title_content);
-            let value_content = pic_str!(b"Sending");
+            let value_content = pic_str!(b"Importing in P-Chain");
             return handle_ui_message(&value_content[..], message, page);
         }
 

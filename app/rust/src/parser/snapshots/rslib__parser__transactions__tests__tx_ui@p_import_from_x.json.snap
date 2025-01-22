@@ -1,10 +1,11 @@
 ---
-source: app/src/parser/transactions.rs
+source: src/parser/transactions.rs
+assertion_line: 583
 expression: reduced
-input_file: app/src/parser/testvectors/p_import_from_x.json
+input_file: src/parser/testvectors/p_import_from_x.json
 ---
 [
-    "ImportTx": "Sending",
+    "ImportTx": "Importing in P-Chain",
     "Amount": "19999.999 AVAX to ",
     "Address": "fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t",
     "From ": "X Chain",
