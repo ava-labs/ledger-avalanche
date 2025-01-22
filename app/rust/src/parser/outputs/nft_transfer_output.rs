@@ -24,7 +24,7 @@ use zemu_sys::ViewError;
 use crate::{
     checked_add,
     handlers::handle_ui_message,
-    parser::{u32_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{u32_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN, U32_FORMATTED_SIZE},
     utils::hex_encode,
 };
 
@@ -130,9 +130,8 @@ impl<'a> DisplayableItem for NFTTransferOutput<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
-        let mut buffer = [0; u32::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U32_FORMATTED_SIZE + 2];
 
         match item_n as usize {
             0 => {

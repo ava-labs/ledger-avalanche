@@ -5,7 +5,7 @@ use crate::{
     parser::{
         pchain_owner::PchainOwner, proof_of_possession::BLS_SIGNATURE_LEN, BaseTxFields,
         DisplayableItem, FromBytes, Header, NodeId, ParserError, PvmOutput, SubnetId,
-        PVM_REGISTER_L1_VALIDATOR,
+        PVM_REGISTER_L1_VALIDATOR, U64_FORMATTED_SIZE
     },
 };
 use bolos::PIC;
@@ -149,8 +149,9 @@ impl<'b> DisplayableItem for RegisterL1ValidatorTx<'b> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::pic_str;
-        use lexical_core::{write as itoa, Number};
-        let mut buffer = [0; u64::FORMATTED_SIZE + 2];
+        use itoa::Buffer;
+        let mut itoa_buffer = Buffer::new();
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
 
         let n_remain_addresses = self.remaining_balance_owner.addresses.len();
         let n_disable_addresses = self.disable_owner.addresses.len();
@@ -166,8 +167,8 @@ impl<'b> DisplayableItem for RegisterL1ValidatorTx<'b> {
             2 => {
                 let label = pic_str!(b"Weight");
                 title[..label.len()].copy_from_slice(label);
-                let buffer = itoa(self.weight, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.weight);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             3 => {
                 let label = pic_str!(b"Balance (AVAX)");

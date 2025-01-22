@@ -22,7 +22,7 @@ use crate::{
     handlers::{eth::u256, handle_ui_message},
     parser::{
         intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ParserError, EIP1559_TX, EIP2930_TX,
-        U64_SIZE,
+        U64_SIZE, U64_FORMATTED_SIZE,
     },
 };
 
@@ -132,14 +132,13 @@ pub fn render_chain_id(
     page: u8,
     chain_id: &[u8],
 ) -> Result<u8, ViewError> {
-    use lexical_core::Number;
 
     let title_content = b"Chain ID";
     title[..title_content.len()].copy_from_slice(title_content);
 
     if chain_id.len() <= core::mem::size_of::<u64>() {
         let chain_id = bytes_to_u64(chain_id).map_err(|_| ViewError::NoData)?;
-        let mut chain_id_str = [0u8; u64::FORMATTED_SIZE_DECIMAL + 1];
+        let mut chain_id_str = [0u8; U64_FORMATTED_SIZE + 1];
 
         crate::parser::u64_to_str(chain_id, &mut chain_id_str).map_err(|_| ViewError::NoData)?;
 

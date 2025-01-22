@@ -29,7 +29,7 @@ use crate::{
     parser::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, u32_to_str, AssetId, BaseTxFields,
         DisplayableItem, FromBytes, Header, ParserError, PvmOutput, SubnetAuth, SubnetId,
-        DELEGATION_FEE_DIGITS, PVM_TRANSFORM_SUBNET,
+        DELEGATION_FEE_DIGITS, PVM_TRANSFORM_SUBNET, U64_FORMATTED_SIZE
     },
     utils::is_app_mode_expert,
 };
@@ -155,67 +155,68 @@ impl<'b> TransformSubnetTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        use lexical_core::{write as itoa, Number};
+        use itoa::Buffer;
 
         //+2 for 0. in case of decimals and +1 for % in percentages
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + 1];
+        let mut itoa_buffer = Buffer::new();
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
 
         match item_n {
             0 => {
                 let label = pic_str!(b"Initial supply");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.initial_supply, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.initial_supply);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             1 => {
                 let label = pic_str!(b"Maximum supply");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.maximum_supply, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.maximum_supply);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             2 => {
                 let label = pic_str!(b"Min consumption");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.min_consumption_rate, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.min_consumption_rate);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             3 => {
                 let label = pic_str!(b"Max consumption");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.max_consumption_rate, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.max_consumption_rate);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             4 => {
                 let label = pic_str!(b"Min valid. stake");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.min_validator_stake, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.min_validator_stake);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             5 => {
                 let label = pic_str!(b"Max valid. stake");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.max_validator_stake, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.max_validator_stake);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             6 => {
                 let label = pic_str!(b"Min stake time");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.min_stake_duration, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.min_stake_duration);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             7 => {
                 let label = pic_str!(b"Max stake time");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.max_stake_duration, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.max_stake_duration);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             8 => {
                 let label = pic_str!(b"Min delegate fee");
@@ -236,16 +237,16 @@ impl<'b> TransformSubnetTx<'b> {
                 let label = pic_str!(b"Min delega. stake");
                 title[..label.len()].copy_from_slice(label);
 
-                let buffer = itoa(self.min_delegator_stake, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.min_delegator_stake);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             10 => {
                 let label = pic_str!(b"Max weight fact.");
                 title[..label.len()].copy_from_slice(label);
 
                 // Determine how to display properly
-                let buffer = itoa(self.max_validator_weight_factor, &mut buffer);
-                handle_ui_message(buffer, message, page)
+                let buffer = itoa_buffer.format(self.max_validator_weight_factor);
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             11 => {
                 let label = pic_str!(b"Uptime req.");
@@ -299,7 +300,6 @@ impl<'b> DisplayableItem for TransformSubnetTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        use lexical_core::Number;
 
         let expert = is_app_mode_expert();
 
@@ -319,7 +319,7 @@ impl<'b> DisplayableItem for TransformSubnetTx<'b> {
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee_buff =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(fee_buff, message, page)

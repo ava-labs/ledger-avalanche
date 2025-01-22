@@ -21,7 +21,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, SubnetAuth, SubnetId, Validator, Weight, PVM_ADD_SUBNET_VALIDATOR,
+        PvmOutput, SubnetAuth, SubnetId, Validator, Weight, PVM_ADD_SUBNET_VALIDATOR, U64_FORMATTED_SIZE
     },
 };
 
@@ -87,7 +87,6 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         if item_n == 0 {
             let label = pic_str!(b"SubnetValidator");
@@ -114,7 +113,7 @@ impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee_buff =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
                 handle_ui_message(fee_buff, message, page)

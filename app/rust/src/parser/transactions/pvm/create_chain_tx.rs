@@ -24,7 +24,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         cb58_output_len, nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header,
-        ParserError, PvmOutput, SubnetAuth, SubnetId, CB58_CHECKSUM_LEN, PVM_CREATE_CHAIN,
+        ParserError, PvmOutput, SubnetAuth, SubnetId, CB58_CHECKSUM_LEN, PVM_CREATE_CHAIN, U64_FORMATTED_SIZE
     },
     utils::{bs58_encode, hex_encode, ApduPanic},
 };
@@ -140,7 +140,6 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
             hash::{Hasher, Sha256},
             pic_str, PIC,
         };
-        use lexical_core::Number;
 
         let mut hex_buf = [0; Sha256::DIGEST_LEN * 2];
         match item_n {
@@ -184,7 +183,7 @@ impl<'b> DisplayableItem for CreateChainTx<'b> {
                 let label = pic_str!(b"Fee(AVAX)");
                 title[..label.len()].copy_from_slice(label);
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_buff =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;

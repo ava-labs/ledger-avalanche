@@ -29,6 +29,7 @@ use crate::{
     parser::{
         nano_avax_to_fp_str, ChainId, DisplayableItem, FromBytes, Header, ObjectList, OutputIdx,
         ParserError, TransferableOutput, BLOCKCHAIN_ID_LEN, EVM_EXPORT_TX, MAX_ADDRESS_ENCODED_LEN,
+        U64_FORMATTED_SIZE,
     },
 };
 
@@ -145,12 +146,11 @@ impl<'b> ExportTx<'b> {
     }
 
     fn fee_to_fp_str(&self, out_str: &'b mut [u8]) -> Result<&mut [u8], ParserError> {
-        use lexical_core::Number;
 
         let fee = self.fee()?;
 
         // the number plus '0.'
-        if out_str.len() < u64::FORMATTED_SIZE_DECIMAL + 2 {
+        if out_str.len() < U64_FORMATTED_SIZE + 2 {
             return Err(ParserError::UnexpectedBufferEnd);
         }
         nano_avax_to_fp_str(fee, out_str)
@@ -330,7 +330,6 @@ impl<'b> DisplayableItem for ExportTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::Number;
 
         if item_n == 0 {
             // render export title and network info
@@ -346,7 +345,7 @@ impl<'b> DisplayableItem for ExportTx<'b> {
                 let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee_str = self
                     .fee_to_fp_str(&mut buffer[..])
                     .map_err(|_| ViewError::Unknown)?;

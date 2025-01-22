@@ -21,7 +21,7 @@ use crate::checked_add;
 use crate::handlers::handle_ui_message;
 use crate::parser::{
     nano_avax_to_fp_str, AvmOutput, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-    MAX_ADDRESS_ENCODED_LEN, TRANSFER_TX,
+    MAX_ADDRESS_ENCODED_LEN, TRANSFER_TX, U64_FORMATTED_SIZE
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -152,7 +152,6 @@ impl<'b> DisplayableItem for Transfer<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         if item_n == 0 {
             let label = pic_str!(b"Transfer");
@@ -174,7 +173,7 @@ impl<'b> DisplayableItem for Transfer<'b> {
                 title[..t.len()].copy_from_slice(t);
 
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                let mut content = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut content = [0; U64_FORMATTED_SIZE + 2];
                 let fee =
                     nano_avax_to_fp_str(fee, &mut content[..]).map_err(|_| ViewError::Unknown)?;
 

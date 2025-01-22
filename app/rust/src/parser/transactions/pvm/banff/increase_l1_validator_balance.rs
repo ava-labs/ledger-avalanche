@@ -18,7 +18,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, BaseTxFields, DisplayableItem, FromBytes, Header, ParserError,
-        PvmOutput, PVM_INCREASE_L1_VALIDATOR_BALANCE,
+        PvmOutput, PVM_INCREASE_L1_VALIDATOR_BALANCE, U64_FORMATTED_SIZE
     },
 };
 use bolos::PIC;
@@ -106,9 +106,8 @@ impl<'b> DisplayableItem for IncreaseL1ValidatorBalanceTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::pic_str;
-        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
 
         match item_n {
             0 => {

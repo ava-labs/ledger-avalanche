@@ -25,7 +25,7 @@ use crate::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
         BaseTxFields, DisplayableItem, FromBytes, Header, ObjectList, OutputIdx, ParserError,
         PvmOutput, SECPOutputOwners, Stake, SubnetId, TransferableOutput, Validator,
-        DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_VALIDATOR,
+        DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN, PVM_ADD_PERMISSIONLESS_VALIDATOR, U64_FORMATTED_SIZE
     },
 };
 
@@ -438,9 +438,8 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
         let num_addresses = (self.validator_rewards_owner.num_addresses()
             + self.delegator_rewards_owner.num_addresses()) as u8;
 

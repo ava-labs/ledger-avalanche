@@ -92,9 +92,9 @@ impl<'a> DisplayableItem for SECPTransferInput<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use itoa::Buffer;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut itoa_buffer = Buffer::new();
 
         let num_indices = self.address_indices.len();
 
@@ -108,9 +108,9 @@ impl<'a> DisplayableItem for SECPTransferInput<'a> {
             1 => {
                 let title_content = pic_str!(b"Amount");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.amount, &mut buffer);
+                let buffer = itoa_buffer.format(self.amount);
 
-                handle_ui_message(buffer, message, page)
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
             i @ 2.. if i < num_indices + 2 => {
                 // normalize the index into something between 0 and num_indices
@@ -121,9 +121,9 @@ impl<'a> DisplayableItem for SECPTransferInput<'a> {
 
                 let (_, index) = self.parse_index(item_n).map_err(|_| ViewError::Unknown)?;
 
-                let buffer = itoa(index, &mut buffer);
+                let buffer = itoa_buffer.format(index);
 
-                handle_ui_message(buffer, message, page)
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
 
             _ => Err(ViewError::NoData),
