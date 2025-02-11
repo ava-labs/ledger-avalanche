@@ -30,9 +30,6 @@ ifneq ($(TARGET_NAME), TARGET_NANOS)
 FEATURE_ETH = 1
 endif
 
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
-include $(BOLOS_SDK)/Makefile.defines
-
 ## Display whether this is a production build or for internal use
 ifeq ($(PRODUCTION_BUILD), 1)
     $(info ************ PRODUCTION_BUILD  = [PRODUCTION BUILD])
@@ -47,6 +44,9 @@ include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.app_testing
 ifndef COIN
 COIN = AVAX
 endif
+
+VARIANT_PARAM=COIN
+VARIANT_VALUES=$(COIN)
 
 include $(CURDIR)/Makefile.version
 
@@ -76,14 +76,18 @@ else
 	APP_STACK_MIN_SIZE := 2000
 endif
 
+# Enable QR code display for all devices
+ENABLE_NBGL_QRCODE ?= 1
+
+RUST_TARGET:=thumbv6m-none-eabi
+
+$(info ************ RUST_TARGET  = [$(RUST_TARGET)])
+
+include $(BOLOS_SDK)/Makefile.target
+
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.devices
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
-$(info ICONNAME  = [$(ICONNAME)])
-
-ifndef ICONNAME
-$(error ICONNAME is not set)
-endif
 
 # Add SDK BLAKE2b
 DEFINES += HAVE_HASH HAVE_BLAKE2
@@ -221,17 +225,23 @@ endif
 
 CFLAGS += -DAPPVERSION_M=$(APPVERSION_M) -DAPPVERSION_N=$(APPVERSION_N) -DAPPVERSION_P=$(APPVERSION_P)
 
-AS := $(GCCPATH)arm-none-eabi-gcc
-AFLAGS +=
-
-LD := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS += -z muldefs
 LDLIBS += -lm -lgcc -lc
 LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
 
 APP_SOURCE_PATH += $(CURDIR)/rust/include
-APP_CUSTOM_LINK_DEPENDENCIES := rust
 
+include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
+
+$(info TARGET_NAME  = [$(TARGET_NAME)])
+$(info ICONNAME  = [$(ICONNAME)])
+
+ifndef ICONNAME
+$(error ICONNAME is not set)
+endif
+
+# make rust a prerequisite for all object files
+$(OBJECT_FILES): | rust
 
 .PHONY: rust
 rust:
@@ -245,15 +255,8 @@ rust_clean:
 
 clean: rust_clean
 
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.side_loading
-
-include $(BOLOS_SDK)/Makefile.rules
-
-
 dep/%.d: %.c Makefile
 
-listvariants:
-	@echo VARIANTS COIN AVAX
 
 .PHONY: version
 version:
