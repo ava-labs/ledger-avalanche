@@ -280,7 +280,7 @@ __Z_INLINE void handleSignAvaxMsg(volatile uint32_t *flags, volatile uint32_t *t
     }
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_msg);
-    view_review_show(REVIEW_TXN);
+    view_review_show(REVIEW_MSG);
     *flags |= IO_ASYNCH_REPLY;
 }
 
@@ -450,7 +450,7 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
     }
 
     view_review_init_progressive(tx_getItem, tx_getNumItems, app_sign_eth);
-    view_review_show(REVIEW_TXN);
+    view_review_show(REVIEW_MSG);
 
     *flags |= IO_ASYNCH_REPLY;
 }
