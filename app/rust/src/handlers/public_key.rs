@@ -26,7 +26,7 @@ mod ui;
 pub use ui::{AddrUI, AddrUIInitError, AddrUIInitializer};
 
 use crate::{
-    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH},
+    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH, CURVE_SECP256K1},
     crypto,
     dispatcher::ApduHandler,
     sys::{self, Error as SysError},
@@ -133,18 +133,25 @@ impl GetPublicKey {
         addr_ui: *mut u8,
         addr_ui_len: u16,
     ) -> Result<(), Error> {
-        crate::zlog("GetPublicKey::fill_address\n\x00");
-
         if addr_ui.is_null() || addr_ui_len != core::mem::size_of::<MaybeUninit<AddrUI>>() as u16 {
+            crate::zlog("fill_address_invalid\n\x00");
             return Err(Error::DataInvalid);
         }
+
+        crate::zlog("GetPublicKey::fill_address\n\x00");
 
         *tx = 0;
 
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
+        let curve_type = buffer.p2();
 
-        let hrp = Self::get_hrp(&mut cdata)?;
-        let chainid = Self::get_chainid(&mut cdata)?;
+        let (hrp, chainid) = if curve_type == CURVE_SECP256K1 {
+            // Original secp256k1 flow
+            (Self::get_hrp(&mut cdata)?, Self::get_chainid(&mut cdata)?)
+        } else {
+            // Ed25519 flow - empty hrp and chainid
+            (&[][..], &[][..])
+        };
 
         let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
             .map_err(|_| Error::DataInvalid)?;
@@ -180,9 +187,15 @@ impl ApduHandler for GetPublicKey {
         let req_confirmation = buffer.p1() >= 1;
 
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
+        let curve_type = buffer.p2();
 
-        let hrp = Self::get_hrp(&mut cdata)?;
-        let chainid = Self::get_chainid(&mut cdata)?;
+        let (hrp, chainid) = if curve_type == CURVE_SECP256K1 {
+            // Original secp256k1 flow
+            (Self::get_hrp(&mut cdata)?, Self::get_chainid(&mut cdata)?)
+        } else {
+            // Ed25519 flow - empty hrp and chainid
+            (&[][..], &[][..])
+        };
 
         let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
             .map_err(|_| Error::DataInvalid)?;
