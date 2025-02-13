@@ -308,7 +308,7 @@ mod tests {
     }
 
     fn keypair() -> (SecretKey<MAX_BIP32_PATH_DEPTH>, PublicKey) {
-        let secret = crypto::SecretKey::new(crypto::Curve, path());
+        let secret = crypto::SecretKey::new(crypto::Curve::Secp256K1, path());
 
         let public = secret.public().unwrap();
         (secret, public)

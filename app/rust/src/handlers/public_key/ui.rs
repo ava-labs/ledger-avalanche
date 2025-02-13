@@ -21,8 +21,7 @@ use crate::{
     },
     crypto,
     handlers::{handle_ui_message, resources::PATH},
-    sys::{
-        self, bech32, crypto::{bip32::BIP32Path, CHAIN_CODE_LEN}, hash::{Hasher, Ripemd160, Sha256}, ViewError, Viewable, PIC
+    sys::{bech32, crypto::{bip32::BIP32Path, CHAIN_CODE_LEN}, hash::{Hasher, Ripemd160, Sha256}, ViewError, Viewable, PIC
     },
     utils::{bs58_encode, rs_strlen, ApduPanic},
 };
@@ -284,6 +283,8 @@ impl AddrUI {
     /// Will write the formatted address to `out` and return the length written
     pub fn addr(&self, out: &mut [u8; AddrUI::MAX_ADDR_SIZE]) -> Result<usize, Error> {
         if self.curve_type == CURVE_SECP256K1 {
+            crate::zlog("addr - secp256k1\n\x00");
+
         let mut len =
             self.chain_id_into(arrayref::array_mut_ref![out, 0, AddrUI::MAX_CHAIN_CB58_LEN]);
 
@@ -301,10 +302,28 @@ impl AddrUI {
 
             Ok(len)
         } else {
+            crate::zlog("addr - ed25519\n\x00");
+
+            // ED25519 HVM address format
+            const ED25519_AUTH_ID: u8 = 0x00;
+            
             let pkey = self.pkey(None)?;
             let pkey_bytes = pkey.as_ref();
-            out[..pkey_bytes.len()].copy_from_slice(pkey_bytes);
-            Ok(pkey_bytes.len())
+            
+            // Create address bytes: [auth_id, sha256(pubkey)]
+            out[0] = ED25519_AUTH_ID;
+            let mut sha256_hash = [0u8; 32];
+            Sha256::digest_into(&pkey_bytes[..32], &mut sha256_hash)
+                .map_err(|_| Error::ExecutionError)?;
+            out[1..33].copy_from_slice(&sha256_hash);
+            
+            // Calculate checksum (last 4 bytes of sha256(address_bytes))
+            let mut checksum = [0u8; 32];
+            Sha256::digest_into(&out[..33], &mut checksum)
+                .map_err(|_| Error::ExecutionError)?;
+            out[33..37].copy_from_slice(&checksum[28..32]);
+            
+            Ok(37) // 1 byte auth_id + 32 bytes address + 4 bytes checksum
         }
     }
 }
@@ -347,10 +366,17 @@ impl Viewable for AddrUI {
         let pkey_bytes = pkey.as_ref();
         let mut tx = 0;
 
-        out[tx] = pkey_bytes.len() as u8;
-        tx += 1;
-        out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
-        tx += pkey_bytes.len();
+        if self.curve_type == CURVE_SECP256K1 {
+            out[tx] = pkey_bytes.len() as u8;
+            tx += 1;
+            out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
+            tx += pkey_bytes.len();
+        } else {
+            out[tx] = 32;
+            tx += 1;
+            out[tx..][..32].copy_from_slice(&pkey_bytes[..32]);
+            tx += 32;
+        }
 
         match self.hash(&pkey) {
             Ok(hash) => {
