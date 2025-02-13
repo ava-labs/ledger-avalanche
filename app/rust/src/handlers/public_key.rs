@@ -56,7 +56,7 @@ impl GetPublicKey {
         chaincode: Option<&mut [u8; 32]>,
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetAddres::new_key\x00");
-        crypto::Curve
+        crypto::Curve::Secp256K1
             .to_secret(path)
             .into_public_into(chaincode, out)?;
 
