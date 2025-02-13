@@ -63,7 +63,7 @@ impl Sign {
         use crate::handlers::public_key::GetPublicKey;
 
         let mut out = MaybeUninit::uninit();
-        GetPublicKey::new_key_into(path, &mut out, None).map_err(|_| Error::ExecutionError)?;
+        GetPublicKey::new_key_into(path, &mut out, None, 0).map_err(|_| Error::ExecutionError)?;
 
         // get the uncompressed pubkey for the provided path
         let pkey = unsafe { out.assume_init() };
