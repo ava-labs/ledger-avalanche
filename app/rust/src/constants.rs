@@ -107,6 +107,8 @@ pub const WALLET_ID_HMAC_KEY: &str = "wallet-id";
 pub const FIRST_MESSAGE: u8 = 0x01;
 pub const NEXT_MESSAGE: u8 = 0x03;
 pub const LAST_MESSAGE: u8 = 0x02;
+pub const CURVE_SECP256K1: u8 = 0x00;
+pub const CURVE_ED25519: u8 = 0x01;
 
 pub const SIGN_HASH_TX_SIZE: usize = 32 + MAX_BIP32_PATH_DEPTH * core::mem::size_of::<u32>();
 
