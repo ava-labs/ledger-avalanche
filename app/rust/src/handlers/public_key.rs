@@ -58,7 +58,7 @@ impl GetPublicKey {
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetAddres::new_key\x00");
 
-        if curve_type == 0 {
+        if curve_type == CURVE_SECP256K1 {
             crypto::Curve::Secp256K1
                 .to_secret(path)
                 .into_public_into(chaincode, out)?;
@@ -67,12 +67,18 @@ impl GetPublicKey {
                 .to_secret(path)
                 .into_public_into(chaincode, out)?;
         }
-        
+
 
         //this is safe because it's initialized
         // also unwrapping is fine because the ptr is valid
         let pkey = unsafe { out.as_mut_ptr().as_mut().apdu_unwrap() };
-        pkey.compress()
+
+        // Only compress secp256k1 keys
+        if curve_type == CURVE_SECP256K1 {
+            pkey.compress()?;
+        }
+
+        Ok(())
     }
 
     /// Attempts to read a hrp in the slice, advancing the slice and returning the HRP (or default)
@@ -159,7 +165,7 @@ impl GetPublicKey {
         // In this step we initialized and store in memory(allocated from C) our
         // UI object for later address visualization
         let ui = unsafe { &mut *addr_ui.cast::<MaybeUninit<AddrUI>>() };
-        Self::initialize_ui(hrp, chainid, bip32_path, ui, 0)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, ui, curve_type)?;
 
         //safe since it's all initialized now
         let ui = unsafe { ui.assume_init_mut() };

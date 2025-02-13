@@ -33,7 +33,7 @@ impl PublicKey {
     pub fn compress(&mut self) -> Result<(), Error> {
         match self.curve() {
             Curve::Secp256K1 => self.0.compress(),
-            Curve::Ed25519 => self.0.compress(),
+            Curve::Ed25519 => Ok(()),
         }
     }
 
