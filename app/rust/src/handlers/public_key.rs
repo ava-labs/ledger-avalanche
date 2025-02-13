@@ -54,11 +54,20 @@ impl GetPublicKey {
         path: &sys::crypto::bip32::BIP32Path<B>,
         out: &mut MaybeUninit<crypto::PublicKey>,
         chaincode: Option<&mut [u8; 32]>,
+        curve_type: u8,
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetAddres::new_key\x00");
-        crypto::Curve::Secp256K1
-            .to_secret(path)
-            .into_public_into(chaincode, out)?;
+
+        if curve_type == 0 {
+            crypto::Curve::Secp256K1
+                .to_secret(path)
+                .into_public_into(chaincode, out)?;
+        } else {
+            crypto::Curve::Ed25519
+                .to_secret(path)
+                .into_public_into(chaincode, out)?;
+        }
+        
 
         //this is safe because it's initialized
         // also unwrapping is fine because the ptr is valid
@@ -97,13 +106,21 @@ impl GetPublicKey {
         chain_id: &[u8],
         path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
         ui: &mut MaybeUninit<AddrUI>,
+        curve_type: u8,
     ) -> Result<(), Error> {
         let mut ui_initializer = AddrUIInitializer::new(ui);
 
-        ui_initializer
-            .with_path(path)
-            .with_chain(chain_id)?
-            .with_hrp(hrp)?;
+        if curve_type == 0 {
+            ui_initializer
+                .with_path(path)
+                .with_chain(chain_id)?
+                .with_hrp(hrp)?
+                .with_curve(0);
+        } else {
+            ui_initializer
+                .with_path(path)
+                .with_curve(1);
+        }
 
         ui_initializer.finalize().map_err(|(_, err)| err)?;
 
@@ -116,7 +133,7 @@ impl GetPublicKey {
         addr_ui: *mut u8,
         addr_ui_len: u16,
     ) -> Result<(), Error> {
-        sys::zemu_log_stack("GetPublicKey::fill_address\x00");
+        crate::zlog("GetPublicKey::fill_address\n\x00");
 
         if addr_ui.is_null() || addr_ui_len != core::mem::size_of::<MaybeUninit<AddrUI>>() as u16 {
             return Err(Error::DataInvalid);
@@ -135,7 +152,7 @@ impl GetPublicKey {
         // In this step we initialized and store in memory(allocated from C) our
         // UI object for later address visualization
         let ui = unsafe { &mut *addr_ui.cast::<MaybeUninit<AddrUI>>() };
-        Self::initialize_ui(hrp, chainid, bip32_path, ui)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, ui, 0)?;
 
         //safe since it's all initialized now
         let ui = unsafe { ui.assume_init_mut() };
@@ -171,7 +188,7 @@ impl ApduHandler for GetPublicKey {
             .map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
-        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui, 0)?;
 
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };
