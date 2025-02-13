@@ -17,7 +17,7 @@
 use crate::{
     constants::{
         chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE,
-        CHAIN_ID_LEN, MAX_BIP32_PATH_DEPTH,
+        CHAIN_ID_LEN, MAX_BIP32_PATH_DEPTH, CURVE_SECP256K1
     },
     crypto,
     handlers::{handle_ui_message, resources::PATH},
@@ -283,6 +283,7 @@ impl AddrUI {
 
     /// Will write the formatted address to `out` and return the length written
     pub fn addr(&self, out: &mut [u8; AddrUI::MAX_ADDR_SIZE]) -> Result<usize, Error> {
+        if self.curve_type == CURVE_SECP256K1 {
         let mut len =
             self.chain_id_into(arrayref::array_mut_ref![out, 0, AddrUI::MAX_CHAIN_CB58_LEN]);
 
@@ -298,7 +299,13 @@ impl AddrUI {
         )
         .apdu_unwrap();
 
-        Ok(len)
+            Ok(len)
+        } else {
+            let pkey = self.pkey(None)?;
+            let pkey_bytes = pkey.as_ref();
+            out[..pkey_bytes.len()].copy_from_slice(pkey_bytes);
+            Ok(pkey_bytes.len())
+        }
     }
 }
 
