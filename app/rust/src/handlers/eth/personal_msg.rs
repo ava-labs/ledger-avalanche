@@ -54,7 +54,7 @@ impl Sign {
         path: &BIP32Path<LEN>,
         data: &[u8],
     ) -> Result<(ECCInfoFlags, usize, [u8; 100]), Error> {
-        let sk = Curve.to_secret(path);
+        let sk = Curve::Secp256K1.to_secret(path);
 
         let data = Self::digest(data)?;
 

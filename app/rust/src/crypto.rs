@@ -31,7 +31,10 @@ pub struct PublicKey(pub(crate) sys::crypto::ecfp256::PublicKey);
 
 impl PublicKey {
     pub fn compress(&mut self) -> Result<(), Error> {
-        self.0.compress()
+        match self.curve() {
+            Curve::Secp256K1 => self.0.compress(),
+            Curve::Ed25519 => self.0.compress(),
+        }
     }
 
     pub fn curve(&self) -> Curve {
@@ -50,11 +53,17 @@ impl AsRef<[u8]> for PublicKey {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
-pub struct Curve;
+pub enum Curve {
+    Secp256K1,
+    Ed25519,
+}
 
 impl From<Curve> for sys::crypto::Curve {
-    fn from(_from: Curve) -> Self {
-        Self::Secp256K1
+    fn from(from: Curve) -> Self {
+        match from {
+            Curve::Secp256K1 => Self::Secp256K1,
+            Curve::Ed25519 => Self::Ed25519,
+        }
     }
 }
 
@@ -65,7 +74,8 @@ impl TryFrom<sys::crypto::Curve> for Curve {
         use sys::crypto::Curve as CCurve;
 
         match ccrv {
-            CCurve::Secp256K1 => Ok(Self),
+            CCurve::Secp256K1 => Ok(Self::Secp256K1),
+            CCurve::Ed25519 => Ok(Self::Ed25519),
             #[allow(unreachable_patterns)]
             //this isn't actually unreachable because CCurve mock is just incomplete
             _ => Err(()),
