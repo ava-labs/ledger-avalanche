@@ -16,14 +16,13 @@
 
 use crate::{
     constants::{
-        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE,
-        CHAIN_ID_LEN, MAX_BIP32_PATH_DEPTH, CURVE_SECP256K1
+        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE, CHAIN_ID_LEN, CURVE_SECP256K1, MAX_BIP32_PATH_DEPTH
     },
     crypto,
     handlers::{handle_ui_message, resources::PATH},
     sys::{bech32, crypto::{bip32::BIP32Path, CHAIN_CODE_LEN}, hash::{Hasher, Ripemd160, Sha256}, ViewError, Viewable, PIC
     },
-    utils::{bs58_encode, rs_strlen, ApduPanic},
+    utils::{bs58_encode, hex_encode, rs_strlen, ApduPanic},
 };
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
@@ -311,19 +310,24 @@ impl AddrUI {
             let pkey_bytes = pkey.as_ref();
             
             // Create address bytes: [auth_id, sha256(pubkey)]
-            out[0] = ED25519_AUTH_ID;
+            let mut addr_bytes = [0u8; 37]; // Temporary buffer for raw address
+            addr_bytes[0] = ED25519_AUTH_ID;
             let mut sha256_hash = [0u8; 32];
             Sha256::digest_into(&pkey_bytes[..32], &mut sha256_hash)
                 .map_err(|_| Error::ExecutionError)?;
-            out[1..33].copy_from_slice(&sha256_hash);
+            addr_bytes[1..33].copy_from_slice(&sha256_hash);
             
             // Calculate checksum (last 4 bytes of sha256(address_bytes))
             let mut checksum = [0u8; 32];
-            Sha256::digest_into(&out[..33], &mut checksum)
+            Sha256::digest_into(&addr_bytes[..33], &mut checksum)
                 .map_err(|_| Error::ExecutionError)?;
-            out[33..37].copy_from_slice(&checksum[28..32]);
+            addr_bytes[33..37].copy_from_slice(&checksum[28..32]);
             
-            Ok(37) // 1 byte auth_id + 32 bytes address + 4 bytes checksum
+            // Hex encode the address bytes
+            let hex_len = hex_encode(&addr_bytes, out)
+                .map_err(|_| Error::ExecutionError)?;
+            
+            Ok(hex_len) // Length of hex encoded string
         }
     }
 }
