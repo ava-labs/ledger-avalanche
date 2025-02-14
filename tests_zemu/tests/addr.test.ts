@@ -24,6 +24,8 @@ const defaultOptions = (model: any) => {
 }
 
 const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd369acce90036ac4'
+const EXPECTED_ED25519_PUBLIC_KEY = '042f7582f3dc86afb7b8c55c22f93e2438b27897dd3064a9b7b7b566a25ad11d'
+const EXPECTED_ED25519_ADDRESS = '00dfa1aa15bf7552ffb984d21c12b95b7e6c6a9b6fc4939887518dea2b83411b37c582f591'
 
 jest.setTimeout(200000)
 
@@ -33,7 +35,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 0)
 
       console.log(resp, m.name)
 
@@ -54,7 +56,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 0)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr`)
@@ -77,7 +79,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 0, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       console.log(resp, m.name)
 
@@ -97,10 +99,53 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 0, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`)
+
+      const resp = await respReq
+      console.log(resp, m.name)
+
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('hash')
+      expect(resp).toHaveProperty('address')
+    } finally {
+      await sim.close()
+    }
+  })
+  test('getPubkeyAddr-ed25519', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 1)
+
+      console.log(resp, m.name)
+
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('publicKey')
+      expect(resp).toHaveProperty('hash')
+      expect(resp).toHaveProperty('address')
+      expect(resp.publicKey.toString('hex')).toEqual(EXPECTED_ED25519_PUBLIC_KEY)
+      expect(resp.address.toString()).toEqual(EXPECTED_ED25519_ADDRESS)
+    } finally {
+      await sim.close()
+    }
+  })
+
+  test('ShowAddr-ed25519', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 1)
+
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr-ed25519`)
 
       const resp = await respReq
       console.log(resp, m.name)
