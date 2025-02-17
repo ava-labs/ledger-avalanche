@@ -285,7 +285,7 @@ describe.each(models)('Ethereum Personal Message [%s] - misc', function (m) {
       const respReq = app.signPersonalMessage(ETH_DERIVATION, msgData.toString('hex'))
 
       if (m.name === 'nanos') {
-        await sim.navigateAndCompareSnapshots('.', testcase, [5, -4, 3, 0, 0])
+        await sim.navigateAndCompareSnapshots('.', testcase, [6, -4, 3, 0, 0])
       } else if (m.name === 'nanox' || m.name === 'nanosp') {
         await sim.navigateAndCompareSnapshots('.', testcase, [9, -4, 3, 0, 0])
       } else {

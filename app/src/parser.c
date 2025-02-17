@@ -14,7 +14,7 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include "parser.h"
+#include "common/parser.h"
 
 #include <stdio.h>
 #include <zxformat.h>
