@@ -20,7 +20,7 @@ import { ETH_DERIVATION, defaultOptions, models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 
 describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
-  test.concurrent('get pubkey and addr %s', async function () {
+  test('get pubkey and addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m, true))
@@ -40,7 +40,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('show addr %s', async function () {
+  test('show addr %s', async function () {
     const sim = new Zemu(m.path)
 
     try {
@@ -61,7 +61,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('get xpub and addr %s', async function () {
+  test('get xpub and addr %s', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m, true))

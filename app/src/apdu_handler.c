@@ -280,7 +280,7 @@ __Z_INLINE void handleSignAvaxMsg(volatile uint32_t *flags, volatile uint32_t *t
     }
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_msg);
-    view_review_show(REVIEW_TXN);
+    view_review_show(REVIEW_MSG);
     *flags |= IO_ASYNCH_REPLY;
 }
 
@@ -291,14 +291,14 @@ __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile 
     G_io_apdu_buffer[0] = 0x01;
 #endif
 
-    G_io_apdu_buffer[1] = (LEDGER_MAJOR_VERSION >> 8) & 0xFF;
-    G_io_apdu_buffer[2] = (LEDGER_MAJOR_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[1] = (MAJOR_VERSION >> 8) & 0xFF;
+    G_io_apdu_buffer[2] = (MAJOR_VERSION >> 0) & 0xFF;
 
-    G_io_apdu_buffer[3] = (LEDGER_MINOR_VERSION >> 8) & 0xFF;
-    G_io_apdu_buffer[4] = (LEDGER_MINOR_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[3] = (MINOR_VERSION >> 8) & 0xFF;
+    G_io_apdu_buffer[4] = (MINOR_VERSION >> 0) & 0xFF;
 
-    G_io_apdu_buffer[5] = (LEDGER_PATCH_VERSION >> 8) & 0xFF;
-    G_io_apdu_buffer[6] = (LEDGER_PATCH_VERSION >> 0) & 0xFF;
+    G_io_apdu_buffer[5] = (PATCH_VERSION >> 8) & 0xFF;
+    G_io_apdu_buffer[6] = (PATCH_VERSION >> 0) & 0xFF;
 
     G_io_apdu_buffer[7] = !IS_UX_ALLOWED;
 
@@ -392,7 +392,6 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
         THROW(APDU_CODE_DATA_INVALID);
     }
 
-    zemu_log("processed_nft_info ok\n");
     set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     *flags |= IO_ASYNCH_REPLY;
@@ -407,7 +406,6 @@ __Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *
     // ontinue with signing contract calls
     *tx = 0;
 
-    zemu_log("provide_erc20_info\n");
     set_code(G_io_apdu_buffer, 0, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     *flags |= IO_ASYNCH_REPLY;
@@ -451,8 +449,8 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
         THROW(APDU_CODE_DATA_INVALID);
     }
 
-    view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
-    view_review_show(REVIEW_TXN);
+    view_review_init_progressive(tx_getItem, tx_getNumItems, app_sign_eth);
+    view_review_show(REVIEW_MSG);
 
     *flags |= IO_ASYNCH_REPLY;
 }
@@ -518,6 +516,7 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+
     view_review_show(REVIEW_TXN);
 
     *flags |= IO_ASYNCH_REPLY;

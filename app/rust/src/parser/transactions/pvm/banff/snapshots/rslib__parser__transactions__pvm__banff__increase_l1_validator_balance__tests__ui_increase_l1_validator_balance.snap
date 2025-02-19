@@ -1,0 +1,11 @@
+---
+source: src/parser/transactions/pvm/banff/increase_l1_validator_balance.rs
+assertion_line: 204
+expression: reduced
+---
+[
+    "IncreaseL1ValBal": "Transaction",
+    "Validator": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "Amount(AVAX)": "1",
+    "Fee(AVAX)": "1152921505.606846974",
+]

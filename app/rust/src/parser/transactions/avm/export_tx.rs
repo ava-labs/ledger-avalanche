@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         nano_avax_to_fp_str, AvmOutput, BaseExport, DisplayableItem, FromBytes, ParserError,
-        AVM_EXPORT_TX,
+        AVM_EXPORT_TX, U64_FORMATTED_SIZE
     },
 };
 
@@ -68,7 +68,6 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
         if item_n == 0 {
             // render export title and network info
@@ -83,7 +82,7 @@ impl<'b> DisplayableItem for AvmExportTx<'b> {
             x if x == outputs_num_items => {
                 let title_content = pic_str!(b"Fee(AVAX)");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+                let mut buffer = [0; U64_FORMATTED_SIZE + 2];
                 let fee = self.fee().map_err(|_| ViewError::Unknown)?;
                 let fee_str =
                     nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;

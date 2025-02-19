@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -107,9 +107,9 @@ impl<'a> DisplayableItem for SECPMintOutput<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::{write as itoa, Number};
+        use itoa::Buffer;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut itoa_buffer = Buffer::new();
         let addr_item_n = self.num_items()? - self.addresses.len() as u8;
 
         match item_n {
@@ -123,18 +123,18 @@ impl<'a> DisplayableItem for SECPMintOutput<'a> {
             1 if self.locktime > 0 => {
                 let title_content = pic_str!(b"Locktime");
                 title[..title_content.len()].copy_from_slice(title_content);
-                let buffer = itoa(self.locktime, &mut buffer);
+                let buffer = itoa_buffer.format(self.locktime);
 
-                handle_ui_message(buffer, message, page)
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
 
             x @ 1.. if (x == 1 && self.locktime == 0) || (x == 2 && self.locktime > 0) => {
                 let title_content = pic_str!(b"Threshold");
                 title[..title_content.len()].copy_from_slice(title_content);
 
-                let buffer = itoa(self.threshold, &mut buffer);
+                let buffer = itoa_buffer.format(self.threshold);
 
-                handle_ui_message(buffer, message, page)
+                handle_ui_message(buffer.as_bytes(), message, page)
             }
 
             x @ 2.. if x >= addr_item_n => {

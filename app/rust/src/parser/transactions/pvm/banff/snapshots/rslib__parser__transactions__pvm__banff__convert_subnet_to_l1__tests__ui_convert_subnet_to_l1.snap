@@ -1,0 +1,11 @@
+---
+source: src/parser/transactions/pvm/banff/convert_subnet_to_l1.rs
+assertion_line: 259
+expression: reduced
+---
+[
+    "ConvertSubnetToL1": "Transaction",
+    "Chain ID": "0x3132333435363738212223242526272811121314151617180102030405060708",
+    "Validator": "0x000000000000000000000000000000000000dead",
+    "Fee(AVAX)": "0.001",
+]

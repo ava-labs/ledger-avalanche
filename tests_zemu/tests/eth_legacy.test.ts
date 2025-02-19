@@ -18,9 +18,8 @@ import Zemu from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
-import { Transaction } from '@ethereumjs/tx'
+import { LegacyTransaction } from '@ethereumjs/tx'
 import { Common } from '@ethereumjs/common'
-import { bufArrToArr } from '@ethereumjs/util'
 import { RLP } from '@ethereumjs/rlp'
 // import { ec } from 'elliptic'
 
@@ -92,12 +91,12 @@ const SIGN_TEST_DATA: TestData[] = [
 
 const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
   const txParams = {
-    nonce: '0x00',
-    gasPrice: '0x6d6e2edc00',
-    gasLimit: '0x2dc6c0',
-    to: params.to !== undefined ? '0x' + params.to : undefined,
-    value: '0x' + params.value,
-    data: params.data !== undefined ? '0x' + params.data : undefined,
+    nonce: BigInt(0),
+    gasPrice: BigInt('0x6d6e2edc00'),
+    gasLimit: BigInt('0x2dc6c0'),
+    to: params.to !== undefined ? Buffer.from(params.to, 'hex') : undefined,
+    value: BigInt('0x' + params.value),
+    data: params.data !== undefined ? Buffer.from(params.data, 'hex') : undefined,
   }
 
   const chain = Common.custom({
@@ -109,13 +108,10 @@ const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
   const options = { common: chain }
 
   // legacy
-  const tx = Transaction.fromTxData(txParams, options)
+  const tx = LegacyTransaction.fromTxData(txParams, options)
 
-  let unsignedTx: Buffer[] | Buffer
-  unsignedTx = tx.getMessageToSign(false)
-  unsignedTx = Buffer.from(RLP.encode(bufArrToArr(unsignedTx)))
-
-  return unsignedTx
+  let unsignedTx = tx.getMessageToSign()
+  return new Uint8Array(RLP.encode(unsignedTx))
 }
 
 // an alternative verification method for legacy transactions, taken from obsidian
@@ -136,13 +132,13 @@ function check_legacy_signature(hexTx: string, signature: any, chainId: number |
 
   const txnBufs = txnBufsDecoded.concat(txnBufsMap)
 
-  const ethTxObj = Transaction.fromValuesArray(txnBufs, tx_options)
+  const ethTxObj = LegacyTransaction.fromValuesArray(txnBufs, tx_options)
 
   return ethTxObj.verifySignature()
 }
 
 describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
-  test.concurrent.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
+  test.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -154,7 +150,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       const currentScreen = await sim.snapshot()
       const msg = rawUnsignedLegacyTransaction(data.op, data.chainId)
 
-      const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'), null)
+      const respReq = app.signEVMTransaction(ETH_DERIVATION, Buffer.from(msg).toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 60000)
 
       await sim.compareSnapshotsAndApprove('.', `${testcase}`)
@@ -167,7 +163,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       expect(resp).toHaveProperty('r')
       expect(resp).toHaveProperty('v')
 
-      const test = check_legacy_signature(msg.toString('hex'), resp, data.chainId)
+      const test = check_legacy_signature(Buffer.from(msg).toString('hex'), resp, data.chainId)
       expect(test).toEqual(true)
     } finally {
       await sim.close()

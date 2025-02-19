@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
-        MAX_ADDRESS_ENCODED_LEN,
+        MAX_ADDRESS_ENCODED_LEN, U64_FORMATTED_SIZE
     },
 };
 
@@ -126,9 +126,8 @@ impl<'a> DisplayableItem for SECPOutputOwners<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
 
         let addr_items = self.addresses.len() as u8;
         let mut item_index = item_n;

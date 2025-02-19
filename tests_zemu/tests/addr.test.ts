@@ -17,7 +17,7 @@
 import Zemu from '@zondax/zemu'
 import { APP_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
-import { encode as bs58_encode } from 'bs58'
+import bs58 from 'bs58'
 
 const defaultOptions = (model: any) => {
   return commonOpts(model, true)
@@ -28,7 +28,7 @@ const EXPECTED_PUBLIC_KEY = '02c6f477ff8e7136de982f898f6bfe93136bbe8dada6c17d0cd
 jest.setTimeout(200000)
 
 describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
-  test.concurrent('getPubkeyAddr', async function () {
+  test('getPubkeyAddr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -49,7 +49,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('ShowAddr', async function () {
+  test('ShowAddr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
@@ -72,12 +72,12 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('hrpChainIDAddr', async function () {
+  test('hrpChainIDAddr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 'zemu', bs58_encode(Buffer.alloc(32, 42)))
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       console.log(resp, m.name)
 
@@ -92,12 +92,12 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     }
   })
 
-  test.concurrent('show custom hrp & chainID addr', async function () {
+  test('show custom hrp & chainID addr', async function () {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 'zemu', bs58_encode(Buffer.alloc(32, 42)))
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`)

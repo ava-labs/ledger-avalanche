@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ pub enum NetworkId {
     Fuji,
     Local,
     Custom,
+    Devnet,
 }
 
 impl NetworkId {
@@ -40,6 +41,7 @@ impl NetworkId {
             Self::Fuji => PIC::new(HRP_TESTNET).into_inner(),
             Self::Local => PIC::new(HRP_LOCAL).into_inner(),
             Self::Custom => PIC::new(HRP_CUSTOM).into_inner(),
+            Self::Devnet => PIC::new(HRP_DEVNET).into_inner(),
         }
     }
 }
@@ -53,6 +55,7 @@ impl TryFrom<u32> for NetworkId {
             NETWORK_ID_FUJI => Ok(Self::Fuji),
             NETWORK_ID_LOCAL => Ok(Self::Local),
             NETWORK_ID_CUSTOM => Ok(Self::Custom),
+            NETWORK_ID_DEVNET => Ok(Self::Devnet),
             _ => Err(ParserError::InvalidNetworkId),
         }
     }

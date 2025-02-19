@@ -48,13 +48,10 @@ avalanche-app-derive = { path = "../../app-derive" }
 arrayvec = { version = "0.7", default-features = false }
 arrayref = "0.3.6"
 nom = { version = "7.1.1", default-features = false }
-bytemuck = { version = "1" }
-lexical-core = { version = "0.7", features = [
-    "libm",
-], default-features = false }
+bytemuck = { version = "1.15.0" }
 educe = "0.4.19"
 byteorder = { version = "1.4.3", default-features = false }
-
+itoa = { version = "1.0.1", default-features = false }
 bolos = { path = "../../deps/ledger-rust/bolos" }
 bolos-common = { path = "../../deps/ledger-rust/bolos-common" }
 zemu-sys = { path = "../../deps/ledger-rust/zemu" }

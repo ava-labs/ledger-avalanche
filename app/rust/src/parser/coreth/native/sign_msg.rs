@@ -20,13 +20,14 @@ use crate::{
     checked_add,
     handlers::handle_ui_message,
     parser::{DisplayableItem, FromBytes, Message},
+    zlog,
 };
 use bolos::{pic_str, PIC};
 use zemu_sys::ViewError;
 
 const MAX_ETH_MESSAGE_SIZE: usize = 100;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PersonalMsg<'b>(Message<'b>);
 
@@ -41,7 +42,7 @@ impl<'b> FromBytes<'b> for PersonalMsg<'b> {
         input: &'b [u8],
         out: &mut MaybeUninit<Self>,
     ) -> Result<&'b [u8], nom::Err<crate::parser::ParserError>> {
-        crate::sys::zemu_log_stack("PersonalMessage::from_bytes_into\x00");
+        zlog("PersonalMessage::from_bytes_into\x00");
         // read message len
         let out = out.as_mut_ptr();
 
@@ -64,18 +65,14 @@ impl<'b> DisplayableItem for PersonalMsg<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
-        match item_n {
-            0 => {
-                let label = pic_str!(b"Sign");
-                title[..label.len()].copy_from_slice(label);
-                let content = pic_str!("PersonalMessage");
-                handle_ui_message(content.as_bytes(), message, page)
-            }
-
-            x @ 1.. => {
-                let idx = x - 1;
-                self.0.render_item(idx, title, message, page)
-            }
+        if item_n == 0 {
+            let label = pic_str!(b"Sign");
+            title[..label.len()].copy_from_slice(label);
+            let content = pic_str!("PersonalMessage");
+            handle_ui_message(content.as_bytes(), message, page)
+        } else {
+            let idx = item_n - 1;
+            self.0.render_item(idx, title, message, page)
         }
     }
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ pub const NETWORK_ID_MAINNET: u32 = 1;
 pub const NETWORK_ID_FUJI: u32 = 5;
 pub const NETWORK_ID_LOCAL: u32 = 12345;
 pub const NETWORK_ID_CUSTOM: u32 = 1337;
+pub const NETWORK_ID_DEVNET: u32 = 76;
 pub const ETH_MAINNET_ID: u64 = 1;
 
 // hrp
@@ -26,7 +27,7 @@ pub const HRP_MAINNET: &str = "avax";
 pub const HRP_TESTNET: &str = "fuji";
 pub const HRP_LOCAL: &str = "local";
 pub const HRP_CUSTOM: &str = "custom";
-
+pub const HRP_DEVNET: &str = "custom";
 pub const TRANSFER_TX: u32 = 0;
 
 // pvm transaction types
@@ -41,6 +42,13 @@ pub const PVM_REMOVE_SUBNET_VALIDATOR: u32 = 0x00000017;
 pub const PVM_TRANSFORM_SUBNET: u32 = 0x00000018;
 pub const PVM_ADD_PERMISSIONLESS_VALIDATOR: u32 = 0x00000019;
 pub const PVM_ADD_PERMISSIONLESS_DELEGATOR: u32 = 0x0000001A;
+
+pub const PVM_CONVERT_SUBNET_L1: u32 = 0x00000023;
+pub const PVM_REGISTER_L1_VALIDATOR: u32 = 0x00000024;
+pub const PVM_SET_L1_VALIDATOR_WEIGHT: u32 = 0x00000025;
+pub const PVM_DISABLE_L1_VALIDATOR: u32 = 0x00000027;
+pub const PVM_INCREASE_L1_VALIDATOR_BALANCE: u32 = 0x00000026;
+
 //  base tx for p-chain which collides with evm import tx.
 //  we should check chain-id
 pub const PVM_BASE_TX: u32 = 0x00000000;
@@ -84,5 +92,15 @@ pub const CB58_CHECKSUM_LEN: usize = 4;
 pub const U32_SIZE: usize = std::mem::size_of::<u32>();
 pub const U64_SIZE: usize = std::mem::size_of::<u64>();
 
+// The maximun lenght of a message chunk
+// to be displayed on the device. each chunk
+// would contain a formatted part of the original message
+// this applies only in cases where the received
+// message is in ASCII format
+pub const MSG_MAX_CHUNK_LEN: usize = 100;
+
 // types
 pub type OutputIdx = u64;
+pub const U64_FORMATTED_SIZE: usize = 20;
+pub const U32_FORMATTED_SIZE: usize = 10;
+pub const U8_FORMATTED_SIZE: usize = 3;

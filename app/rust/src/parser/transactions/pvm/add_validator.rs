@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ use crate::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, u64_to_str, BaseTxFields, DisplayableItem,
         FromBytes, Header, ObjectList, OutputIdx, ParserError, PvmOutput, SECPOutputOwners, Stake,
         TransferableOutput, Validator, DELEGATION_FEE_DIGITS, MAX_ADDRESS_ENCODED_LEN,
-        PVM_ADD_VALIDATOR,
+        PVM_ADD_VALIDATOR, U64_FORMATTED_SIZE
     },
 };
 
@@ -377,9 +377,8 @@ impl<'b> AddValidatorTx<'b> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, zemu_sys::ViewError> {
-        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2];
         let num_addresses = self.rewards_owner.addresses.len() as u8;
 
         match item_n {

@@ -31,6 +31,11 @@ import {
   ADD_SUBNET_PERMISSIONLESS_VALIDATOR,
   TRANSFORM_SUBNET,
   REMOVE_SUBNET_VALIDATOR,
+  CONVERT_SUBNET_TO_L1_VALIDATOR,
+  REGISTER_L1_VALIDATOR,
+  DISABLE_L1_VALIDATOR,
+  SET_L1_VALIDATOR_WEIGHT,
+  INCREASE_L1_VALIDATOR_BALANCE,
 } from './p_chain_vectors'
 
 // @ts-ignore
@@ -96,10 +101,30 @@ const FULL_SIGN_TEST_DATA = [
     name: 'remove_subnet_validator',
     op: REMOVE_SUBNET_VALIDATOR,
   },
+  {
+    name: 'convert_subnet_to_l1_validator',
+    op: CONVERT_SUBNET_TO_L1_VALIDATOR,
+  },
+  {
+    name: 'register_l1_validator',
+    op: REGISTER_L1_VALIDATOR,
+  },
+  {
+    name: 'disable_l1_validator',
+    op: DISABLE_L1_VALIDATOR,
+  },
+  {
+    name: 'set_l1_validator_weight',
+    op: SET_L1_VALIDATOR_WEIGHT,
+  },
+  {
+    name: 'increase_l1_validator_balance',
+    op: INCREASE_L1_VALIDATOR_BALANCE,
+  },
 ]
 
 describe.each(models)('P_Sign[$name]; sign', function (m) {
-  test.concurrent.each(FULL_SIGN_TEST_DATA)('[full] sign p-chain $name', async function ({ name, op }) {
+  test.each(FULL_SIGN_TEST_DATA)('[full] sign p-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
 
     try {
@@ -146,7 +171,7 @@ describe.each(models)('P_Sign[$name]; sign', function (m) {
     }
   })
 
-  test.concurrent.each(LITE_SIGN_TEST_DATA)('sign p-chain $name', async function ({ name, op }) {
+  test.each(LITE_SIGN_TEST_DATA)('sign p-chain $name', async function ({ name, op }) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))

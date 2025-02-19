@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ use zemu_sys::ViewError;
 use crate::{
     checked_add,
     handlers::handle_ui_message,
-    parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN},
+    parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN, U64_FORMATTED_SIZE},
 };
 
 const AVAX_TO_LEN: usize = 9; //b" AVAX to "
@@ -108,9 +108,8 @@ impl<'a> DisplayableItem for SECPTransferOutput<'a> {
         page: u8,
     ) -> Result<u8, ViewError> {
         use bolos::{pic_str, PIC};
-        use lexical_core::Number;
 
-        let mut buffer = [0; u64::FORMATTED_SIZE_DECIMAL + 2 + AVAX_TO_LEN];
+        let mut buffer = [0; U64_FORMATTED_SIZE + 2 + AVAX_TO_LEN];
         let addr_item_n = self.num_items()? - self.addresses.len() as u8;
 
         match item_n {

@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2021 Zondax GmbH
+*   (c) 2018-2024 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,12 +13,10 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::parser::{u64_to_str, u8_to_str, FORMATTED_STR_DATE_LEN};
+use crate::parser::{u64_to_str, u8_to_str, FORMATTED_STR_DATE_LEN, U64_FORMATTED_SIZE};
 use crate::sys::{pic_str, PIC};
 use arrayvec::ArrayVec;
 use arrayvec::CapacityError;
-
-use lexical_core::Number;
 
 const MONTH_DAYS: &[u8; 12] = &[31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
@@ -161,7 +159,7 @@ pub fn timestamp_to_str_date(
     let date = timestamp_to_date(timestamp)?;
 
     let mut date_str = ArrayVec::<_, FORMATTED_STR_DATE_LEN>::new();
-    let mut num_buff = [0; u64::FORMATTED_SIZE_DECIMAL + 2];
+    let mut num_buff = [0; U64_FORMATTED_SIZE + 2];
 
     // separators
     let dash = b'-';
