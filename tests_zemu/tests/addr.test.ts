@@ -35,7 +35,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 0)
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false)
 
       console.log(resp, m.name)
 
@@ -56,7 +56,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 0)
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr`)
@@ -79,7 +79,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 0, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       console.log(resp, m.name)
 
@@ -99,7 +99,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 0, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 'zemu', bs58.encode(Buffer.alloc(32, 42)))
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-zemu-addr`)
@@ -121,7 +121,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, 1)
+      const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, undefined, undefined, 1)
 
       console.log(resp, m.name)
 
@@ -142,7 +142,7 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
     try {
       await sim.start(defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
-      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, 1)
+      const respReq = app.getAddressAndPubKey(APP_DERIVATION, true, undefined, undefined, 1)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
       await sim.compareSnapshotsAndApprove('.', `${m.prefix.toLowerCase()}-addr-ed25519`)
