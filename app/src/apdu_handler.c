@@ -225,8 +225,10 @@ __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *
     // in this case we just received a path suffix
     // we are supposed to use the previously stored
     // root_path and hash
+    uint8_t curve_type = G_io_apdu_buffer[OFFSET_P2];
+
     if (G_io_apdu_buffer[OFFSET_P1] != FIRST_MESSAGE) {
-        app_sign_hash();
+        app_sign_hash(curve_type);
     } else {
         // this is the sign_hash transaction
         // we received in one go the root path

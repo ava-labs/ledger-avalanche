@@ -34,30 +34,34 @@ uint32_t hdPath_len;
     }                          \
   } while (0)
 
-zxerr_t crypto_extractPublicKey(uint8_t *pubKey, uint16_t pubKeyLen) {
-    if (pubKey == NULL || pubKeyLen < PK_LEN_25519) {
-        return zxerr_invalid_crypto_settings;
+zxerr_t crypto_sign_avax_ed25519(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
+    zemu_log_stack("crypto_sign_avax_ed25519");
+    if (buffer == NULL || message == NULL ||
+        signatureMaxlen < ED25519_SIGNATURE_SIZE || messageLen != CX_SHA256_SIZE) {
+        return zxerr_unknown;
     }
-    cx_ecfp_public_key_t cx_publicKey;
+
     cx_ecfp_private_key_t cx_privateKey;
-    uint8_t privateKeyData[SK_LEN_25519] = {0};
+    uint8_t privateKeyData[64] = {0};
 
     zxerr_t error = zxerr_unknown;
-
-    // Generate keys
-    CATCH_CXERROR(os_derive_bip32_with_seed_no_throw(HDW_NORMAL, CX_CURVE_Ed25519, hdPath, HDPATH_LEN_DEFAULT,
-                                                     privateKeyData, NULL, NULL, 0));
+    CATCH_CXERROR(os_derive_bip32_with_seed_no_throw(HDW_NORMAL,
+                                                     CX_CURVE_Ed25519,
+                                                     path,
+                                                     path_len,
+                                                     privateKeyData,
+                                                     NULL,
+                                                     NULL,
+                                                     0));
 
     CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, privateKeyData, 32, &cx_privateKey));
-    CATCH_CXERROR(cx_ecfp_init_public_key_no_throw(CX_CURVE_Ed25519, NULL, 0, &cx_publicKey));
-    CATCH_CXERROR(cx_ecfp_generate_pair_no_throw(CX_CURVE_Ed25519, &cx_publicKey, &cx_privateKey, 1));
-    for (unsigned int i = 0; i < PK_LEN_25519; i++) {
-        pubKey[i] = cx_publicKey.W[64 - i];
-    }
+    CATCH_CXERROR(cx_eddsa_sign_no_throw(&cx_privateKey,
+                                         CX_SHA512,
+                                         message,
+                                         messageLen,
+                                         buffer,
+                                         signatureMaxlen));
 
-    if ((cx_publicKey.W[PK_LEN_25519] & 1) != 0) {
-        pubKey[31] |= 0x80;
-    }
     error = zxerr_ok;
 
 catch_cx_error:
@@ -65,11 +69,11 @@ catch_cx_error:
     MEMZERO(privateKeyData, sizeof(privateKeyData));
 
     if (error != zxerr_ok) {
-        MEMZERO(pubKey, pubKeyLen);
+        MEMZERO(buffer, signatureMaxlen);
     }
+
     return error;
 }
-
 
 typedef struct {
     uint8_t r[32];
@@ -77,8 +81,7 @@ typedef struct {
     uint8_t v;
 } __attribute__((packed)) signature_t;
 
-
-zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
+zxerr_t crypto_sign_avax_secp256k1(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
     if (signatureMaxlen < sizeof(signature_t)) {
         return zxerr_buffer_too_small;
     }
@@ -135,13 +138,20 @@ catch_cx_error:
     return zxerr;
 }
 
-zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen) {
-    if (buffer == NULL || addrResponseLen == NULL) {
-        return zxerr_unknown;
+zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len, uint8_t curve_type) {
+
+    zemu_log_stack("crypto_sign_avax");
+    for (int i = 0; i < 32; i++) {
+        ZEMU_LOGF(50,"%x", message[i]);
     }
-
-    // MEMZERO(buffer, bufferLen);
-    *addrResponseLen = 3 * KEY_LENGTH;
-
-    return zxerr_ok;
+    zemu_log_stack("crypto_sign_avax");
+    switch (curve_type) {
+        case SECP256K1_TYPE:
+            return crypto_sign_avax_secp256k1(buffer, signatureMaxlen, message, messageLen, path, path_len);
+        case ED25519_TYPE:
+            return crypto_sign_avax_ed25519(buffer, signatureMaxlen, message, messageLen, path, path_len);
+        default:
+            return zxerr_unknown;
+    }
+    return zxerr_unknown;
 }

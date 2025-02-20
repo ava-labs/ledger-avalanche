@@ -93,6 +93,9 @@ extern "C" {
 #define P2_NO_CHAINCODE                 0x00
 #define P2_CHAINCODE                    0x01
 
+#define SECP256K1_TYPE 0x00
+#define ED25519_TYPE 0x01
+
 #ifdef __cplusplus
 }
 #endif
