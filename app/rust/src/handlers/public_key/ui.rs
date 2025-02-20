@@ -16,18 +16,13 @@
 
 use crate::{
     constants::{
-        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE,
-        CHAIN_ID_LEN, MAX_BIP32_PATH_DEPTH,
+        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE, CHAIN_ID_LEN, CURVE_SECP256K1, MAX_BIP32_PATH_DEPTH, ED25519_ADDRESS_TO_HASH_LEN
     },
     crypto,
     handlers::{handle_ui_message, resources::PATH},
-    sys::{
-        bech32,
-        crypto::{bip32::BIP32Path, CHAIN_CODE_LEN},
-        hash::{Hasher, Ripemd160, Sha256},
-        ViewError, Viewable, PIC,
+    sys::{bech32, crypto::{bip32::BIP32Path, CHAIN_CODE_LEN}, hash::{Hasher, Ripemd160, Sha256}, ViewError, Viewable, PIC
     },
-    utils::{bs58_encode, rs_strlen, ApduPanic},
+    utils::{bs58_encode, hex_encode, rs_strlen, ApduPanic},
 };
 
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
@@ -41,6 +36,7 @@ pub struct AddrUIInitializer<'ui> {
     chain_init: bool,
     path_init: bool,
     hrp_init: bool,
+    curve_init: bool,
 }
 
 #[cfg_attr(test, derive(Debug))]
@@ -54,6 +50,7 @@ pub enum AddrUIInitError {
     ChainCodeInitError,
     HRPTooLong,
     NonASCIIHrp,
+    CurveNotInitialized,
 }
 
 impl From<AddrUIInitError> for Error {
@@ -70,19 +67,21 @@ impl<'ui> AddrUIInitializer<'ui> {
             path_init: false,
             hrp_init: false,
             chain_init: false,
+            curve_init: false,
         }
     }
 
     /// Produce the closure to initialize a key
     pub fn key_initializer<const B: usize>(
         path: &'_ BIP32Path<B>,
+        curve_type: u8,
     ) -> impl FnOnce(
         &mut MaybeUninit<crypto::PublicKey>,
         Option<&mut [u8; CHAIN_CODE_LEN]>,
     ) -> Result<(), AddrUIInitError>
            + '_ {
         move |key, cc| {
-            GetPublicKey::new_key_into(path, key, cc).map_err(|_| AddrUIInitError::KeyInitError)
+            GetPublicKey::new_key_into(path, key, cc, curve_type).map_err(|_| AddrUIInitError::KeyInitError)
         }
     }
 
@@ -169,16 +168,41 @@ impl<'ui> AddrUIInitializer<'ui> {
         Ok(self)
     }
 
+    pub fn with_curve(&mut self, curve_type: u8) -> &mut Self {
+        //get ui *mut
+        let ui = self.ui.as_mut_ptr();
+
+        //SAFETY: pointers are all valid since they are coming from rust
+        unsafe {
+            (*ui).curve_type = curve_type;
+        }
+
+        self.curve_init = true;
+        self
+    }
+
     /// Finalize the initialization, performing any necessary checks to ensure everything is initialized
     pub fn finalize(self) -> Result<(), (Self, AddrUIInitError)> {
         if !self.path_init {
             Err((self, AddrUIInitError::PathNotInitialized))
-        } else if !self.hrp_init {
-            Err((self, AddrUIInitError::HrpNotInitialized))
-        } else if !self.chain_init {
-            Err((self, AddrUIInitError::ChainCodeNotInitialized))
+        } else if !self.curve_init {
+            Err((self, AddrUIInitError::CurveNotInitialized))
         } else {
-            Ok(())
+            // SAFETY: curve_type is initialized since we checked curve_init
+            let curve_type = unsafe { (*self.ui.as_ptr()).curve_type };
+            
+            if curve_type == CURVE_SECP256K1 {
+                // Only check hrp and chain when curve_type is 0
+                if !self.hrp_init {
+                    Err((self, AddrUIInitError::HrpNotInitialized))
+                } else if !self.chain_init {
+                    Err((self, AddrUIInitError::ChainCodeNotInitialized))
+                } else {
+                    Ok(())
+                }
+            } else {
+                Ok(())
+            }
         }
     }
 }
@@ -188,6 +212,7 @@ pub struct AddrUI {
     //includes checksum
     chain_id_with_checksum: [u8; CHAIN_ID_LEN + CHAIN_ID_CHECKSUM_SIZE],
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
+    curve_type: u8,
 }
 
 impl AddrUI {
@@ -226,13 +251,14 @@ impl AddrUI {
         &self,
         chain_code: Option<&mut [u8; CHAIN_CODE_LEN]>,
     ) -> Result<crypto::PublicKey, Error> {
+        crate::zlog("AddrUI::pkey\n\x00");
         let mut out = MaybeUninit::uninit();
 
         let path = unsafe { PATH.acquire(super::GetPublicKey) }?
             .as_ref()
             .ok_or(Error::ExecutionError)?;
 
-        AddrUIInitializer::key_initializer(path)(&mut out, chain_code)
+        AddrUIInitializer::key_initializer(path, self.curve_type)(&mut out, chain_code)
             .map_err(|_| Error::ExecutionError)?;
 
         //SAFETY: out has been initialized by the call above
@@ -255,6 +281,9 @@ impl AddrUI {
 
     /// Will write the formatted address to `out` and return the length written
     pub fn addr(&self, out: &mut [u8; AddrUI::MAX_ADDR_SIZE]) -> Result<usize, Error> {
+        if self.curve_type == CURVE_SECP256K1 {
+            crate::zlog("addr - secp256k1\n\x00");
+
         let mut len =
             self.chain_id_into(arrayref::array_mut_ref![out, 0, AddrUI::MAX_CHAIN_CB58_LEN]);
 
@@ -270,7 +299,36 @@ impl AddrUI {
         )
         .apdu_unwrap();
 
-        Ok(len)
+            Ok(len)
+        } else {
+            crate::zlog("addr - ed25519\n\x00");
+
+            // ED25519 HVM address format
+            const ED25519_AUTH_ID: u8 = 0x00;
+            
+            let pkey = self.pkey(None)?;
+            let pkey_bytes = pkey.as_ref();
+            
+            // Create address bytes: [auth_id, sha256(pubkey)]
+            let mut addr_bytes = [0u8; ED25519_ADDRESS_TO_HASH_LEN]; // Temporary buffer for raw address
+            addr_bytes[0] = ED25519_AUTH_ID;
+            let mut sha256_hash = [0u8; Sha256::DIGEST_LEN];
+            Sha256::digest_into(&pkey_bytes[..32], &mut sha256_hash)
+                .map_err(|_| Error::ExecutionError)?;
+            addr_bytes[1..33].copy_from_slice(&sha256_hash);
+            
+            // Calculate checksum (last 4 bytes of sha256(address_bytes))
+            let mut checksum = [0u8; 32];
+            Sha256::digest_into(&addr_bytes[..33], &mut checksum)
+                .map_err(|_| Error::ExecutionError)?;
+            addr_bytes[33..37].copy_from_slice(&checksum[28..32]);
+            
+            // Hex encode the address bytes
+            let hex_len = hex_encode(&addr_bytes, out)
+                .map_err(|_| Error::ExecutionError)?;
+            
+            Ok(hex_len) // Length of hex encoded string
+        }
     }
 }
 
@@ -312,10 +370,17 @@ impl Viewable for AddrUI {
         let pkey_bytes = pkey.as_ref();
         let mut tx = 0;
 
-        out[tx] = pkey_bytes.len() as u8;
-        tx += 1;
-        out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
-        tx += pkey_bytes.len();
+        if self.curve_type == CURVE_SECP256K1 {
+            out[tx] = pkey_bytes.len() as u8;
+            tx += 1;
+            out[tx..][..pkey_bytes.len()].copy_from_slice(pkey_bytes);
+            tx += pkey_bytes.len();
+        } else {
+            out[tx] = 32;
+            tx += 1;
+            out[tx..][..32].copy_from_slice(&pkey_bytes[..32]);
+            tx += 32;
+        }
 
         match self.hash(&pkey) {
             Ok(hash) => {
@@ -359,7 +424,9 @@ mod tests {
                 .with_path(path)
                 .with_chain(chain_code)
                 .unwrap()
-                .with_hrp(hrp);
+                .with_hrp(hrp)
+                .unwrap()
+                .with_curve(CURVE_SECP256K1);
             let _ = builder.finalize();
 
             unsafe { loc.assume_init() }

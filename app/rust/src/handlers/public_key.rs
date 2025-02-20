@@ -26,7 +26,7 @@ mod ui;
 pub use ui::{AddrUI, AddrUIInitError, AddrUIInitializer};
 
 use crate::{
-    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH},
+    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH, CURVE_SECP256K1, CURVE_ED25519},
     crypto,
     dispatcher::ApduHandler,
     sys::{self, Error as SysError},
@@ -54,16 +54,31 @@ impl GetPublicKey {
         path: &sys::crypto::bip32::BIP32Path<B>,
         out: &mut MaybeUninit<crypto::PublicKey>,
         chaincode: Option<&mut [u8; 32]>,
+        curve_type: u8,
     ) -> Result<(), SysError> {
         sys::zemu_log_stack("GetAddres::new_key\x00");
-        crypto::Curve
-            .to_secret(path)
-            .into_public_into(chaincode, out)?;
+
+        if curve_type == CURVE_SECP256K1 {
+            crypto::Curve::Secp256K1
+                .to_secret(path)
+                .into_public_into(chaincode, out)?;
+        } else {
+            crypto::Curve::Ed25519
+                .to_secret(path)
+                .into_public_into(chaincode, out)?;
+        }
+
 
         //this is safe because it's initialized
         // also unwrapping is fine because the ptr is valid
         let pkey = unsafe { out.as_mut_ptr().as_mut().apdu_unwrap() };
-        pkey.compress()
+
+        // Only compress secp256k1 keys
+        if curve_type == CURVE_SECP256K1 {
+            pkey.compress()?;
+        }
+
+        Ok(())
     }
 
     /// Attempts to read a hrp in the slice, advancing the slice and returning the HRP (or default)
@@ -97,13 +112,21 @@ impl GetPublicKey {
         chain_id: &[u8],
         path: BIP32Path<MAX_BIP32_PATH_DEPTH>,
         ui: &mut MaybeUninit<AddrUI>,
+        curve_type: u8,
     ) -> Result<(), Error> {
         let mut ui_initializer = AddrUIInitializer::new(ui);
 
-        ui_initializer
-            .with_path(path)
-            .with_chain(chain_id)?
-            .with_hrp(hrp)?;
+        if curve_type == CURVE_SECP256K1 {
+            ui_initializer
+                .with_path(path)
+                .with_chain(chain_id)?
+                .with_hrp(hrp)?
+                .with_curve(CURVE_SECP256K1);
+        } else {
+            ui_initializer
+                .with_path(path)
+                .with_curve(CURVE_ED25519);
+        }
 
         ui_initializer.finalize().map_err(|(_, err)| err)?;
 
@@ -116,18 +139,25 @@ impl GetPublicKey {
         addr_ui: *mut u8,
         addr_ui_len: u16,
     ) -> Result<(), Error> {
-        sys::zemu_log_stack("GetPublicKey::fill_address\x00");
-
         if addr_ui.is_null() || addr_ui_len != core::mem::size_of::<MaybeUninit<AddrUI>>() as u16 {
+            crate::zlog("fill_address_invalid\n\x00");
             return Err(Error::DataInvalid);
         }
+
+        crate::zlog("GetPublicKey::fill_address\n\x00");
 
         *tx = 0;
 
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
+        let curve_type = buffer.p2();
 
-        let hrp = Self::get_hrp(&mut cdata)?;
-        let chainid = Self::get_chainid(&mut cdata)?;
+        let (hrp, chainid) = if curve_type == CURVE_SECP256K1 {
+            // Original secp256k1 flow
+            (Self::get_hrp(&mut cdata)?, Self::get_chainid(&mut cdata)?)
+        } else {
+            // Ed25519 flow - empty hrp and chainid
+            (&[][..], &[][..])
+        };
 
         let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
             .map_err(|_| Error::DataInvalid)?;
@@ -135,7 +165,7 @@ impl GetPublicKey {
         // In this step we initialized and store in memory(allocated from C) our
         // UI object for later address visualization
         let ui = unsafe { &mut *addr_ui.cast::<MaybeUninit<AddrUI>>() };
-        Self::initialize_ui(hrp, chainid, bip32_path, ui)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, ui, curve_type)?;
 
         //safe since it's all initialized now
         let ui = unsafe { ui.assume_init_mut() };
@@ -163,15 +193,21 @@ impl ApduHandler for GetPublicKey {
         let req_confirmation = buffer.p1() >= 1;
 
         let mut cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
+        let curve_type = buffer.p2();
 
-        let hrp = Self::get_hrp(&mut cdata)?;
-        let chainid = Self::get_chainid(&mut cdata)?;
+        let (hrp, chainid) = if curve_type == CURVE_SECP256K1 {
+            // Original secp256k1 flow
+            (Self::get_hrp(&mut cdata)?, Self::get_chainid(&mut cdata)?)
+        } else {
+            // Ed25519 flow - empty hrp and chainid
+            (&[][..], &[][..])
+        };
 
         let bip32_path = sys::crypto::bip32::BIP32Path::<MAX_BIP32_PATH_DEPTH>::read(cdata)
             .map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
-        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui, curve_type)?;
 
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };

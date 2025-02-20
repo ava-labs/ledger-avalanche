@@ -31,7 +31,7 @@
 #define MAX_CHAIN_CB58_LEN 50
 #define CHAIN_ID_CHECKSUM_SIZE 4
 #define CHAIN_CODE_LEN 32
-#define ADDR_UI_MAX_SIZE 61
+#define ADDR_UI_MAX_SIZE 62
 
 // Use to hold the addr_ui object, used by rust to display the address
 uint8_t addr_ui_obj[ADDR_UI_MAX_SIZE] = {0};

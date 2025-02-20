@@ -68,7 +68,7 @@ impl WalletId {
                 Sha256HMAC::new(Self::hmac_key().as_bytes()).map_err(|_| Error::ExecutionError)?;
 
             let mut pkey = MaybeUninit::uninit();
-            crypto::Curve
+            crypto::Curve::Secp256K1
                 .to_secret(&bip32_path)
                 .into_public_into(None, &mut pkey)
                 .map_err(|_| Error::ExecutionError)?;
@@ -126,7 +126,7 @@ impl ApduHandler for WalletId {
                 Sha256HMAC::new(Self::hmac_key().as_bytes()).map_err(|_| Error::ExecutionError)?;
 
             let mut pkey = MaybeUninit::uninit();
-            crypto::Curve
+            crypto::Curve::Secp256K1
                 .to_secret(&bip32_path)
                 .into_public_into(None, &mut pkey)
                 .map_err(|_| Error::ExecutionError)?;

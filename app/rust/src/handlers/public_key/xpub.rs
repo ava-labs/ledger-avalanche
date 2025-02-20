@@ -203,7 +203,8 @@ impl<'ui> ExtendedPubkeyUIInitializer<'ui> {
         initializer
             .with_path(path)
             .with_chain(chain_id)?
-            .with_hrp(hrp)?;
+            .with_hrp(hrp)?
+            .with_curve(0);
         initializer.finalize().map_err(|(_, err)| err)?;
 
         self.inner_ui_init = true;
