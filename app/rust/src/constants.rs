@@ -110,6 +110,8 @@ pub const LAST_MESSAGE: u8 = 0x02;
 pub const CURVE_SECP256K1: u8 = 0x00;
 pub const CURVE_ED25519: u8 = 0x01;
 
+pub const ED25519_ADDRESS_TO_HASH_LEN: usize = 37;
+
 pub const SIGN_HASH_TX_SIZE: usize = 32 + MAX_BIP32_PATH_DEPTH * core::mem::size_of::<u32>();
 
 pub(crate) mod instructions {

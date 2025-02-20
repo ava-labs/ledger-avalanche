@@ -26,7 +26,7 @@ mod ui;
 pub use ui::{AddrUI, AddrUIInitError, AddrUIInitializer};
 
 use crate::{
-    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH, CURVE_SECP256K1},
+    constants::{ApduError as Error, ASCII_HRP_MAX_SIZE, DEFAULT_CHAIN_ID, MAX_BIP32_PATH_DEPTH, CURVE_SECP256K1, CURVE_ED25519},
     crypto,
     dispatcher::ApduHandler,
     sys::{self, Error as SysError},
@@ -116,16 +116,16 @@ impl GetPublicKey {
     ) -> Result<(), Error> {
         let mut ui_initializer = AddrUIInitializer::new(ui);
 
-        if curve_type == 0 {
+        if curve_type == CURVE_SECP256K1 {
             ui_initializer
                 .with_path(path)
                 .with_chain(chain_id)?
                 .with_hrp(hrp)?
-                .with_curve(0);
+                .with_curve(CURVE_SECP256K1);
         } else {
             ui_initializer
                 .with_path(path)
-                .with_curve(1);
+                .with_curve(CURVE_ED25519);
         }
 
         ui_initializer.finalize().map_err(|(_, err)| err)?;
@@ -207,7 +207,7 @@ impl ApduHandler for GetPublicKey {
             .map_err(|_| Error::DataInvalid)?;
 
         let mut ui = MaybeUninit::uninit();
-        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui, 0)?;
+        Self::initialize_ui(hrp, chainid, bip32_path, &mut ui, curve_type)?;
 
         //safe since it's all initialized now
         let mut ui = unsafe { ui.assume_init() };

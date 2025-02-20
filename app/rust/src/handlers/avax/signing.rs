@@ -24,7 +24,7 @@ use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{
-        ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
+        ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH, CURVE_SECP256K1
     },
     dispatcher::ApduHandler,
     handlers::{
@@ -63,7 +63,7 @@ impl Sign {
         use crate::handlers::public_key::GetPublicKey;
 
         let mut out = MaybeUninit::uninit();
-        GetPublicKey::new_key_into(path, &mut out, None, 0).map_err(|_| Error::ExecutionError)?;
+        GetPublicKey::new_key_into(path, &mut out, None, CURVE_SECP256K1).map_err(|_| Error::ExecutionError)?;
 
         // get the uncompressed pubkey for the provided path
         let pkey = unsafe { out.assume_init() };

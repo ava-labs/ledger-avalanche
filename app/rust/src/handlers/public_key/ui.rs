@@ -16,7 +16,7 @@
 
 use crate::{
     constants::{
-        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE, CHAIN_ID_LEN, CURVE_SECP256K1, MAX_BIP32_PATH_DEPTH
+        chain_alias_lookup, ApduError as Error, ASCII_HRP_MAX_SIZE, CHAIN_ID_CHECKSUM_SIZE, CHAIN_ID_LEN, CURVE_SECP256K1, MAX_BIP32_PATH_DEPTH, ED25519_ADDRESS_TO_HASH_LEN
     },
     crypto,
     handlers::{handle_ui_message, resources::PATH},
@@ -191,7 +191,7 @@ impl<'ui> AddrUIInitializer<'ui> {
             // SAFETY: curve_type is initialized since we checked curve_init
             let curve_type = unsafe { (*self.ui.as_ptr()).curve_type };
             
-            if curve_type == 0 {
+            if curve_type == CURVE_SECP256K1 {
                 // Only check hrp and chain when curve_type is 0
                 if !self.hrp_init {
                     Err((self, AddrUIInitError::HrpNotInitialized))
@@ -310,9 +310,9 @@ impl AddrUI {
             let pkey_bytes = pkey.as_ref();
             
             // Create address bytes: [auth_id, sha256(pubkey)]
-            let mut addr_bytes = [0u8; 37]; // Temporary buffer for raw address
+            let mut addr_bytes = [0u8; ED25519_ADDRESS_TO_HASH_LEN]; // Temporary buffer for raw address
             addr_bytes[0] = ED25519_AUTH_ID;
-            let mut sha256_hash = [0u8; 32];
+            let mut sha256_hash = [0u8; Sha256::DIGEST_LEN];
             Sha256::digest_into(&pkey_bytes[..32], &mut sha256_hash)
                 .map_err(|_| Error::ExecutionError)?;
             addr_bytes[1..33].copy_from_slice(&sha256_hash);
@@ -426,7 +426,7 @@ mod tests {
                 .unwrap()
                 .with_hrp(hrp)
                 .unwrap()
-                .with_curve(0);
+                .with_curve(CURVE_SECP256K1);
             let _ = builder.finalize();
 
             unsafe { loc.assume_init() }
