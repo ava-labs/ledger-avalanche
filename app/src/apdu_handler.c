@@ -138,13 +138,26 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
     zemu_log("handleGetAddr\n");
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
-    zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    const uint8_t curve_type = G_io_apdu_buffer[OFFSET_P2];
+    zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, curve_type);
     if (zxerr != zxerr_ok) {
         *tx = 0;
         THROW(APDU_CODE_DATA_INVALID);
     }
+
     if (requireConfirmation) {
-        view_review_init(addr_getItem, addr_getNumItems, app_reply_address);
+        switch (curve_type) {
+            case CURVE_ED25519:
+                view_review_init(addr_getItemEd25519, addr_getNumItemsEd25519, app_reply_address);
+                break;
+            case CURVE_SECP256K1:
+                view_review_init(addr_getItem, addr_getNumItems, app_reply_address);
+                break;
+            default:
+                zemu_log("No match for address kind!\n");
+                THROW(APDU_CODE_CONDITIONS_NOT_SATISFIED);
+                break;
+        }
         view_review_show(REVIEW_ADDRESS);
         *flags |= IO_ASYNCH_REPLY;
         return;
