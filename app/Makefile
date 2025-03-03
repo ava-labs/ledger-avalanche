@@ -78,6 +78,7 @@ endif
 
 # Enable QR code display for all devices
 ENABLE_NBGL_QRCODE ?= 1
+ENABLE_BLUETOOTH = 1
 
 RUST_TARGET:=thumbv6m-none-eabi
 
