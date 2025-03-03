@@ -92,6 +92,28 @@ void extractHDPath(uint32_t rx, uint32_t offset) {
     _set_root_path(&G_io_apdu_buffer[offset], len_bytes + 1);
 }
 
+void extractHDPathEd25519(uint32_t rx, uint32_t offset) {
+    MEMZERO(hdPath, sizeof(hdPath));
+
+     hdPath_len = G_io_apdu_buffer[offset];
+     offset += 1;
+
+     if (hdPath_len > HDPATH_LEN_DEFAULT || (rx - offset) != sizeof(uint32_t) * hdPath_len) {
+        THROW(APDU_CODE_WRONG_LENGTH);
+     }
+
+     memcpy(hdPath, G_io_apdu_buffer + offset, sizeof(uint32_t) * hdPath_len);
+
+    // Convert each hdPath element to big-endian
+    for (uint8_t i = 0; i < hdPath_len; i++) {
+        uint32_t value = hdPath[i];
+        hdPath[i] = ((value & 0xFF000000) >> 24) |
+                    ((value & 0x00FF0000) >> 8)  |
+                    ((value & 0x0000FF00) << 8)  |
+                    ((value & 0x000000FF) << 24);
+    }
+}
+
 __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
     if (rx < OFFSET_DATA) {
         THROW(APDU_CODE_WRONG_LENGTH);
@@ -139,6 +161,11 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
     const uint8_t curve_type = G_io_apdu_buffer[OFFSET_P2];
+
+    if (curve_type == CURVE_ED25519) {
+        extractHDPathEd25519(rx, OFFSET_DATA);
+    }
+
     zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, curve_type);
     if (zxerr != zxerr_ok) {
         *tx = 0;
@@ -238,8 +265,10 @@ __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *
     // in this case we just received a path suffix
     // we are supposed to use the previously stored
     // root_path and hash
+    uint8_t curve_type = G_io_apdu_buffer[OFFSET_P2];
+
     if (G_io_apdu_buffer[OFFSET_P1] != FIRST_MESSAGE) {
-        app_sign_hash();
+        app_sign_hash(curve_type);
     } else {
         // this is the sign_hash transaction
         // we received in one go the root path
