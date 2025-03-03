@@ -15,7 +15,7 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { defaultOptions, models, ROOT_PATH } from './common'
+import { APP_DERIVATION, defaultOptions, models, ROOT_PATH } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import {
   ADD_VALIDATOR_DATA,
@@ -42,6 +42,8 @@ import {
 import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
+
+const ed25519 = require("ed25519-supercop");
 
 jest.setTimeout(200000)
 
@@ -207,6 +209,52 @@ describe.each(models)('P_Sign[$name]; sign', function (m) {
         const signatureRS = Uint8Array.from(resp.signatures?.get(signer)!).slice(0, -1)
 
         const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
+        signatureOks[signer] = signatureOk
+      }
+
+      console.log(JSON.stringify(signatureOks))
+      expect(Object.values(signatureOks).reduce((acc, x) => acc && x, true)).toEqual(true)
+    } finally {
+      await sim.close()
+    }
+  })
+
+  test.each(LITE_SIGN_TEST_DATA)('sign p-chain $name ed25519', async function ({ name, op }) {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const msg = op
+
+      const testcase = `${m.prefix.toLowerCase()}-sign-${name}`
+
+      const signers = ['0/0', '0/1', '1/100']
+      const respReq = app.sign(ROOT_PATH, signers, msg, signers, 1)
+
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+
+      await sim.compareSnapshotsAndApprove('.', `${testcase}-ed25519`)
+
+      const resp = await respReq
+
+      console.log(resp, m.name, name)
+      console.log(resp.signatures?.get('0/0')?.toString('hex'))
+
+      expect(resp.returnCode).toEqual(0x9000)
+      expect(resp.errorMessage).toEqual('No errors')
+      expect(resp).toHaveProperty('signatures')
+      expect(resp.signatures?.size).toEqual(signers.length)
+
+      const hash = crypto.createHash('sha256')
+      const msgHash = Buffer.from(hash.update(msg).digest())
+
+      let signatureOks: { [index: string]: boolean } = {}
+      for (const signer of signers) {
+        const path = `${ROOT_PATH}/${signer}`
+        const resp_addr = await app.getAddressAndPubKey(path, false, undefined, undefined, 1)
+        const pk = Buffer.from(resp_addr.publicKey)
+        const signature = Buffer.from(resp.signatures?.get(signer)!)
+        const signatureOk = ed25519.verify(signature, msgHash, pk)
         signatureOks[signer] = signatureOk
       }
 
