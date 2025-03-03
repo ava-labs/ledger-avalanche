@@ -124,14 +124,14 @@ describe.each(models)('StandardPubKey [%s] - pubkey', function (m) {
       const resp = await app.getAddressAndPubKey(APP_DERIVATION, false, undefined, undefined, 1)
 
       console.log(resp, m.name)
-      console.log(Buffer.from(resp.address).toString('hex'))
+      console.log(resp.address)
       expect(resp.returnCode).toEqual(0x9000)
       expect(resp.errorMessage).toEqual('No errors')
       expect(resp).toHaveProperty('publicKey')
       expect(resp).toHaveProperty('hash')
       expect(resp).toHaveProperty('address')
       expect(resp.publicKey.toString('hex')).toEqual(EXPECTED_ED25519_PUBLIC_KEY)
-      expect(resp.address.toString('hex')).toEqual(EXPECTED_ED25519_ADDRESS)
+      expect(resp.address).toEqual(EXPECTED_ED25519_ADDRESS)
     } finally {
       await sim.close()
     }
