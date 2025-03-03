@@ -67,7 +67,7 @@ endef
 $(error "$(error_message)")
 endif
 
-APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1
+APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1 --curve ed25519
 
 # Configure minimun stack size
 ifeq ($(TARGET_NAME),TARGET_NANOS)
