@@ -67,7 +67,7 @@ endef
 $(error "$(error_message)")
 endif
 
-APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1
+APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1 --curve ed25519
 
 # Configure minimun stack size
 ifeq ($(TARGET_NAME),TARGET_NANOS)
@@ -78,6 +78,7 @@ endif
 
 # Enable QR code display for all devices
 ENABLE_NBGL_QRCODE ?= 1
+ENABLE_BLUETOOTH = 1
 
 RUST_TARGET:=thumbv6m-none-eabi
 
