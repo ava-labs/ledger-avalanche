@@ -162,6 +162,10 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
     const uint8_t curve_type = G_io_apdu_buffer[OFFSET_P2];
 
+    if (curve_type != CURVE_SECP256K1 && curve_type != CURVE_ED25519) {
+        THROW(APDU_CODE_CONDITIONS_NOT_SATISFIED);
+    }
+
     if (curve_type == CURVE_ED25519) {
         extractHDPathEd25519(rx, OFFSET_DATA);
     }

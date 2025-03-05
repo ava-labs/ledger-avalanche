@@ -104,12 +104,12 @@ If the ChainIDLen is 0, then the default ChainID of 32 zero bytes (P-Chain's)
 | CLA        | byte (1)          | Application Identifier    | 0x80                     |
 | INS        | byte (1)          | Instruction ID            | 0x02                     |
 | P1         | byte (1)          | Request User confirmation | No = 0                   |
-| P2         | byte (1)          |                           | ignored                  |
+| P2         | byte (1)          | Curve Type                | 0-SECP256K1(default), 1-ED25519   |
 | L          | byte (1)          | Bytes in payload          | (depends)                |
 | HRPLen     | byte (1)          | Length of HRP             | 0 to 24                  |
-| HRP        | byte (HRPLen)     | HRP                       | ?                        |
+| HRP        | byte (HRPLen)     | HRP                       | ? (not used for ed25519) |
 | ChainIDLen | byte (1)          | Length of ChainID         | 0 OR 32                  |
-| ChainID    | byte (ChainIDLen) | ChainID                   | ?                        |
+| ChainID    | byte (ChainIDLen) | ChainID                   | ? (not used for ed25519) |
 | PathN      | byte (1)          | Number of path components | ? (typically 4, up to 6) |
 | Path[0]    | byte (4)          | Derivation Path Data      | 0x8000002c               |
 | Path[1]    | byte (4)          | Derivation Path Data      | 0x80002328               |
@@ -227,7 +227,7 @@ The app includes a protocol to upload a large payload in multiple messages, as d
 | P1    | byte (1) | Payload desc           | 0 = init  |
 |       |          |                        | 1 = next  |
 |       |          |                        | 2 = last  |
-| P2    | byte (1) |                        | ignored   |
+| P2    | byte (1) | Curve Type             | 0-SECP256K1(default), 1-ED25519   |
 | L     | byte (1) | Bytes in payload       | (depends) |
 
 The first packet/chunk includes the root derivation path.
