@@ -74,22 +74,22 @@ catch_cx_error:
 
 zxerr_t crypto_fill_ed25519_address(uint8_t *buffer, uint16_t buffer_len, uint16_t *addrLen) {
     if (buffer_len < PK_LEN_ED25519 + 50) {
-        return 0;
+        return zxerr_buffer_too_small;
     }
     MEMZERO(buffer, buffer_len);
     buffer[0] = PK_LEN_ED25519;
     CHECK_ZXERR(crypto_extractPublicKey(buffer + 1, buffer_len))
 
     // Create temporary buffer for address construction
-    uint8_t addr_buffer[ADDRESS_BUFFER_LEN]; 
-    uint8_t hash[HASH_LEN];
+    uint8_t addr_buffer[ADDRESS_BUFFER_LEN] = {0}; 
+    uint8_t hash[HASH_LEN] = {0};
     
     // First byte is ED25519_AUTH_ID (assuming it's defined somewhere, typically 0x01)
     addr_buffer[0] = ED25519_AUTH_ID;
     
     // Calculate SHA256 of public key
     cx_sha256_t ctx;
-    memset(&ctx, 0, sizeof(ctx));
+    MEMZERO(&ctx, sizeof(ctx));
     cx_sha256_init_no_throw(&ctx);
     CHECK_CX_OK(cx_hash_no_throw(&ctx.header, CX_LAST, buffer + 1, PK_LEN_ED25519, hash, HASH_LEN));
     
@@ -225,5 +225,4 @@ zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_
         default:
             return zxerr_unknown;
     }
-    return zxerr_unknown;
 }
