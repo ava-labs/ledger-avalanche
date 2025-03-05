@@ -93,6 +93,14 @@ extern "C" {
 #define P2_NO_CHAINCODE                 0x00
 #define P2_CHAINCODE                    0x01
 
+#define CURVE_SECP256K1                 0x00
+#define CURVE_ED25519                   0x01
+#define PK_LEN_ED25519                  32
+#define ED25519_AUTH_ID                 0x00
+#define HASH_LEN                        32
+#define ADDRESS_BUFFER_LEN              33 // 1 byte auth_id + 32 bytes hash
+#define ADDRESS_CHECKSUM_LEN            4
+
 #ifdef __cplusplus
 }
 #endif
