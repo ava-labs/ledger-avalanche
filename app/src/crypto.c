@@ -73,9 +73,13 @@ catch_cx_error:
 }
 
 zxerr_t crypto_fill_ed25519_address(uint8_t *buffer, uint16_t buffer_len, uint16_t *addrLen) {
-    if (buffer_len < PK_LEN_ED25519 + 50) {
+    if (buffer_len < PK_LEN_ED25519 + ADDRESS_MAX_SIZE) {
         return zxerr_buffer_too_small;
     }
+    if (addrLen == NULL) {
+        return zxerr_no_data;
+    }
+
     MEMZERO(buffer, buffer_len);
     buffer[0] = PK_LEN_ED25519;
     CHECK_ZXERR(crypto_extractPublicKey(buffer + 1, buffer_len))
@@ -103,7 +107,7 @@ zxerr_t crypto_fill_ed25519_address(uint8_t *buffer, uint16_t buffer_len, uint16
     // Copy address bytes to output buffer
     MEMCPY(buffer + 1 + PK_LEN_ED25519, addr_buffer, ADDRESS_BUFFER_LEN);
     // Append checksum (last 4 bytes of hash)
-    MEMCPY(buffer + 1 + PK_LEN_ED25519 + ADDRESS_BUFFER_LEN, hash + 28, ADDRESS_CHECKSUM_LEN);
+    MEMCPY(buffer + 1 + PK_LEN_ED25519 + ADDRESS_BUFFER_LEN, hash + HASH_OFFSET, ADDRESS_CHECKSUM_LEN);
 
     *addrLen = 1 + PK_LEN_ED25519 + ADDRESS_BUFFER_LEN + ADDRESS_CHECKSUM_LEN;
     
@@ -118,7 +122,7 @@ zxerr_t crypto_sign_avax_ed25519(uint8_t *buffer, uint16_t signatureMaxlen, cons
     }
 
     cx_ecfp_private_key_t cx_privateKey;
-    uint8_t privateKeyData[64] = {0};
+    uint8_t privateKeyData[SK_LEN_25519] = {0};
 
     zxerr_t error = zxerr_unknown;
 
@@ -131,7 +135,7 @@ zxerr_t crypto_sign_avax_ed25519(uint8_t *buffer, uint16_t signatureMaxlen, cons
                                                      NULL,
                                                      0));
 
-    CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, privateKeyData, 32, &cx_privateKey));
+    CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, privateKeyData, SCALAR_LEN_ED25519, &cx_privateKey));
     CATCH_CXERROR(cx_eddsa_sign_no_throw(&cx_privateKey,
                                          CX_SHA512,
                                          message,

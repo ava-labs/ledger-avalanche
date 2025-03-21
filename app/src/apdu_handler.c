@@ -95,6 +95,10 @@ void extractHDPath(uint32_t rx, uint32_t offset) {
 void extractHDPathEd25519(uint32_t rx, uint32_t offset) {
     MEMZERO(hdPath, sizeof(hdPath));
 
+    if (rx < offset + 1) {
+        THROW(APDU_CODE_WRONG_LENGTH);
+    }
+
      hdPath_len = G_io_apdu_buffer[offset];
      offset += 1;
 
