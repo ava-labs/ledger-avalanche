@@ -72,7 +72,7 @@ impl<'b> OperationTx<'b> {
         Ok(num_items)
     }
 
-    pub fn op_with_item(&'b self, item_n: u8) -> Result<(TransferableOp, u8), ParserError> {
+    pub fn op_with_item(&'b self, item_n: u8) -> Result<(TransferableOp<'b>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
         // gets the operation that contains item_n

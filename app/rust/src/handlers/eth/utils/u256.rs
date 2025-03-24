@@ -1645,7 +1645,7 @@ impl u256 {
     /// To make sure there are enough bytes, use a buffer of size [`Self::FORMATTED_SIZE_DECIMAL`]
     pub fn to_lexical(mut self, bytes: &mut [u8]) -> &mut [u8] {
         //this is equivalent to Self::from(10)
-        const TEN: &u256 = &Self([10, 0, 0, 0]);
+        const TEN: &u256 = &u256([10, 0, 0, 0]);
 
         let ten = *PIC::new(TEN).into_inner();
 

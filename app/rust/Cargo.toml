@@ -38,7 +38,7 @@ banff = []
 #debugging features
 dev = []
 derive-debug = []
-blind-sign-togle = []
+blind-sign-toggle = []
 
 [dependencies]
 no-std-compat = { version = "0.4" }

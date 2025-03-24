@@ -42,7 +42,7 @@ pub struct SECPOutputOwners<'b> {
 impl<'b> SECPOutputOwners<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
 
-    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address<'b>> {
         let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
