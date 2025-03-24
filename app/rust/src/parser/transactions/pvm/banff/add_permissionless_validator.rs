@@ -475,13 +475,13 @@ impl<'b> AddPermissionlessValidatorTx<'b> {
     pub fn stake_output_with_item(
         &'b self,
         item_n: u8,
-    ) -> Result<(TransferableOutput<PvmOutput>, u8), ParserError> {
+    ) -> Result<(TransferableOutput<'b, PvmOutput<'b>>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
         let mut idx = 0;
         // gets the output that contains item_n
         // and its corresponding index
-        let filter = |o: &TransferableOutput<'b, PvmOutput>| -> bool {
+        let filter = |o: &TransferableOutput<'b, PvmOutput<'b>>| -> bool {
             let render = self.renderable_out & (1 << idx) > 0;
             idx += 1;
             if !render {

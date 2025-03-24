@@ -58,7 +58,7 @@ use handlers::ZPacketType as PacketType;
 mod crypto;
 
 cfg_if::cfg_if! {
-    if #[cfg(fuzzing)] {
+    if #[cfg(feature = "fuzzing")] {
         pub use dispatcher::handle_apdu;
     } else {
         use dispatcher::handle_apdu;

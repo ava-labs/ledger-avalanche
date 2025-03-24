@@ -142,11 +142,11 @@ where
         &self.base_tx.inputs
     }
 
-    pub fn base_outputs(&'b self) -> &ObjectList<TransferableOutput<O>> {
+    pub fn base_outputs(&'b self) -> &'b ObjectList<'b, TransferableOutput<'b, O>> {
         &self.base_tx.outputs
     }
 
-    pub fn export_outputs(&'b self) -> &ObjectList<TransferableOutput<O>> {
+    pub fn export_outputs(&'b self) -> &'b ObjectList<'b, TransferableOutput<'b, O>> {
         &self.outputs
     }
 
@@ -213,7 +213,7 @@ where
     pub fn get_output_with_item(
         &'b self,
         item_n: u8,
-    ) -> Result<(TransferableOutput<O>, u8), ViewError> {
+    ) -> Result<(TransferableOutput<'b, O>, u8), ViewError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
         let mut idx = 0;

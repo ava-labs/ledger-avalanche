@@ -121,7 +121,7 @@ impl<'b> PvmOutput<'b> {
         Ok(v)
     }
 
-    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address<'b>> {
         match self.output {
             Output::SECPTransfer(ref o) => o.get_address_at(idx),
             Output::SECPOwners(ref o) => o.get_address_at(idx),

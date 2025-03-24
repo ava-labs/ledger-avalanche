@@ -100,6 +100,8 @@ extern "C" {
 #define HASH_LEN                        32
 #define ADDRESS_BUFFER_LEN              33 // 1 byte auth_id + 32 bytes hash
 #define ADDRESS_CHECKSUM_LEN            4
+#define ADDRESS_MAX_SIZE                50
+#define HASH_OFFSET                     28
 
 #ifdef __cplusplus
 }
