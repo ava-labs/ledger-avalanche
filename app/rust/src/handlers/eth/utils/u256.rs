@@ -134,7 +134,7 @@ impl u256 {
     #[inline]
     pub fn as_u32(&self) -> u32 {
         let u256(arr) = self;
-        if !self.fits_word() || arr[0] > u32::max_value() as u64 {
+        if !self.fits_word() || arr[0] > u32::MAX as u64 {
             panic!("Integer overflow when casting to u32");
         }
         self.as_u64() as u32
@@ -162,7 +162,7 @@ impl u256 {
     #[inline]
     pub fn as_usize(&self) -> usize {
         let u256(arr) = self;
-        if !self.fits_word() || arr[0] > usize::max_value() as u64 {
+        if !self.fits_word() || arr[0] > usize::MAX as u64 {
             panic!("Integer overflow when casting to usize");
         }
         arr[0] as usize
@@ -366,7 +366,7 @@ impl u256 {
                 }
                 q_hat
             } else {
-                u64::max_value()
+                u64::MAX
             };
             let q_hat_v = v.full_mul_u64(q_hat);
             let c = Self::sub_slice(&mut u[j..], &q_hat_v[..n + 1]);
@@ -517,11 +517,7 @@ impl u256 {
             let mut ret = [0u64; 4];
             let ret_ptr = &mut ret as *mut [u64; 4] as *mut u64;
             let mut carry = 0u64;
-            #[allow(unknown_lints, clippy::eq_op)]
-            const _: [(); 0 - !{
-                const ASSERT: bool = core::isize::MAX as usize / core::mem::size_of::<u64>() > 4;
-                ASSERT
-            } as usize] = [];
+            const ASSERT: bool = isize::MAX as usize / core::mem::size_of::<u64>() > 4;
 
             {
                 const i: usize = 0;
@@ -607,11 +603,7 @@ impl u256 {
             let mut ret = [0u64; 4];
             let ret_ptr = &mut ret as *mut [u64; 4] as *mut u64;
             let mut carry = 0u64;
-            #[allow(unknown_lints, clippy::eq_op)]
-            const _: [(); 0 - !{
-                const ASSERT: bool = core::isize::MAX as usize / core::mem::size_of::<u64>() > 4;
-                ASSERT
-            } as usize] = [];
+            const ASSERT: bool = isize::MAX as usize / core::mem::size_of::<u64>() > 4;
 
             {
                 const i: usize = 0;
