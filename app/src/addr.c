@@ -32,6 +32,8 @@
 #define CHAIN_ID_CHECKSUM_SIZE 4
 #define CHAIN_CODE_LEN 32
 #define ADDR_UI_MAX_SIZE 61
+#define PATH_MAX_SIZE 300
+#define PATH_MAX_SIZE_ED25519 80
 
 // Use to hold the addr_ui object, used by rust to display the address
 uint8_t addr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
@@ -78,6 +80,9 @@ zxerr_t addr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *
 }
 
 zxerr_t addr_getNumItemsEd25519(uint8_t *num_items) {
+    if (num_items == NULL) {
+        return zxerr_no_data;
+    }
     zemu_log_stack("addr_getNumItems");
     *num_items = 1;
     if (app_mode_expert()) {
@@ -94,7 +99,7 @@ zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen,
         case 0:
             snprintf(outKey, outKeyLen, "Address");
 
-            char buf[80] = {0};
+            char buf[PATH_MAX_SIZE_ED25519] = {0};
             array_to_hexstr(buf, sizeof(buf), G_io_apdu_buffer + 1 + PK_LEN_ED25519, ADDRESS_BUFFER_LEN + ADDRESS_CHECKSUM_LEN);
             pageString(outVal, outValLen, buf, pageIdx, pageCount);
             return zxerr_ok;
@@ -104,7 +109,7 @@ zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen,
             }
 
             snprintf(outKey, outKeyLen, "Your Path");
-            char buffer[300];
+            char buffer[PATH_MAX_SIZE] = {0};
             bip32_to_str(buffer, sizeof(buffer), hdPath, hdPath_len);
             pageString(outVal, outValLen, buffer, pageIdx, pageCount);
             return zxerr_ok;

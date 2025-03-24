@@ -100,7 +100,7 @@ where
             })
     }
 
-    pub fn outputs(&'b self) -> &ObjectList<TransferableOutput<O>> {
+    pub fn outputs(&'b self) -> &'b ObjectList<'b, TransferableOutput<'b, O>> {
         &self.outputs
     }
 
@@ -145,7 +145,7 @@ where
     pub fn base_output_with_item(
         &'b self,
         item_n: u8,
-    ) -> Result<(TransferableOutput<O>, u8), ParserError> {
+    ) -> Result<(TransferableOutput<'b, O>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
 

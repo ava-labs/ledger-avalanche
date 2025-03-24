@@ -38,7 +38,8 @@ banff = []
 #debugging features
 dev = []
 derive-debug = []
-blind-sign-togle = []
+blind-sign-toggle = []
+fuzzing = []
 
 [dependencies]
 no-std-compat = { version = "0.4" }
@@ -49,7 +50,7 @@ arrayvec = { version = "0.7", default-features = false }
 arrayref = "0.3.6"
 nom = { version = "7.1.1", default-features = false }
 bytemuck = { version = "1.15.0" }
-educe = "0.4.19"
+educe = "0.6.0"
 byteorder = { version = "1.4.3", default-features = false }
 itoa = { version = "1.0.1", default-features = false }
 bolos = { path = "../../deps/ledger-rust/bolos" }
@@ -67,10 +68,10 @@ hex = "0.4.3"
 arrayvec = { version = "0.7" }
 time = { version = "0.3.15", features = ["formatting"] }
 k256 = { version = "0.13.0", features = ["ecdsa"] }
-rand = "0.8.5"
+rand = "0.9.0"
 insta = { version = "1", features = ["glob"] }
 serde_json = "1.0.85"
-itertools = "0.10.4"
+itertools = "0.14.0"
 proptest = "1.1.0"
 zuit = { path = "../../deps/ledger-rust/zuit" }
 
