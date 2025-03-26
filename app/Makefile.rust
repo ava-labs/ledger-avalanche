@@ -16,6 +16,8 @@
 #  limitations under the License.
 #*******************************************************************************
 
+MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+
 RUST_TARGET:=thumbv6m-none-eabi
 $(info ************ RUST_TARGET  = [$(RUST_TARGET)])
 

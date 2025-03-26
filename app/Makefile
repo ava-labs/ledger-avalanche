@@ -21,8 +21,6 @@ endif
 
 DEBUG := 0
 
-MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-
 include $(CURDIR)/Makefile.conf
 
 # Enable Ethereum features for all targets except TARGET_NANOS
@@ -95,10 +93,6 @@ DEFINES += APP_TESTING ZEMU_LOGGING
 $(info ************ LOGGING ENABLED ************)
 endif
 
-include $(CURDIR)/Makefile.rust
-include $(CURDIR)/Makefile.erc20
-
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
 INCLUDES_PATH += $(CURDIR)/src/common/
 
 CC := $(CLANGPATH)clang
@@ -111,14 +105,17 @@ endif
 
 CFLAGS += -DAPPVERSION_M=$(APPVERSION_M) -DAPPVERSION_N=$(APPVERSION_N) -DAPPVERSION_P=$(APPVERSION_P)
 
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
-
 $(info TARGET_NAME  = [$(TARGET_NAME)])
 $(info ICONNAME  = [$(ICONNAME)])
 
 ifndef ICONNAME
 $(error ICONNAME is not set)
 endif
+
+include $(CURDIR)/Makefile.rust
+include $(CURDIR)/Makefile.erc20
+include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
+include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
 
 # make rust a prerequisite for all object files
 $(OBJECT_FILES): | rust

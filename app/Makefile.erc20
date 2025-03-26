@@ -16,6 +16,8 @@
 #  limitations under the License.
 #*******************************************************************************
 
+MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+
 ifeq ($(FEATURE_ETH), 1)
 
 # Avax CHAIN_ID
