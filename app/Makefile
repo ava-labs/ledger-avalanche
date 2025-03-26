@@ -80,10 +80,6 @@ endif
 ENABLE_NBGL_QRCODE ?= 1
 ENABLE_BLUETOOTH = 1
 
-RUST_TARGET:=thumbv6m-none-eabi
-
-$(info ************ RUST_TARGET  = [$(RUST_TARGET)])
-
 include $(BOLOS_SDK)/Makefile.target
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.devices
@@ -99,118 +95,8 @@ DEFINES += APP_TESTING ZEMU_LOGGING
 $(info ************ LOGGING ENABLED ************)
 endif
 
-# Enable app features depending on the target device
-ifeq ($(TARGET_NAME), TARGET_NANOS)
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-RUST_TARGET_NAME := TARGET_NANOS
-endif
-
-ifeq ($(TARGET_NAME), TARGET_NANOX)
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-RUST_TARGET_NAME := TARGET_NANOX
-endif
-
-ifeq ($(TARGET_NAME), TARGET_NANOS2)
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-RUST_TARGET_NAME := TARGET_NANOS2
-endif
-
-NBGL_TARGETS := TARGET_STAX TARGET_FLEX
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-DEFINES += ICONGLYPH=C_icon_stax_64
-DEFINES += ICONBITMAP=C_icon_stax_64
-DEFINES += ICONGLYPH_SMALL=C_icon_stax_32
-RUST_TARGET_NAME := TARGET_STAX
-endif
-
-ifeq ($(APP_TESTING), 1)
-RUST_FEATURES += --features "dev"
-endif
-
-ifeq ($(APP_FULL), 1)
-RUST_FEATURES += --features "full"
-else
-RUST_FEATURES += --features "lite"
-endif
-
-ifeq ($(FEATURE_ETH), 1)
-
-# Avax CHAIN_ID
-CHAIN_ID = 43114
-TICKER = "AVAX"
-
-CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATCH_VERSION=$(APPVERSION_P)
-
-ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
-DEFINES += HAVE_ETH_INTEGRATION HAVE_ETH2 USE_LIB_ETHEREUM
-DEFINES += HAVE_BYPASS_SIGNATURES
-# commented out as we no longer use app-ethereum
-# for handling erc20 tokens.
-# DEFINES += HAVE_CONTRACT_NAME_IN_DESCRIPTOR
-HAVE_EIP712_FULL_SUPPORT = 1
-DEFINES += HAVE_EIP712_FULL_SUPPORT=$(HAVE_EIP712_FULL_SUPPORT)
-DEFINES += HAVE_DOMAIN_NAME
-DEFINES += CHAIN_ID=$(CHAIN_ID)
-DEFINES += TICKER=\"$(TICKER)\"
-DEFINES += HAVE_BOLOS_APP_STACK_CANARY HAVE_HASH3
-DEFINES += HAVE_DYN_MEM_ALLOC
-
-DEFINES += BIP44_COIN_TYPE_3=60 COIN_COINID_SHORT=\"AVAX\"
-DEFINES += HAVE_SNPRINTF_FORMAT_U IO_HID_EP_LENGTH=64
-DEFINES += HAVE_U2F HAVE_IO_U2F U2F_PROXY_MAGIC=\"w0w\"
-DEFINES += BLE_SEGMENT_SIZE=32
-DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
-DEFINES += CHAINID_COINNAME=\"$(TICKER)\" BUILD_YEAR=\"$(shell date +%Y)\"
-
-INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
-INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/include
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk/src
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
-
-ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
-# With the line bellow we remove app-ethereum/src/main.c file from our sources
-ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
-APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
-
-SDK_SOURCE_PATH += lib_u2f lib_standard_app
-
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
-	NBGL_SRC_DIR := $(MY_DIR)/../deps/ethereum/src_nbgl
-	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/network_icons.c, $(shell find $(NBGL_SRC_DIR) -name '*.c'))
-	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/ui_idle.c, $(NBGL_SRC_FILES))
-
-	INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_nbgl
-	APP_SOURCE_PATH += $(NBGL_SRC_FILES)
-else
-	SDK_SOURCE_PATH += lib_ux
-	APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_bagl
-	DEFINES += HAVE_BAGL HAVE_UX_FLOW HAVE_GLO096
-	DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64 HAVE_BAGL_ELLIPSIS
-	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-endif
-
-LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
-
-DEFINES += FEATURE_ETH=$(FEATURE_ETH)
-
-# not present in app-ethereum/master but in develop branch
-# so it could be needed once develop gets revased onto master
-# include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
-
-endif # NO TARGET_NANOS OR TARGET_STAX
-endif # NO FEATURE_ETH
+include $(CURDIR)/Makefile.rust
+include $(CURDIR)/Makefile.erc20
 
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
 INCLUDES_PATH += $(CURDIR)/src/common/
@@ -225,12 +111,6 @@ endif
 
 CFLAGS += -DAPPVERSION_M=$(APPVERSION_M) -DAPPVERSION_N=$(APPVERSION_N) -DAPPVERSION_P=$(APPVERSION_P)
 
-LDFLAGS += -z muldefs
-LDLIBS += -lm -lgcc -lc
-LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
-
-APP_SOURCE_PATH += $(CURDIR)/rust/include
-
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
@@ -243,20 +123,7 @@ endif
 # make rust a prerequisite for all object files
 $(OBJECT_FILES): | rust
 
-.PHONY: rust
-rust:
-	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(RUST_TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
-	cargo build --release --target $(RUST_TARGET) \
-	--no-default-features $(RUST_FEATURES)
-
-.PHONY: rust_clean
-rust_clean:
-	cd rust && CARGO_HOME="$(CURDIR)/rust/.cargo" cargo clean
-
-clean: rust_clean
-
 dep/%.d: %.c Makefile
-
 
 .PHONY: version
 version:
