@@ -103,7 +103,6 @@ endif
 ifeq ($(TARGET_NAME), TARGET_NANOS)
 RUST_TARGET := thumbv6m-none-eabi
 APP_FULL := 1
-APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib/view_s.c
 RUST_TARGET_NAME := TARGET_NANOS
 endif
 
