@@ -16,6 +16,11 @@
 #  limitations under the License.
 #*******************************************************************************
 
+# Enable Ethereum features for all targets except TARGET_NANOS
+ifneq ($(TARGET_NAME), TARGET_NANOS)
+FEATURE_ETH = 1
+endif
+
 MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
 ifeq ($(FEATURE_ETH), 1)
