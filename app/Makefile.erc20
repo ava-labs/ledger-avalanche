@@ -16,14 +16,7 @@
 #  limitations under the License.
 #*******************************************************************************
 
-# Enable Ethereum features for all targets except TARGET_NANOS
-ifneq ($(TARGET_NAME), TARGET_NANOS)
-FEATURE_ETH = 1
-endif
-
 MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
-
-ifeq ($(FEATURE_ETH), 1)
 
 # Avax CHAIN_ID
 CHAIN_ID = 43114
@@ -31,7 +24,6 @@ TICKER = "AVAX"
 
 CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATCH_VERSION=$(APPVERSION_P)
 
-ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
 DEFINES += HAVE_ETH_INTEGRATION HAVE_ETH2 USE_LIB_ETHEREUM
 DEFINES += HAVE_BYPASS_SIGNATURES
 # commented out as we no longer use app-ethereum
@@ -93,6 +85,3 @@ DEFINES += FEATURE_ETH=$(FEATURE_ETH)
 # not present in app-ethereum/master but in develop branch
 # so it could be needed once develop gets revased onto master
 # include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
-
-endif # NO TARGET_NANOS OR TARGET_STAX
-endif # NO FEATURE_ETH

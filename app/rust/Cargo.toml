@@ -85,3 +85,4 @@ codegen-units = 1
 debug = false
 opt-level = "z"
 overflow-checks = true
+panic = "abort"
