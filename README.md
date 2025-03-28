@@ -12,9 +12,9 @@ _Please visit our website at [zondax.ch](https://www.zondax.ch)_
 
 ---
 
-This project contains the Avalanche app for Ledger Nano S, S+ and X.
+This project contains the Avalanche app for Ledger Nano S+, Nano X, Flex, and Stax.
 
-- Ledger Nano S/S+/X BOLOS app
+- Ledger Nano S+/X, Flex, and Avalanche BOLOS app
 - Specs / Documentation
 - Rust unit/integration tests
 - Zemu tests
