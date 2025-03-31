@@ -17,9 +17,9 @@
   },
   "dependencies": {
     "@ethersproject/wallet": "^5.8.0",
-    "@types/node": "^22.13.13",
+    "@types/node": "^22.13.14",
     "@zondax/ledger-avalanche-app": "link:../js",
-    "@zondax/zemu": "0.55.0",
+    "@zondax/zemu": "0.55.3",
     "ethers": "^6.13.5"
   },
   "devDependencies": {
@@ -35,8 +35,8 @@
     "@types/elliptic": "^6.4.18",
     "@types/jest": "^29.5.14",
     "@types/ledgerhq__hw-transport": "^6.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.27.0",
-    "@typescript-eslint/parser": "^8.27.0",
+    "@typescript-eslint/eslint-plugin": "^8.28.0",
+    "@typescript-eslint/parser": "^8.28.0",
     "bn.js": "^5.2.1",
     "bs58": "^6.0.0",
     "crypto-js": "4.2.0",
@@ -46,7 +46,7 @@
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jest": "^28.11.0",
-    "eslint-plugin-prettier": "^5.2.4",
+    "eslint-plugin-prettier": "^5.2.5",
     "jest": "^29.7.0",
     "jest-serial-runner": "^1.2.1",
     "js-sha256": "0.11.0",
