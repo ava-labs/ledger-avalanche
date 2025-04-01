@@ -65,7 +65,7 @@ jobs:
       image: zondax/ledger-app-builder:latest
       options: --user ${{ needs.configure.outputs.uid_gid }}
       env:
-        BOLOS_SDK: /opt/nanos-secure-sdk
+        BOLOS_SDK: /opt/nanosplus-secure-sdk
     outputs:
       size: ${{steps.build.outputs.size}}
     steps:
@@ -87,7 +87,7 @@ jobs:
       image: zondax/ledger-app-builder:latest
       options: --user ${{ needs.configure.outputs.uid_gid }}
       env:
-        BOLOS_SDK: /opt/nanos-secure-sdk
+        BOLOS_SDK: /opt/nanosplus-secure-sdk
     outputs:
       size: ${{steps.build.outputs.size}}
     steps:
@@ -101,17 +101,6 @@ jobs:
         run: |
           make PRODUCTION_BUILD=1
           echo "size=$(python3 deps/ledger-zxlib/scripts/getSize.py s)" >> $GITHUB_OUTPUT
-
-  size_nano_s:
-    needs: build_ledger
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    env:
-      NANOS_LIMIT_SIZE: 136
-    steps:
-      - run: |
-          echo "LNS app size: ${{needs.build_ledger.outputs.size}} KiB"
-          [ ${{needs.build_ledger.outputs.size}} -le $NANOS_LIMIT_SIZE ]
 
   tests_zemu_setup:
     if: ${{ !contains(toJSON(github.event.commits[*].message), '[skip-zemu]') }}
@@ -191,42 +180,6 @@ jobs:
         with:
           name: snapshots-tmp
           path: tests_zemu/snapshots-tmp/
-
-  build_package_nanos:
-    needs: [configure, build_ledger, tests_zemu_setup, test_zemu, rust_tests]
-    if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
-    container:
-      image: zondax/ledger-app-builder:latest
-      options: --user ${{ needs.configure.outputs.uid_gid }}
-      env:
-        BOLOS_SDK: /opt/nanos-secure-sdk
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Install deps
-        run: pip install ledgerblue
-
-      - name: Build NanoS
-        shell: bash -l {0}
-        run: |
-          make PRODUCTION_BUILD=0
-          mv ./app/pkg/installer_s.sh ./app/pkg/installer_nanos.sh
-      - name: Set tag
-        id: nanos
-        run: echo "tag_name=$(./app/pkg/installer_nanos.sh version)" >> $GITHUB_OUTPUT
-      - name: Create or Update Release (1)
-        id: create_release_0
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          files: ./app/pkg/installer_nanos.sh
-          tag_name: ${{ steps.nanos.outputs.tag_name }}
-          draft: false
-          prerelease: false
 
   build_package_nanosp:
     needs: [configure, build_ledger, tests_zemu_setup, test_zemu, rust_tests]

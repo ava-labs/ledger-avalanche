@@ -55,7 +55,7 @@ dkms.conf
 
 # Others
 \.idea
-.vscode/*.log
+.vscode
 .DS_Store
 node_modules
 
@@ -65,6 +65,7 @@ node_modules
 # **/Cargo.lock
 **/.cargo/registry
 **/.cargo/git
+**/.cargo/.global-cache
 
 # Workspace specific
 

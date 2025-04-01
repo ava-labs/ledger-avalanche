@@ -19,201 +19,107 @@ ifeq ($(BOLOS_SDK),)
 $(error BOLOS_SDK is not set)
 endif
 
-DEBUG := 0
+########################################
+#        Mandatory configuration       #
+########################################
+# Upload targets to configure the devices 
+include $(BOLOS_SDK)/Makefile.defines
 
-MY_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+# Application name
+APPNAME = "Avalanche"
 
-include $(CURDIR)/Makefile.conf
+# Application version
+include $(CURDIR)/Makefile.version
+APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
-# Enable Ethereum features for all targets except TARGET_NANOS
-ifneq ($(TARGET_NAME), TARGET_NANOS)
-FEATURE_ETH = 1
+# Application source files
+APP_SOURCE_PATH += src
+
+# Application icons following guidelines:
+# https://developers.ledger.com/docs/embedded-app/design-requirements/#device-icon
+ICON_NANOS = nanos_icon.gif
+ICON_NANOX = nanox_icon.gif
+ICON_NANOSP = nanox_icon.gif
+ICON_STAX = stax_icon.gif
+ICON_FLEX = flex_icon.gif
+
+# Application allowed derivation curves.
+# Possibles curves are: secp256k1, secp256r1, ed25519 and bls12381g1
+# If your app needs it, you can specify multiple curves by using:
+# `CURVE_APP_LOAD_PARAMS = <curve1> <curve2>`
+CURVE_APP_LOAD_PARAMS = secp256k1 ed25519
+
+# Application allowed derivation paths.
+# You should request a specific path for your app.
+# This serve as an isolation mechanism.
+# Most application will have to request a path according to the BIP-0044
+# and SLIP-0044 standards.
+# If your app needs it, you can specify multiple path by using:
+# `PATH_APP_LOAD_PARAMS = "44'/1'" "45'/1'"`
+
+APPPATH = "44'/9000'" "44'/60'"
+$(info PATHS LIST = $(APPPATH))
+PATH_APP_LOAD_PARAMS = $(APPPATH)
+
+# Setting to allow building variant applications
+# - <VARIANT_PARAM> is the name of the parameter which should be set
+#   to specify the variant that should be build.
+# - <VARIANT_VALUES> a list of variant that can be build using this app code.
+#   * It must at least contains one value.
+#   * Values can be the app ticker or anything else but should be unique.
+ifeq ($(COIN),)
+    COIN = AVAX
 endif
+$(info COIN  = [$(COIN)])
+VARIANT_PARAM=COIN
+VARIANT_VALUES=$(COIN)
 
-## Display whether this is a production build or for internal use
+########################################
+# Application communication interfaces #
+########################################
+ENABLE_BLUETOOTH = 1
+#ENABLE_NFC = 1
+
+########################################
+#         NBGL custom features         #
+########################################
+ENABLE_NBGL_QRCODE = 1
+#ENABLE_NBGL_KEYBOARD = 1
+#ENABLE_NBGL_KEYPAD = 1
+
+########################################
+#          Features disablers          #
+########################################
+# These advanced settings allow to disable some feature that are by
+# default enabled in the SDK `Makefile.standard_app`.
+#DISABLE_STANDARD_APP_FILES = 1
+#DISABLE_DEFAULT_IO_SEPROXY_BUFFER_SIZE = 1 # To allow custom size declaration
+#DISABLE_STANDARD_APP_DEFINES = 1 # Will set all the following disablers
+#DISABLE_STANDARD_SNPRINTF = 1
+#DISABLE_STANDARD_USB = 1
+#DISABLE_STANDARD_WEBUSB = 1
+#DISABLE_DEBUG_LEDGER_ASSERT = 1
+#DISABLE_DEBUG_THROW = 1
+
+########################################
+#        Other configurations          #
+########################################
+# Set the default value for PRODUCTION_BUILD to 0 if not already defined
+PRODUCTION_BUILD ?= 1
+# Display whether this is a production build or for internal use
 ifeq ($(PRODUCTION_BUILD), 1)
     $(info ************ PRODUCTION_BUILD  = [PRODUCTION BUILD])
 else
     $(info ************ PRODUCTION_BUILD  = [INTERNAL USE])
 endif
-
+ # Add the PRODUCTION_BUILD definition to the compiler flags
 DEFINES += PRODUCTION_BUILD=$(PRODUCTION_BUILD)
 
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.app_testing
-
-ifndef COIN
-COIN = AVAX
-endif
-
-VARIANT_PARAM=COIN
-VARIANT_VALUES=$(COIN)
-
-include $(CURDIR)/Makefile.version
-
-$(info COIN  = [$(COIN)])
-
-ifeq ($(COIN), AVAX)
-# Main app configuration
-DEFINES += APP_STANDARD
-APPNAME = "Avalanche"
-APPPATH = "44'/9000'" --path "44'/60'"
-PATH_APP_LOAD_PARAMS = "44'/9000'" "44'/60'"
-else
-define error_message
-
-COIN value not supported: [$(COIN)]
-
-endef
-$(error "$(error_message)")
-endif
-
-APP_LOAD_PARAMS = $(COMMON_LOAD_PARAMS) --curve secp256k1 --curve ed25519
-
-# Configure minimun stack size
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-	APP_STACK_MIN_SIZE := 1752
-else
-	APP_STACK_MIN_SIZE := 2000
-endif
-
-# Enable QR code display for all devices
-ENABLE_NBGL_QRCODE ?= 1
-ENABLE_BLUETOOTH = 1
-
-RUST_TARGET:=thumbv6m-none-eabi
-
-$(info ************ RUST_TARGET  = [$(RUST_TARGET)])
-
-include $(BOLOS_SDK)/Makefile.target
-
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.devices
-
-$(info TARGET_NAME  = [$(TARGET_NAME)])
 
 # Add SDK BLAKE2b
 DEFINES += HAVE_HASH HAVE_BLAKE2
 INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
 
-ifeq ($(APP_TESTING), 1)
-DEFINES += APP_TESTING ZEMU_LOGGING
-$(info ************ LOGGING ENABLED ************)
-endif
-
-# Enable app features depending on the target device
-ifeq ($(TARGET_NAME), TARGET_NANOS)
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-APP_SOURCE_PATH += $(MY_DIR)/../deps/zxlib/view_s.c
-RUST_TARGET_NAME := TARGET_NANOS
-endif
-
-ifeq ($(TARGET_NAME), TARGET_NANOX)
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-RUST_TARGET_NAME := TARGET_NANOX
-endif
-
-ifeq ($(TARGET_NAME), TARGET_NANOS2)
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-RUST_TARGET_NAME := TARGET_NANOS2
-endif
-
-NBGL_TARGETS := TARGET_STAX TARGET_FLEX
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
-RUST_TARGET := thumbv6m-none-eabi
-APP_FULL := 1
-DEFINES += ICONGLYPH=C_icon_stax_64
-DEFINES += ICONBITMAP=C_icon_stax_64
-DEFINES += ICONGLYPH_SMALL=C_icon_stax_32
-RUST_TARGET_NAME := TARGET_STAX
-endif
-
-ifeq ($(APP_TESTING), 1)
-RUST_FEATURES += --features "dev"
-endif
-
-ifeq ($(APP_FULL), 1)
-RUST_FEATURES += --features "full"
-else
-RUST_FEATURES += --features "lite"
-endif
-
-ifeq ($(FEATURE_ETH), 1)
-
-# Avax CHAIN_ID
-CHAIN_ID = 43114
-TICKER = "AVAX"
-
-CFLAGS += -DMAJOR_VERSION=$(APPVERSION_M) -DMINOR_VERSION=$(APPVERSION_N) -DPATCH_VERSION=$(APPVERSION_P)
-
-ifeq (,$(filter $(TARGET_NAME),TARGET_NANOS))
-DEFINES += HAVE_ETH_INTEGRATION HAVE_ETH2 USE_LIB_ETHEREUM
-DEFINES += HAVE_BYPASS_SIGNATURES
-# commented out as we no longer use app-ethereum
-# for handling erc20 tokens.
-# DEFINES += HAVE_CONTRACT_NAME_IN_DESCRIPTOR
-HAVE_EIP712_FULL_SUPPORT = 1
-DEFINES += HAVE_EIP712_FULL_SUPPORT=$(HAVE_EIP712_FULL_SUPPORT)
-DEFINES += HAVE_DOMAIN_NAME
-DEFINES += CHAIN_ID=$(CHAIN_ID)
-DEFINES += TICKER=\"$(TICKER)\"
-DEFINES += HAVE_BOLOS_APP_STACK_CANARY HAVE_HASH3
-DEFINES += HAVE_DYN_MEM_ALLOC
-
-DEFINES += BIP44_COIN_TYPE_3=60 COIN_COINID_SHORT=\"AVAX\"
-DEFINES += HAVE_SNPRINTF_FORMAT_U IO_HID_EP_LENGTH=64
-DEFINES += HAVE_U2F HAVE_IO_U2F U2F_PROXY_MAGIC=\"w0w\"
-DEFINES += BLE_SEGMENT_SIZE=32
-DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
-DEFINES += CHAINID_COINNAME=\"$(TICKER)\" BUILD_YEAR=\"$(shell date +%Y)\"
-
-INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/src
-INCLUDES_PATH += $(BOLOS_SDK)/lib_cxng/include
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk/src
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_features/
-INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
-
-ETHEREUM_SRC_DIR := $(MY_DIR)/../deps/ethereum/src
-# With the line bellow we remove app-ethereum/src/main.c file from our sources
-ETHEREUM_SRC_FILES := $(filter-out $(ETHEREUM_SRC_DIR)/main.c, $(shell find $(ETHEREUM_SRC_DIR) -name '*.c'))
-APP_SOURCE_PATH += $(ETHEREUM_SRC_FILES)
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_features
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_plugins/
-APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/ethereum-plugin-sdk
-
-SDK_SOURCE_PATH += lib_u2f lib_standard_app
-
-ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME), $(NBGL_TARGETS)))
-	NBGL_SRC_DIR := $(MY_DIR)/../deps/ethereum/src_nbgl
-	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/network_icons.c, $(shell find $(NBGL_SRC_DIR) -name '*.c'))
-	NBGL_SRC_FILES := $(filter-out $(NBGL_SRC_DIR)/ui_idle.c, $(NBGL_SRC_FILES))
-
-	INCLUDES_PATH += $(MY_DIR)/../deps/ethereum/src_nbgl
-	APP_SOURCE_PATH += $(NBGL_SRC_FILES)
-else
-	SDK_SOURCE_PATH += lib_ux
-	APP_SOURCE_PATH += $(MY_DIR)/../deps/ethereum/src_bagl
-	DEFINES += HAVE_BAGL HAVE_UX_FLOW HAVE_GLO096
-	DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64 HAVE_BAGL_ELLIPSIS
-	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-	DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-endif
-
-LDFLAGS += -L$(BOLOS_SDK)/lib_cxng
-
-DEFINES += FEATURE_ETH=$(FEATURE_ETH)
-
-# not present in app-ethereum/master but in develop branch
-# so it could be needed once develop gets revased onto master
-# include $(CURDIR)/../deps/ethereum/makefile_conf/features.mk
-
-endif # NO TARGET_NANOS OR TARGET_STAX
-endif # NO FEATURE_ETH
-
-include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
 INCLUDES_PATH += $(CURDIR)/src/common/
 
 CC := $(CLANGPATH)clang
@@ -226,38 +132,36 @@ endif
 
 CFLAGS += -DAPPVERSION_M=$(APPVERSION_M) -DAPPVERSION_N=$(APPVERSION_N) -DAPPVERSION_P=$(APPVERSION_P)
 
-LDFLAGS += -z muldefs
-LDLIBS += -lm -lgcc -lc
-LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
+########################################
 
-APP_SOURCE_PATH += $(CURDIR)/rust/include
-
+# Configure devices and permissions
+include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.devices
+# Create installer script
 include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.installer_script
+# Enable logging
+include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.app_testing
+# Include Rust-specific build rules
+include $(CURDIR)/Makefile.rust
+# Include ERC20-specific build rules
+include $(CURDIR)/Makefile.erc20
+# Call standard app flags
+include $(CURDIR)/../deps/ledger-zxlib/makefiles/Makefile.platform
+
+# Use small buffers for NanoX
+ifeq ($(TARGET_NAME), TARGET_NANOX)
+CFLAGS += -DZXLIB_LIGHT_MODE
+endif
 
 $(info TARGET_NAME  = [$(TARGET_NAME)])
 $(info ICONNAME  = [$(ICONNAME)])
-
-ifndef ICONNAME
+ifeq ($(ICONNAME),)
 $(error ICONNAME is not set)
 endif
 
 # make rust a prerequisite for all object files
 $(OBJECT_FILES): | rust
 
-.PHONY: rust
-rust:
-	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(RUST_TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
-	cargo build --release --target $(RUST_TARGET) \
-	--no-default-features $(RUST_FEATURES)
-
-.PHONY: rust_clean
-rust_clean:
-	cd rust && CARGO_HOME="$(CURDIR)/rust/.cargo" cargo clean
-
-clean: rust_clean
-
 dep/%.d: %.c Makefile
-
 
 .PHONY: version
 version:
