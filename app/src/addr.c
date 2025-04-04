@@ -43,7 +43,7 @@ zxerr_t app_fill_ed25519_address(uint8_t *buffer, uint16_t buffer_len, uint16_t 
 }
 
 zxerr_t fill_address(
-    uint32_t *flags,
+    __Z_UNUSED uint32_t *flags,
     uint32_t *tx,
     uint32_t rx,
     uint8_t *buffer,
@@ -54,10 +54,10 @@ zxerr_t fill_address(
     zemu_log("fill_address\n");
     zxerr_t err = zxerr_ok;
     if (curve_type == CURVE_ED25519) {
-        err = app_fill_ed25519_address(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE -2, &action_addrResponseLen);
+        err = app_fill_ed25519_address(buffer, buffer_len, &action_addrResponseLen);
         *tx = action_addrResponseLen;
     } else {
-        err = _app_fill_address(tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, addr_ui_obj, ADDR_UI_MAX_SIZE);
+        err = _app_fill_address(tx, rx, buffer, buffer_len, addr_ui_obj, ADDR_UI_MAX_SIZE);
         action_addrResponseLen = *tx;
     }
 

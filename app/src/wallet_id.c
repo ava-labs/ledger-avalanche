@@ -32,8 +32,6 @@
 // Use to hold the addr_ui object, used by rust to display the address
 uint8_t addr_ui_obj[WALLET_UI_MAX_SIZE] = {0};
 
-
-
 zxerr_t fill_wallet_id(
     uint32_t *tx,
     uint32_t rx,
@@ -49,7 +47,7 @@ zxerr_t fill_wallet_id(
         zemu_log(data);
     }
 
-    zxerr_t err = _app_fill_wallet(tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, addr_ui_obj, WALLET_UI_MAX_SIZE);
+    zxerr_t err = _app_fill_wallet(tx, rx, buffer, buffer_len, addr_ui_obj, WALLET_UI_MAX_SIZE);
 
     if (err != zxerr_ok)
         action_addrResponseLen = 0;
