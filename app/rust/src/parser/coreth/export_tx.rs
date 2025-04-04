@@ -317,7 +317,7 @@ impl<'b> ExportTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for ExportTx<'b> {
+impl DisplayableItem for ExportTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         //description + number outputs + fee
         checked_add!(ViewError::Unknown, 2u8, self.num_outputs_items()?)

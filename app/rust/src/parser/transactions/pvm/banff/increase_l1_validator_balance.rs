@@ -92,7 +92,7 @@ impl<'b> FromBytes<'b> for IncreaseL1ValidatorBalanceTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for IncreaseL1ValidatorBalanceTx<'b> {
+impl DisplayableItem for IncreaseL1ValidatorBalanceTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, validation_id, amount, fee
         Ok(4u8)

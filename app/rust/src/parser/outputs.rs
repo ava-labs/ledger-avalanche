@@ -295,7 +295,7 @@ impl<'b> Output<'b> {
     }
 }
 
-impl<'a> DisplayableItem for Output<'a> {
+impl DisplayableItem for Output<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         match self {
             Self::SECPTransfer(t) => t.num_items(),

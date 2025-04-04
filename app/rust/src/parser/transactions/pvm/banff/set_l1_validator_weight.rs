@@ -91,7 +91,7 @@ impl<'b> SetL1ValidatorWeightTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for SetL1ValidatorWeightTx<'b> {
+impl DisplayableItem for SetL1ValidatorWeightTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, validation_id, nonce, weight
         Ok(4u8)

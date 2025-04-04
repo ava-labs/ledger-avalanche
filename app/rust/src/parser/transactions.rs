@@ -390,7 +390,7 @@ impl<'b> Transaction<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Transaction<'b> {
+impl DisplayableItem for Transaction<'_> {
     fn num_items(&self) -> Result<u8, zemu_sys::ViewError> {
         match self {
             Self::XImport(tx) => tx.num_items(),

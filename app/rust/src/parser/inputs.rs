@@ -109,7 +109,7 @@ impl<'b> FromBytes<'b> for TransferableInput<'b> {
     }
 }
 
-impl<'b> DisplayableItem for TransferableInput<'b> {
+impl DisplayableItem for TransferableInput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         checked_add!(
             ViewError::Unknown,
@@ -201,7 +201,7 @@ struct SECPTransferVariant<'b>(InputType, SECPTransferInput<'b>);
 pub enum Input<'b> {
     SECPTransfer(SECPTransferInput<'b>),
 }
-impl<'b> Input<'b> {
+impl Input<'_> {
     pub fn amount(&self) -> Option<u64> {
         // follow clippy suggestion,because this enum
         // holds only one variant, if time comes with
@@ -241,7 +241,7 @@ impl<'b> FromBytes<'b> for Input<'b> {
     }
 }
 
-impl<'a> DisplayableItem for Input<'a> {
+impl DisplayableItem for Input<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         match self {
             Self::SECPTransfer(t) => t.num_items(),

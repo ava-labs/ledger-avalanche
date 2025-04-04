@@ -120,7 +120,7 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Legacy<'b> {
+impl DisplayableItem for Legacy<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // chain_id is also mandatory
         Ok(self.base.num_items()? + 1)

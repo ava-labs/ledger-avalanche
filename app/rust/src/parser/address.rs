@@ -37,7 +37,7 @@ pub const MAX_ADDRESS_ENCODED_LEN: usize = bech32::estimate_size(ASCII_HRP_MAX_S
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct Address<'b>(&'b [u8; ADDRESS_LEN]);
 
-impl<'a> Address<'a> {
+impl Address<'_> {
     // Get the address encoding
     pub fn encode_into(&self, hrp: &str, encoded: &mut [u8]) -> Result<usize, ParserError> {
         if hrp.len() > ASCII_HRP_MAX_SIZE {

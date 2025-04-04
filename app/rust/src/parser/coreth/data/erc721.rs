@@ -60,7 +60,7 @@ pub struct BaseTransfer<'b> {
     asset_id: AssetId<'b>,
 }
 
-impl<'b> DisplayableItem for BaseTransfer<'b> {
+impl DisplayableItem for BaseTransfer<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(3)
     }
@@ -144,7 +144,7 @@ pub struct TransferFrom<'b> {
     base: BaseTransfer<'b>,
 }
 
-impl<'b> TransferFrom<'b> {
+impl TransferFrom<'_> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0x23, 0xb8, 0x72, 0xdd]);
 }
 
@@ -175,7 +175,7 @@ pub struct SafeTransferFrom<'b> {
     data: &'b [u8],
 }
 
-impl<'b> SafeTransferFrom<'b> {
+impl SafeTransferFrom<'_> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0x42, 0x84, 0x2e, 0x0e]);
     pub const SELECTOR_DATA: u32 = u32::from_be_bytes([0xb8, 0x8d, 0x4f, 0xde]);
     const CALL_DATA_PREVIEW_LEN: usize = 15;
@@ -211,7 +211,7 @@ pub struct Approve<'b> {
     asset_id: AssetId<'b>,
 }
 
-impl<'b> Approve<'b> {
+impl Approve<'_> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0x09, 0x5e, 0xa7, 0xb3]);
 }
 
@@ -246,7 +246,7 @@ pub struct ApprovalForAll<'b> {
     approve: bool,
 }
 
-impl<'b> ApprovalForAll<'b> {
+impl ApprovalForAll<'_> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0xa2, 0x2c, 0xb4, 0x65]);
 }
 
@@ -497,7 +497,7 @@ impl<'b> ERC721<'b> {
     }
 }
 
-impl<'b> DisplayableItem for ERC721<'b> {
+impl DisplayableItem for ERC721<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         let items = match self {
             ERC721::TransferFrom(t) => t.base.num_items()?,

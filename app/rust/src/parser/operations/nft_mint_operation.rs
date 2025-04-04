@@ -41,7 +41,7 @@ pub struct NFTMintOperation<'b> {
     nft_output: NFTTransferOutput<'b>,
 }
 
-impl<'b> NFTMintOperation<'b> {
+impl NFTMintOperation<'_> {
     pub const TYPE_ID: u32 = 0x0c;
 }
 
@@ -75,7 +75,7 @@ impl<'b> FromBytes<'b> for NFTMintOperation<'b> {
     }
 }
 
-impl<'a> DisplayableItem for NFTMintOperation<'a> {
+impl DisplayableItem for NFTMintOperation<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         self.nft_output.num_items()
     }

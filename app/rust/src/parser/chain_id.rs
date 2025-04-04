@@ -56,7 +56,7 @@ impl<'b> FromBytes<'b> for ChainId<'b> {
     }
 }
 
-impl<'b> DisplayableItem for ChainId<'b> {
+impl DisplayableItem for ChainId<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(1)
     }

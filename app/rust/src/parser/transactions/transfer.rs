@@ -31,7 +31,7 @@ pub struct Transfer<'b> {
     base: BaseTxFields<'b, AvmOutput<'b>>,
 }
 
-impl<'b> Transfer<'b> {
+impl Transfer<'_> {
     pub fn disable_output_if(&mut self, address: &[u8]) {
         self.base.disable_output_if(address);
     }
@@ -139,7 +139,7 @@ impl<'b> FromBytes<'b> for Transfer<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Transfer<'b> {
+impl DisplayableItem for Transfer<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         checked_add!(ViewError::Unknown, 2u8, self.base.base_outputs_num_items()?)
     }

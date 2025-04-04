@@ -194,7 +194,7 @@ impl<'b> FromBytes<'b> for OperationTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for OperationTx<'b> {
+impl DisplayableItem for OperationTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // description +
         let base = self.base_tx.base_outputs_num_items()?;

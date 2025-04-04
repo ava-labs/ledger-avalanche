@@ -135,7 +135,7 @@ impl<'b> FromBytes<'b> for ConvertSubnetToL1Tx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for ConvertSubnetToL1Tx<'b> {
+impl DisplayableItem for ConvertSubnetToL1Tx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx description, chain_id, address, fee, validators
         let num_validators = BASE_FIELDS_LEN + self.num_validators() as u8;

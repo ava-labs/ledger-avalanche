@@ -115,7 +115,7 @@ impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for NFTTransferOutput<'a> {
+impl DisplayableItem for NFTTransferOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // group_id, payload and addresses
         checked_add!(ViewError::Unknown, 2u8, self.num_addresses() as u8)

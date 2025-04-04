@@ -47,7 +47,7 @@ impl<'b> Deploy<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Deploy<'b> {
+impl DisplayableItem for Deploy<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(1)
     }

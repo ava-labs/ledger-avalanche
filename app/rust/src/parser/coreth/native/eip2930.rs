@@ -37,7 +37,7 @@ pub struct Eip2930<'b> {
     // that they are expected
 }
 
-impl<'b> Eip2930<'b> {
+impl Eip2930<'_> {
     pub fn chain_id(&self) -> &[u8] {
         self.chain_id
     }
@@ -93,7 +93,7 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Eip2930<'b> {
+impl DisplayableItem for Eip2930<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         let items = self.base.num_items()?;
 

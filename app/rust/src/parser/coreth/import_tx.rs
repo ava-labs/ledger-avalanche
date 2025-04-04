@@ -256,7 +256,7 @@ impl<'b> ImportTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for ImportTx<'b> {
+impl DisplayableItem for ImportTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         //type + number outputs + fee + description
         checked_add!(ViewError::Unknown, 3u8, self.num_output_items()?)

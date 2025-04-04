@@ -40,7 +40,7 @@ pub struct EVMInput<'b> {
     nonce: u64,
 }
 
-impl<'b> EVMInput<'b> {
+impl EVMInput<'_> {
     pub fn amount(&self) -> Option<u64> {
         Some(self.amount)
     }
@@ -82,7 +82,7 @@ impl<'b> FromBytes<'b> for EVMInput<'b> {
     }
 }
 
-impl<'b> DisplayableItem for EVMInput<'b> {
+impl DisplayableItem for EVMInput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // expert: address, nonce
         let expert = if is_app_mode_expert() {

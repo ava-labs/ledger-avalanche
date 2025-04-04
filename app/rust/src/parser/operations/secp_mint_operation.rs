@@ -38,7 +38,7 @@ pub struct SECPMintOperation<'b> {
     pub mint_output: SECPMintOutput<'b>,
     pub transfer_output: SECPTransferOutput<'b>,
 }
-impl<'b> SECPMintOperation<'b> {
+impl SECPMintOperation<'_> {
     pub const TYPE_ID: u32 = 8;
 }
 
@@ -74,7 +74,7 @@ impl<'b> FromBytes<'b> for SECPMintOperation<'b> {
     }
 }
 
-impl<'b> DisplayableItem for SECPMintOperation<'b> {
+impl DisplayableItem for SECPMintOperation<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // operation description
         // and the transfer to the new mint-output owners

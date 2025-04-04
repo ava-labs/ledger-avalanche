@@ -86,7 +86,7 @@ impl<'b> FromBytes<'b> for DisableL1ValidatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for DisableL1ValidatorTx<'b> {
+impl DisplayableItem for DisableL1ValidatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx description, validator id, fee
         Ok(3)
