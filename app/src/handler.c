@@ -185,8 +185,8 @@ void init_coin_config(chain_config_t *coin_config) {
  * @note This function sets the blockchain configuration on the first call and logs each operation.
  *       It includes extensive error handling to gracefully manage exceptions and reset the context as needed.
  */
-void handle_eth_apdu(uint32_t *flags, uint32_t *tx,
-                     uint32_t rx, uint8_t *buffer, uint16_t bufferLen) {
+void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
+                    __Z_UNUSED uint32_t rx,  uint8_t *buffer, __Z_UNUSED uint16_t bufferLen) {
     unsigned short sw = 0;
 
     // This is the best place to put this,

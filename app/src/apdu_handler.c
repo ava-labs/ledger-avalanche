@@ -416,7 +416,7 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
 }
 
-__Z_INLINE void handleEthConfig(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handleEthConfig(volatile uint32_t *flags, volatile uint32_t *tx, __Z_UNUSED uint32_t rx) {
     zemu_log("handleEthConfig\n");
     *tx = 0;
     app_eth_configuration();
@@ -448,7 +448,7 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
 }
 
 
-__Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, __Z_UNUSED uint32_t rx) {
     zemu_log("handleProvideErc20\n");
 
     // Nothing to do as we do not handle this information,
@@ -461,7 +461,7 @@ __Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *
     *flags |= IO_ASYNCH_REPLY;
 }
 
-__Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx, __Z_UNUSED uint32_t rx) {
     zemu_log("handleSetPlugin\n");
 
     // This instruction is sent in the process of providing
