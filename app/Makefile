@@ -125,9 +125,9 @@ INCLUDES_PATH += $(CURDIR)/src/common/
 CC := $(CLANGPATH)clang
 
 ifeq ($(DEBUG), 1)
-CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter -g
+CFLAGS += -O3 -Os -Wno-unknown-pragmas  -g
 else
-CFLAGS += -O3 -Os -Wno-unknown-pragmas -Wno-unused-parameter
+CFLAGS += -O3 -Os -Wno-unknown-pragmas
 endif
 
 CFLAGS += -DAPPVERSION_M=$(APPVERSION_M) -DAPPVERSION_N=$(APPVERSION_N) -DAPPVERSION_P=$(APPVERSION_P)

@@ -20,7 +20,6 @@
 extern "C" {
 #endif
 
-
 zxerr_t fill_wallet_id(
     uint32_t *tx,
     uint32_t rx,

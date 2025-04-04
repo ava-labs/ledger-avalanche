@@ -32,10 +32,8 @@
 // Use to hold the addr_ui object, used by rust to display the address
 uint8_t xaddr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
 
-
-
 zxerr_t fill_ext_address(
-    uint32_t *flags,
+    __Z_UNUSED uint32_t *flags,
     uint32_t *tx,
     uint32_t rx,
     uint8_t *buffer,
@@ -44,7 +42,7 @@ zxerr_t fill_ext_address(
 
     zemu_log("fill_ext_address\n");
 
-    zxerr_t err = _app_fill_ext_address(tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, xaddr_ui_obj, ADDR_UI_MAX_SIZE);
+    zxerr_t err = _app_fill_ext_address(tx, rx, buffer, buffer_len, xaddr_ui_obj, ADDR_UI_MAX_SIZE);
 
     if (err != zxerr_ok)
         action_addrResponseLen = 0;
