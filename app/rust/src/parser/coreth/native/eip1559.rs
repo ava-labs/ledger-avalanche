@@ -151,7 +151,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
     }
 }
 
-impl<'b> Eip1559<'b> {
+impl Eip1559<'_> {
     pub fn chain_id(&self) -> &[u8] {
         self.chain_id
     }
@@ -417,7 +417,7 @@ impl<'b> Eip1559<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Eip1559<'b> {
+impl DisplayableItem for Eip1559<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // The type of the data field defines how a transaction
         // info is displayed.

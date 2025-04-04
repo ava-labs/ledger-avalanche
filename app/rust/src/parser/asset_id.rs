@@ -30,7 +30,7 @@ pub const ASSET_ID_LEN: usize = 32;
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]
 pub struct AssetId<'b>(&'b [u8; ASSET_ID_LEN]);
 
-impl<'b> AssetId<'b> {
+impl AssetId<'_> {
     pub fn id(&self) -> &[u8; ASSET_ID_LEN] {
         self.0
     }
@@ -55,7 +55,7 @@ impl<'b> AssetId<'b> {
     }
 }
 
-impl<'a> DisplayableItem for AssetId<'a> {
+impl DisplayableItem for AssetId<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(1)
     }

@@ -36,7 +36,7 @@ pub struct SubnetAuth<'b> {
     pub sig_indices: &'b [[u8; U32_SIZE]],
 }
 
-impl<'b> SubnetAuth<'b> {
+impl SubnetAuth<'_> {
     pub const TYPE_ID: u32 = 0x0000000a;
 }
 

@@ -35,7 +35,7 @@ use crate::{
 #[cfg_attr(test, derive(Debug))]
 pub struct EOutput<'b>(pub Output<'b>);
 
-impl<'b> EOutput<'b> {
+impl EOutput<'_> {
     pub fn amount(&self) -> Option<u64> {
         self.0.amount()
     }
@@ -64,7 +64,7 @@ impl<'b> FromBytes<'b> for EOutput<'b> {
     }
 }
 
-impl<'b> EOutput<'b> {
+impl EOutput<'_> {
     fn parse_output_type(input: &[u8]) -> Result<OutputType, nom::Err<ParserError>> {
         let (_, variant_type) = be_u32(input)?;
 
@@ -78,7 +78,7 @@ impl<'b> EOutput<'b> {
     }
 }
 
-impl<'b> DisplayableItem for EOutput<'b> {
+impl DisplayableItem for EOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         self.0.num_items()
     }
@@ -106,7 +106,7 @@ pub struct EVMOutput<'b> {
     asset_id: AssetId<'b>,
 }
 
-impl<'b> EVMOutput<'b> {
+impl EVMOutput<'_> {
     pub fn amount(&self) -> Option<u64> {
         Some(self.amount)
     }
@@ -148,7 +148,7 @@ impl<'b> FromBytes<'b> for EVMOutput<'b> {
     }
 }
 
-impl<'b> DisplayableItem for EVMOutput<'b> {
+impl DisplayableItem for EVMOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // amount, address
         checked_add!(ViewError::Unknown, 1u8, self.address.num_items()?)

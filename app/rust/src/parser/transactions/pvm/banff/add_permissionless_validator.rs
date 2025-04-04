@@ -131,7 +131,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessValidatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AddPermissionlessValidatorTx<'b> {
+impl DisplayableItem for AddPermissionlessValidatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
         // subnet id, validator_rewards_to, delegator_rewards_to,

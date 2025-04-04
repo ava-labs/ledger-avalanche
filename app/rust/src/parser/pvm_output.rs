@@ -52,7 +52,7 @@ impl<'b> Deref for PvmOutput<'b> {
     }
 }
 
-impl<'b> PvmOutput<'b> {
+impl PvmOutput<'_> {
     const LOCKED_OUTPUT_TAG: u32 = 0x00000016;
 
     pub fn amount(&self) -> Option<u64> {
@@ -130,7 +130,7 @@ impl<'b> PvmOutput<'b> {
     }
 }
 
-impl<'b> DisplayableItem for PvmOutput<'b> {
+impl DisplayableItem for PvmOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // check if output is locked, if so the number of items
         // includes the locked information

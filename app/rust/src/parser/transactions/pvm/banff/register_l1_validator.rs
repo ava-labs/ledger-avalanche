@@ -133,7 +133,7 @@ impl<'b> RegisterL1ValidatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for RegisterL1ValidatorTx<'b> {
+impl DisplayableItem for RegisterL1ValidatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, node_id, weight, balance, fee, remaining_balance_owner, disable_owner
         let n_addresses =

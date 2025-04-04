@@ -87,7 +87,7 @@ impl<'b> FromBytes<'b> for SECPMintOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECPMintOutput<'a> {
+impl DisplayableItem for SECPMintOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // output-type, threshold and addresses
         checked_add!(

@@ -93,7 +93,7 @@ impl<'b> FromBytes<'b> for NFTMintOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for NFTMintOutput<'a> {
+impl DisplayableItem for NFTMintOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // output-type, group_id, threshold and addresses
         // do not show locktime if it is 0

@@ -63,7 +63,7 @@ impl<'b> FromBytes<'b> for TransferableOp<'b> {
     }
 }
 
-impl<'b> DisplayableItem for TransferableOp<'b> {
+impl DisplayableItem for TransferableOp<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         self.operation.num_items()
     }
@@ -126,7 +126,7 @@ pub enum Operation<'b> {
     NFTMint(NFTMintOperation<'b>),
 }
 
-impl<'b> Operation<'b> {
+impl Operation<'_> {
     pub fn operation_name(&self) -> &'static str {
         use bolos::{pic_str, PIC};
 
@@ -196,7 +196,7 @@ impl<'b> FromBytes<'b> for Operation<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Operation<'b> {
+impl DisplayableItem for Operation<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // operation description
         // + operation items

@@ -163,7 +163,7 @@ impl<'b> EthData<'b> {
     }
 }
 
-impl<'b> DisplayableItem for EthData<'b> {
+impl DisplayableItem for EthData<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         match self {
             Self::None => Ok(0),

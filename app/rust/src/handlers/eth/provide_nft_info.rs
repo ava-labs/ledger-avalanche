@@ -18,6 +18,7 @@ use crate::{constants::ApduError as Error, dispatcher::ApduHandler, sys, utils::
 pub struct Info;
 
 #[cfg(feature = "erc721")]
+#[allow(static_mut_refs)]
 impl Info {
     pub fn process(input: &[u8]) -> Result<(), Error> {
         crate::zlog("NftInfo::process\x00");

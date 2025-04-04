@@ -39,6 +39,7 @@ use crate::utils::convert_der_to_rs;
 
 pub struct Sign;
 
+#[allow(static_mut_refs)]
 impl Sign {
     pub const SIGN_HASH_SIZE: usize = Keccak::<32>::DIGEST_LEN;
 
@@ -112,7 +113,7 @@ impl Sign {
             tx,
         };
 
-        crate::show_ui!(ui.show(flags))
+        crate::show_ui!(unsafe { ui.show(flags) })
     }
 
     #[inline(never)]
@@ -244,6 +245,7 @@ impl Sign {
     }
 }
 
+#[allow(static_mut_refs)]
 impl ApduHandler for Sign {
     #[inline(never)]
     fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
@@ -449,6 +451,7 @@ impl Viewable for SignUI {
     }
 }
 
+#[allow(static_mut_refs)]
 pub fn cleanup_globals() -> Result<(), Error> {
     unsafe {
         if let Ok(path) = PATH.acquire(Sign) {
