@@ -38,6 +38,7 @@ use crate::{
 
 pub struct Sign;
 
+#[allow(static_mut_refs)]
 impl Sign {
     // For avax transactions which includes P, C, X chains,
     // sha256 is used
@@ -129,7 +130,7 @@ impl Sign {
             hash: unsigned_hash,
         };
 
-        crate::show_ui!(ui.show(flags))
+        crate::show_ui!(unsafe { ui.show(flags) })
     }
 
     pub fn get_signing_info(data: &[u8]) -> Result<BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
@@ -170,6 +171,7 @@ impl SignUI {
     }
 }
 
+#[allow(static_mut_refs)]
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
         Ok(1)
@@ -198,6 +200,7 @@ impl Viewable for SignUI {
 
         handle_ui_message(&hex[..size], message, page)
     }
+
 
     fn accept(&mut self, _out: &mut [u8]) -> (usize, u16) {
         let tx = 0;
@@ -287,6 +290,7 @@ impl ApduHandler for Sign {
     }
 }
 
+#[allow(static_mut_refs)]
 pub fn cleanup_globals() -> Result<(), Error> {
     unsafe {
         if let Ok(path) = PATH.acquire(Sign) {

@@ -9,6 +9,7 @@ use crate::{
 use super::context::{parser_context_t, Instruction};
 
 #[inline(never)]
+#[allow(static_mut_refs)]
 pub unsafe fn num_items_eth(ctx: *const parser_context_t, num_items: &mut u8) -> u32 {
     let Ok(tx_type) = Instruction::try_from((*ctx).ins) else {
         return ParserError::InvalidTransactionType as u32;
@@ -18,7 +19,8 @@ pub unsafe fn num_items_eth(ctx: *const parser_context_t, num_items: &mut u8) ->
         return ParserError::InvalidTransactionType as u32;
     }
 
-    if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
+    let ui_lock = ETH_UI.lock(EthAccessors::Tx);
+    if let Some(obj) = ui_lock {
         match obj.num_items() {
             Ok(n) => {
                 *num_items = n;
@@ -32,6 +34,7 @@ pub unsafe fn num_items_eth(ctx: *const parser_context_t, num_items: &mut u8) ->
 }
 
 #[inline(never)]
+#[allow(static_mut_refs)]
 pub unsafe fn get_eth_item(
     ctx: *const parser_context_t,
     display_idx: u8,
@@ -70,6 +73,7 @@ pub unsafe fn get_eth_item(
 }
 
 #[no_mangle]
+#[allow(static_mut_refs)]
 unsafe extern "C" fn _accept_eth_tx(tx: *mut u16, buffer: *mut u8, buffer_len: u32) -> u16 {
     if tx.is_null() || buffer.is_null() || buffer_len == 0 {
         return ApduError::DataInvalid as u16;
@@ -77,14 +81,13 @@ unsafe extern "C" fn _accept_eth_tx(tx: *mut u16, buffer: *mut u8, buffer_len: u
 
     let data = std::slice::from_raw_parts_mut(buffer, buffer_len as usize);
 
-    let code = if let Some(obj) = ETH_UI.lock(EthAccessors::Tx) {
+    let ui_lock = ETH_UI.lock(EthAccessors::Tx);
+    if let Some(obj) = ui_lock {
         let (_tx, code) = obj.accept(data);
         *tx = _tx as u16;
         code
     } else {
         // No ethereum transaction has been processed yet
         ApduError::DataInvalid as u16
-    };
-
-    code
+    }
 }

@@ -69,7 +69,7 @@ impl<'b> FromBytes<'b> for PvmExportTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for PvmExportTx<'b> {
+impl DisplayableItem for PvmExportTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         let outputs = self.0.num_outputs_items()?;
 

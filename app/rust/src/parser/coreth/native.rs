@@ -189,7 +189,7 @@ pub enum EthTransaction<'b> {
     Eip2930(Eip2930<'b>),
 }
 
-impl<'b> EthTransaction<'b> {
+impl EthTransaction<'_> {
     pub fn is_typed_tx(&self) -> bool {
         !matches!(self, EthTransaction::Legacy(_))
     }
@@ -276,7 +276,7 @@ impl<'b> FromBytes<'b> for EthTransaction<'b> {
     }
 }
 
-impl<'b> DisplayableItem for EthTransaction<'b> {
+impl DisplayableItem for EthTransaction<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         match self {
             Self::Legacy(t) => t.num_items(),

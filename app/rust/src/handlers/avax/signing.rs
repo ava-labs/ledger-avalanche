@@ -38,6 +38,7 @@ use crate::{
 
 pub struct Sign;
 
+#[allow(static_mut_refs)]
 impl Sign {
     // For avax transactions which includes P, C, X chains,
     // sha256 is used
@@ -159,7 +160,7 @@ impl Sign {
             transaction,
         };
 
-        crate::show_ui!(ui.show(flags))
+        crate::show_ui!(unsafe { ui.show(flags) })
     }
 }
 
@@ -183,6 +184,7 @@ pub(crate) struct SignUI {
     transaction: Transaction<'static>,
 }
 
+#[allow(static_mut_refs)]
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
         self.transaction.num_items()
@@ -222,6 +224,7 @@ impl Viewable for SignUI {
     }
 }
 
+#[allow(static_mut_refs)]
 fn cleanup_globals() -> Result<(), Error> {
     unsafe {
         if let Ok(path) = PATH.acquire(Sign) {

@@ -288,10 +288,10 @@ mod tests {
     ];
 
     fn create_number_table() -> std::vec::Vec<(u64, String)> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         (0..200)
             .map(|_| {
-                let num = rng.gen_range(0..u64::MAX);
+                let num = rng.random_range(0..u64::MAX);
                 let string = format!("{}", num);
                 (num, string)
             })

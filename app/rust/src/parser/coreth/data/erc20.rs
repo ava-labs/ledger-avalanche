@@ -69,7 +69,7 @@ pub enum ERC20<'b> {
     },
 }
 
-impl<'b> Transfer<'b> {
+impl Transfer<'_> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0xa9, 0x05, 0x9c, 0xbb]);
 }
 
@@ -100,7 +100,7 @@ impl<'b> FromBytes<'b> for Transfer<'b> {
     }
 }
 
-impl<'b> TransferFrom<'b> {
+impl TransferFrom<'_> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0x23, 0xb8, 0x72, 0xdd]);
 }
 
@@ -143,7 +143,7 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
     }
 }
 
-impl<'b> Approve<'b> {
+impl Approve<'_> {
     pub const SELECTOR: u32 = u32::from_be_bytes([0x09, 0x5e, 0xa7, 0xb3]);
 }
 
@@ -328,7 +328,7 @@ impl<'b> ERC20<'b> {
     }
 }
 
-impl<'b> DisplayableItem for ERC20<'b> {
+impl DisplayableItem for ERC20<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         let items = match self {
             ERC20::Transfer { .. } => 2,

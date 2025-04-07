@@ -89,7 +89,7 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECPTransferOutput<'a> {
+impl DisplayableItem for SECPTransferOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // According to avalanche team, and to be "compatible" at presentation layer
         // we should summarize the items to show. As they suggested we only show the amount

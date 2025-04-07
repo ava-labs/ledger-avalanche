@@ -44,7 +44,7 @@ pub struct BaseLegacy<'b> {
     pub value: BorrowedU256<'b>,
     pub data: EthData<'b>,
 }
-impl<'b> BaseLegacy<'b> {
+impl BaseLegacy<'_> {
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
         let f = u256::pic_from_big_endian();
@@ -357,7 +357,7 @@ impl<'b> FromBytes<'b> for BaseLegacy<'b> {
     }
 }
 
-impl<'b> DisplayableItem for BaseLegacy<'b> {
+impl DisplayableItem for BaseLegacy<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // The type of the data field defines how a transaction
         // info is displayed.

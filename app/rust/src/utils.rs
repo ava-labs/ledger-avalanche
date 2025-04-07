@@ -213,15 +213,18 @@ mod maybe_null_terminated_to_string {
 /// sets `tx` to the amount returned if given,
 /// otherwise tx is returned only on success and discarded on failure
 macro_rules! show_ui {
-    ($show:expr, $tx:ident) => {
-        match unsafe { $show } {
+    ($show:expr, $tx:ident) => {{
+        let result = $show;
+        match result {
             Ok((size, err)) if err == $crate::constants::ApduError::Success as u16 => {
-                *$tx = size as _;
+                let size = size as _;
+                *$tx = size;
                 Ok(())
             }
             Ok((size, err)) => {
                 use core::convert::TryInto;
-                *$tx = size as _;
+                let size = size as _;
+                *$tx = size;
 
                 match err.try_into() {
                     Ok(err) => Err(err),
@@ -230,9 +233,10 @@ macro_rules! show_ui {
             }
             Err(_) => Err($crate::constants::ApduError::ExecutionError),
         }
-    };
-    ($show:expr) => {
-        match unsafe { $show } {
+    }};
+    ($show:expr) => {{
+        let result = $show;
+        match result {
             Ok((size, err)) if err == $crate::constants::ApduError::Success as u16 => Ok(size as _),
             Ok((_, err)) => {
                 use core::convert::TryInto;
@@ -244,5 +248,5 @@ macro_rules! show_ui {
             }
             Err(_) => Err($crate::constants::ApduError::ExecutionError),
         }
-    };
+    }};
 }
