@@ -136,7 +136,7 @@ impl<'b> FromBytes<'b> for TransformSubnetTx<'b> {
     }
 }
 
-impl<'b> TransformSubnetTx<'b> {
+impl TransformSubnetTx<'_> {
     fn fee(&self) -> Result<u64, ParserError> {
         let sum_inputs = self.base_tx.sum_inputs_amount()?;
 
@@ -269,7 +269,7 @@ impl<'b> TransformSubnetTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for TransformSubnetTx<'b> {
+impl DisplayableItem for TransformSubnetTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         let num_expert_items = if is_app_mode_expert() {
             // init/max supply + min/max consumption rate

@@ -34,7 +34,7 @@ pub struct ProofOfPossession<'b> {
     signature: &'b [u8; BLS_SIGNATURE_LEN],
 }
 
-impl<'b> ProofOfPossession<'b> {
+impl ProofOfPossession<'_> {
     pub fn render_address(&self, message: &mut [u8], page: u8) -> Result<u8, ViewError> {
         let prefix = pic_str!(b"0x"!);
         // prefix
@@ -80,7 +80,7 @@ pub enum BLSSigner<'b> {
     Proof(ProofOfPossession<'b>),
 }
 
-impl<'b> BLSSigner<'b> {
+impl BLSSigner<'_> {
     const EMPTY_TYTPE_ID: u32 = 0x1B;
     const SIGNER_TYTPE_ID: u32 = 0x1C;
 }
@@ -118,7 +118,7 @@ impl<'b> FromBytes<'b> for BLSSigner<'b> {
     }
 }
 
-impl<'b> DisplayableItem for BLSSigner<'b> {
+impl DisplayableItem for BLSSigner<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         let i = match &self {
             BLSSigner::EmptyProof => 0,

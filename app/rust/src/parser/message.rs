@@ -62,7 +62,7 @@ pub struct Message<'b> {
     chunk_count: u8,
 }
 
-impl<'b> Message<'b> {
+impl Message<'_> {
     pub fn msg(&self) -> &[u8] {
         // wont panic as this check was done when parsing
         be_u32::<_, ParserError>(self.data)
@@ -145,7 +145,7 @@ impl<'b> Message<'b> {
         for &byte in msg {
             total_len += if byte.is_ascii() { 1 } else { HEX_REPR_LEN };
         }
-        ((total_len + MSG_MAX_CHUNK_LEN - 1) / MSG_MAX_CHUNK_LEN).min(255) as u8
+        (total_len.div_ceil(MSG_MAX_CHUNK_LEN)).min(255) as u8
     }
 }
 
@@ -181,7 +181,7 @@ impl<'b> FromBytes<'b> for Message<'b> {
     }
 }
 
-impl<'b> DisplayableItem for Message<'b> {
+impl DisplayableItem for Message<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(self.chunk_count)
     }
@@ -249,7 +249,7 @@ impl<'b> FromBytes<'b> for AvaxMessage<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AvaxMessage<'b> {
+impl DisplayableItem for AvaxMessage<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // Description + message
         let items = self.data.num_items()?;

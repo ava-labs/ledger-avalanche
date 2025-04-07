@@ -59,7 +59,7 @@ impl<'b> ContractCall<'b> {
     }
 }
 
-impl<'b> DisplayableItem for ContractCall<'b> {
+impl DisplayableItem for ContractCall<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // data
         Ok(1)

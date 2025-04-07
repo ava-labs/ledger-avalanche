@@ -62,6 +62,7 @@ impl From<AddrUIInitError> for Error {
     }
 }
 
+#[allow(static_mut_refs)]
 impl<'ui> AddrUIInitializer<'ui> {
     /// Create a new `AddrUI` initialized
     pub fn new(ui: &'ui mut MaybeUninit<AddrUI>) -> Self {
@@ -190,6 +191,7 @@ pub struct AddrUI {
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
 }
 
+#[allow(static_mut_refs)]
 impl AddrUI {
     //36 (32 + 4 checksum) * log(2, 256) / log(2, 58) ~ 49.1
     // so we round up to 50

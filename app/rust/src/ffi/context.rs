@@ -96,6 +96,7 @@ impl TryFrom<u8> for Instruction {
     }
 }
 
+#[allow(static_mut_refs)]
 #[no_mangle]
 pub unsafe extern "C" fn _set_root_path(raw_path: *const u8, path_len_bytes: u16) -> u32 {
     let path = core::slice::from_raw_parts(raw_path, path_len_bytes as usize);
@@ -111,10 +112,12 @@ pub unsafe extern "C" fn _set_root_path(raw_path: *const u8, path_len_bytes: u16
     }
 
     // important to use avax::signing::Sign
-    PATH.lock(Sign).replace(root_path);
+    let path_lock = PATH.lock(Sign);
+    *path_lock = Some(root_path);
     ParserError::ParserOk as u32
 }
 
+#[allow(static_mut_refs)]
 #[no_mangle]
 pub unsafe extern "C" fn _set_tx_hash(hash: *const u8, hash_len_bytes: u16) -> u16 {
     if hash_len_bytes != Sign::SIGN_HASH_SIZE as u16 {
@@ -127,7 +130,8 @@ pub unsafe extern "C" fn _set_tx_hash(hash: *const u8, hash_len_bytes: u16) -> u
 
     // In this step the transaction has not been signed
     // so store the hash for the next steps
-    HASH.lock(Sign).replace(hash);
+    let hash_lock = HASH.lock(Sign);
+    *hash_lock = Some(hash);
 
     // next step requires SignHash handler to have
     // access to the path and hash resources that this handler just updated

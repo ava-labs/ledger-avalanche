@@ -77,7 +77,7 @@ impl<'b> FromBytes<'b> for SECPTransferInput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECPTransferInput<'a> {
+impl DisplayableItem for SECPTransferInput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // output-type, amount, indices
         checked_add!(ViewError::Unknown, 2u8, self.address_indices.len() as u8)

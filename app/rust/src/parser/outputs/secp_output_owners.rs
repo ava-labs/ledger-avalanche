@@ -108,7 +108,7 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECPOutputOwners<'a> {
+impl DisplayableItem for SECPOutputOwners<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // show an item for each address in the list
         let items = self.addresses.len() as u8;

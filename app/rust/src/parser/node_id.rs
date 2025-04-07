@@ -61,7 +61,7 @@ impl<'b> FromBytes<'b> for NodeId<'b> {
     }
 }
 
-impl<'b> DisplayableItem for NodeId<'b> {
+impl DisplayableItem for NodeId<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(1)
     }

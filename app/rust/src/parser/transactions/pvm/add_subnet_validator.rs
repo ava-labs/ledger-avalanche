@@ -72,7 +72,7 @@ impl<'b> FromBytes<'b> for AddSubnetValidatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AddSubnetValidatorTx<'b> {
+impl DisplayableItem for AddSubnetValidatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, validator_items(4),
         // subnet_id and fee

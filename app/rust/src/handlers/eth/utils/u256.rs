@@ -64,7 +64,7 @@ impl<'b> BorrowedU256<'b> {
     }
 }
 
-impl<'b> Deref for BorrowedU256<'b> {
+impl Deref for BorrowedU256<'_> {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {

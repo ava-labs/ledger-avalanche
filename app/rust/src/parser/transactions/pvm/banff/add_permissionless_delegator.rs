@@ -110,7 +110,7 @@ impl<'b> FromBytes<'b> for AddPermissionlessDelegatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AddPermissionlessDelegatorTx<'b> {
+impl DisplayableItem for AddPermissionlessDelegatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
         // subnet id, rewards_to,

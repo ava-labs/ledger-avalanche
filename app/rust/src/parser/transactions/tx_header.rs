@@ -27,7 +27,7 @@ pub struct Header<'b> {
     pub blockchain_id: &'b [u8; BLOCKCHAIN_ID_LEN],
 }
 
-impl<'b> Header<'b> {
+impl Header<'_> {
     pub fn network_info(&self) -> Result<NetworkInfo, ParserError> {
         NetworkInfo::try_from((self.network_id, self.blockchain_id))
     }

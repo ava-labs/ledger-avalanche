@@ -41,7 +41,7 @@ pub struct NFTTransferOperation<'b> {
     pub nft_transfer_output: NFTTransferOutput<'b>,
 }
 
-impl<'b> NFTTransferOperation<'b> {
+impl NFTTransferOperation<'_> {
     pub const TYPE_ID: u32 = 0x0d;
 }
 
@@ -74,7 +74,7 @@ impl<'b> FromBytes<'b> for NFTTransferOperation<'b> {
     }
 }
 
-impl<'b> DisplayableItem for NFTTransferOperation<'b> {
+impl DisplayableItem for NFTTransferOperation<'_> {
     fn num_items(&self) -> Result<u8, zemu_sys::ViewError> {
         self.nft_transfer_output.num_items()
     }

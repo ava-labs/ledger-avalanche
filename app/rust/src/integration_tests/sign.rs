@@ -45,11 +45,11 @@ fn p_create_chain() {
 
     let paths = (0..NUMBER_OF_SIGNERS)
         .map(|_| {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
 
             (
-                rng.gen_range(0..MAX_COMPONENT),
-                rng.gen_range(0..MAX_COMPONENT),
+                rng.random_range(0..MAX_COMPONENT),
+                rng.random_range(0..MAX_COMPONENT),
             )
         })
         .chunks(MAX_N_SIGNERS);
