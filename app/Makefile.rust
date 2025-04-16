@@ -58,6 +58,7 @@ LDLIBS += -lm -lgcc -lc
 LDLIBS += -L$(MY_DIR)rust/target/$(RUST_TARGET)/release -lrslib
 
 APP_SOURCE_PATH += $(CURDIR)/rust/include
+APP_CUSTOM_LINK_DEPENDENCIES = rust
 
 .PHONY: rust
 rust:
