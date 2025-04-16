@@ -7,7 +7,7 @@ on:
       - main
       - develop
       - master # for safety reasons
-      - dev  # for safety reasons
+      - dev # for safety reasons
 
 jobs:
   configure:
@@ -68,6 +68,13 @@ jobs:
         run: |
           echo "cargo_home=$GITHUB_WORKSPACE/app/rust/.cargo" >> $GITHUB_OUTPUT
           echo "rustup_home=$GITHUB_WORKSPACE/app/rust/.rustup" >> $GITHUB_OUTPUT
+
+  build_application:
+    name: Build application using the reusable workflow
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@v1
+    with:
+      upload_app_binaries_artifact: "compiled_app_binaries"
+      builder: ledger-app-builder
 
   build_ledger:
     needs: [configure, setup_rust]
@@ -166,7 +173,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Install yarn
         run: npm install -g yarn
@@ -206,7 +213,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
       - name: Install yarn
         run: |
           npm install -g yarn
@@ -232,7 +239,15 @@ jobs:
           path: tests_zemu/snapshots-tmp/
 
   build_package_nanosp:
-    needs: [configure, setup_rust, build_ledger, tests_zemu_setup, test_zemu, rust_tests]
+    needs:
+      [
+        configure,
+        setup_rust,
+        build_ledger,
+        tests_zemu_setup,
+        test_zemu,
+        rust_tests,
+      ]
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     container:
@@ -287,7 +302,15 @@ jobs:
           prerelease: false
 
   build_package_stax:
-    needs: [configure, setup_rust, build_ledger, tests_zemu_setup, test_zemu, rust_tests]
+    needs:
+      [
+        configure,
+        setup_rust,
+        build_ledger,
+        tests_zemu_setup,
+        test_zemu,
+        rust_tests,
+      ]
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     container:
@@ -342,7 +365,15 @@ jobs:
           prerelease: false
 
   build_package_flex:
-    needs: [configure, setup_rust, build_ledger, tests_zemu_setup, test_zemu, rust_tests]
+    needs:
+      [
+        configure,
+        setup_rust,
+        build_ledger,
+        tests_zemu_setup,
+        test_zemu,
+        rust_tests,
+      ]
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     container:
