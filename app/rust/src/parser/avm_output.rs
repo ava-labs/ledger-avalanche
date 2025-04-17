@@ -29,7 +29,7 @@ use zemu_sys::ViewError;
 #[cfg_attr(test, derive(Debug))]
 pub struct AvmOutput<'b>(pub Output<'b>);
 
-impl<'b> AvmOutput<'b> {
+impl AvmOutput<'_> {
     pub fn amount(&self) -> Option<u64> {
         self.0.amount()
     }
@@ -85,7 +85,7 @@ impl<'b> AvmOutput<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AvmOutput<'b> {
+impl DisplayableItem for AvmOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // the asset_id is not part of the summary we need from objects of this type,
         // but could give to higher level objects information to display such information.

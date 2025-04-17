@@ -19,4 +19,6 @@ rustflags = [
     "link-arg=-Tlink.ld",
     "-C",
     "inline-threshold=0",
+    "-C",
+    "panic=abort",
 ]

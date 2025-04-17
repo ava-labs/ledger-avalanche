@@ -35,13 +35,13 @@ pub struct Validator<'b, W = Stake> {
     pub weight: W,
 }
 
-impl<'b, W: StakeTrait> Validator<'b, W> {
+impl<W: StakeTrait> Validator<'_, W> {
     pub fn stake(&self) -> u64 {
         self.weight.stake()
     }
 }
 
-impl<'b, W: WeightTrait> Validator<'b, W> {
+impl<W: WeightTrait> Validator<'_, W> {
     pub fn weight(&self) -> u64 {
         self.weight.weight()
     }
@@ -79,7 +79,7 @@ impl<'b, W: FromBytes<'b>> FromBytes<'b> for Validator<'b, W> {
     }
 }
 
-impl<'b, W: DisplayableItem> DisplayableItem for Validator<'b, W> {
+impl<W: DisplayableItem> DisplayableItem for Validator<'_, W> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // node_id(1), start_time, endtime and weight(1)
         let items = self.node_id.num_items()?;

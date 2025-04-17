@@ -64,7 +64,7 @@ impl<'b> PvmImportTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for PvmImportTx<'b> {
+impl DisplayableItem for PvmImportTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // only support SECP256k1 outputs
         // and to keep compatibility with the legacy app,

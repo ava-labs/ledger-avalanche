@@ -93,7 +93,7 @@ impl<'b> FromBytes<'b> for CreateSubnetTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for CreateSubnetTx<'b> {
+impl DisplayableItem for CreateSubnetTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         checked_add!(ViewError::Unknown, 2u8, self.owners.num_items()?)
     }

@@ -34,7 +34,7 @@ __Z_INLINE void clean_up_hash_globals() {
     _clean_up_hash(); 
 }
 
-__Z_INLINE void app_sign_hash() {
+__Z_INLINE void app_sign_hash(uint8_t curve_type) {
     zemu_log("app_sign_hash\n");
 
     uint32_t path[HDPATH_LEN_DEFAULT] = {0};
@@ -73,7 +73,7 @@ __Z_INLINE void app_sign_hash() {
         return;
     }
 
-    err = crypto_sign_avax(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, hash, CX_SHA256_SIZE, path, HDPATH_LEN_DEFAULT);
+    err = crypto_sign_avax(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, hash, CX_SHA256_SIZE, path, HDPATH_LEN_DEFAULT, curve_type);
 
     if (err != zxerr_ok) {
         set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
@@ -83,8 +83,13 @@ __Z_INLINE void app_sign_hash() {
         if (G_io_apdu_buffer[OFFSET_P1] == LAST_MESSAGE)
             clean_up_hash_globals();
 
-        set_code(G_io_apdu_buffer, SECP256K1_PK_LEN, APDU_CODE_OK);
-        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SECP256K1_PK_LEN + 2);
+        if (curve_type == CURVE_ED25519) {
+            set_code(G_io_apdu_buffer, ED25519_SIGNATURE_SIZE, APDU_CODE_OK);
+            io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, ED25519_SIGNATURE_SIZE + 2);
+        } else {
+            set_code(G_io_apdu_buffer, SECP256K1_PK_LEN, APDU_CODE_OK);
+            io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SECP256K1_PK_LEN + 2);
+        }
     }
 
 }

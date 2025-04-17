@@ -106,7 +106,7 @@ impl<'b> FromBytes<'b> for AddDelegatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for AddDelegatorTx<'b> {
+impl DisplayableItem for AddDelegatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, base_tx items, validator_items(4),
         // rewards_to, stake items and fee
@@ -395,7 +395,7 @@ impl<'b> AddDelegatorTx<'b> {
     pub fn stake_output_with_item(
         &'b self,
         item_n: u8,
-    ) -> Result<(TransferableOutput<PvmOutput>, u8), ParserError> {
+    ) -> Result<(TransferableOutput<'b, PvmOutput<'b>>, u8), ParserError> {
         let mut count = 0usize;
         let mut obj_item_n = 0;
         // index to check for renderable outputs.

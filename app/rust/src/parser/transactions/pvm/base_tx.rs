@@ -64,7 +64,7 @@ impl<'b> FromBytes<'b> for PvmBaseTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for PvmBaseTx<'b> {
+impl DisplayableItem for PvmBaseTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         let outputs = self.base.base_outputs_num_items()?;
 

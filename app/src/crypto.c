@@ -51,6 +51,7 @@ zxerr_t crypto_extractPublicKey(uint8_t *pubKey, uint16_t pubKeyLen) {
     CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, privateKeyData, 32, &cx_privateKey));
     CATCH_CXERROR(cx_ecfp_init_public_key_no_throw(CX_CURVE_Ed25519, NULL, 0, &cx_publicKey));
     CATCH_CXERROR(cx_ecfp_generate_pair_no_throw(CX_CURVE_Ed25519, &cx_publicKey, &cx_privateKey, 1));
+
     for (unsigned int i = 0; i < PK_LEN_25519; i++) {
         pubKey[i] = cx_publicKey.W[64 - i];
     }
@@ -58,6 +59,7 @@ zxerr_t crypto_extractPublicKey(uint8_t *pubKey, uint16_t pubKeyLen) {
     if ((cx_publicKey.W[PK_LEN_25519] & 1) != 0) {
         pubKey[31] |= 0x80;
     }
+    
     error = zxerr_ok;
 
 catch_cx_error:
@@ -70,6 +72,89 @@ catch_cx_error:
     return error;
 }
 
+zxerr_t crypto_fill_ed25519_address(uint8_t *buffer, uint16_t buffer_len, uint16_t *addrLen) {
+    if (buffer_len < PK_LEN_ED25519 + ADDRESS_MAX_SIZE) {
+        return zxerr_buffer_too_small;
+    }
+    if (addrLen == NULL) {
+        return zxerr_no_data;
+    }
+
+    MEMZERO(buffer, buffer_len);
+    buffer[0] = PK_LEN_ED25519;
+    CHECK_ZXERR(crypto_extractPublicKey(buffer + 1, buffer_len))
+
+    // Create temporary buffer for address construction
+    uint8_t addr_buffer[ADDRESS_BUFFER_LEN] = {0}; 
+    uint8_t hash[HASH_LEN] = {0};
+    
+    // First byte is ED25519_AUTH_ID (assuming it's defined somewhere, typically 0x01)
+    addr_buffer[0] = ED25519_AUTH_ID;
+    
+    // Calculate SHA256 of public key
+    cx_sha256_t ctx;
+    MEMZERO(&ctx, sizeof(ctx));
+    cx_sha256_init_no_throw(&ctx);
+    CHECK_CX_OK(cx_hash_no_throw(&ctx.header, CX_LAST, buffer + 1, PK_LEN_ED25519, hash, HASH_LEN));
+    
+    // Copy hash after auth ID
+    MEMCPY(addr_buffer + 1, hash, HASH_LEN);
+    
+    // Calculate checksum (SHA256 of the address bytes)
+    cx_sha256_init_no_throw(&ctx);
+    CHECK_CX_OK(cx_hash_no_throw(&ctx.header, CX_LAST, addr_buffer, ADDRESS_BUFFER_LEN, hash, HASH_LEN));
+    
+    // Copy address bytes to output buffer
+    MEMCPY(buffer + 1 + PK_LEN_ED25519, addr_buffer, ADDRESS_BUFFER_LEN);
+    // Append checksum (last 4 bytes of hash)
+    MEMCPY(buffer + 1 + PK_LEN_ED25519 + ADDRESS_BUFFER_LEN, hash + HASH_OFFSET, ADDRESS_CHECKSUM_LEN);
+
+    *addrLen = 1 + PK_LEN_ED25519 + ADDRESS_BUFFER_LEN + ADDRESS_CHECKSUM_LEN;
+    
+    return zxerr_ok;
+}
+
+zxerr_t crypto_sign_avax_ed25519(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
+    zemu_log_stack("crypto_sign_avax_ed25519");
+    if (buffer == NULL || message == NULL ||
+        signatureMaxlen < ED25519_SIGNATURE_SIZE || messageLen != CX_SHA256_SIZE) {
+        return zxerr_unknown;
+    }
+
+    cx_ecfp_private_key_t cx_privateKey;
+    uint8_t privateKeyData[SK_LEN_25519] = {0};
+
+    zxerr_t error = zxerr_unknown;
+
+    CATCH_CXERROR(os_derive_bip32_with_seed_no_throw(HDW_NORMAL,
+                                                     CX_CURVE_Ed25519,
+                                                     path,
+                                                     path_len,
+                                                     privateKeyData,
+                                                     NULL,
+                                                     NULL,
+                                                     0));
+
+    CATCH_CXERROR(cx_ecfp_init_private_key_no_throw(CX_CURVE_Ed25519, privateKeyData, SCALAR_LEN_ED25519, &cx_privateKey));
+    CATCH_CXERROR(cx_eddsa_sign_no_throw(&cx_privateKey,
+                                         CX_SHA512,
+                                         message,
+                                         messageLen,
+                                         buffer,
+                                         signatureMaxlen));
+
+    error = zxerr_ok;
+
+catch_cx_error:
+    MEMZERO(&cx_privateKey, sizeof(cx_privateKey));
+    MEMZERO(privateKeyData, sizeof(privateKeyData));
+
+    if (error != zxerr_ok) {
+        MEMZERO(buffer, signatureMaxlen);
+    }
+
+    return error;
+}
 
 typedef struct {
     uint8_t r[32];
@@ -78,7 +163,7 @@ typedef struct {
 } __attribute__((packed)) signature_t;
 
 
-zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
+zxerr_t crypto_sign_avax_secp256k1(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len) {
     if (signatureMaxlen < sizeof(signature_t)) {
         return zxerr_buffer_too_small;
     }
@@ -135,13 +220,13 @@ catch_cx_error:
     return zxerr;
 }
 
-zxerr_t crypto_fillAddress(uint8_t *buffer, uint16_t bufferLen, uint16_t *addrResponseLen) {
-    if (buffer == NULL || addrResponseLen == NULL) {
-        return zxerr_unknown;
+zxerr_t crypto_sign_avax(uint8_t *buffer, uint16_t signatureMaxlen, const uint8_t *message, uint16_t messageLen, const uint32_t *path, uint16_t path_len, uint8_t curve_type) {
+    switch (curve_type) {
+        case CURVE_SECP256K1:
+            return crypto_sign_avax_secp256k1(buffer, signatureMaxlen, message, messageLen, path, path_len);
+        case CURVE_ED25519:
+            return crypto_sign_avax_ed25519(buffer, signatureMaxlen, message, messageLen, path, path_len);
+        default:
+            return zxerr_unknown;
     }
-
-    // MEMZERO(buffer, bufferLen);
-    *addrResponseLen = 3 * KEY_LENGTH;
-
-    return zxerr_ok;
 }

@@ -51,7 +51,7 @@ pub struct NFTTransferOutput<'b> {
 impl<'b> NFTTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x0000000b;
 
-    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address<'b>> {
         let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
@@ -115,7 +115,7 @@ impl<'b> FromBytes<'b> for NFTTransferOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for NFTTransferOutput<'a> {
+impl DisplayableItem for NFTTransferOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // group_id, payload and addresses
         checked_add!(ViewError::Unknown, 2u8, self.num_addresses() as u8)

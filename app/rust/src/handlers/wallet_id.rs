@@ -149,7 +149,7 @@ impl ApduHandler for WalletId {
         let mut ui = unsafe { ui.assume_init() };
 
         if req_confirmation {
-            crate::show_ui!(ui.show(flags), tx)
+            crate::show_ui!(unsafe { ui.show(flags) }, tx)
         } else {
             //we don't need to show so we execute the "accept" already
             // this way the "formatting" to `buffer` is all in the ui code

@@ -40,7 +40,7 @@ pub struct SECPMintOutput<'b> {
 impl<'b> SECPMintOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000006;
 
-    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address<'b>> {
         let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr)
@@ -87,7 +87,7 @@ impl<'b> FromBytes<'b> for SECPMintOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECPMintOutput<'a> {
+impl DisplayableItem for SECPMintOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // output-type, threshold and addresses
         checked_add!(

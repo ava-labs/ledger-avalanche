@@ -92,6 +92,32 @@ void extractHDPath(uint32_t rx, uint32_t offset) {
     _set_root_path(&G_io_apdu_buffer[offset], len_bytes + 1);
 }
 
+void extractHDPathEd25519(uint32_t rx, uint32_t offset) {
+    MEMZERO(hdPath, sizeof(hdPath));
+
+    if (rx < offset + 1) {
+        THROW(APDU_CODE_WRONG_LENGTH);
+    }
+
+     hdPath_len = G_io_apdu_buffer[offset];
+     offset += 1;
+
+     if (hdPath_len > HDPATH_LEN_DEFAULT || (rx - offset) != sizeof(uint32_t) * hdPath_len) {
+        THROW(APDU_CODE_WRONG_LENGTH);
+     }
+
+     memcpy(hdPath, G_io_apdu_buffer + offset, sizeof(uint32_t) * hdPath_len);
+
+    // Convert each hdPath element to big-endian
+    for (uint8_t i = 0; i < hdPath_len; i++) {
+        uint32_t value = hdPath[i];
+        hdPath[i] = ((value & 0xFF000000) >> 24) |
+                    ((value & 0x00FF0000) >> 8)  |
+                    ((value & 0x0000FF00) << 8)  |
+                    ((value & 0x000000FF) << 24);
+    }
+}
+
 __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
     if (rx < OFFSET_DATA) {
         THROW(APDU_CODE_WRONG_LENGTH);
@@ -138,13 +164,35 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
     zemu_log("handleGetAddr\n");
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
-    zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    const uint8_t curve_type = G_io_apdu_buffer[OFFSET_P2];
+
+    if (curve_type != CURVE_SECP256K1 && curve_type != CURVE_ED25519) {
+        THROW(APDU_CODE_CONDITIONS_NOT_SATISFIED);
+    }
+
+    if (curve_type == CURVE_ED25519) {
+        extractHDPathEd25519(rx, OFFSET_DATA);
+    }
+
+    zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, curve_type);
     if (zxerr != zxerr_ok) {
         *tx = 0;
         THROW(APDU_CODE_DATA_INVALID);
     }
+
     if (requireConfirmation) {
-        view_review_init(addr_getItem, addr_getNumItems, app_reply_address);
+        switch (curve_type) {
+            case CURVE_ED25519:
+                view_review_init(addr_getItemEd25519, addr_getNumItemsEd25519, app_reply_address);
+                break;
+            case CURVE_SECP256K1:
+                view_review_init(addr_getItem, addr_getNumItems, app_reply_address);
+                break;
+            default:
+                zemu_log("No match for address kind!\n");
+                THROW(APDU_CODE_CONDITIONS_NOT_SATISFIED);
+                break;
+        }
         view_review_show(REVIEW_ADDRESS);
         *flags |= IO_ASYNCH_REPLY;
         return;
@@ -225,8 +273,10 @@ __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *
     // in this case we just received a path suffix
     // we are supposed to use the previously stored
     // root_path and hash
+    uint8_t curve_type = G_io_apdu_buffer[OFFSET_P2];
+
     if (G_io_apdu_buffer[OFFSET_P1] != FIRST_MESSAGE) {
-        app_sign_hash();
+        app_sign_hash(curve_type);
     } else {
         // this is the sign_hash transaction
         // we received in one go the root path
@@ -366,7 +416,7 @@ __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, u
     }
 }
 
-__Z_INLINE void handleEthConfig(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handleEthConfig(volatile uint32_t *flags, volatile uint32_t *tx, __Z_UNUSED uint32_t rx) {
     zemu_log("handleEthConfig\n");
     *tx = 0;
     app_eth_configuration();
@@ -398,7 +448,7 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
 }
 
 
-__Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, __Z_UNUSED uint32_t rx) {
     zemu_log("handleProvideErc20\n");
 
     // Nothing to do as we do not handle this information,
@@ -411,7 +461,7 @@ __Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *
     *flags |= IO_ASYNCH_REPLY;
 }
 
-__Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
+__Z_INLINE void handleSetPlugin(volatile uint32_t *flags, volatile uint32_t *tx, __Z_UNUSED uint32_t rx) {
     zemu_log("handleSetPlugin\n");
 
     // This instruction is sent in the process of providing

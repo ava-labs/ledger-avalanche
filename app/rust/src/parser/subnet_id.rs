@@ -64,7 +64,7 @@ impl<'b> FromBytes<'b> for SubnetId<'b> {
     }
 }
 
-impl<'b> DisplayableItem for SubnetId<'b> {
+impl DisplayableItem for SubnetId<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         Ok(1)
     }

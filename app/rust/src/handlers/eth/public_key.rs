@@ -36,6 +36,7 @@ use super::utils::parse_bip32_eth;
 
 pub struct GetPublicKey;
 
+#[allow(static_mut_refs)]
 impl GetPublicKey {
     /// Retrieve the public key with the given bip32 path
     #[inline(never)]

@@ -42,7 +42,7 @@ pub struct SECPTransferOutput<'b> {
 impl<'b> SECPTransferOutput<'b> {
     pub const TYPE_ID: u32 = 0x00000007;
 
-    pub fn get_address_at(&'b self, idx: usize) -> Option<Address> {
+    pub fn get_address_at(&'b self, idx: usize) -> Option<Address<'b>> {
         let data = self.addresses.get(idx)?;
         let mut addr = MaybeUninit::uninit();
         Address::from_bytes_into(data, &mut addr).ok()?;
@@ -89,7 +89,7 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
     }
 }
 
-impl<'a> DisplayableItem for SECPTransferOutput<'a> {
+impl DisplayableItem for SECPTransferOutput<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // According to avalanche team, and to be "compatible" at presentation layer
         // we should summarize the items to show. As they suggested we only show the amount

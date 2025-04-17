@@ -31,7 +31,7 @@ const MAX_ETH_MESSAGE_SIZE: usize = 100;
 #[cfg_attr(test, derive(Debug))]
 pub struct PersonalMsg<'b>(Message<'b>);
 
-impl<'b> PersonalMsg<'b> {
+impl PersonalMsg<'_> {
     pub fn msg(&self) -> &[u8] {
         self.0.msg()
     }
@@ -53,7 +53,7 @@ impl<'b> FromBytes<'b> for PersonalMsg<'b> {
     }
 }
 
-impl<'b> DisplayableItem for PersonalMsg<'b> {
+impl DisplayableItem for PersonalMsg<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         checked_add!(ViewError::Unknown, 1u8, self.0.num_items()?)
     }

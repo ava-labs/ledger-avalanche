@@ -111,7 +111,7 @@ where
         &self.base_tx.inputs
     }
 
-    pub fn base_outputs(&'b self) -> &ObjectList<TransferableOutput<O>> {
+    pub fn base_outputs(&'b self) -> &'b ObjectList<'b, TransferableOutput<'b, O>> {
         &self.base_tx.outputs
     }
 
@@ -150,7 +150,7 @@ where
     pub fn get_output_with_item(
         &'b self,
         item_n: u8,
-    ) -> Result<(TransferableOutput<O>, u8), ViewError> {
+    ) -> Result<(TransferableOutput<'b,O>, u8), ViewError> {
         self.base_tx
             .base_output_with_item(item_n)
             .map_err(|_| ViewError::Unknown)

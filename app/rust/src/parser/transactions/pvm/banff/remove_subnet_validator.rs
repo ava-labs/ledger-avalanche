@@ -72,7 +72,7 @@ impl<'b> FromBytes<'b> for RemoveSubnetValidatorTx<'b> {
     }
 }
 
-impl<'b> DisplayableItem for RemoveSubnetValidatorTx<'b> {
+impl DisplayableItem for RemoveSubnetValidatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, node_id_items(1),
         // subnet_id and fee

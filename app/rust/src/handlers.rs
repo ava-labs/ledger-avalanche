@@ -26,6 +26,7 @@ pub mod eth;
 mod utils;
 pub use utils::*;
 
+#[allow(static_mut_refs)]
 pub mod resources {
     use crate::constants::MAX_BIP32_PATH_DEPTH;
 
