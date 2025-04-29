@@ -36,6 +36,7 @@ import {
   DISABLE_L1_VALIDATOR,
   SET_L1_VALIDATOR_WEIGHT,
   INCREASE_L1_VALIDATOR_BALANCE,
+  BASE_TX_TEST,
 } from './p_chain_vectors'
 
 // @ts-ignore
@@ -43,7 +44,7 @@ import secp256k1 from 'secp256k1/elliptic'
 // @ts-ignore
 import crypto from 'crypto'
 
-const ed25519 = require("ed25519-supercop");
+const ed25519 = require('ed25519-supercop')
 
 jest.setTimeout(200000)
 
@@ -122,6 +123,10 @@ const FULL_SIGN_TEST_DATA = [
   {
     name: 'increase_l1_validator_balance',
     op: INCREASE_L1_VALIDATOR_BALANCE,
+  },
+  {
+    name: 'base_tx_locked',
+    op: BASE_TX_TEST,
   },
 ]
 
