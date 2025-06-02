@@ -18,6 +18,8 @@ use core::mem::MaybeUninit;
 use zemu_sys::ViewError;
 
 mod address;
+mod addressed_call;
+mod addressed_call_payloads;
 mod asset_id;
 mod avm_output;
 mod chain_id;
@@ -42,6 +44,7 @@ mod transactions;
 mod utils;
 mod utxo_id;
 mod validator;
+mod warp_message;
 
 #[cfg(feature = "banff")]
 mod proof_of_possession;
@@ -50,6 +53,8 @@ mod proof_of_possession;
 mod snapshots_common;
 
 pub use address::*;
+pub use addressed_call::*;
+pub use addressed_call_payloads::*;
 pub use asset_id::AssetId;
 pub use avm_output::AvmOutput;
 pub use constants::*;
@@ -69,6 +74,7 @@ pub use outputs::{
     NFTMintOutput, NFTTransferOutput, Output, OutputType, SECPMintOutput, SECPOutputOwners,
     SECPTransferOutput, TransferableOutput,
 };
+pub use pchain_owner::PchainOwner;
 pub use pvm_output::PvmOutput;
 pub use subnet_auth::SubnetAuth;
 pub use subnet_id::*;
@@ -76,6 +82,7 @@ pub use transactions::*;
 pub use utils::*;
 pub use utxo_id::UtxoId;
 pub use validator::*;
+pub use warp_message::*;
 
 #[cfg(feature = "erc721")]
 pub use coreth::{data::ERC721Info, nft_info::NftInfo};

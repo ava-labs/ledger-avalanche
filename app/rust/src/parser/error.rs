@@ -45,6 +45,10 @@ pub enum ParserError {
     InvalidAssetCall,
     NftInfoNotProvided,
     InvalidContractAddress,
+    InvalidMessageSize,
+    InvalidCodecId,
+    InvalidLength,
+    InvalidSourceAddressSize,
 }
 
 impl From<ErrorKind> for ParserError {
