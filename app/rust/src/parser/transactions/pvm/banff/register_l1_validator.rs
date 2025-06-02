@@ -1,18 +1,16 @@
-use crate::parser::{nano_avax_to_fp_str, ADDRESS_LEN};
+use crate::parser::{nano_avax_to_fp_str, WarpMessage, ADDRESS_LEN};
 use crate::utils::hex_encode;
 use crate::{
     handlers::handle_ui_message,
     parser::{
-        pchain_owner::PchainOwner, proof_of_possession::BLS_SIGNATURE_LEN, BaseTxFields,
-        DisplayableItem, FromBytes, Header, NodeId, ParserError, PvmOutput, SubnetId,
-        PVM_REGISTER_L1_VALIDATOR, U64_FORMATTED_SIZE
+        proof_of_possession::BLS_SIGNATURE_LEN, BaseTxFields, DisplayableItem, FromBytes, Header,
+        ParserError, PvmOutput, PVM_REGISTER_L1_VALIDATOR, U64_FORMATTED_SIZE,
     },
 };
-use bolos::PIC;
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
     bytes::complete::{tag, take},
-    number::complete::{be_u16, be_u32, be_u64},
+    number::complete::{be_u32, be_u64},
 };
 use zemu_sys::ViewError;
 
@@ -24,16 +22,8 @@ pub struct RegisterL1ValidatorTx<'b> {
     pub base_tx: BaseTxFields<'b, PvmOutput<'b>>,
     pub balance: u64,
     pub signer: &'b [u8; BLS_SIGNATURE_LEN],
-    // RegisterL1ValidatorMessage payload
-    pub codec_id: u16,
-    pub type_id: u32,
-    pub subnet_id: SubnetId<'b>,
-    pub node_id: NodeId<'b>,
-    pub bls_pubkey: &'b [u8; 48],
-    pub expiry: u64,
-    pub remaining_balance_owner: PchainOwner<'b>,
-    pub disable_owner: PchainOwner<'b>,
-    pub weight: u64,
+    pub warp_message_size: u32,
+    pub warp_message: WarpMessage<'b>,
 }
 
 impl<'b> FromBytes<'b> for RegisterL1ValidatorTx<'b> {
@@ -62,51 +52,23 @@ impl<'b> FromBytes<'b> for RegisterL1ValidatorTx<'b> {
         let (rem, signer) = take(BLS_SIGNATURE_LEN)(rem)?;
         let signer = arrayref::array_ref!(signer, 0, BLS_SIGNATURE_LEN);
 
-        // codec_id
-        let (rem, codec_id) = be_u16(rem)?;
+        // warp_message_size
+        let (rem, warp_message_size) = be_u32(rem)?;
 
-        // type_id
-        let (rem, type_id) = be_u32(rem)?;
-        if type_id != 1 {
-            return Err(nom::Err::Error(ParserError::InvalidTypeId));
+        // warp_message
+        let warp_message_start = rem;
+        let warp_message = unsafe { &mut *addr_of_mut!((*out).warp_message).cast() };
+        let rem = WarpMessage::from_bytes_into(rem, warp_message)?;
+
+        // Validate that we consumed exactly warp_message_size bytes
+        let consumed_bytes = warp_message_start.len() - rem.len();
+        if consumed_bytes != warp_message_size as usize {
+            return Err(nom::Err::Error(ParserError::InvalidLength));
         }
 
-        // subnet_id
-        let subnet_id = unsafe { &mut *addr_of_mut!((*out).subnet_id).cast() };
-        let rem = SubnetId::from_bytes_into(rem, subnet_id)?;
-
-        // Node id size, not used
-        let (rem, _unused_value) = take(4usize)(rem)?;
-
-        // node_id
-        let node_id = unsafe { &mut *addr_of_mut!((*out).node_id).cast() };
-        let rem = NodeId::from_bytes_into(rem, node_id)?;
-
-        // bls_pubkey
-        let (rem, bls_pubkey) = take(48usize)(rem)?;
-        let bls_pubkey = arrayref::array_ref!(bls_pubkey, 0, 48);
-
-        // expiration
-        let (rem, expiry) = be_u64(rem)?;
-
-        // remaining_balance_owner
-        let remaining_balance_owner =
-            unsafe { &mut *addr_of_mut!((*out).remaining_balance_owner).cast() };
-        let rem = PchainOwner::from_bytes_into(rem, remaining_balance_owner)?;
-
-        // disable_owner
-        let disable_owner = unsafe { &mut *addr_of_mut!((*out).disable_owner).cast() };
-        let rem = PchainOwner::from_bytes_into(rem, disable_owner)?;
-
-        // weight
-        let (rem, weight) = be_u64(rem)?;
-
         unsafe {
-            addr_of_mut!((*out).codec_id).write(codec_id);
-            addr_of_mut!((*out).weight).write(weight);
+            addr_of_mut!((*out).warp_message_size).write(warp_message_size);
             addr_of_mut!((*out).balance).write(balance);
-            addr_of_mut!((*out).bls_pubkey).write(bls_pubkey);
-            addr_of_mut!((*out).expiry).write(expiry);
             addr_of_mut!((*out).signer).write(signer);
         }
 
@@ -136,9 +98,15 @@ impl<'b> RegisterL1ValidatorTx<'b> {
 impl DisplayableItem for RegisterL1ValidatorTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, node_id, weight, balance, fee, remaining_balance_owner, disable_owner
-        let n_addresses =
-            self.remaining_balance_owner.addresses.len() + self.disable_owner.addresses.len();
-        Ok(5u8 + n_addresses as u8)
+        if let crate::parser::AddressedCallPayload::RegisterL1Validator(ref msg) =
+            self.warp_message.payload.payload
+        {
+            let n_addresses =
+                msg.remaining_balance_owner.addresses.len() + msg.disable_owner.addresses.len();
+            Ok(5u8 + n_addresses as u8)
+        } else {
+            Err(ViewError::NoData)
+        }
     }
 
     fn render_item(
@@ -148,82 +116,90 @@ impl DisplayableItem for RegisterL1ValidatorTx<'_> {
         message: &mut [u8],
         page: u8,
     ) -> Result<u8, ViewError> {
+        use crate::sys::PIC;
         use bolos::pic_str;
         use itoa::Buffer;
         let mut itoa_buffer = Buffer::new();
         let mut buffer = [0; U64_FORMATTED_SIZE + 2];
 
-        let n_remain_addresses = self.remaining_balance_owner.addresses.len();
-        let n_disable_addresses = self.disable_owner.addresses.len();
-        let prefix = pic_str!(b"0x"!);
-        match item_n {
-            0 => {
-                let label = pic_str!(b"RegisterL1Val");
-                title[..label.len()].copy_from_slice(label);
-                let content = pic_str!(b"Transaction");
-                handle_ui_message(content, message, page)
-            }
-            1 => self.node_id.render_item(0, title, message, page),
-            2 => {
-                let label = pic_str!(b"Weight");
-                title[..label.len()].copy_from_slice(label);
-                let buffer = itoa_buffer.format(self.weight);
-                handle_ui_message(buffer.as_bytes(), message, page)
-            }
-            3 => {
-                let label = pic_str!(b"Balance (AVAX)");
-                title[..label.len()].copy_from_slice(label);
+        if let crate::parser::AddressedCallPayload::RegisterL1Validator(ref msg) =
+            self.warp_message.payload.payload
+        {
+            let n_remain_addresses = msg.remaining_balance_owner.addresses.len();
+            let n_disable_addresses = msg.disable_owner.addresses.len();
+            let prefix = pic_str!(b"0x"!);
+            match item_n {
+                0 => {
+                    let label = pic_str!(b"RegisterL1Val");
+                    title[..label.len()].copy_from_slice(label);
+                    let content = pic_str!(b"Transaction");
+                    handle_ui_message(content, message, page)
+                }
+                1 => msg.node_id.render_item(0, title, message, page),
 
-                let balance_buff = nano_avax_to_fp_str(self.balance, &mut buffer[..])
+                2 => {
+                    let label = pic_str!(b"Weight");
+                    title[..label.len()].copy_from_slice(label);
+                    let buffer = itoa_buffer.format(msg.weight);
+                    handle_ui_message(buffer.as_bytes(), message, page)
+                }
+                3 => {
+                    let label = pic_str!(b"Balance (AVAX)");
+                    title[..label.len()].copy_from_slice(label);
+
+                    let balance_buff = nano_avax_to_fp_str(self.balance, &mut buffer[..])
+                        .map_err(|_| ViewError::Unknown)?;
+
+                    handle_ui_message(balance_buff, message, page)
+                }
+                4 => {
+                    let label = pic_str!(b"Fee(AVAX)");
+                    title[..label.len()].copy_from_slice(label);
+
+                    let fee = self.fee().map_err(|_| ViewError::Unknown)?;
+                    let fee_buff = nano_avax_to_fp_str(fee, &mut buffer[..])
+                        .map_err(|_| ViewError::Unknown)?;
+
+                    handle_ui_message(fee_buff, message, page)
+                }
+                x if x >= 5 && x < (5 + n_remain_addresses as u8) => {
+                    let label = pic_str!(b"Rem Addr");
+                    title[..label.len()].copy_from_slice(label);
+
+                    let mut out = [0; ADDRESS_LEN * 2 + 2];
+                    let mut sz = prefix.len();
+                    out[..prefix.len()].copy_from_slice(&prefix[..]);
+
+                    sz += hex_encode(
+                        msg.remaining_balance_owner.addresses[x as usize - 5],
+                        &mut out[prefix.len()..],
+                    )
                     .map_err(|_| ViewError::Unknown)?;
 
-                handle_ui_message(balance_buff, message, page)
+                    handle_ui_message(&out[..sz], message, page)
+                }
+                x if x >= (5 + n_remain_addresses as u8)
+                    && x < (5 + n_remain_addresses as u8 + n_disable_addresses as u8) =>
+                {
+                    let label = pic_str!(b"Disabler");
+                    title[..label.len()].copy_from_slice(label);
+
+                    let mut out = [0; ADDRESS_LEN * 2 + 2];
+                    let mut sz = prefix.len();
+                    out[..prefix.len()].copy_from_slice(&prefix[..]);
+
+                    sz += hex_encode(
+                        msg.disable_owner.addresses[x as usize - 5 - n_remain_addresses],
+                        &mut out[prefix.len()..],
+                    )
+                    .map_err(|_| ViewError::Unknown)?;
+
+                    handle_ui_message(&out[..sz], message, page)
+                }
+                _ => Err(ViewError::NoData),
             }
-            4 => {
-                let label = pic_str!(b"Fee(AVAX)");
-                title[..label.len()].copy_from_slice(label);
-
-                let fee = self.fee().map_err(|_| ViewError::Unknown)?;
-                let fee_buff =
-                    nano_avax_to_fp_str(fee, &mut buffer[..]).map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(fee_buff, message, page)
-            }
-            x if x >= 5 && x < (5 + n_remain_addresses as u8) => {
-                let label = pic_str!(b"Rem Addr");
-                title[..label.len()].copy_from_slice(label);
-
-                let mut out = [0; ADDRESS_LEN * 2 + 2];
-                let mut sz = prefix.len();
-                out[..prefix.len()].copy_from_slice(&prefix[..]);
-
-                sz += hex_encode(
-                    self.remaining_balance_owner.addresses[x as usize - 5],
-                    &mut out[prefix.len()..],
-                )
-                .map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(&out[..sz], message, page)
-            }
-            x if x >= (5 + n_remain_addresses as u8)
-                && x < (5 + n_remain_addresses as u8 + n_disable_addresses as u8) =>
-            {
-                let label = pic_str!(b"Disabler");
-                title[..label.len()].copy_from_slice(label);
-
-                let mut out = [0; ADDRESS_LEN * 2 + 2];
-                let mut sz = prefix.len();
-                out[..prefix.len()].copy_from_slice(&prefix[..]);
-
-                sz += hex_encode(
-                    self.disable_owner.addresses[x as usize - 5 - n_remain_addresses],
-                    &mut out[prefix.len()..],
-                )
-                .map_err(|_| ViewError::Unknown)?;
-
-                handle_ui_message(&out[..sz], message, page)
-            }
-            _ => Err(ViewError::NoData),
+        } else {
+            Err(ViewError::NoData)
         }
     }
 }
@@ -231,9 +207,8 @@ impl DisplayableItem for RegisterL1ValidatorTx<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::prelude::v1::*;
-
     use crate::parser::snapshots_common::ReducedPage;
+    use std::prelude::v1::*;
     use zuit::Page;
 
     const DATA: &[u8] = &[];
@@ -242,45 +217,49 @@ mod tests {
     #[test]
     fn parse_register_l1_validator() {
         let remaining_balance_owner_address = [
-            0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e,
-            0x7f, 0x80, 0x81, 0x82, 0x83, 0x84,
+            0xdd, 0x91, 0x03, 0xb6, 0x86, 0x29, 0x92, 0x95, 0xf5, 0x18, 0xf3, 0x3e, 0xa3, 0xb6,
+            0xe7, 0x67, 0xd0, 0x6e, 0xad, 0x89,
         ];
 
         let disable_owner_address = [
-            0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96,
-            0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c,
+            0xdd, 0x91, 0x03, 0xb6, 0x86, 0x29, 0x92, 0x95, 0xf5, 0x18, 0xf3, 0x3e, 0xa3, 0xb6,
+            0xe7, 0x67, 0xd0, 0x6e, 0xad, 0x89,
         ];
         let (_, tx) = RegisterL1ValidatorTx::from_bytes(REGISTER_L1_VALIDATOR_DATA).unwrap();
-
-        assert_eq!(
-            tx.remaining_balance_owner.addresses[0],
-            remaining_balance_owner_address
-        );
-        assert_eq!(tx.disable_owner.addresses[0], disable_owner_address);
-        assert_eq!(tx.weight, 11357690822530343844);
+        if let crate::parser::AddressedCallPayload::RegisterL1Validator(ref msg) =
+            tx.warp_message.payload.payload
+        {
+            assert_eq!(
+                msg.remaining_balance_owner.addresses[0],
+                remaining_balance_owner_address
+            );
+            assert_eq!(msg.disable_owner.addresses[0], disable_owner_address);
+            assert_eq!(msg.weight, 1);
+        } else {
+            panic!("Expected RegisterL1Validator payload");
+        }
     }
 
     #[test]
     #[cfg_attr(miri, ignore)]
     fn ui_register_l1_validator() {
-        for (i, data) in [REGISTER_L1_VALIDATOR_DATA].iter().enumerate() {
-            println!("-------------------- Register L1 Validator TX #{i} ------------------------");
-            let (_, tx) = RegisterL1ValidatorTx::from_bytes(data).unwrap();
+        let data = REGISTER_L1_VALIDATOR_DATA;
+        println!("-------------------- Register L1 Validator TX ------------------------");
+        let (_, tx) = RegisterL1ValidatorTx::from_bytes(&data).unwrap();
 
-            let items = tx.num_items().expect("Overflow?");
+        let items = tx.num_items().expect("Overflow?");
 
-            let mut pages = Vec::<Page<18, 1024>>::with_capacity(items as usize);
-            for i in 0..items {
-                let mut page = Page::default();
+        let mut pages = Vec::<Page<18, 1024>>::with_capacity(items as usize);
+        for i in 0..items {
+            let mut page = Page::<18, 1024>::default();
 
-                tx.render_item(i as _, &mut page.title, &mut page.message, 0)
-                    .unwrap();
+            tx.render_item(i as _, &mut page.title, &mut page.message, 0)
+                .unwrap();
 
-                pages.push(page);
-            }
-
-            let reduced = pages.iter().map(ReducedPage::from).collect::<Vec<_>>();
-            insta::assert_debug_snapshot!(reduced);
+            pages.push(page);
         }
+
+        let reduced = pages.iter().map(ReducedPage::from).collect::<Vec<_>>();
+        insta::assert_debug_snapshot!(reduced);
     }
 }
