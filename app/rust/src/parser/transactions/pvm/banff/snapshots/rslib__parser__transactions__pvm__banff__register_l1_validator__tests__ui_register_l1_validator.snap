@@ -1,15 +1,14 @@
 ---
 source: src/parser/transactions/pvm/banff/register_l1_validator.rs
-assertion_line: 282
+assertion_line: 302
 expression: reduced
 ---
 [
     "RegisterL1Val": "Transaction",
-    "Validator": "NodeID-42CCEK87FaF7gXXffmcB67hvQ3prvtbf2",
-    "Weight": "11357690822530343844",
-    "Balance (AVAX)": "1",
-    "Fee(AVAX)": "1152921505.606846974",
-    "Rem Addr": "0x7172737475767778797a7b7c7d7e7f8081828384",
-    "Disabler": "0x898a8b8c8d8e8f909192939495969798999a9b9c",
-    "Disabler": "0x898a8b8c8d8e8f909192939495969798aaaaaaaa",
+    "Validator": "NodeID-KUhfajVUcCf2g5UXsZ1EXZpFYryppFRcZ",
+    "Weight": "1",
+    "Balance (AVAX)": "0.1",
+    "Fee(AVAX)": "0.00004679",
+    "Rem Addr": "0xdd9103b686299295f518f33ea3b6e767d06ead89",
+    "Disabler": "0xdd9103b686299295f518f33ea3b6e767d06ead89",
 ]

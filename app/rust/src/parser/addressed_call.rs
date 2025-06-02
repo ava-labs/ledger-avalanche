@@ -51,7 +51,6 @@ impl<'b> FromBytes<'b> for AddressedCall<'b> {
         unsafe {
             core::ptr::addr_of_mut!((*out).source_address_size).write(source_address_size);
             core::ptr::addr_of_mut!((*out).source_address).write(source_address);
-            core::ptr::addr_of_mut!((*out).payload_size).write(payload_size);
             core::ptr::addr_of_mut!((*out).payload).write(payload);
         }
 
