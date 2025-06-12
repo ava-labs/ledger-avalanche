@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_MKR_e.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0x8a8fabf52bf59250b682e3e6919467db0dfc36c0",
+    "Amount": "188.378667015988150272 MKR.e",
+    "Contract": "0x88128fd4b259552a9a1d457f435a6527aab72d42",
+    "Maximun Fee(GWEI)": "866102.13383785",
+]

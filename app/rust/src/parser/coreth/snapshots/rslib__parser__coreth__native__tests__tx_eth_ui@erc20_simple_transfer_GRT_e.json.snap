@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_GRT_e.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0x4ad67c9280fb8bc1dc96c3b64f4c61971d630660",
+    "Amount": "459.780666303745818624 GRT.e",
+    "Contract": "0x8a0cac13c7da965a312f08ea4229c37869e85cb9",
+    "Maximun Fee(GWEI)": "917339.132724091",
+]
