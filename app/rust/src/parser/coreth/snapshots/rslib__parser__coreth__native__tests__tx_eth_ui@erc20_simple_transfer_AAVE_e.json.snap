@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_AAVE_e.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0x7cc3ae8cf91451b1f2054771dff7f06a125ff1bb",
+    "Amount": "215.558477838428962816 AAVE.e",
+    "Contract": "0x63a72806098bd3d9520cc43356dd78afe5d386d9",
+    "Maximun Fee(GWEI)": "914685.205926434",
+]

@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_YFI_e.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0xde968f42bc9ea476106ed54d4c1ce29615084d04",
+    "Amount": "112.225320419383934976 YFI.e",
+    "Contract": "0x9eaac1b23d935365bd7b542fe22ceee2922f52dc",
+    "Maximun Fee(GWEI)": "1309728.79016504",
+]
