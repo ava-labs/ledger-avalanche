@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_WOO_e.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0xfff4230bd246a69d19c881ee33b95dc54409a5a3",
+    "Amount": "41.371111728106479616 WOO.e",
+    "Contract": "0xabc9547b534519ff73921b1fba6e672b5f58d083",
+    "Maximun Fee(GWEI)": "532308.721691682",
+]
