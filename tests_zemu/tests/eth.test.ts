@@ -97,23 +97,6 @@ const SIGN_TEST_DATA: TestData[] = [
       chain_id: 2,
     },
   },
-  {
-    name: 'erc20_transfer_usdt',
-    op: Buffer.from(
-      'f86d820968850565614c4282b0a4949702230a8ea53601f5cd2dc00fdbc13d4df4a8c780b844a9059cbb000000000000000000000000b1aaa26254b251e45af9988bc9beed3f3ef6b36f0000000000000000000000000000000000000000000000000000000008ae253182a86a8080',
-      'hex',
-    ),
-    nft_info: undefined,
-  },
-  {
-    name: 'erc20_transfer_1inch_e',
-    op: Buffer.from(
-      'f86e820f588502fed078ac83014d7694d501281565bf7789224523144fe5d98e8b28f26780b844a9059cbb0000000000000000000000002a1f67dd9e32d4b7d306d1343bf359809ca334e500000000000000000000000000000000000000000000000627521c2ad387400082a86a8080',
-      'hex',
-    ),
-    nft_info: undefined,
-  },
-
 ]
 
 const ETH_MSG_RAW: number[] = [

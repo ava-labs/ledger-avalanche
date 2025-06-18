@@ -87,13 +87,13 @@ impl<'b> EthData<'b> {
                     cfg_if::cfg_if! {
                         if #[cfg(all(feature = "erc721", feature = "erc20"))] {
                             Self::parse_erc721(to, data, out)
-                                .or_else(|_| Self::parse_erc20(to, data, out))
+                                .or_else(|_| Self::parse_erc20(data, out))
                                 .or_else(|_| Self::parse_contract_call(data, out))?;
                         } else if #[cfg(feature = "erc721")] {
                             Self::parse_erc721(to, data, out)
                                 .or_else(|_| Self::parse_contract_call(data, out))?;
                         } else if #[cfg(feature = "erc20")] {
-                            Self::parse_erc20(to, data, out)
+                            Self::parse_erc20(data, out)
                                 .or_else(|_| Self::parse_contract_call(data, out))?;
                         } else {
                             Self::parse_contract_call(data, out)?;
@@ -130,16 +130,12 @@ impl<'b> EthData<'b> {
     }
 
     #[cfg(feature = "erc20")]
-    fn parse_erc20(
-        contract_address: &Address<'b>,
-        data: &'b [u8],
-        out: &mut MaybeUninit<Self>
-    ) -> Result<(), ParserError> {
+    fn parse_erc20(data: &'b [u8], out: &mut MaybeUninit<Self>) -> Result<(), ParserError> {
         if data.is_empty() {
             return Err(ParserError::NoData);
         }
 
-        Self::init_as_erc_20(|erc20| ERC20::parse_into(contract_address, data, erc20), out)
+        Self::init_as_erc_20(|erc20| ERC20::parse_into(data, erc20), out)
     }
 
     #[cfg(feature = "erc721")]
