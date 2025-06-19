@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_SUSHI_e.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0x41a5fdec4633ad2e32f6f5c982ec82a1c9affa6f",
+    "Amount": "435.312467500946227200 SUSHI.e",
+    "Contract": "0x37b608519f91f70f2eeb0e5ed9af4061722e4f76",
+    "Maximun Fee(GWEI)": "547714.363639586",
+]

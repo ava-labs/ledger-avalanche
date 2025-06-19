@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_EURC.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0xaa505b5cf39bfe57a6e6508bdd7c1ce97678bb1e",
+    "Amount": "267.275940063918522368 EURC",
+    "Contract": "0xc891eb4cbdeff6e073e859e987815ed1505c2acd",
+    "Maximun Fee(GWEI)": "2155427.385753483",
+]
