@@ -6,8 +6,8 @@ on:
     branches:
       - main
       - develop
-      - master # for safety reasons
-      - dev # for safety reasons
+      - master
+      - dev
 
 jobs:
   configure:
@@ -248,7 +248,6 @@ jobs:
         test_zemu,
         rust_tests,
       ]
-    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     container:
       image: zondax/ledger-app-builder:latest
@@ -291,10 +290,11 @@ jobs:
         id: nanosp
         run: echo "tag_name=$(./app/pkg/installer_nanos_plus.sh version)" >> $GITHUB_OUTPUT
       - name: Update Release
+        if: ${{ github.ref == 'refs/heads/main' }}
         id: update_release_2
         uses: softprops/action-gh-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: ./app/pkg/installer_nanos_plus.sh
           tag_name: ${{ steps.nanosp.outputs.tag_name }}
@@ -311,7 +311,6 @@ jobs:
         test_zemu,
         rust_tests,
       ]
-    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     container:
       image: zondax/ledger-app-builder:latest
@@ -353,10 +352,11 @@ jobs:
         id: stax
         run: echo "tag_name=$(./app/pkg/installer_stax.sh version)" >> $GITHUB_OUTPUT
       - name: Update Release
+        if: ${{ github.ref == 'refs/heads/main' }}
         id: update_release_3
         uses: softprops/action-gh-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             ./app/pkg/installer_stax.sh
@@ -374,7 +374,6 @@ jobs:
         test_zemu,
         rust_tests,
       ]
-    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     container:
       image: zondax/ledger-app-builder:latest
@@ -416,10 +415,11 @@ jobs:
         id: flex
         run: echo "tag_name=$(./app/pkg/installer_flex.sh version)" >> $GITHUB_OUTPUT
       - name: Update Release
+        if: ${{ github.ref == 'refs/heads/main' }}
         id: update_release_3
         uses: softprops/action-gh-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             ./app/pkg/installer_flex.sh
