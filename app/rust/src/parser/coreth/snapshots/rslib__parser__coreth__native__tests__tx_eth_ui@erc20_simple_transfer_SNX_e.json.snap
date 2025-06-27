@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_SNX_e.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0xa3268bd6dc937ec60ed128ba2a090730a31d8b4f",
+    "Amount": "37.824323328578879488 SNX.e",
+    "Contract": "0xbec243c995409e6520d7c41e404da5deba4b209b",
+    "Maximun Fee(GWEI)": "1048718.389035402",
+]

@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 368
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_WAVAX.json
+---
+[
+    "Chain ID": "43114",
+    "ERC-20": "transfer",
+    "To": "0xdc7c0611bc5585fb4c8d42109852e9b510f3f159",
+    "Amount": "108.063556238185316352 WAVAX",
+    "Contract": "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",
+    "Maximun Fee(GWEI)": "1422667.548948624",
+]
