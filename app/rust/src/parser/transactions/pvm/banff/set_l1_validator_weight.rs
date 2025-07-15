@@ -12,6 +12,7 @@ use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::tag, number::complete::be_u32};
 use zemu_sys::ViewError;
 pub const VALIDATION_ID_LEN: usize = 32;
+pub const FIXED_FIELDS_LEN: u8 = 5;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -48,10 +49,11 @@ impl<'b> FromBytes<'b> for SetL1ValidatorWeightTx<'b> {
         // warp_message
         let warp_message_start = rem;
         let warp_message = unsafe { &mut *addr_of_mut!((*out).warp_message).cast() };
-        let rem = WarpMessage::from_bytes_into(rem, warp_message)?;
+        let _ = WarpMessage::from_bytes_into(rem, warp_message)?;
 
         // Validate that we consumed exactly warp_message_size bytes
-        let consumed_bytes = warp_message_start.len() - rem.len();
+        // Note: WarpMessage parsing consumes all bytes, so no remaining bytes are expected
+        let consumed_bytes = warp_message_start.len();
         if consumed_bytes != warp_message_size as usize {
             return Err(nom::Err::Error(ParserError::InvalidLength));
         }
@@ -60,7 +62,7 @@ impl<'b> FromBytes<'b> for SetL1ValidatorWeightTx<'b> {
             addr_of_mut!((*out).warp_message_size).write(warp_message_size);
         }
 
-        Ok(rem)
+        Ok(&[])
     }
 }
 
@@ -80,7 +82,7 @@ impl<'b> SetL1ValidatorWeightTx<'b> {
 impl DisplayableItem for SetL1ValidatorWeightTx<'_> {
     fn num_items(&self) -> Result<u8, ViewError> {
         // tx_info, validation_id, nonce, weight, fee
-        Ok(5u8)
+        Ok(FIXED_FIELDS_LEN)
     }
 
     fn render_item(

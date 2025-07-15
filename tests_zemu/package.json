@@ -17,10 +17,10 @@
   },
   "dependencies": {
     "@ethersproject/wallet": "^5.8.0",
-    "@types/node": "^22.14.1",
+    "@types/node": "^24.0.13",
     "@zondax/ledger-avalanche-app": "link:../js",
     "@zondax/zemu": "0.55.3",
-    "ethers": "^6.13.5"
+    "ethers": "^6.15.0"
   },
   "devDependencies": {
     "@ethereumjs/common": "^4.4.0",

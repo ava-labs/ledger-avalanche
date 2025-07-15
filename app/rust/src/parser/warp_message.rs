@@ -45,7 +45,7 @@ impl<'b> FromBytes<'b> for WarpMessage<'b> {
 
         // addressed_call - parse the payload as AddressedCall
         let addressed_call = unsafe { &mut *core::ptr::addr_of_mut!((*out).payload).cast() };
-        let rem = AddressedCall::from_bytes_into(rem, addressed_call)?;
+        let _ = AddressedCall::from_bytes_into(rem, addressed_call)?;
 
         unsafe {
             core::ptr::addr_of_mut!((*out).codec_id).write(codec_id);
@@ -53,6 +53,6 @@ impl<'b> FromBytes<'b> for WarpMessage<'b> {
             core::ptr::addr_of_mut!((*out).source_chain_id).write(source_chain_id);
         }
 
-        Ok(rem)
+        Ok(&[])
     }
 }

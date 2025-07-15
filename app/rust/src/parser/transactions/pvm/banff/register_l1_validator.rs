@@ -14,6 +14,7 @@ use nom::{
 };
 use zemu_sys::ViewError;
 
+pub const FIXED_FIELDS_LEN: u8 = 5;
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 #[cfg_attr(test, derive(Debug))]
@@ -58,10 +59,11 @@ impl<'b> FromBytes<'b> for RegisterL1ValidatorTx<'b> {
         // warp_message
         let warp_message_start = rem;
         let warp_message = unsafe { &mut *addr_of_mut!((*out).warp_message).cast() };
-        let rem = WarpMessage::from_bytes_into(rem, warp_message)?;
+        let _ = WarpMessage::from_bytes_into(rem, warp_message)?;
 
         // Validate that we consumed exactly warp_message_size bytes
-        let consumed_bytes = warp_message_start.len() - rem.len();
+        // Note: WarpMessage parsing consumes all bytes, so no remaining bytes are expected
+        let consumed_bytes = warp_message_start.len();
         if consumed_bytes != warp_message_size as usize {
             return Err(nom::Err::Error(ParserError::InvalidLength));
         }
@@ -72,7 +74,7 @@ impl<'b> FromBytes<'b> for RegisterL1ValidatorTx<'b> {
             addr_of_mut!((*out).signer).write(signer);
         }
 
-        Ok(rem)
+        Ok(&[])
     }
 }
 
@@ -103,7 +105,7 @@ impl DisplayableItem for RegisterL1ValidatorTx<'_> {
         {
             let n_addresses =
                 msg.remaining_balance_owner.addresses.len() + msg.disable_owner.addresses.len();
-            Ok(5u8 + n_addresses as u8)
+            Ok(FIXED_FIELDS_LEN + n_addresses as u8)
         } else {
             Err(ViewError::NoData)
         }
@@ -162,7 +164,7 @@ impl DisplayableItem for RegisterL1ValidatorTx<'_> {
 
                     handle_ui_message(fee_buff, message, page)
                 }
-                x if x >= 5 && x < (5 + n_remain_addresses as u8) => {
+                x if x >= FIXED_FIELDS_LEN && x < (FIXED_FIELDS_LEN + n_remain_addresses as u8) => {
                     let label = pic_str!(b"Rem Addr");
                     title[..label.len()].copy_from_slice(label);
 
@@ -178,8 +180,10 @@ impl DisplayableItem for RegisterL1ValidatorTx<'_> {
 
                     handle_ui_message(&out[..sz], message, page)
                 }
-                x if x >= (5 + n_remain_addresses as u8)
-                    && x < (5 + n_remain_addresses as u8 + n_disable_addresses as u8) =>
+                x if x >= (FIXED_FIELDS_LEN + n_remain_addresses as u8)
+                    && x < (FIXED_FIELDS_LEN
+                        + n_remain_addresses as u8
+                        + n_disable_addresses as u8) =>
                 {
                     let label = pic_str!(b"Disabler");
                     title[..label.len()].copy_from_slice(label);
