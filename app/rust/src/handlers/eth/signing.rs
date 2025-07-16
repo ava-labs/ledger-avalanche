@@ -16,6 +16,7 @@
 use core::mem::MaybeUninit;
 
 use crate::handlers::resources::{EthAccessors, ETH_UI};
+use crate::parser::{ETH_MAINNET_ID, NONE_CHAIN_ID};
 use crate::{handlers::eth::EthUi, parser::ParserError};
 use bolos::{
     crypto::{bip32::BIP32Path, ecfp256::ECCInfo},
@@ -406,6 +407,10 @@ impl Viewable for SignUI {
                 // which is returned with the signature
                 let len = core::cmp::min(U32_SIZE, chain_id.len());
                 if let Ok(chain_id) = bytes_to_u64(&chain_id[..len]) {
+                    // Verify chain_id
+                    if chain_id == NONE_CHAIN_ID || chain_id == ETH_MAINNET_ID {
+                        return (0, Error::DataInvalid as _);
+                    }
                     let v = (35 + flags.contains(ECCInfo::ParityOdd) as u32)
                         .saturating_add((chain_id as u32) << 1);
                     out[tx] = v as u8;
