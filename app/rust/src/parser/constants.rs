@@ -21,6 +21,7 @@ pub const NETWORK_ID_LOCAL: u32 = 12345;
 pub const NETWORK_ID_CUSTOM: u32 = 1337;
 pub const NETWORK_ID_DEVNET: u32 = 76;
 pub const ETH_MAINNET_ID: u64 = 1;
+pub const NONE_CHAIN_ID: u64 = 0;
 
 // hrp
 pub const HRP_MAINNET: &str = "avax";

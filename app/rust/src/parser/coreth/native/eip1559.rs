@@ -27,7 +27,7 @@ use crate::{
     },
     parser::{
         intstr_to_fpstr_inplace, Address, DisplayableItem, EthData, FromBytes, ParserError,
-        ADDRESS_LEN, ETH_MAINNET_ID, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
+        ADDRESS_LEN, ETH_MAINNET_ID, NONE_CHAIN_ID, WEI_AVAX_DIGITS, WEI_NAVAX_DIGITS,
     },
     utils::ApduPanic,
 };
@@ -112,7 +112,7 @@ impl<'b> FromBytes<'b> for Eip1559<'b> {
         }
 
         let chain_id = super::bytes_to_u64(id_bytes)?;
-        if chain_id == ETH_MAINNET_ID {
+        if chain_id == ETH_MAINNET_ID || chain_id == NONE_CHAIN_ID {
             crate::zlog("Mainnet not allowed\x00");
             return Err(ParserError::InvalidChainId.into());
         }
