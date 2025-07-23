@@ -1,4 +1,8 @@
-use crate::parser::{FromBytes, NodeId, ParserError, PchainOwner, SubnetId};
+use crate::parser::{
+    proof_of_possession::BLS_PUBKEY_LEN, FromBytes, NodeId, ParserError, PchainOwner, SubnetId,
+    PAYLOAD_MIN_LEN, PVM_REGISTER_L1_VALIDATOR_TYPE, PVM_SET_L1_VALIDATOR_WEIGHT_TYPE,
+    VALIDATION_ID_LEN,
+};
 use core::mem::MaybeUninit;
 use core::ptr::addr_of_mut;
 use nom::{
@@ -13,7 +17,7 @@ use nom::{
 pub struct RegisterL1ValidatorMessage<'b> {
     pub subnet_id: SubnetId<'b>,
     pub node_id: NodeId<'b>,
-    pub bls_pubkey: &'b [u8; 48],
+    pub bls_pubkey: &'b [u8; BLS_PUBKEY_LEN],
     pub expiry: u64,
     pub remaining_balance_owner: PchainOwner<'b>,
     pub disable_owner: PchainOwner<'b>,
@@ -41,8 +45,8 @@ impl<'b> FromBytes<'b> for RegisterL1ValidatorMessage<'b> {
         let rem = NodeId::from_bytes_into(rem, node_id)?;
 
         // bls_pubkey
-        let (rem, bls_pubkey) = take(48usize)(rem)?;
-        let bls_pubkey = arrayref::array_ref!(bls_pubkey, 0, 48);
+        let (rem, bls_pubkey) = take(BLS_PUBKEY_LEN)(rem)?;
+        let bls_pubkey = arrayref::array_ref!(bls_pubkey, 0, BLS_PUBKEY_LEN);
 
         // expiration
         let (rem, expiry) = be_u64(rem)?;
@@ -76,7 +80,7 @@ impl<'b> FromBytes<'b> for RegisterL1ValidatorMessage<'b> {
 pub struct SetL1ValidatorWeightMessage<'b> {
     pub codec_id: u16,
     pub type_id: u32,
-    pub validation_id: &'b [u8; 32],
+    pub validation_id: &'b [u8; VALIDATION_ID_LEN],
     pub nonce: u64,
     pub weight: u64,
 }
@@ -91,8 +95,8 @@ impl<'b> FromBytes<'b> for SetL1ValidatorWeightMessage<'b> {
         let out = out.as_mut_ptr();
 
         // validation_id
-        let (rem, validation_id) = take(32usize)(input)?;
-        let validation_id = arrayref::array_ref!(validation_id, 0, 32);
+        let (rem, validation_id) = take(VALIDATION_ID_LEN)(input)?;
+        let validation_id = arrayref::array_ref!(validation_id, 0, VALIDATION_ID_LEN);
 
         // nonce
         let (rem, nonce) = be_u64(rem)?;
@@ -104,6 +108,10 @@ impl<'b> FromBytes<'b> for SetL1ValidatorWeightMessage<'b> {
             core::ptr::addr_of_mut!((*out).validation_id).write(validation_id);
             core::ptr::addr_of_mut!((*out).nonce).write(nonce);
             core::ptr::addr_of_mut!((*out).weight).write(weight);
+            // Initialize codec_id and type_id with default values
+            // These will be overwritten by the parent function if needed
+            core::ptr::addr_of_mut!((*out).codec_id).write(0u16);
+            core::ptr::addr_of_mut!((*out).type_id).write(0u32);
         }
 
         Ok(rem)
@@ -121,7 +129,7 @@ pub enum AddressedCallPayload<'b> {
 
 impl<'b> AddressedCallPayload<'b> {
     pub fn from_payload(payload: &'b [u8]) -> Result<Self, ParserError> {
-        if payload.len() < 6 {
+        if payload.len() < PAYLOAD_MIN_LEN {
             return Err(ParserError::InvalidLength);
         }
 
@@ -135,16 +143,19 @@ impl<'b> AddressedCallPayload<'b> {
         let (rem, type_id) = be_u32(rem)?;
 
         match type_id {
-            1 => {
+            PVM_REGISTER_L1_VALIDATOR_TYPE => {
                 let mut msg = core::mem::MaybeUninit::uninit();
                 let _ = RegisterL1ValidatorMessage::from_bytes_into(rem, &mut msg)?;
                 let msg = unsafe { msg.assume_init() };
                 Ok(AddressedCallPayload::RegisterL1Validator(msg))
             }
-            3 => {
+            PVM_SET_L1_VALIDATOR_WEIGHT_TYPE => {
                 let mut msg = core::mem::MaybeUninit::uninit();
                 let _ = SetL1ValidatorWeightMessage::from_bytes_into(rem, &mut msg)?;
-                let msg = unsafe { msg.assume_init() };
+                let mut msg = unsafe { msg.assume_init() };
+                // Override codec_id and type_id with the values read at the parent level
+                msg.codec_id = codec_id;
+                msg.type_id = type_id;
                 Ok(AddressedCallPayload::SetL1ValidatorWeight(msg))
             }
             _ => Err(ParserError::InvalidTypeId),

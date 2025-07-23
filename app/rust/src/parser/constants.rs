@@ -21,6 +21,7 @@ pub const NETWORK_ID_LOCAL: u32 = 12345;
 pub const NETWORK_ID_CUSTOM: u32 = 1337;
 pub const NETWORK_ID_DEVNET: u32 = 76;
 pub const ETH_MAINNET_ID: u64 = 1;
+pub const NONE_CHAIN_ID: u64 = 0;
 
 // hrp
 pub const HRP_MAINNET: &str = "avax";
@@ -104,3 +105,8 @@ pub type OutputIdx = u64;
 pub const U64_FORMATTED_SIZE: usize = 20;
 pub const U32_FORMATTED_SIZE: usize = 10;
 pub const U8_FORMATTED_SIZE: usize = 3;
+
+pub const VALIDATION_ID_LEN: usize = 32;
+pub const PAYLOAD_MIN_LEN: usize = 6;
+pub const PVM_REGISTER_L1_VALIDATOR_TYPE: u32 = 1;
+pub const PVM_SET_L1_VALIDATOR_WEIGHT_TYPE: u32 = 3;
