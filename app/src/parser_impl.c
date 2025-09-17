@@ -94,6 +94,8 @@
             return "Invalid contract address specified";
         case parser_context_unexpected_size:
             return "Unexpected context size";
+        case parser_blind_sign_not_enabled:
+            return "Blind signing not enabled";
         default:
             return "Unrecognized error code\n";
     }

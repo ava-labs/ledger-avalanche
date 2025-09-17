@@ -179,7 +179,7 @@ __Z_INLINE void app_reply_error() {
 }
 
 __Z_INLINE void app_sign_eth() {
-    zemu_log_stack("app_sign_hash_review");
+    zemu_log_stack("app_sign_eth");
 
     uint16_t ret = _accept_eth_tx(&action_txResponseLen, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 
