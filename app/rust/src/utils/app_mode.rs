@@ -24,10 +24,29 @@ cfg_if! {
     }
 }
 
+cfg_if! {
+    if #[cfg(not(any(unix,windows)))] {
+        extern "C" {
+            pub fn app_mode_blindsign() -> bool;
+        }
+    } else {
+    }
+}
+
 pub fn is_app_mode_expert() -> bool {
     cfg_if! {
         if #[cfg(not(any(unix,windows)))] {
             unsafe { app_mode_expert() }
+        } else {
+           true
+        }
+    }
+}
+
+pub fn is_app_mode_blind_sign() -> bool {
+    cfg_if! {
+        if #[cfg(not(any(unix,windows)))] {
+            unsafe { app_mode_blindsign() }
         } else {
            true
         }

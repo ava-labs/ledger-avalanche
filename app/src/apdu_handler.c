@@ -41,6 +41,9 @@
 
 static bool tx_initialized = false;
 
+// Global variable to store error message offset for custom error display
+uint16_t G_error_message_offset = 0;
+
 bool
 is_eth_path(uint32_t rx, uint32_t offset)
 {
@@ -551,11 +554,16 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
     const char *error_msg = tx_err_msg_from_code(err);
 
-    if (err != parser_ok && error_msg != NULL) {
-        zemu_log(error_msg);
+    if (error_msg != NULL && err != parser_ok) {
         const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
-        memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
+        MEMCPY(G_io_apdu_buffer, error_msg, error_msg_length);
         *tx += (error_msg_length);
+        if (err == parser_blind_sign_not_enabled) {
+            // Store the error message offset for app_reply_error
+            G_error_message_offset = error_msg_length;
+            *flags |= IO_ASYNCH_REPLY;
+            view_blindsign_error_show();
+        }
         THROW(APDU_CODE_DATA_INVALID);
     }
 
@@ -564,8 +572,14 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
         THROW(APDU_CODE_OK);
     }
 
-
-    view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+    // Check if streaming mode was used (blind signing)
+    if (rs_eth_was_streaming_mode_used()) {
+        // For streaming mode, use blind signing UI with hash display
+        view_review_init(tx_getItemBlindSign, tx_getNumItemsBlindSign, app_sign_eth);
+    } else {
+        // Normal transaction parsing flow
+        view_review_init(tx_getItem, tx_getNumItems, app_sign_eth);
+    }
 
     view_review_show(REVIEW_TXN);
 
@@ -652,6 +666,9 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     volatile uint16_t sw = 0;
     zemu_log("handleApdu\n");
 
+    // reset the error message offset
+    G_error_message_offset = 0;
+
     BEGIN_TRY {
         TRY {
 
@@ -661,7 +678,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
 
             ZEMU_LOGF(50, "CLA: %x\n", G_io_apdu_buffer[OFFSET_CLA]);
 
-            // redicerc this apdu to be dispatched by our avalanche dispatcher, 
+            // redirect this apdu to be dispatched by our avalanche dispatcher, 
             // otherwise use ethereum dispatcher.
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 return avax_dispatch(flags, tx, rx);

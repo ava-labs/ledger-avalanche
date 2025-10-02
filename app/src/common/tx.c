@@ -180,3 +180,41 @@ const char *tx_err_msg_from_code(parser_error_t err) {
     }
    return NULL;
 }
+
+zxerr_t tx_getNumItemsBlindSign(uint8_t *num_items) {
+    parser_error_t err = parser_getNumItemsBlindSign(num_items);
+
+    if (err != parser_ok) {
+        return zxerr_unknown;
+    }
+
+    return zxerr_ok;
+}
+
+zxerr_t tx_getItemBlindSign(int8_t displayIdx,
+                            char *outKey, uint16_t outKeyLen,
+                            char *outVal, uint16_t outValLen,
+                            uint8_t pageIdx, uint8_t *pageCount)
+{
+    uint8_t numItems = 0;
+
+    CHECK_ZXERR(tx_getNumItemsBlindSign(&numItems))
+
+    if (displayIdx > numItems) {
+        return zxerr_no_data;
+    }
+
+    parser_error_t err = parser_getItemBlindSign(displayIdx,
+                                                 outKey, outKeyLen,
+                                                 outVal, outValLen,
+                                                 pageIdx, pageCount);
+
+    // Convert error codes
+    if (err == parser_no_data || err == parser_display_idx_out_of_range || err == parser_display_page_out_of_range)
+        return zxerr_no_data;
+
+    if (err != parser_ok)
+        return zxerr_unknown;
+
+    return zxerr_ok;
+}
