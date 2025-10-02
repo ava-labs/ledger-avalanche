@@ -29,6 +29,7 @@
 
 extern uint16_t action_addrResponseLen;
 extern uint16_t action_txResponseLen;
+extern uint16_t G_error_message_offset;
 
 __Z_INLINE void clean_up_hash_globals() {
     _clean_up_hash(); 
@@ -174,8 +175,9 @@ __Z_INLINE void wallet_reply() {
 
 
 __Z_INLINE void app_reply_error() {
-    set_code(G_io_apdu_buffer, 0, APDU_CODE_DATA_INVALID);
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    // Use the stored offset to place the error code after the error message
+    set_code(G_io_apdu_buffer, G_error_message_offset, APDU_CODE_DATA_INVALID);
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, G_error_message_offset + 2);
 }
 
 __Z_INLINE void app_sign_eth() {
