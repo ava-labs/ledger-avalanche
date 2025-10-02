@@ -551,20 +551,15 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
     const char *error_msg = tx_err_msg_from_code(err);
 
-    if (err != parser_ok && error_msg != NULL) {
-        if (strcmp(error_msg, "Blind signing not enabled") == 0) {
-            // For blind signing error, show the special blind signing error screen
+    if (error_msg != NULL && err != parser_ok) {
+        const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
+        MEMCPY(G_io_apdu_buffer, error_msg, error_msg_length);
+        *tx += (error_msg_length);
+        if (err == parser_blind_sign_not_enabled) {
             *flags |= IO_ASYNCH_REPLY;
             view_blindsign_error_show();
-            THROW(APDU_CODE_DATA_INVALID);
-        } else {
-            // For all other errors, show the error message as before
-            zemu_log(error_msg);
-            const int error_msg_length = strnlen(error_msg, sizeof(G_io_apdu_buffer));
-            memcpy(G_io_apdu_buffer, error_msg, error_msg_length);
-            *tx += (error_msg_length);
-            THROW(APDU_CODE_DATA_INVALID);
         }
+        THROW(APDU_CODE_DATA_INVALID);
     }
 
     // Wait for all transaction data to be processed
