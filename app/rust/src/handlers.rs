@@ -37,8 +37,8 @@ pub mod resources {
     };
 
     #[lazy_static]
-    pub static mut BUFFER: Lock<SwappingBuffer<'static, 'static, 0xFF, 0x1FFF>, BUFFERAccessors> =
-        Lock::new(new_swapping_buffer!(0xFF, 0x1FFF));
+    pub static mut BUFFER: Lock<SwappingBuffer<'static, 'static, 0x200, 0x4000>, BUFFERAccessors> =
+        Lock::new(new_swapping_buffer!(0x200, 0x4000));
 
     #[lazy_static]
     pub static mut PATH: Lock<Option<BIP32Path<MAX_BIP32_PATH_DEPTH>>, PATHAccessors> =
