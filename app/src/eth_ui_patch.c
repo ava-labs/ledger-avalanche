@@ -2,7 +2,7 @@
 #include "os_pic.h"
 
 // Replace functions from ethereum app to skip icon generation and UI idle menu
-#if defined(TARGET_STAX) || defined(TARGET_FLEX)
+#if defined(TARGET_STAX) || defined(TARGET_FLEX) || defined(TARGET_APEX_P)
 #include "nbgl_types.h"
 #include "glyphs.h"
 #include "ui_nbgl.h"
