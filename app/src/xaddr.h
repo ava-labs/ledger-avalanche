@@ -20,23 +20,15 @@
 extern "C" {
 #endif
 
-
-zxerr_t fill_ext_address(
-    __Z_UNUSED uint32_t *flags,
-    uint32_t *tx,
-    uint32_t rx,
-    uint8_t *buffer,
-    uint16_t buffer_len
-);
+zxerr_t fill_ext_address(__Z_UNUSED uint32_t *flags, uint32_t *tx, uint32_t rx, uint8_t *buffer, uint16_t buffer_len);
 
 // Return the number of items in the address view
 zxerr_t xaddr_getNumItems(uint8_t *num_items);
 
 // Gets an specific item from the address view (including paging)
 zxerr_t xaddr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outValue, uint16_t outValueLen,
-                     uint8_t pageIdx, uint8_t *pageCount);
+                      uint8_t pageIdx, uint8_t *pageCount);
 
 #ifdef __cplusplus
 }
 #endif
-

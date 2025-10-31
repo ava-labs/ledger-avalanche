@@ -26,7 +26,8 @@ const char *parser_getErrorDescription(parser_error_t err);
 const char *parser_getMsgPackTypeDescription(uint8_t type);
 
 //// parses a tx buffer
-// parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen, parser_tx_t *tx_obj);
+// parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data,
+// size_t dataLen, parser_tx_t *tx_obj);
 parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t dataLen);
 
 //// verifies tx fields
