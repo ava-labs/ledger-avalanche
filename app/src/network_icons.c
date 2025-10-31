@@ -3,7 +3,7 @@
 #include "zxmacros.h"
 
 // Replace function from ethereum app to skip icon generation
-#if defined(TARGET_STAX) || defined(TARGET_FLEX)
+#if defined(TARGET_STAX) || defined(TARGET_FLEX) || defined(TARGET_APEX_P)
 #include "nbgl_types.h"
 #include "glyphs.h"
 
