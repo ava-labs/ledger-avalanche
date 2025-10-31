@@ -40,9 +40,6 @@
 
 // dispatcher_context_t G_dispatcher_context;
 
-// taken from ethereum/src/main.c
-void ui_idle(void);
-
 uint32_t set_result_get_publicKey(void);
 void finalizeParsing(bool);
 
@@ -358,11 +355,6 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx, __Z_UNUSED uint32
                     //                                                buffer[OFFSET_LC]);
                     //                     break;
                     // #endif  // HAVE_DOMAIN_NAME
-
-#if 0
-        case 0xFF: // return to dashboard
-          goto return_to_dashboard;
-#endif
 
                 default:
                     THROW(0x6D00);

@@ -43,7 +43,9 @@ zxerr_t fill_wallet_id(uint32_t *tx, uint32_t rx, uint8_t *buffer, uint16_t buff
 
     zxerr_t err = _app_fill_wallet(tx, rx, buffer, buffer_len, addr_ui_obj, WALLET_UI_MAX_SIZE);
 
-    if (err != zxerr_ok) action_addrResponseLen = 0;
+    if (err != zxerr_ok) {
+        action_addrResponseLen = 0;
+    }
 
     action_addrResponseLen = *tx;
     return err;

@@ -54,7 +54,9 @@ zxerr_t fill_address(__Z_UNUSED uint32_t *flags, uint32_t *tx, uint32_t rx, uint
         action_addrResponseLen = *tx;
     }
 
-    if (err != zxerr_ok) action_addrResponseLen = 0;
+    if (err != zxerr_ok) {
+        action_addrResponseLen = 0;
+    }
 
     return err;
 }

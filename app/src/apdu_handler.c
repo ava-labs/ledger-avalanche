@@ -44,7 +44,9 @@ static bool tx_initialized = false;
 bool is_eth_path(uint32_t rx, uint32_t offset) {
     uint32_t path_len = *(G_io_apdu_buffer + offset);
 
-    if (path_len > MAX_BIP32_PATH || path_len < 1) THROW(APDU_CODE_WRONG_LENGTH);
+    if (path_len > MAX_BIP32_PATH || path_len < 1) {
+        THROW(APDU_CODE_WRONG_LENGTH);
+    }
 
     if ((rx - offset - 1) < sizeof(uint32_t) * path_len) {
         THROW(APDU_CODE_WRONG_LENGTH);
@@ -117,7 +119,7 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
-    uint32_t added;
+    uint32_t added = 0;
     switch (G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE]) {
         case P1_INIT:
             tx_initialize();
@@ -152,6 +154,7 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
     }
 
     THROW(APDU_CODE_INVALIDP1P2);
+    return false;  // Should never reach here, but satisfies compiler
 }
 
 __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
@@ -657,11 +660,11 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             // otherwise use ethereum dispatcher.
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 return avax_dispatch(flags, tx, rx);
-            } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
-                return eth_dispatch(flags, tx, rx);
-            } else {
-                THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }
+            if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
+                return eth_dispatch(flags, tx, rx);
+            }
+            THROW(APDU_CODE_CLA_NOT_SUPPORTED);
 
             // Process non-avax instruction
             switch (G_io_apdu_buffer[OFFSET_INS]) {

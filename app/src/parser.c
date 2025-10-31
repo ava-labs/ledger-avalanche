@@ -27,7 +27,7 @@
 #include "parser_impl.h"
 #include "rslib.h"
 
-static zxerr_t parser_allocate();
+static zxerr_t parser_allocate(parser_tx_t *parser_state);
 
 // This buffer will store parser_state.
 // Its size corresponds to ParsedObj (Rust struct)

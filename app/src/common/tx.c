@@ -132,10 +132,13 @@ zxerr_t tx_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *ou
         parser_getItem(&ctx_parsed_tx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 
     // Convert error codes
-    if (err == parser_no_data || err == parser_display_idx_out_of_range || err == parser_display_page_out_of_range)
+    if (err == parser_no_data || err == parser_display_idx_out_of_range || err == parser_display_page_out_of_range) {
         return zxerr_no_data;
+    }
 
-    if (err != parser_ok) return zxerr_unknown;
+    if (err != parser_ok) {
+        return zxerr_unknown;
+    }
 
     return zxerr_ok;
 }

@@ -37,7 +37,9 @@ zxerr_t fill_ext_address(__Z_UNUSED uint32_t *flags, uint32_t *tx, uint32_t rx, 
 
     zxerr_t err = _app_fill_ext_address(tx, rx, buffer, buffer_len, xaddr_ui_obj, ADDR_UI_MAX_SIZE);
 
-    if (err != zxerr_ok) action_addrResponseLen = 0;
+    if (err != zxerr_ok) {
+        action_addrResponseLen = 0;
+    }
 
     action_addrResponseLen = *tx;
     return err;

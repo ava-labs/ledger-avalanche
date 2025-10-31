@@ -80,7 +80,9 @@ __Z_INLINE void app_sign_hash(uint8_t curve_type) {
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     } else {
         // ensure we clean paths and hashes
-        if (G_io_apdu_buffer[OFFSET_P1] == LAST_MESSAGE) clean_up_hash_globals();
+        if (G_io_apdu_buffer[OFFSET_P1] == LAST_MESSAGE) {
+            clean_up_hash_globals();
+        }
 
         if (curve_type == CURVE_ED25519) {
             set_code(G_io_apdu_buffer, ED25519_SIGNATURE_SIZE, APDU_CODE_OK);
