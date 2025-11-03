@@ -26,7 +26,6 @@ typedef struct {
     uint16_t len;
 } bytes_t;
 
-
 typedef enum {
     SpendingKeyGenerator,
     ProofGenerationKeyGenerator,

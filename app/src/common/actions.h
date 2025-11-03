@@ -17,22 +17,20 @@
 
 #include <os_io_seproxyhal.h>
 #include <stdint.h>
-#include "cx.h"
-#include "app_main.h"
 
 #include "apdu_codes.h"
+#include "app_main.h"
 #include "coin.h"
 #include "crypto.h"
+#include "cx.h"
+#include "rslib.h"
 #include "tx.h"
 #include "zxerror.h"
-#include "rslib.h"
 
 extern uint16_t action_addrResponseLen;
 extern uint16_t action_txResponseLen;
 
-__Z_INLINE void clean_up_hash_globals() {
-    _clean_up_hash(); 
-}
+__Z_INLINE void clean_up_hash_globals() { _clean_up_hash(); }
 
 __Z_INLINE void app_sign_hash(uint8_t curve_type) {
     zemu_log("app_sign_hash\n");
@@ -42,8 +40,9 @@ __Z_INLINE void app_sign_hash(uint8_t curve_type) {
 
     zxerr_t err = zxerr_ok;
 
-    // get the hash, the path and pass it to our crypto signing function 
-    // we should not use the global hdPath variable here as it is just the path prefix. 
+    // get the hash, the path and pass it to our crypto signing function
+    // we should not use the global hdPath variable here as it is just the path
+    // prefix.
     err = _get_hash(hash, CX_SHA256_SIZE);
 
     if (err != zxerr_ok) {
@@ -57,7 +56,7 @@ __Z_INLINE void app_sign_hash(uint8_t curve_type) {
     uint8_t path_len = G_io_apdu_buffer[OFFSET_DATA];
     uint8_t len_bytes = path_len * sizeof(uint32_t) + 1;
 
-    { 
+    {
         char data[100];
         snprintf(data, sizeof(data), "Path len: %d\n", path_len);
         zemu_log(data);
@@ -73,15 +72,17 @@ __Z_INLINE void app_sign_hash(uint8_t curve_type) {
         return;
     }
 
-    err = crypto_sign_avax(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, hash, CX_SHA256_SIZE, path, HDPATH_LEN_DEFAULT, curve_type);
+    err = crypto_sign_avax(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE - 3, hash, CX_SHA256_SIZE, path, HDPATH_LEN_DEFAULT,
+                           curve_type);
 
     if (err != zxerr_ok) {
         set_code(G_io_apdu_buffer, 0, APDU_CODE_EXECUTION_ERROR);
         io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
     } else {
         // ensure we clean paths and hashes
-        if (G_io_apdu_buffer[OFFSET_P1] == LAST_MESSAGE)
+        if (G_io_apdu_buffer[OFFSET_P1] == LAST_MESSAGE) {
             clean_up_hash_globals();
+        }
 
         if (curve_type == CURVE_ED25519) {
             set_code(G_io_apdu_buffer, ED25519_SIGNATURE_SIZE, APDU_CODE_OK);
@@ -91,7 +92,6 @@ __Z_INLINE void app_sign_hash(uint8_t curve_type) {
             io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, SECP256K1_PK_LEN + 2);
         }
     }
-
 }
 
 __Z_INLINE void app_sign(uint16_t offset) {
@@ -172,7 +172,6 @@ __Z_INLINE void wallet_reply() {
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, action_addrResponseLen + 2);
 }
 
-
 __Z_INLINE void app_reply_error() {
     set_code(G_io_apdu_buffer, 0, APDU_CODE_DATA_INVALID);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
@@ -206,13 +205,11 @@ __Z_INLINE void app_eth_configuration() {
 
     uint16_t replyLen = 4;
 
-    G_io_apdu_buffer[0] = 0x02; //needs external data for ERC20 tokens
+    G_io_apdu_buffer[0] = 0x02;  // needs external data for ERC20 tokens
     G_io_apdu_buffer[1] = APPVERSION_M;
     G_io_apdu_buffer[2] = APPVERSION_N;
     G_io_apdu_buffer[3] = APPVERSION_P;
 
-
     set_code(G_io_apdu_buffer, replyLen, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, replyLen + 2);
 }
-

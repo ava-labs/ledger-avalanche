@@ -14,10 +14,11 @@
  *  limitations under the License.
  ********************************************************************************/
 #include "crypto_helper.h"
+
 #include <string.h>
-#include "zxformat.h"
 
 #include "rslib.h"
+#include "zxformat.h"
 
 // static void swap_endian(uint8_t *data, int8_t len) {
 //     for (int8_t i = 0; i < len / 2; i++) {
