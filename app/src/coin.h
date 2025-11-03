@@ -21,9 +21,9 @@ extern "C" {
 
 #define CLA 0x80
 
-#define MAX_BIP32_PATH           10
+#define MAX_BIP32_PATH 10
 #define HDPATH_LEN_DEFAULT 5
-#define HDPATH_0_DEFAULT (0x80000000u | 0x2c)   // 44
+#define HDPATH_0_DEFAULT (0x80000000u | 0x2c)  // 44
 #define HDPATH_1_DEFAULT (0x80000000u | 0x85)  // 133
 
 #define HDPATH_2_DEFAULT (0x80000000u | 0u)
@@ -66,7 +66,6 @@ extern "C" {
 #define AVX_SIGN 5
 #define AVX_SIGN_MSG 0x06
 
-
 // ETH instructions:
 #define INS_ETH_GET_PUBLIC_KEY 0x02
 #define INS_ETH_SIGN 4
@@ -87,21 +86,21 @@ extern "C" {
 #define LAST_MESSAGE 0x02
 
 // transaction is sent as a blob of rlp encoded bytes,
-#define P1_ETH_FIRST                    0x00
-#define P1_ETH_MORE                     0x80
+#define P1_ETH_FIRST 0x00
+#define P1_ETH_MORE 0x80
 // eth address chain_code allowed valuec
-#define P2_NO_CHAINCODE                 0x00
-#define P2_CHAINCODE                    0x01
+#define P2_NO_CHAINCODE 0x00
+#define P2_CHAINCODE 0x01
 
-#define CURVE_SECP256K1                 0x00
-#define CURVE_ED25519                   0x01
-#define PK_LEN_ED25519                  32
-#define ED25519_AUTH_ID                 0x00
-#define HASH_LEN                        32
-#define ADDRESS_BUFFER_LEN              33 // 1 byte auth_id + 32 bytes hash
-#define ADDRESS_CHECKSUM_LEN            4
-#define ADDRESS_MAX_SIZE                50
-#define HASH_OFFSET                     28
+#define CURVE_SECP256K1 0x00
+#define CURVE_ED25519 0x01
+#define PK_LEN_ED25519 32
+#define ED25519_AUTH_ID 0x00
+#define HASH_LEN 32
+#define ADDRESS_BUFFER_LEN 33  // 1 byte auth_id + 32 bytes hash
+#define ADDRESS_CHECKSUM_LEN 4
+#define ADDRESS_MAX_SIZE 50
+#define HASH_OFFSET 28
 
 #ifdef __cplusplus
 }

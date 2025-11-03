@@ -19,28 +19,27 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include "parser_common.h"
-#include "keys_def.h"
 
-#define ASSERT_CX_OK(CALL)      \
-  do {                         \
-    cx_err_t __cx_err = CALL;  \
-    if (__cx_err != CX_OK) {   \
-      return parser_unexpected_error;    \
-    }                          \
-  } while (0)
+#include "keys_def.h"
+#include "parser_common.h"
+
+#define ASSERT_CX_OK(CALL)                  \
+    do {                                    \
+        cx_err_t __cx_err = CALL;           \
+        if (__cx_err != CX_OK) {            \
+            return parser_unexpected_error; \
+        }                                   \
+    } while (0)
 
 #define MODIFIER_ASK 0x00
 #define MODIFIER_NSK 0x01
 #define MODIFIER_OVK 0x02
 
-#define BLAKE2B_256_SIZE            32
-#define KECCAK_256_SIZE             32
-
-
+#define BLAKE2B_256_SIZE 32
+#define KECCAK_256_SIZE 32
 
 #ifdef __cplusplus
 }

@@ -18,39 +18,32 @@
 #if defined(FEATURE_ETH)
 // #include "globals.h"
 // #include "io.h"
-#include "shared_context.h"
 #include "apdu_constants.h"
-#include "common_ui.h"
-#include "cx_errors.h"
-
-#include "os_io_seproxyhal.h"
-
-#include "glyphs.h"
-#include "common_utils.h"
-
-#include "swap_lib_calls.h"
-#include "handle_swap_sign_transaction.h"
-#include "handle_get_printable_amount.h"
-#include "handle_check_address.h"
 #include "commands_712.h"
+#include "common_ui.h"
+#include "common_utils.h"
+#include "cx_errors.h"
+#include "glyphs.h"
+#include "handle_check_address.h"
+#include "handle_get_printable_amount.h"
+#include "handle_swap_sign_transaction.h"
+#include "os_io_seproxyhal.h"
+#include "shared_context.h"
+#include "swap_lib_calls.h"
 // #include "challenge.h"
 // #include "domain_name.h"
 #include "lib_standard_app/crypto_helpers.h"
 // not use in master branch
 // #include "manage_asset_info.h"
 
-
 #include "handler.h"
 
 // dispatcher_context_t G_dispatcher_context;
 
-// taken from ethereum/src/main.c
-void ui_idle(void);
-
 uint32_t set_result_get_publicKey(void);
 void finalizeParsing(bool);
 
-// Variables bellow are used by app-ethereum app 
+// Variables bellow are used by app-ethereum app
 // to handle/manage stages during parsing and signing
 tmpCtx_t tmpCtx;
 txContext_t txContext;
@@ -58,7 +51,6 @@ tmpContent_t tmpContent;
 dataContext_t dataContext;
 strings_t strings;
 cx_sha3_t global_sha3;
-
 
 uint8_t appState;
 uint16_t apdu_response_code;
@@ -86,7 +78,7 @@ chain_config_t config;
 
 // This function is only present in master branch
 // was moved/removed in develop branch.
-// to keep in mind when develop gets merged into master 
+// to keep in mind when develop gets merged into master
 // later.
 void format_signature_out(const uint8_t *signature) {
     memset(G_io_apdu_buffer + 1, 0x00, 64);
@@ -110,8 +102,6 @@ void format_signature_out(const uint8_t *signature) {
     memmove(G_io_apdu_buffer + offset + 32 - xlength, signature + xoffset, xlength);
 }
 
-
-
 void reset_app_context() {
     appState = APP_STATE_IDLE;
     G_called_from_swap = false;
@@ -120,9 +110,9 @@ void reset_app_context() {
 #ifdef HAVE_ETH2
     eth2WithdrawalIndex = 0;
 #endif
-    memset((uint8_t *) &tmpCtx, 0, sizeof(tmpCtx));
-    memset((uint8_t *) &txContext, 0, sizeof(txContext));
-    memset((uint8_t *) &tmpContent, 0, sizeof(tmpContent));
+    memset((uint8_t *)&tmpCtx, 0, sizeof(tmpCtx));
+    memset((uint8_t *)&txContext, 0, sizeof(txContext));
+    memset((uint8_t *)&tmpContent, 0, sizeof(tmpContent));
 }
 
 void io_seproxyhal_send_status(uint32_t sw) {
@@ -185,8 +175,8 @@ void init_coin_config(chain_config_t *coin_config) {
  * @note This function sets the blockchain configuration on the first call and logs each operation.
  *       It includes extensive error handling to gracefully manage exceptions and reset the context as needed.
  */
-void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
-                    __Z_UNUSED uint32_t rx,  uint8_t *buffer, __Z_UNUSED uint16_t bufferLen) {
+void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx, __Z_UNUSED uint32_t rx, uint8_t *buffer,
+                     __Z_UNUSED uint16_t bufferLen) {
     unsigned short sw = 0;
 
     // This is the best place to put this,
@@ -204,7 +194,7 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
             }
 
             switch (buffer[OFFSET_INS]) {
-                // From app-ethereum only EIP-712 functionality is used 
+                // From app-ethereum only EIP-712 functionality is used
                 // we decided to keep below cases for future use.
                 // case INS_GET_PUBLIC_KEY:
                 //
@@ -237,61 +227,61 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
                 //     break;
 #endif  // HAVE_NFT_SUPPORT
 
-                // case INS_SET_EXTERNAL_PLUGIN:
-                //     handleSetExternalPlugin(buffer[OFFSET_P1],
-                //                             buffer[OFFSET_P2],
-                //                             buffer + OFFSET_CDATA,
-                //                             buffer[OFFSET_LC],
-                //                             flags,
-                //                             tx);
-                //     break;
+                    // case INS_SET_EXTERNAL_PLUGIN:
+                    //     handleSetExternalPlugin(buffer[OFFSET_P1],
+                    //                             buffer[OFFSET_P2],
+                    //                             buffer + OFFSET_CDATA,
+                    //                             buffer[OFFSET_LC],
+                    //                             flags,
+                    //                             tx);
+                    //     break;
 
-                // case INS_SET_PLUGIN:
-                //     handleSetPlugin(buffer[OFFSET_P1],
-                //                     buffer[OFFSET_P2],
-                //                     buffer + OFFSET_CDATA,
-                //                     buffer[OFFSET_LC],
-                //                     flags,
-                //                     tx);
-                //     break;
+                    // case INS_SET_PLUGIN:
+                    //     handleSetPlugin(buffer[OFFSET_P1],
+                    //                     buffer[OFFSET_P2],
+                    //                     buffer + OFFSET_CDATA,
+                    //                     buffer[OFFSET_LC],
+                    //                     flags,
+                    //                     tx);
+                    //     break;
 
-                // case INS_PERFORM_PRIVACY_OPERATION:
-                //     handlePerformPrivacyOperation(buffer[OFFSET_P1],
-                //                                   buffer[OFFSET_P2],
-                //                                   buffer + OFFSET_CDATA,
-                //                                   buffer[OFFSET_LC],
-                //                                   flags,
-                //                                   tx);
-                //     break;
+                    // case INS_PERFORM_PRIVACY_OPERATION:
+                    //     handlePerformPrivacyOperation(buffer[OFFSET_P1],
+                    //                                   buffer[OFFSET_P2],
+                    //                                   buffer + OFFSET_CDATA,
+                    //                                   buffer[OFFSET_LC],
+                    //                                   flags,
+                    //                                   tx);
+                    //     break;
 
-                // case INS_SIGN:
-                //     handleSign(buffer[OFFSET_P1],
-                //                buffer[OFFSET_P2],
-                //                buffer + OFFSET_CDATA,
-                //                buffer[OFFSET_LC],
-                //                flags,
-                //                tx);
-                //     break;
-                //
-                // case INS_GET_APP_CONFIGURATION:
-                //     handleGetAppConfiguration(buffer[OFFSET_P1],
-                //                               buffer[OFFSET_P2],
-                //                               buffer + OFFSET_CDATA,
-                //                               buffer[OFFSET_LC],
-                //                               flags,
-                //                               tx);
-                //     break;
-                //
-                // case INS_SIGN_PERSONAL_MESSAGE:
-                //     forget_known_assets();
-                //     *flags |= IO_ASYNCH_REPLY;
-                //     if (!handleSignPersonalMessage(buffer[OFFSET_P1],
-                //                                    buffer[OFFSET_P2],
-                //                                    buffer + OFFSET_CDATA,
-                //                                    buffer[OFFSET_LC])) {
-                //         reset_app_context();
-                //     }
-                //     break;
+                    // case INS_SIGN:
+                    //     handleSign(buffer[OFFSET_P1],
+                    //                buffer[OFFSET_P2],
+                    //                buffer + OFFSET_CDATA,
+                    //                buffer[OFFSET_LC],
+                    //                flags,
+                    //                tx);
+                    //     break;
+                    //
+                    // case INS_GET_APP_CONFIGURATION:
+                    //     handleGetAppConfiguration(buffer[OFFSET_P1],
+                    //                               buffer[OFFSET_P2],
+                    //                               buffer + OFFSET_CDATA,
+                    //                               buffer[OFFSET_LC],
+                    //                               flags,
+                    //                               tx);
+                    //     break;
+                    //
+                    // case INS_SIGN_PERSONAL_MESSAGE:
+                    //     forget_known_assets();
+                    //     *flags |= IO_ASYNCH_REPLY;
+                    //     if (!handleSignPersonalMessage(buffer[OFFSET_P1],
+                    //                                    buffer[OFFSET_P2],
+                    //                                    buffer + OFFSET_CDATA,
+                    //                                    buffer[OFFSET_LC])) {
+                    //         reset_app_context();
+                    //     }
+                    //     break;
 
                 case INS_SIGN_EIP_712_MESSAGE:
                     switch (buffer[OFFSET_P2]) {
@@ -299,12 +289,8 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
                             // use in develop but not present in master
                             // forget_known_assets();
                             // use in master instead of the above
-                            handleSignEIP712Message_v0(buffer[OFFSET_P1],
-                                                       buffer[OFFSET_P2],
-                                                       buffer + OFFSET_CDATA,
-                                                       buffer[OFFSET_LC],
-                                                       flags,
-                                                       tx);
+                            handleSignEIP712Message_v0(buffer[OFFSET_P1], buffer[OFFSET_P2], buffer + OFFSET_CDATA,
+                                                       buffer[OFFSET_LC], flags, tx);
                             break;
 #ifdef HAVE_EIP712_FULL_SUPPORT
                         case P2_EIP712_FULL_IMPLEM:
@@ -317,28 +303,28 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
                     }
                     break;
 
-// #ifdef HAVE_ETH2
-//
-//                 case INS_GET_ETH2_PUBLIC_KEY:
-//                     forget_known_assets();
-//                     handleGetEth2PublicKey(buffer[OFFSET_P1],
-//                                            buffer[OFFSET_P2],
-//                                            buffer + OFFSET_CDATA,
-//                                            buffer[OFFSET_LC],
-//                                            flags,
-//                                            tx);
-//                     break;
-//
-//                 case INS_SET_ETH2_WITHDRAWAL_INDEX:
-//                     handleSetEth2WithdrawalIndex(buffer[OFFSET_P1],
-//                                                  buffer[OFFSET_P2],
-//                                                  buffer + OFFSET_CDATA,
-//                                                  buffer[OFFSET_LC],
-//                                                  flags,
-//                                                  tx);
-//                     break;
-//
-// #endif
+                    // #ifdef HAVE_ETH2
+                    //
+                    //                 case INS_GET_ETH2_PUBLIC_KEY:
+                    //                     forget_known_assets();
+                    //                     handleGetEth2PublicKey(buffer[OFFSET_P1],
+                    //                                            buffer[OFFSET_P2],
+                    //                                            buffer + OFFSET_CDATA,
+                    //                                            buffer[OFFSET_LC],
+                    //                                            flags,
+                    //                                            tx);
+                    //                     break;
+                    //
+                    //                 case INS_SET_ETH2_WITHDRAWAL_INDEX:
+                    //                     handleSetEth2WithdrawalIndex(buffer[OFFSET_P1],
+                    //                                                  buffer[OFFSET_P2],
+                    //                                                  buffer + OFFSET_CDATA,
+                    //                                                  buffer[OFFSET_LC],
+                    //                                                  flags,
+                    //                                                  tx);
+                    //                     break;
+                    //
+                    // #endif
 
 #ifdef HAVE_EIP712_FULL_SUPPORT
                 case INS_EIP712_STRUCT_DEF:
@@ -357,32 +343,25 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
                     break;
 #endif  // HAVE_EIP712_FULL_SUPPORT
 
-// #ifdef HAVE_DOMAIN_NAME
-//                 case INS_ENS_GET_CHALLENGE:
-//                     handle_get_challenge();
-//                     break;
-//
-//                 case INS_ENS_PROVIDE_INFO:
-//                     handle_provide_domain_name(buffer[OFFSET_P1],
-//                                                buffer[OFFSET_P2],
-//                                                buffer + OFFSET_CDATA,
-//                                                buffer[OFFSET_LC]);
-//                     break;
-// #endif  // HAVE_DOMAIN_NAME
-
-#if 0
-        case 0xFF: // return to dashboard
-          goto return_to_dashboard;
-#endif
+                    // #ifdef HAVE_DOMAIN_NAME
+                    //                 case INS_ENS_GET_CHALLENGE:
+                    //                     handle_get_challenge();
+                    //                     break;
+                    //
+                    //                 case INS_ENS_PROVIDE_INFO:
+                    //                     handle_provide_domain_name(buffer[OFFSET_P1],
+                    //                                                buffer[OFFSET_P2],
+                    //                                                buffer + OFFSET_CDATA,
+                    //                                                buffer[OFFSET_LC]);
+                    //                     break;
+                    // #endif  // HAVE_DOMAIN_NAME
 
                 default:
                     THROW(0x6D00);
                     break;
             }
         }
-        CATCH(EXCEPTION_IO_RESET) {
-            THROW(EXCEPTION_IO_RESET);
-        }
+        CATCH(EXCEPTION_IO_RESET) { THROW(EXCEPTION_IO_RESET); }
         CATCH_OTHER(e) {
             bool quit_now = G_called_from_swap && G_swap_response_ready;
             switch (e & 0xF000) {
@@ -418,8 +397,7 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
                 }
             }
         }
-        FINALLY {
-        }
+        FINALLY {}
     }
     END_TRY;
 }

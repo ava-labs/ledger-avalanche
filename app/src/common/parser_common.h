@@ -73,15 +73,7 @@ typedef enum {
 } parser_error_t;
 #include <stdint.h>
 
-typedef enum {
-    SignAvaxTx = 0x00,
-    SignEthTx,
-    SignAvaxMsg,
-    SignEthMsg,
-    SignAvaxHash,
-    EthAddr
-} instruction_t;
-
+typedef enum { SignAvaxTx = 0x00, SignEthTx, SignAvaxMsg, SignEthMsg, SignAvaxHash, EthAddr } instruction_t;
 
 typedef struct {
     const uint8_t *buffer;

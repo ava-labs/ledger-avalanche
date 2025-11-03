@@ -16,36 +16,30 @@
 
 #include <stdio.h>
 
+#include "actions.h"
 #include "app_mode.h"
 #include "coin.h"
 #include "crypto.h"
-#include "zxerror.h"
-#include "zxformat.h"
-#include "zxmacros.h"
 #include "keys_def.h"
 #include "os.h"
 #include "rslib.h"
-#include "actions.h"
+#include "zxerror.h"
+#include "zxformat.h"
+#include "zxmacros.h"
 
 #define ADDR_UI_MAX_SIZE 62
 
 // Use to hold the addr_ui object, used by rust to display the address
 uint8_t xaddr_ui_obj[ADDR_UI_MAX_SIZE] = {0};
 
-zxerr_t fill_ext_address(
-    __Z_UNUSED uint32_t *flags,
-    uint32_t *tx,
-    uint32_t rx,
-    uint8_t *buffer,
-    uint16_t buffer_len
-) {
-
+zxerr_t fill_ext_address(__Z_UNUSED uint32_t *flags, uint32_t *tx, uint32_t rx, uint8_t *buffer, uint16_t buffer_len) {
     zemu_log("fill_ext_address\n");
 
     zxerr_t err = _app_fill_ext_address(tx, rx, buffer, buffer_len, xaddr_ui_obj, ADDR_UI_MAX_SIZE);
 
-    if (err != zxerr_ok)
+    if (err != zxerr_ok) {
         action_addrResponseLen = 0;
+    }
 
     action_addrResponseLen = *tx;
     return err;
@@ -59,7 +53,7 @@ zxerr_t xaddr_getNumItems(uint8_t *num_items) {
 }
 
 zxerr_t xaddr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
-                     uint8_t *pageCount) {
-    return _xaddr_get_item(xaddr_ui_obj, displayIdx, (unsigned char*)outKey, outKeyLen, (unsigned char*)outVal, outValLen, pageIdx, pageCount);
+                      uint8_t *pageCount) {
+    return _xaddr_get_item(xaddr_ui_obj, displayIdx, (unsigned char *)outKey, outKeyLen, (unsigned char *)outVal, outValLen,
+                           pageIdx, pageCount);
 }
-
