@@ -41,6 +41,18 @@ use crate::{
 use super::utils::get_tx_rlp_len;
 use super::utils::parse_bip32_eth;
 
+/// Convert a chain ID slice to a fixed-size 8-byte array.
+/// Returns None if the slice is empty, otherwise copies up to 8 bytes.
+fn chain_id_to_array(chain_id_slice: &[u8]) -> Option<[u8; 8]> {
+    if chain_id_slice.is_empty() {
+        return None;
+    }
+    let mut array = [0u8; 8];
+    let len = core::cmp::min(chain_id_slice.len(), 8);
+    array[..len].copy_from_slice(&chain_id_slice[..len]);
+    Some(array)
+}
+
 pub struct Sign;
 
 // Extract legacy chain ID by searching backwards for R/S markers
@@ -99,17 +111,7 @@ fn extract_tx_metadata_for_streaming(data: &[u8]) -> (bool, Option<[u8; 8]>) {
         let temp_tx = unsafe { temp_tx.assume_init() };
 
         let is_typed = temp_tx.is_typed_tx();
-        let chain_id_slice = temp_tx.chain_id();
-
-        let chain_id_bytes = if chain_id_slice.is_empty() {
-            None
-        } else {
-            // Use same conversion logic as normal mode
-            let mut array = [0u8; 8];
-            let len = core::cmp::min(chain_id_slice.len(), 8);
-            array[..len].copy_from_slice(&chain_id_slice[..len]);
-            Some(array)
-        };
+        let chain_id_bytes = chain_id_to_array(temp_tx.chain_id());
 
         (is_typed, chain_id_bytes)
     } else {
@@ -204,20 +206,10 @@ impl Sign {
         let unsigned_hash = Self::digest(txdata).map_err(|_| Error::DataInvalid)?;
         let tx = unsafe { tx.assume_init() };
 
-        // Create a simple helper to convert chain ID bytes to array
-        let chain_id_array = if tx.chain_id().is_empty() {
-            None
-        } else {
-            let mut array = [0u8; 8];
-            let len = core::cmp::min(tx.chain_id().len(), 8);
-            array[..len].copy_from_slice(&tx.chain_id()[..len]);
-            Some(array)
-        };
-
         let ui = SignUI {
             hash: unsigned_hash,
             is_typed: tx.is_typed_tx(),
-            chain_id: chain_id_array, // Convert chain ID for V calculation
+            chain_id: chain_id_to_array(tx.chain_id()),
             tx,
         };
 
@@ -248,20 +240,10 @@ impl Sign {
         let unsigned_hash = Self::digest(txdata).map_err(|_| ParserError::UnexpectedError)?;
         let tx = unsafe { tx.assume_init() };
 
-        // Create a simple helper to convert chain ID bytes to array
-        let chain_id_array = if tx.chain_id().is_empty() {
-            None
-        } else {
-            let mut array = [0u8; 8];
-            let len = core::cmp::min(tx.chain_id().len(), 8);
-            array[..len].copy_from_slice(&tx.chain_id()[..len]);
-            Some(array)
-        };
-
         let ui = EthUi::Tx(SignUI {
             hash: unsigned_hash,
             is_typed: tx.is_typed_tx(),
-            chain_id: chain_id_array, // Convert chain ID for V calculation
+            chain_id: chain_id_to_array(tx.chain_id()),
             tx,
         });
 
