@@ -16,8 +16,6 @@
  ********************************************************************************/
 
 #if defined(FEATURE_ETH)
-// #include "globals.h"
-// #include "io.h"
 #include "shared_context.h"
 #include "apdu_constants.h"
 #include "common_ui.h"
@@ -33,16 +31,9 @@
 #include "handle_get_printable_amount.h"
 #include "handle_check_address.h"
 #include "commands_712.h"
-// #include "challenge.h"
-// #include "domain_name.h"
 #include "lib_standard_app/crypto_helpers.h"
-// not use in master branch
-// #include "manage_asset_info.h"
-
 
 #include "handler.h"
-
-// dispatcher_context_t G_dispatcher_context;
 
 // taken from ethereum/src/main.c
 void ui_idle(void);
@@ -68,7 +59,6 @@ pluginType_t pluginType;
 
 #ifdef HAVE_ETH2
 uint32_t eth2WithdrawalIndex;
-// #include "withdrawal_index.h"
 #endif
 
 #include "ux.h"
@@ -204,101 +194,9 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
             }
 
             switch (buffer[OFFSET_INS]) {
-                // From app-ethereum only EIP-712 functionality is used 
-                // we decided to keep below cases for future use.
-                // case INS_GET_PUBLIC_KEY:
-                //
-                //     forget_known_assets();
-                //     handleGetPublicKey(buffer[OFFSET_P1],
-                //                        buffer[OFFSET_P2],
-                //                        buffer + OFFSET_CDATA,
-                //                        buffer[OFFSET_LC],
-                //                        flags,
-                //                        tx);
-                //     break;
-
-                // case INS_PROVIDE_ERC20_TOKEN_INFORMATION:
-                //     handleProvideErc20TokenInformation(buffer[OFFSET_P1],
-                //                                        buffer[OFFSET_P2],
-                //                                        buffer + OFFSET_CDATA,
-                //                                        buffer[OFFSET_LC],
-                //                                        flags,
-                //                                        tx);
-                //     break;
-
-#ifdef HAVE_NFT_SUPPORT
-                // case INS_PROVIDE_NFT_INFORMATION:
-                //     handleProvideNFTInformation(buffer[OFFSET_P1],
-                //                                 buffer[OFFSET_P2],
-                //                                 buffer + OFFSET_CDATA,
-                //                                 buffer[OFFSET_LC],
-                //                                 flags,
-                //                                 tx);
-                //     break;
-#endif  // HAVE_NFT_SUPPORT
-
-                // case INS_SET_EXTERNAL_PLUGIN:
-                //     handleSetExternalPlugin(buffer[OFFSET_P1],
-                //                             buffer[OFFSET_P2],
-                //                             buffer + OFFSET_CDATA,
-                //                             buffer[OFFSET_LC],
-                //                             flags,
-                //                             tx);
-                //     break;
-
-                // case INS_SET_PLUGIN:
-                //     handleSetPlugin(buffer[OFFSET_P1],
-                //                     buffer[OFFSET_P2],
-                //                     buffer + OFFSET_CDATA,
-                //                     buffer[OFFSET_LC],
-                //                     flags,
-                //                     tx);
-                //     break;
-
-                // case INS_PERFORM_PRIVACY_OPERATION:
-                //     handlePerformPrivacyOperation(buffer[OFFSET_P1],
-                //                                   buffer[OFFSET_P2],
-                //                                   buffer + OFFSET_CDATA,
-                //                                   buffer[OFFSET_LC],
-                //                                   flags,
-                //                                   tx);
-                //     break;
-
-                // case INS_SIGN:
-                //     handleSign(buffer[OFFSET_P1],
-                //                buffer[OFFSET_P2],
-                //                buffer + OFFSET_CDATA,
-                //                buffer[OFFSET_LC],
-                //                flags,
-                //                tx);
-                //     break;
-                //
-                // case INS_GET_APP_CONFIGURATION:
-                //     handleGetAppConfiguration(buffer[OFFSET_P1],
-                //                               buffer[OFFSET_P2],
-                //                               buffer + OFFSET_CDATA,
-                //                               buffer[OFFSET_LC],
-                //                               flags,
-                //                               tx);
-                //     break;
-                //
-                // case INS_SIGN_PERSONAL_MESSAGE:
-                //     forget_known_assets();
-                //     *flags |= IO_ASYNCH_REPLY;
-                //     if (!handleSignPersonalMessage(buffer[OFFSET_P1],
-                //                                    buffer[OFFSET_P2],
-                //                                    buffer + OFFSET_CDATA,
-                //                                    buffer[OFFSET_LC])) {
-                //         reset_app_context();
-                //     }
-                //     break;
-
                 case INS_SIGN_EIP_712_MESSAGE:
                     switch (buffer[OFFSET_P2]) {
                         case P2_EIP712_LEGACY_IMPLEM:
-                            // use in develop but not present in master
-                            // forget_known_assets();
-                            // use in master instead of the above
                             handleSignEIP712Message_v0(buffer[OFFSET_P1],
                                                        buffer[OFFSET_P2],
                                                        buffer + OFFSET_CDATA,
@@ -317,29 +215,6 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
                     }
                     break;
 
-// #ifdef HAVE_ETH2
-//
-//                 case INS_GET_ETH2_PUBLIC_KEY:
-//                     forget_known_assets();
-//                     handleGetEth2PublicKey(buffer[OFFSET_P1],
-//                                            buffer[OFFSET_P2],
-//                                            buffer + OFFSET_CDATA,
-//                                            buffer[OFFSET_LC],
-//                                            flags,
-//                                            tx);
-//                     break;
-//
-//                 case INS_SET_ETH2_WITHDRAWAL_INDEX:
-//                     handleSetEth2WithdrawalIndex(buffer[OFFSET_P1],
-//                                                  buffer[OFFSET_P2],
-//                                                  buffer + OFFSET_CDATA,
-//                                                  buffer[OFFSET_LC],
-//                                                  flags,
-//                                                  tx);
-//                     break;
-//
-// #endif
-
 #ifdef HAVE_EIP712_FULL_SUPPORT
                 case INS_EIP712_STRUCT_DEF:
                     *flags |= IO_ASYNCH_REPLY;
@@ -356,24 +231,6 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx,
                     handle_eip712_filtering(buffer);
                     break;
 #endif  // HAVE_EIP712_FULL_SUPPORT
-
-// #ifdef HAVE_DOMAIN_NAME
-//                 case INS_ENS_GET_CHALLENGE:
-//                     handle_get_challenge();
-//                     break;
-//
-//                 case INS_ENS_PROVIDE_INFO:
-//                     handle_provide_domain_name(buffer[OFFSET_P1],
-//                                                buffer[OFFSET_P2],
-//                                                buffer + OFFSET_CDATA,
-//                                                buffer[OFFSET_LC]);
-//                     break;
-// #endif  // HAVE_DOMAIN_NAME
-
-#if 0
-        case 0xFF: // return to dashboard
-          goto return_to_dashboard;
-#endif
 
                 default:
                     THROW(0x6D00);
