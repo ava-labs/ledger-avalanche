@@ -16,7 +16,8 @@
  ********************************************************************************/
 
 #if defined(FEATURE_ETH)
-#include "shared_context.h"
+#include "handler.h"
+
 #include "apdu_constants.h"
 #include "commands_712.h"
 #include "common_ui.h"
@@ -25,13 +26,8 @@
 #include "glyphs.h"
 #include "handle_check_address.h"
 #include "handle_swap_sign_transaction.h"
-#include "commands_712.h"
 #include "lib_standard_app/crypto_helpers.h"
-
-#include "handler.h"
-
-// taken from ethereum/src/main.c
-void ui_idle(void);
+#include "shared_context.h"
 
 uint32_t set_result_get_publicKey(void);
 void finalizeParsing(bool);
@@ -189,12 +185,8 @@ void handle_eth_apdu(__Z_UNUSED uint32_t *flags, uint32_t *tx, __Z_UNUSED uint32
                 case INS_SIGN_EIP_712_MESSAGE:
                     switch (buffer[OFFSET_P2]) {
                         case P2_EIP712_LEGACY_IMPLEM:
-                            handleSignEIP712Message_v0(buffer[OFFSET_P1],
-                                                       buffer[OFFSET_P2],
-                                                       buffer + OFFSET_CDATA,
-                                                       buffer[OFFSET_LC],
-                                                       flags,
-                                                       tx);
+                            handleSignEIP712Message_v0(buffer[OFFSET_P1], buffer[OFFSET_P2], buffer + OFFSET_CDATA,
+                                                       buffer[OFFSET_LC], flags, tx);
                             break;
 #ifdef HAVE_EIP712_FULL_SUPPORT
                         case P2_EIP712_FULL_IMPLEM:

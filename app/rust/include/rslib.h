@@ -17,9 +17,7 @@ bool rs_eth_get_streaming_hash(uint8_t *hash_buffer, uint16_t buffer_len);
 
 parser_error_t _getNumItemsBlindSign(uint8_t *num_items);
 
-parser_error_t _getItemBlindSign(int8_t displayIdx,
-                                 char *outKey, uint16_t outKeyLen,
-                                 char *outValue, uint16_t outValueLen,
+parser_error_t _getItemBlindSign(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outValue, uint16_t outValueLen,
                                  uint8_t pageIdx, uint8_t *pageCount);
 
 /****************************** others ***********************************************************/
