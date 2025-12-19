@@ -16,16 +16,16 @@
 
 #include <stdio.h>
 
+#include "actions.h"
 #include "app_mode.h"
 #include "coin.h"
 #include "crypto.h"
-#include "zxerror.h"
-#include "zxformat.h"
-#include "zxmacros.h"
 #include "keys_def.h"
 #include "os.h"
 #include "rslib.h"
-#include "actions.h"
+#include "zxerror.h"
+#include "zxformat.h"
+#include "zxmacros.h"
 
 #define ASCII_HRP_MAX_SIZE 24
 #define MAX_CHAIN_CB58_LEN 50
@@ -42,15 +42,8 @@ zxerr_t app_fill_ed25519_address(uint8_t *buffer, uint16_t buffer_len, uint16_t 
     return crypto_fill_ed25519_address(buffer, buffer_len, addr_len);
 }
 
-zxerr_t fill_address(
-    __Z_UNUSED uint32_t *flags,
-    uint32_t *tx,
-    uint32_t rx,
-    uint8_t *buffer,
-    uint16_t buffer_len,
-    uint8_t curve_type
-) {
-
+zxerr_t fill_address(__Z_UNUSED uint32_t *flags, uint32_t *tx, uint32_t rx, uint8_t *buffer, uint16_t buffer_len,
+                     uint8_t curve_type) {
     zemu_log("fill_address\n");
     zxerr_t err = zxerr_ok;
     if (curve_type == CURVE_ED25519) {
@@ -61,8 +54,9 @@ zxerr_t fill_address(
         action_addrResponseLen = *tx;
     }
 
-    if (err != zxerr_ok)
+    if (err != zxerr_ok) {
         action_addrResponseLen = 0;
+    }
 
     return err;
 }
@@ -76,7 +70,8 @@ zxerr_t addr_getNumItems(uint8_t *num_items) {
 
 zxerr_t addr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
                      uint8_t *pageCount) {
-    return _addr_get_item(addr_ui_obj, displayIdx, (uint8_t*)outKey, outKeyLen, (uint8_t*)outVal, outValLen, pageIdx, pageCount);
+    return _addr_get_item(addr_ui_obj, displayIdx, (uint8_t *)outKey, outKeyLen, (uint8_t *)outVal, outValLen, pageIdx,
+                          pageCount);
 }
 
 zxerr_t addr_getNumItemsEd25519(uint8_t *num_items) {
@@ -91,8 +86,8 @@ zxerr_t addr_getNumItemsEd25519(uint8_t *num_items) {
     return zxerr_ok;
 }
 
-zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
-                     uint8_t *pageCount) {
+zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen,
+                            uint8_t pageIdx, uint8_t *pageCount) {
     ZEMU_LOGF(50, "[addr_getItem] %d/%d\n", displayIdx, pageIdx)
 
     switch (displayIdx) {
@@ -100,7 +95,8 @@ zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen,
             snprintf(outKey, outKeyLen, "Address");
 
             char buf[PATH_MAX_SIZE_ED25519] = {0};
-            array_to_hexstr(buf, sizeof(buf), G_io_apdu_buffer + 1 + PK_LEN_ED25519, ADDRESS_BUFFER_LEN + ADDRESS_CHECKSUM_LEN);
+            array_to_hexstr(buf, sizeof(buf), G_io_apdu_buffer + 1 + PK_LEN_ED25519,
+                            ADDRESS_BUFFER_LEN + ADDRESS_CHECKSUM_LEN);
             pageString(outVal, outValLen, buf, pageIdx, pageCount);
             return zxerr_ok;
         case 1: {
@@ -117,7 +113,4 @@ zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen,
         default:
             return zxerr_no_data;
     }
-
 }
-
-

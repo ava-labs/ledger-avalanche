@@ -16,7 +16,7 @@
 
 #include "parser_impl.h"
 
- const char *parser_getErrorDescription(parser_error_t err) {
+const char *parser_getErrorDescription(parser_error_t err) {
     switch (err) {
         case parser_ok:
             return "No error";
