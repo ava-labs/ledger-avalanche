@@ -24,6 +24,7 @@
 #include "cx_errors.h"
 #include "glyphs.h"
 #include "handle_check_address.h"
+#include "handle_swap_sign_transaction.h"
 #include "commands_712.h"
 #include "lib_standard_app/crypto_helpers.h"
 
