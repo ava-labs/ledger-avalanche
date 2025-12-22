@@ -21,8 +21,6 @@
 #include <os.h>
 #include <os_io_seproxyhal.h>
 
-
-void handle_eth_apdu(uint32_t *flags, uint32_t *tx,
-                     uint32_t rx, uint8_t *buffer, uint16_t bufferLen);
+void handle_eth_apdu(uint32_t *flags, uint32_t *tx, uint32_t rx, uint8_t *buffer, uint16_t bufferLen);
 
 #endif

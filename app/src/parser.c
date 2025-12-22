@@ -27,7 +27,7 @@
 #include "parser_impl.h"
 #include "rslib.h"
 
-static zxerr_t parser_allocate();
+static zxerr_t parser_allocate(parser_tx_t *parser_state);
 
 // This buffer will store parser_state.
 // Its size corresponds to ParsedObj (Rust struct)
@@ -40,10 +40,10 @@ zxerr_t parser_allocate(parser_tx_t *parser_state) {
     if (parser_state->len % 4 != 0) {
         parser_state->len += parser_state->len % 4;
     }
-    if(parser_state->len > PARSER_BUFFER_SIZE) {
+    if (parser_state->len > PARSER_BUFFER_SIZE) {
         return zxerr_buffer_too_small;
     }
-    if(parser_state->state != NULL) {
+    if (parser_state->state != NULL) {
         return zxerr_unknown;
     }
 
@@ -76,8 +76,8 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     ctx->tx_obj.len = 0;
     uint32_t size = 0;
 
-    // initialized data on rust side, this include to get 
-    // the size of the object to be parsed according to the 
+    // initialized data on rust side, this include to get
+    // the size of the object to be parsed according to the
     // tx type.
     CHECK_ERROR(_parser_init(ctx, data, dataLen, &size));
 
@@ -86,18 +86,18 @@ parser_error_t parser_parse(parser_context_t *ctx, const uint8_t *data, size_t d
     }
     ctx->tx_obj.len = size;
 
-    if(parser_allocate(&ctx->tx_obj) != zxerr_ok) {
-        return parser_init_context_empty ;
+    if (parser_allocate(&ctx->tx_obj) != zxerr_ok) {
+        return parser_init_context_empty;
     }
 
-    // Populate/Initialized parsed object 
+    // Populate/Initialized parsed object
     // by parsing the input data.
     parser_error_t err = _parser_read(ctx);
 
-    return err; 
+    return err;
 }
 
-// Similates UI flow, this reduces the risk of stack overflow, 
+// Similates UI flow, this reduces the risk of stack overflow,
 // bad pointer aritmetic and other issues during UI.
 parser_error_t parser_validate(const parser_context_t *ctx) {
     zemu_log("parser_validate\n");
@@ -162,8 +162,8 @@ parser_error_t parser_getNumItemsBlindSign(uint8_t *num_items) {
     return parser_ok;
 }
 
-parser_error_t parser_getItemBlindSign(uint8_t displayIdx, char *outKey, uint16_t outKeyLen,
-                                       char *outVal, uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount) {
+parser_error_t parser_getItemBlindSign(uint8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal,
+                                       uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount) {
     uint8_t numItems = 0;
     CHECK_ERROR(parser_getNumItemsBlindSign(&numItems))
     CHECK_APP_CANARY()

@@ -17,8 +17,8 @@
 
 #include "coin.h"
 #include "os.h"
-#include "zxerror.h"
 #include "parser_common.h"
+#include "zxerror.h"
 
 void tx_initialize();
 
@@ -52,11 +52,11 @@ void tx_eth_tx();
 void tx_eth_msg();
 void tx_eth_addr();
 
-/// Parse a hash transaction that contains the root path 
+/// Parse a hash transaction that contains the root path
 /// plus the hash data to be signed
 const char *tx_avax_parse_hash();
 
-/// Parse an avax message that contains the root path 
+/// Parse an avax message that contains the root path
 /// plus the message data to be signed
 const char *tx_avax_parse_msg();
 

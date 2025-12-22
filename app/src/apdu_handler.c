@@ -15,26 +15,26 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#include <app_mode.h>
 #include <os.h>
 #include <os_io_seproxyhal.h>
 #include <string.h>
 #include <ux.h>
-#include <app_mode.h>
 
 #include "actions.h"
 #include "addr.h"
-#include "xaddr.h"
-#include "wallet_id.h"
 #include "app_main.h"
 #include "coin.h"
+#include "commands.h"
 #include "crypto.h"
+#include "parser_common.h"
+#include "rslib.h"
 #include "tx.h"
 #include "view.h"
 #include "view_internal.h"
+#include "wallet_id.h"
+#include "xaddr.h"
 #include "zxmacros.h"
-#include "parser_common.h"
-#include "rslib.h"
-#include "commands.h"
 #if defined(FEATURE_ETH)
 #include "handler.h"
 #endif
@@ -44,13 +44,12 @@ static bool tx_initialized = false;
 // Global variable to store error message offset for custom error display
 uint16_t G_error_message_offset = 0;
 
-bool
-is_eth_path(uint32_t rx, uint32_t offset)
-{
+bool is_eth_path(uint32_t rx, uint32_t offset) {
     uint32_t path_len = *(G_io_apdu_buffer + offset);
 
-    if (path_len > MAX_BIP32_PATH || path_len < 1)
+    if (path_len > MAX_BIP32_PATH || path_len < 1) {
         THROW(APDU_CODE_WRONG_LENGTH);
+    }
 
     if ((rx - offset - 1) < sizeof(uint32_t) * path_len) {
         THROW(APDU_CODE_WRONG_LENGTH);
@@ -66,8 +65,7 @@ is_eth_path(uint32_t rx, uint32_t offset)
         path_data += sizeof(uint32_t);
     }
 
-    const bool mainnet =
-      ethPath[0] == HDPATH_ETH_0_DEFAULT && ethPath[1] == HDPATH_ETH_1_DEFAULT;
+    const bool mainnet = ethPath[0] == HDPATH_ETH_0_DEFAULT && ethPath[1] == HDPATH_ETH_1_DEFAULT;
 
     return mainnet;
 }
@@ -102,21 +100,19 @@ void extractHDPathEd25519(uint32_t rx, uint32_t offset) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
-     hdPath_len = G_io_apdu_buffer[offset];
-     offset += 1;
+    hdPath_len = G_io_apdu_buffer[offset];
+    offset += 1;
 
-     if (hdPath_len > HDPATH_LEN_DEFAULT || (rx - offset) != sizeof(uint32_t) * hdPath_len) {
+    if (hdPath_len > HDPATH_LEN_DEFAULT || (rx - offset) != sizeof(uint32_t) * hdPath_len) {
         THROW(APDU_CODE_WRONG_LENGTH);
-     }
+    }
 
-     memcpy(hdPath, G_io_apdu_buffer + offset, sizeof(uint32_t) * hdPath_len);
+    memcpy(hdPath, G_io_apdu_buffer + offset, sizeof(uint32_t) * hdPath_len);
 
     // Convert each hdPath element to big-endian
     for (uint8_t i = 0; i < hdPath_len; i++) {
         uint32_t value = hdPath[i];
-        hdPath[i] = ((value & 0xFF000000) >> 24) |
-                    ((value & 0x00FF0000) >> 8)  |
-                    ((value & 0x0000FF00) << 8)  |
+        hdPath[i] = ((value & 0xFF000000) >> 24) | ((value & 0x00FF0000) >> 8) | ((value & 0x0000FF00) << 8) |
                     ((value & 0x000000FF) << 24);
     }
 }
@@ -126,7 +122,7 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
         THROW(APDU_CODE_WRONG_LENGTH);
     }
 
-    uint32_t added;
+    uint32_t added = 0;
     switch (G_io_apdu_buffer[OFFSET_PAYLOAD_TYPE]) {
         case P1_INIT:
             tx_initialize();
@@ -161,6 +157,7 @@ __Z_INLINE bool process_chunk(__Z_UNUSED volatile uint32_t *tx, uint32_t rx) {
     }
 
     THROW(APDU_CODE_INVALIDP1P2);
+    return false;  // Should never reach here, but satisfies compiler
 }
 
 __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
@@ -177,7 +174,7 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
         extractHDPathEd25519(rx, OFFSET_DATA);
     }
 
-    zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, curve_type);
+    zxerr_t zxerr = fill_address((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, curve_type);
     if (zxerr != zxerr_ok) {
         *tx = 0;
         THROW(APDU_CODE_DATA_INVALID);
@@ -208,7 +205,7 @@ __Z_INLINE void handleGetXAddr(volatile uint32_t *flags, volatile uint32_t *tx, 
     zemu_log("handleGetXAddr\n");
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
-    zxerr_t zxerr = fill_ext_address((uint32_t*)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    zxerr_t zxerr = fill_ext_address((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     if (zxerr != zxerr_ok) {
         *tx = 0;
         THROW(APDU_CODE_DATA_INVALID);
@@ -228,7 +225,7 @@ __Z_INLINE void handleGetWalletId(volatile uint32_t *flags, volatile uint32_t *t
 
     const uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
 
-    zxerr_t zxerr = fill_wallet_id((uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    zxerr_t zxerr = fill_wallet_id((uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 
     if (zxerr != zxerr_ok) {
         *tx = 0;
@@ -368,7 +365,8 @@ __Z_INLINE void handle_getversion(__Z_UNUSED volatile uint32_t *flags, volatile 
 void handleTest(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) { THROW(APDU_CODE_OK); }
 #endif
 
-// Handles APDU command related to avalanche transactions, message, addresses and keys.
+// Handles APDU command related to avalanche transactions, message, addresses
+// and keys.
 __Z_INLINE void avax_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("AVAX Dispatch\n");
     switch (G_io_apdu_buffer[OFFSET_INS]) {
@@ -450,7 +448,6 @@ __Z_INLINE void handleNftInfo(volatile uint32_t *flags, volatile uint32_t *tx, u
     *flags |= IO_ASYNCH_REPLY;
 }
 
-
 __Z_INLINE void handleProvideErc20(volatile uint32_t *flags, volatile uint32_t *tx, __Z_UNUSED uint32_t rx) {
     zemu_log("handleProvideErc20\n");
 
@@ -486,8 +483,10 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
     tx_eth_msg();
 
     bool done = false;
-    // cast to integer pointer, because app-ethereum expects them as plain pointers
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
+    // cast to integer pointer, because app-ethereum expects them as plain
+    // pointers
+    const char *error_msg = tx_err_msg_from_code(
+        rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
 
     // Wait for all transaction data to be processed
     if (!done) {
@@ -508,18 +507,17 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
     *flags |= IO_ASYNCH_REPLY;
 }
 
-__Z_INLINE void
-handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
-{
-
+__Z_INLINE void handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     tx_eth_addr();
 
     uint8_t requireConfirmation = G_io_apdu_buffer[OFFSET_P1];
 
     // not needed as address data is not that large
     bool done = false;
-    // cast to integer pointer, because app-ethereum expects them as plain pointers
-    const char *error_msg = tx_err_msg_from_code(rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
+    // cast to integer pointer, because app-ethereum expects them as plain
+    // pointers
+    const char *error_msg = tx_err_msg_from_code(
+        rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done));
 
     if (error_msg != NULL) {
         zemu_log(error_msg);
@@ -542,14 +540,14 @@ handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx)
     THROW(APDU_CODE_OK);
 }
 
-
 __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
     zemu_log("handleSignEthTx\n");
 
     tx_eth_tx();
 
     bool done = false;
-    // cast to integer pointer, because app-ethereum expects them as plain pointers
+    // cast to integer pointer, because app-ethereum expects them as plain
+    // pointers
     parser_error_t err = rs_eth_handle((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE, &done);
 
     const char *error_msg = tx_err_msg_from_code(err);
@@ -586,12 +584,11 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
     *flags |= IO_ASYNCH_REPLY;
 }
 
-
 #if defined(FEATURE_ETH)
 __Z_INLINE void handle_eip712(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
-    // Cast volatile pointers to plain pointers due to app-ethereum implementations that takes 
-    // them as plain pointers.
-    handle_eth_apdu((uint32_t*)flags, (uint32_t*)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
+    // Cast volatile pointers to plain pointers due to app-ethereum
+    // implementations that takes them as plain pointers.
+    handle_eth_apdu((uint32_t *)flags, (uint32_t *)tx, rx, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 }
 #endif
 
@@ -671,26 +668,24 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
 
     BEGIN_TRY {
         TRY {
-
             if (rx < APDU_MIN_LENGTH) {
                 THROW(APDU_CODE_WRONG_LENGTH);
             }
 
             ZEMU_LOGF(50, "CLA: %x\n", G_io_apdu_buffer[OFFSET_CLA]);
 
-            // redirect this apdu to be dispatched by our avalanche dispatcher, 
+            // redicerc this apdu to be dispatched by our avalanche dispatcher,
             // otherwise use ethereum dispatcher.
             if (G_io_apdu_buffer[OFFSET_CLA] == AVX_CLA) {
                 return avax_dispatch(flags, tx, rx);
-            } else if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
-                return eth_dispatch(flags, tx, rx);
-            } else {
-                THROW(APDU_CODE_CLA_NOT_SUPPORTED);
             }
+            if (G_io_apdu_buffer[OFFSET_CLA] == ETH_CLA) {
+                return eth_dispatch(flags, tx, rx);
+            }
+            THROW(APDU_CODE_CLA_NOT_SUPPORTED);
 
             // Process non-avax instruction
             switch (G_io_apdu_buffer[OFFSET_INS]) {
-
 #if defined(APP_TESTING)
                 case INS_TEST: {
                     handleTest(flags, tx, rx);

@@ -16,19 +16,15 @@
 
 #pragma once
 
+#include <stdint.h>
+
+#include "zxerror.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-zxerr_t fill_address(
-    uint32_t *flags,
-    uint32_t *tx,
-    uint32_t rx,
-    uint8_t *buffer,
-    uint16_t buffer_len,
-    uint8_t curve_type
-);
+zxerr_t fill_address(uint32_t *flags, uint32_t *tx, uint32_t rx, uint8_t *buffer, uint16_t buffer_len, uint8_t curve_type);
 
 // Return the number of items in the address view
 zxerr_t addr_getNumItems(uint8_t *num_items);
@@ -39,8 +35,8 @@ zxerr_t addr_getItem(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *
 
 zxerr_t addr_getNumItemsEd25519(uint8_t *num_items);
 
-zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen, uint8_t pageIdx,
-                     uint8_t *pageCount);
+zxerr_t addr_getItemEd25519(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal, uint16_t outValLen,
+                            uint8_t pageIdx, uint8_t *pageCount);
 
 #ifdef __cplusplus
 }
