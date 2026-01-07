@@ -49,6 +49,7 @@ pub enum ParserError {
     InvalidCodecId,
     InvalidLength,
     InvalidSourceAddressSize,
+    BlindSignNotEnabled,
 }
 
 impl From<ErrorKind> for ParserError {

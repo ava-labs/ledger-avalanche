@@ -11,6 +11,15 @@ void rs_handle_apdu(uint32_t *flags, uint32_t *tx, uint32_t rx, uint8_t *buffer,
 
 uint32_t rs_eth_handle(uint32_t *flags, uint32_t *tx, uint32_t rx, uint8_t *buffer, uint16_t buffer_len, bool *done);
 
+bool rs_eth_was_streaming_mode_used(void);
+
+bool rs_eth_get_streaming_hash(uint8_t *hash_buffer, uint16_t buffer_len);
+
+parser_error_t _getNumItemsBlindSign(uint8_t *num_items);
+
+parser_error_t _getItemBlindSign(int8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outValue, uint16_t outValueLen,
+                                 uint8_t pageIdx, uint8_t *pageCount);
+
 /****************************** others ***********************************************************/
 
 parser_error_t _parser_init(parser_context_t *ctx, const uint8_t *buffer, size_t bufferSize, uint32_t *alloc_size);

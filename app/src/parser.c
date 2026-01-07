@@ -151,3 +151,26 @@ parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, c
     // Calls rust getter
     return _getItem(ctx, displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
 }
+
+parser_error_t parser_getNumItemsBlindSign(uint8_t *num_items) {
+    if (_getNumItemsBlindSign(num_items) != parser_ok) {
+        return parser_unexpected_number_items;
+    }
+    if (*num_items == 0) {
+        return parser_unexpected_number_items;
+    }
+    return parser_ok;
+}
+
+parser_error_t parser_getItemBlindSign(uint8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal,
+                                       uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount) {
+    uint8_t numItems = 0;
+    CHECK_ERROR(parser_getNumItemsBlindSign(&numItems))
+    CHECK_APP_CANARY()
+
+    CHECK_ERROR(checkSanity(numItems, displayIdx))
+    cleanOutput(outKey, outKeyLen, outVal, outValLen);
+
+    // Calls rust getter
+    return _getItemBlindSign(displayIdx, outKey, outKeyLen, outVal, outValLen, pageIdx, pageCount);
+}

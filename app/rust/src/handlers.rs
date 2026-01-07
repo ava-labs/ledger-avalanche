@@ -37,8 +37,8 @@ pub mod resources {
     };
 
     #[lazy_static]
-    pub static mut BUFFER: Lock<SwappingBuffer<'static, 'static, 0xFF, 0x1FFF>, BUFFERAccessors> =
-        Lock::new(new_swapping_buffer!(0xFF, 0x1FFF));
+    pub static mut BUFFER: Lock<SwappingBuffer<'static, 'static, 0x200, 0x4000>, BUFFERAccessors> =
+        Lock::new(new_swapping_buffer!(0x200, 0x4000));
 
     #[lazy_static]
     pub static mut PATH: Lock<Option<BIP32Path<MAX_BIP32_PATH_DEPTH>>, PATHAccessors> =
@@ -54,6 +54,70 @@ pub mod resources {
 
     #[lazy_static]
     pub static mut ETH_UI: Lock<Option<EthUi>, EthAccessors> = Lock::new(None);
+
+    /// Streaming hash resources for large EVM transactions that don't fit in buffer
+    /// When a transaction exceeds BUFFER_CAPACITY, it enters streaming mode
+    /// where the transaction is hashed incrementally across multiple APDU packets
+    /// Core streaming hasher - performs incremental Keccak256 hashing of transaction data
+    /// Used in: parse() to update hash with each packet, finalize_streaming_hash() to get final hash
+    #[lazy_static]
+    pub static mut STREAMING_HASHER: Lock<Option<bolos::hash::Keccak<32>>, StreamingAccessors> =
+        Lock::new(None);
+
+    /// Flag indicating if we're currently in streaming mode
+    /// Used in: parse() to check mode, finalize_streaming_hash() to clean up
+    #[lazy_static]
+    pub static mut STREAMING_MODE: Lock<bool, StreamingAccessors> = Lock::new(false);
+
+    /// Total bytes expected for the transaction (from RLP length parsing)
+    /// Used in: parse() initial packet to set total, subsequent packets to check completion
+    #[lazy_static]
+    pub static mut EXPECTED_BYTES: Lock<u64, StreamingAccessors> = Lock::new(0);
+
+    /// Total bytes received so far across all packets
+    /// Used in: parse() to track progress and determine when transaction is complete
+    #[lazy_static]
+    pub static mut RECEIVED_BYTES: Lock<u64, StreamingAccessors> = Lock::new(0);
+
+    /// Flag to track if streaming mode was used for the current transaction
+    /// Used in: rs_eth_was_streaming_mode_used() C function for external queries
+    #[lazy_static]
+    pub static mut STREAMING_MODE_USED: Lock<bool, StreamingAccessors> = Lock::new(false);
+
+    /// Stores the final computed hash from streaming mode
+    /// Used in: finalize_streaming_hash() to store result, rs_eth_get_streaming_hash() to retrieve for blind signing UI
+    #[lazy_static]
+    pub static mut STREAMING_HASH: Lock<Option<[u8; 32]>, StreamingAccessors> = Lock::new(None);
+
+    /// Store chain ID and transaction type for correct V calculation in streaming mode
+    /// Critical for EIP-155 signature compatibility between streaming and normal modes
+    /// Chain ID bytes extracted from transaction for V component calculation
+    /// Used in: parse() to store from first packet, finalize_streaming_hash() to use for V calculation
+    #[lazy_static]
+    pub static mut STREAMING_CHAIN_ID: Lock<Option<[u8; 8]>, StreamingAccessors> = Lock::new(None);
+
+    /// Transaction type flag (true = EIP-1559/EIP-2930, false = Legacy)
+    /// Used in: parse() to store type, finalize_streaming_hash() to determine V calculation method
+    #[lazy_static]
+    pub static mut STREAMING_TX_TYPE: Lock<bool, StreamingAccessors> = Lock::new(false);
+
+    /// Packet buffering for legacy transaction chain ID extraction
+    /// Legacy transactions store chain ID at the end, requiring buffering of last packets
+    /// Last received packet [length_byte, data...] - used for legacy chain ID extraction
+    /// Used in: parse() to buffer packets, finalize_streaming_hash() to extract chain ID from end
+    #[lazy_static]
+    pub static mut LAST_PACKET: Lock<Option<[u8; 255]>, StreamingAccessors> = Lock::new(None);
+
+    /// Second-to-last packet [length_byte, data...] - for multi-packet legacy chain ID extraction
+    /// Used in: parse() to rotate packet buffer, finalize_streaming_hash() to combine with last packet
+    #[lazy_static]
+    pub static mut SECOND_LAST_PACKET: Lock<Option<[u8; 255]>, StreamingAccessors> =
+        Lock::new(None);
+
+    /// Flag indicating if current transaction is legacy type (affects chain ID location)
+    /// Used in: parse() to set based on transaction type, packet buffering, and chain ID extraction
+    #[lazy_static]
+    pub static mut IS_LEGACY_TX: Lock<bool, StreamingAccessors> = Lock::new(false);
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     pub enum BUFFERAccessors {
@@ -99,6 +163,11 @@ pub mod resources {
         ERC721Parser,
     }
 
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum StreamingAccessors {
+        EthSign,
+    }
+
     impl From<super::avax::signing::Sign> for BUFFERAccessors {
         fn from(_: super::avax::signing::Sign) -> Self {
             Self::Sign
@@ -140,6 +209,14 @@ pub mod resources {
     impl From<super::eth::personal_msg::Sign> for EthAccessors {
         fn from(_: super::eth::personal_msg::Sign) -> Self {
             Self::Msg
+        }
+    }
+
+    // *********************** Streaming accessor implementation ***********************
+
+    impl From<super::eth::signing::Sign> for StreamingAccessors {
+        fn from(_: super::eth::signing::Sign) -> Self {
+            Self::EthSign
         }
     }
 

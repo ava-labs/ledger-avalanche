@@ -38,6 +38,14 @@ export const defaultOptions = (m: IDeviceModel, is_address = false) => {
   }
 }
 
+export const defaultOptionsBlindSign = {
+  ...DEFAULT_START_OPTIONS,
+  logging: true,
+  custom: `-s "${APP_SEED}"`,
+  X11: false,
+}
+
+
 export const ROOT_PATH = "m/44'/9000'/0'"
 export const APP_DERIVATION = "m/44'/9000'/0'/0/0"
 export const ETH_DERIVATION = "m/44'/60'/0'/0'"

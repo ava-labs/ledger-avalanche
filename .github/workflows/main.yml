@@ -18,3 +18,4 @@ jobs:
       has-nanos: false
       has-cpp-tests: false
       node-version: "22"
+      rust-version: "1.83.0"

@@ -40,6 +40,13 @@ parser_error_t parser_getNumItems(const parser_context_t *ctx, uint8_t *num_item
 parser_error_t parser_getItem(const parser_context_t *ctx, uint8_t displayIdx, char *outKey, uint16_t outKeyLen,
                               char *outVal, uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount);
 
+// returns the number of items for blind signing display
+parser_error_t parser_getNumItemsBlindSign(uint8_t *num_items);
+
+// retrieves a readable output for blind signing display
+parser_error_t parser_getItemBlindSign(uint8_t displayIdx, char *outKey, uint16_t outKeyLen, char *outVal,
+                                       uint16_t outValLen, uint8_t pageIdx, uint8_t *pageCount);
+
 #ifdef __cplusplus
 }
 #endif
