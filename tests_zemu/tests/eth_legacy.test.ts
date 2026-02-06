@@ -18,8 +18,8 @@ import Zemu from '@zondax/zemu'
 import { ETH_DERIVATION, defaultOptions as commonOpts, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
-import { LegacyTransaction } from '@ethereumjs/tx'
-import { Common } from '@ethereumjs/common'
+import { createLegacyTx, createLegacyTxFromBytesArray } from '@ethereumjs/tx'
+import { createCustomCommon, Mainnet } from '@ethereumjs/common'
 import { RLP } from '@ethereumjs/rlp'
 // import { ec } from 'elliptic'
 
@@ -99,16 +99,12 @@ const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
     data: params.data !== undefined ? Buffer.from(params.data, 'hex') : undefined,
   }
 
-  const chain = Common.custom({
-    name: 'avalanche',
-    networkId: chainId || 2,
-    chainId: chainId || 2,
-  })
+  const chain = createCustomCommon({ chainId: chainId || 2 }, Mainnet)
 
   const options = { common: chain }
 
   // legacy
-  const tx = LegacyTransaction.fromTxData(txParams, options)
+  const tx = createLegacyTx(txParams, options)
 
   let unsignedTx = tx.getMessageToSign()
   return new Uint8Array(RLP.encode(unsignedTx))
@@ -119,11 +115,7 @@ const rawUnsignedLegacyTransaction = (params: Op, chainId?: number) => {
 function check_legacy_signature(hexTx: string, signature: any, chainId: number | undefined) {
   const ethTx = Buffer.from(hexTx, 'hex')
 
-  const chain = Common.custom({
-    name: 'avalanche',
-    networkId: chainId || 2, // Use passed chainId or default to 1
-    chainId: chainId || 2, // This should be set according to the passed chainId
-  })
+  const chain = createCustomCommon({ chainId: chainId || 2 }, Mainnet)
 
   const tx_options = { common: chain }
 
@@ -132,7 +124,7 @@ function check_legacy_signature(hexTx: string, signature: any, chainId: number |
 
   const txnBufs = txnBufsDecoded.concat(txnBufsMap)
 
-  const ethTxObj = LegacyTransaction.fromValuesArray(txnBufs, tx_options)
+  const ethTxObj = createLegacyTxFromBytesArray(txnBufs, tx_options)
 
   return ethTxObj.verifySignature()
 }

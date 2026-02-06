@@ -235,7 +235,7 @@ describe.each(models)('EthereumOthers [%s] - misc', function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
-      const app = new Eth(sim.getTransport())
+      const app = new Eth(sim.getTransport() as any)
 
       const resp = await app.getAppConfiguration()
 
@@ -256,7 +256,7 @@ describe.each(models)('Ethereum Personal Message [%s] - misc', function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
-      const app = new Eth(sim.getTransport())
+      const app = new Eth(sim.getTransport() as any)
       // Put the app in expert mode
       await sim.toggleExpertMode()
 
@@ -288,7 +288,7 @@ describe.each(models)('Ethereum Personal Message [%s] - misc', function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m))
-      const app = new Eth(sim.getTransport())
+      const app = new Eth(sim.getTransport() as any)
       // Put the app in expert mode
       await sim.toggleExpertMode()
 
