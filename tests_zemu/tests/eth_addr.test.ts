@@ -24,7 +24,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m, true))
-      const app = new Eth(sim.getTransport())
+      const app = new Eth(sim.getTransport() as any)
 
       const ETH_PATH = "m/44'/60'/0'/0'/5"
       const EXPECTED_PUBLIC_KEY = '024f1dd50f180bfd546339e75410b127331469837fa618d950f7cfb8be351b0020'
@@ -45,7 +45,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
 
     try {
       await sim.start(defaultOptions(m, true))
-      const app = new Eth(sim.getTransport())
+      const app = new Eth(sim.getTransport() as any)
       const respReq = app.getAddress(ETH_DERIVATION, true)
 
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
@@ -65,7 +65,7 @@ describe.each(models)('EthereumKeys [%s] - pubkey', function (m) {
     const sim = new Zemu(m.path)
     try {
       await sim.start(defaultOptions(m, true))
-      const app = new Eth(sim.getTransport())
+      const app = new Eth(sim.getTransport() as any)
       const resp = await app.getAddress(ETH_DERIVATION, false, true)
 
       console.log(resp, m.name)
