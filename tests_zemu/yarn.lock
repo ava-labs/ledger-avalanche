@@ -1944,7 +1944,11 @@
 
 "@zondax/ledger-avalanche-app@link:../js":
   version "0.0.0"
-  uid ""
+  dependencies:
+    "@ledgerhq/hw-app-eth" "6.38.2"
+    "@ledgerhq/hw-transport" "6.31.4"
+    bs58 "6.0.0"
+    sha3 "2.1.4"
 
 "@zondax/zemu@0.65.0":
   version "0.65.0"
