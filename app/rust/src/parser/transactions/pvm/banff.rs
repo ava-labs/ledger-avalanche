@@ -39,3 +39,6 @@ pub use set_l1_validator_weight::*;
 
 mod register_l1_validator;
 pub use register_l1_validator::*;
+
+mod add_auto_renewed_validator;
+pub use add_auto_renewed_validator::*;
