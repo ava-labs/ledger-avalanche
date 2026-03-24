@@ -1,0 +1,22 @@
+---
+source: src/parser/transactions/pvm/banff/add_auto_renewed_validator.rs
+assertion_line: 518
+expression: reduced
+---
+[
+    "AutoRenewedValid": "Transaction",
+    "Transfer": "1 AVAX to ",
+    "Address": "avax1q5qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqxkua0",
+    "Validator": "NodeID-Gs2aNxFXi6admjCa8vutk1Jse7BhbC9j",
+    "Signer": "0xaf5e3229bbe7e2ad8459e9e3cf2a2dec1c2e68e6eca9022a31993d0be2da36a91d51a31efd6a1ba6cfb15edff31c7c3c",
+    "Stake": "1 AVAX to ",
+    "Address": "avax1q5qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqxkua0",
+    "Valida rewards to": "avax1qcqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzul6u2",
+    "Delega rewards to": "avax1quqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqmdccyf",
+    "Owner address": "avax1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqeql638",
+    "Delegate fee(%)": "2",
+    "Stake weight": "1",
+    "AutoCompound(%)": "50",
+    "Period(seconds)": "604800",
+    "Fee(AVAX)": "0",
+]
