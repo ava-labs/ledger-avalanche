@@ -42,3 +42,6 @@ pub use register_l1_validator::*;
 
 mod add_auto_renewed_validator;
 pub use add_auto_renewed_validator::*;
+
+mod set_auto_renewed_validator_config;
+pub use set_auto_renewed_validator_config::*;

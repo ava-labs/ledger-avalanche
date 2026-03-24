@@ -78,7 +78,8 @@ cfg_if! {
             IncreaseL1ValidatorBalanceTx,
 
             // ACP-236
-            AddAutoRenewedValidatorTx
+            AddAutoRenewedValidatorTx,
+            SetAutoRenewedValidatorConfigTx
         };
     }
 }
@@ -113,7 +114,7 @@ cfg_if! {
         use super::{
             PVM_ADD_PERMISSIONLESS_DELEGATOR, PVM_ADD_PERMISSIONLESS_VALIDATOR, PVM_TRANSFORM_SUBNET, PVM_REMOVE_SUBNET_VALIDATOR,
             PVM_CONVERT_SUBNET_L1, PVM_INCREASE_L1_VALIDATOR_BALANCE, PVM_DISABLE_L1_VALIDATOR, PVM_SET_L1_VALIDATOR_WEIGHT, PVM_REGISTER_L1_VALIDATOR,
-            PVM_ADD_AUTO_RENEWED_VALIDATOR
+            PVM_ADD_AUTO_RENEWED_VALIDATOR, PVM_SET_AUTO_RENEWED_VALIDATOR_CONFIG
         };
     }
 }
@@ -174,6 +175,8 @@ impl TryFrom<(u32, NetworkInfo)> for Transaction__Type {
             PVM_INCREASE_L1_VALIDATOR_BALANCE => Transaction__Type::IncreaseL1ValidatorBalance,
             #[cfg(feature = "banff")]
             PVM_ADD_AUTO_RENEWED_VALIDATOR => Transaction__Type::AutoRenewedValidator,
+            #[cfg(feature = "banff")]
+            PVM_SET_AUTO_RENEWED_VALIDATOR_CONFIG => Transaction__Type::SetAutoRenewedValidatorConfig,
             _ => return Err(ParserError::InvalidTransactionType),
         };
 
@@ -226,6 +229,8 @@ pub enum Transaction<'b> {
     IncreaseL1ValidatorBalance(IncreaseL1ValidatorBalanceTx<'b>),
     #[cfg(feature = "banff")]
     AutoRenewedValidator(AddAutoRenewedValidatorTx<'b>),
+    #[cfg(feature = "banff")]
+    SetAutoRenewedValidatorConfig(SetAutoRenewedValidatorConfigTx<'b>),
 }
 
 impl<'b> Transaction<'b> {
@@ -397,6 +402,13 @@ impl<'b> Transaction<'b> {
                     out,
                 )
             }
+            #[cfg(feature = "banff")]
+            Transaction__Type::SetAutoRenewedValidatorConfig => {
+                Self::init_as_set_auto_renewed_validator_config(
+                    |out| SetAutoRenewedValidatorConfigTx::from_bytes_into(input, out),
+                    out,
+                )
+            }
         }
     }
 
@@ -450,6 +462,8 @@ impl DisplayableItem for Transaction<'_> {
             Self::RegisterL1Validator(tx) => tx.num_items(),
             #[cfg(feature = "banff")]
             Self::AutoRenewedValidator(tx) => tx.num_items(),
+            #[cfg(feature = "banff")]
+            Self::SetAutoRenewedValidatorConfig(tx) => tx.num_items(),
         }
     }
 
@@ -502,6 +516,8 @@ impl DisplayableItem for Transaction<'_> {
             Self::RegisterL1Validator(tx) => tx.render_item(item_n, title, message, page),
             #[cfg(feature = "banff")]
             Self::AutoRenewedValidator(tx) => tx.render_item(item_n, title, message, page),
+            #[cfg(feature = "banff")]
+            Self::SetAutoRenewedValidatorConfig(tx) => tx.render_item(item_n, title, message, page),
         }
     }
 }
