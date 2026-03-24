@@ -38,6 +38,7 @@ import {
   INCREASE_L1_VALIDATOR_BALANCE,
   BASE_TX_TEST,
   ADD_AUTO_RENEWED_VALIDATOR,
+  SET_AUTO_RENEWED_VALIDATOR_CONFIG,
 } from './p_chain_vectors'
 
 // @ts-ignore
@@ -128,6 +129,10 @@ const FULL_SIGN_TEST_DATA = [
   {
     name: 'add_auto_renewed_validator',
     op: ADD_AUTO_RENEWED_VALIDATOR,
+  },
+  {
+    name: 'set_auto_renewed_validator_config',
+    op: SET_AUTO_RENEWED_VALIDATOR_CONFIG,
   },
   {
     name: 'base_tx_locked',
