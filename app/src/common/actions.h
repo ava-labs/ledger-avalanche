@@ -55,7 +55,7 @@ __Z_INLINE void app_sign_hash(uint8_t curve_type) {
 
     // Do a partial parsing of the received path suffix
     uint8_t path_len = G_io_apdu_buffer[OFFSET_DATA];
-    uint8_t len_bytes = path_len * sizeof(uint32_t) + 1;
+    uint8_t len_bytes = (path_len * sizeof(uint32_t)) + 1;
 
     {
         char data[100];
