@@ -50,6 +50,10 @@ pub const PVM_SET_L1_VALIDATOR_WEIGHT: u32 = 0x00000025;
 pub const PVM_DISABLE_L1_VALIDATOR: u32 = 0x00000027;
 pub const PVM_INCREASE_L1_VALIDATOR_BALANCE: u32 = 0x00000026;
 
+// ACP-236: Auto-renewed staking (placeholder TypeID)
+pub const PVM_ADD_AUTO_RENEWED_VALIDATOR: u32 = 0x00000028;
+pub const PVM_SET_AUTO_RENEWED_VALIDATOR_CONFIG: u32 = 0x00000029;
+
 //  base tx for p-chain which collides with evm import tx.
 //  we should check chain-id
 pub const PVM_BASE_TX: u32 = 0x00000000;
