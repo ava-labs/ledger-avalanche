@@ -173,8 +173,6 @@ mod tests {
     use crate::parser::snapshots_common::ReducedPage;
     use zuit::Page;
 
-    const DATA: &[u8] = &[];
-
     include!("testvectors/set_auto_renewed_validator_config.rs");
 
     #[test]
