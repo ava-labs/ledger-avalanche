@@ -140,12 +140,13 @@ impl Message<'_> {
         self.data.iter().all(|c| c.is_ascii())
     }
 
-    fn calculate_chunk_count(msg: &[u8]) -> u8 {
-        let mut total_len = 0;
+    fn calculate_chunk_count(msg: &[u8]) -> Result<u8, ParserError> {
+        let mut total_len = 0usize;
         for &byte in msg {
             total_len += if byte.is_ascii() { 1 } else { HEX_REPR_LEN };
         }
-        (total_len.div_ceil(MSG_MAX_CHUNK_LEN)).min(255) as u8
+        let chunks = total_len.div_ceil(MSG_MAX_CHUNK_LEN);
+        u8::try_from(chunks).map_err(|_| ParserError::InvalidMessageSize)
     }
 }
 
@@ -170,7 +171,7 @@ impl<'b> FromBytes<'b> for Message<'b> {
 
         let out = out.as_mut_ptr();
         // omit the first 4-bytes which are use for the len
-        let chunk_count = Self::calculate_chunk_count(&msg[4..]);
+        let chunk_count = Self::calculate_chunk_count(&msg[4..])?;
 
         unsafe {
             addr_of_mut!((*out).data).write(msg);
@@ -474,5 +475,34 @@ mod tests_message_render {
         msg_test3(&mut chunk);
         msg_test4(&mut chunk);
         msg_test5(&mut chunk);
+    }
+
+    // A message whose ASCII display would need more than 255 chunks must be
+    // rejected, not silently truncated to the first 255 chunks.
+    #[test]
+    fn message_exceeds_chunk_budget_rejected() {
+        // 255 * MSG_MAX_CHUNK_LEN ASCII bytes fit exactly; one more byte tips
+        // the required chunk count to 256.
+        let too_big = create_message(&vec![b'A'; 255 * MSG_MAX_CHUNK_LEN + 1]);
+        let err = Message::from_bytes(too_big.as_slice()).unwrap_err();
+        assert_eq!(err, ParserError::InvalidMessageSize.into());
+    }
+
+    // A non-ASCII message tips the budget sooner because each byte expands to
+    // HEX_REPR_LEN display characters.
+    #[test]
+    fn non_ascii_message_exceeds_chunk_budget_rejected() {
+        let limit_bytes = 255 * MSG_MAX_CHUNK_LEN / HEX_REPR_LEN;
+        let too_big = create_message(&vec![0x80u8; limit_bytes + 1]);
+        let err = Message::from_bytes(too_big.as_slice()).unwrap_err();
+        assert_eq!(err, ParserError::InvalidMessageSize.into());
+    }
+
+    // Boundary: exactly 255 chunks worth of ASCII is still accepted.
+    #[test]
+    fn message_at_chunk_budget_accepted() {
+        let at_limit = create_message(&vec![b'A'; 255 * MSG_MAX_CHUNK_LEN]);
+        let msg = Message::from_bytes(at_limit.as_slice()).unwrap().1;
+        assert_eq!(msg.chunk_count, 255);
     }
 }
