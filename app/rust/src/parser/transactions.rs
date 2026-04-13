@@ -257,7 +257,16 @@ impl<'b> Transaction<'b> {
         if codec != 0 {
             return Err(ParserError::InvalidCodec);
         }
-        Self::parse(rem, this)?;
+        let rem = Self::parse(rem, this)?;
+
+        // The P/X/C-chain unsigned transaction wire format is
+        // `CodecID + UnsignedTx`. Credentials belong to the SignedTx wrapper
+        // and must not be present in the bytes that the device hashes — the
+        // review UI renders only the UnsignedTx portion, so any trailing
+        // bytes would be signed without being surfaced to the user.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData);
+        }
 
         Ok(())
     }
@@ -561,6 +570,17 @@ mod tests {
 
     // provided change_address
     const CHANGE_ADDRESS: &str = "07fe53d8ed2b004df3ac75175a4e727a6dd461d8";
+
+    // Same Transfer transaction bytes as `DATA`, with a single `0x00` byte
+    // appended. The whole buffer is hashed for signing, so any trailing byte
+    // would be covered by the signature without being surfaced in the UI.
+    #[test]
+    fn parse_transaction_with_trailing_bytes_rejected() {
+        let mut data = hex::decode(DATA).unwrap();
+        data.push(0x00);
+
+        assert!(Transaction::new(&data).is_err());
+    }
 
     #[test]
     fn parse_transaction() {
