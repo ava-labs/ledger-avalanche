@@ -32,6 +32,15 @@ use crate::ViewError;
 pub const ADDRESS_LEN: usize = Ripemd160::DIGEST_LEN;
 pub const MAX_ADDRESS_ENCODED_LEN: usize = bech32::estimate_size(ASCII_HRP_MAX_SIZE, ADDRESS_LEN);
 
+// Upper bound on address-list lengths (SECP/NFT outputs, P-chain owners,
+// SECP transfer input indices). The cap keeps aggregate UI item counts
+// well below `u8::MAX`, so downstream `addresses.len() as u8` casts are
+// safe (cap * 64 outputs = 4096 — still detected by `checked_add!` at the
+// transaction level). The cap also bounds the byte-length math used with
+// `take(count * ADDRESS_LEN)`, so a malicious `u32` count cannot wrap on
+// 32-bit targets.
+pub const MAX_ADDRESSES: u32 = 64;
+
 // ripemd160(sha256(compress(secp256k1.publicKey()))
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(any(test, feature = "derive-debug"), derive(Debug))]

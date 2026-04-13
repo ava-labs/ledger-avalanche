@@ -24,7 +24,7 @@ use zemu_sys::ViewError;
 use crate::{
     checked_add,
     handlers::handle_ui_message,
-    parser::{DisplayableItem, FromBytes, ParserError, U32_SIZE},
+    parser::{DisplayableItem, FromBytes, MAX_ADDRESSES, ParserError, U32_SIZE},
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -62,7 +62,13 @@ impl<'b> FromBytes<'b> for SECPTransferInput<'b> {
 
         let (rem, (amount, num_indices)) = tuple((be_u64, be_u32))(rem)?;
 
-        let (rem, indices) = take(num_indices as usize * U32_SIZE)(rem)?;
+        if num_indices > MAX_ADDRESSES {
+            return Err(ParserError::TooManyAddresses.into());
+        }
+        let indices_len = (num_indices as usize)
+            .checked_mul(U32_SIZE)
+            .ok_or(ParserError::ValueOutOfRange)?;
+        let (rem, indices) = take(indices_len)(rem)?;
         let indices =
             bytemuck::try_cast_slice(indices).map_err(|_| ParserError::InvalidAddressLength)?;
 
