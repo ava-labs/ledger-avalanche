@@ -86,12 +86,16 @@ pub mod prelude {
         chunks
     }
 
+    // Returns the total number of APDU bytes written (i.e. the value that
+    // should be passed as `rx` to `handle_apdu`). Callers must use this;
+    // hard-coding `rx = 5` only worked while `payload()` was incorrectly
+    // bounded against the full backing buffer.
     pub fn prepare_buffer<const LEN: usize>(
         buffer: &mut [u8; 260],
         path: &[u32],
         hrp: Option<&[u8]>,
         chainid: Option<&[u8]>,
-    ) -> usize {
+    ) -> u32 {
         let path = BIP32Path::<LEN>::new(path.iter().map(|n| 0x8000_0000 + n))
             .unwrap()
             .serialize();
@@ -124,6 +128,6 @@ pub mod prelude {
         buffer[tx..tx + path.len()].copy_from_slice(path.as_slice());
         tx += path.len();
 
-        5 + tx
+        tx as u32
     }
 }
