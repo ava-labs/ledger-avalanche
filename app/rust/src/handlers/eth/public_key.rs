@@ -33,6 +33,7 @@ use crate::{
 };
 
 use super::utils::parse_bip32_eth;
+use super::verify_coreth_root_path;
 
 pub struct GetPublicKey;
 
@@ -76,6 +77,7 @@ impl GetPublicKey {
         let cdata = buffer.payload().map_err(|_| ParserError::NoData)?;
 
         let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| ParserError::InvalidPath)?;
+        verify_coreth_root_path(&bip32_path).map_err(|_| ParserError::InvalidPath)?;
 
         // In this step we initialized and store in memory(allocated from C) our
         // UI object for later address visualization
@@ -117,6 +119,7 @@ impl ApduHandler for GetPublicKey {
         let cdata = buffer.payload().map_err(|_| Error::DataInvalid)?;
 
         let (_, bip32_path) = parse_bip32_eth(cdata).map_err(|_| Error::DataInvalid)?;
+        verify_coreth_root_path(&bip32_path)?;
 
         let mut ui = MaybeUninit::uninit();
         Self::initialize_ui(bip32_path, req_chaincode, &mut ui)?;
