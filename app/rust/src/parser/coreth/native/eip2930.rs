@@ -84,6 +84,13 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
             }
         }
 
+        // The transaction RLP list must be fully consumed after the access
+        // list; any trailing item would be included in the signing hash
+        // without being surfaced in the review UI.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
+
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);
             addr_of_mut!((*out).access_list).write(access_list);
@@ -151,5 +158,19 @@ mod tests {
 
         assert!(matches!(tx.base.data, EthData::ContractCall(..)));
         assert_eq!(&tx.base.to.unwrap().raw_address()[..], &address);
+    }
+
+    // Same RLP body as `parse_eip2930_contract_call`, but with an extra `0x01`
+    // item appended inside the transaction list (body length 0x01c6 → 0x01c7).
+    // The trailing byte would otherwise be covered by the signing hash without
+    // being displayed.
+    #[test]
+    fn parse_eip2930_with_trailing_bytes_rejected() {
+        let data = "01f901c70281e0018402625a0094cccccccccccccccccccccccccccccccccccccccc830186a0b901447f74657374320000000000000000000000000000000000000000000000000000006000577f74657374320000000000000000000000000000000000000000000000000000006000577f74657374320000000000000000000000000000000000000000000000000000006000577f74657374320000000000000000000000000000000000000000000000000000006000577f74657374320000000000000000000000000000000000000000000000000000006000577f74657374320000000000000000000000000000000000000000000000000000006000577f74657374320000000000000000000000000000000000000000000000000000006000577f74657374320000000000000000000000000000000000000000000000000000006000577f7465737432000000000000000000000000000000000000000000000000000000600057f85bf859940000000000000000000000000000000000000101f842a00000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000060a701";
+        let data = hex::decode(data).unwrap();
+
+        let (_, bytes) = parse_rlp_item(&data[1..]).unwrap();
+        let tx = Eip2930::from_bytes(bytes);
+        assert!(tx.is_err());
     }
 }

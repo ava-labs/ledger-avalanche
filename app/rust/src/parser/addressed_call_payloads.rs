@@ -145,13 +145,22 @@ impl<'b> AddressedCallPayload<'b> {
         match type_id {
             PVM_REGISTER_L1_VALIDATOR_TYPE => {
                 let mut msg = core::mem::MaybeUninit::uninit();
-                let _ = RegisterL1ValidatorMessage::from_bytes_into(rem, &mut msg)?;
+                let rem_after = RegisterL1ValidatorMessage::from_bytes_into(rem, &mut msg)?;
+                // Per the avalanchego codec, the inner message must consume
+                // exactly its declared payload region; any trailing bytes here
+                // would be covered by the signing hash without being shown.
+                if !rem_after.is_empty() {
+                    return Err(ParserError::UnexpectedData);
+                }
                 let msg = unsafe { msg.assume_init() };
                 Ok(AddressedCallPayload::RegisterL1Validator(msg))
             }
             PVM_SET_L1_VALIDATOR_WEIGHT_TYPE => {
                 let mut msg = core::mem::MaybeUninit::uninit();
-                let _ = SetL1ValidatorWeightMessage::from_bytes_into(rem, &mut msg)?;
+                let rem_after = SetL1ValidatorWeightMessage::from_bytes_into(rem, &mut msg)?;
+                if !rem_after.is_empty() {
+                    return Err(ParserError::UnexpectedData);
+                }
                 let mut msg = unsafe { msg.assume_init() };
                 // Override codec_id and type_id with the values read at the parent level
                 msg.codec_id = codec_id;

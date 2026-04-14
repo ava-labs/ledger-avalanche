@@ -35,6 +35,7 @@ use crate::{
 };
 
 use super::utils::parse_bip32_eth;
+use super::verify_coreth_root_path;
 use crate::utils::convert_der_to_rs;
 
 pub struct Sign;
@@ -150,6 +151,7 @@ impl Sign {
                 //parse path to verify it's the data we expect
                 let (rest, bip32_path) =
                     parse_bip32_eth(payload).map_err(|_| ParserError::InvalidPath)?;
+                verify_coreth_root_path(&bip32_path).map_err(|_| ParserError::InvalidPath)?;
 
                 unsafe {
                     PATH.lock(Self).replace(bip32_path);
@@ -226,6 +228,7 @@ impl ApduHandler for Sign {
                 //parse path to verify it's the data we expect
                 let (rest, bip32_path) =
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
+                verify_coreth_root_path(&bip32_path)?;
 
                 unsafe {
                     PATH.lock(Self).replace(bip32_path);

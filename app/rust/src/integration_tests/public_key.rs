@@ -58,11 +58,10 @@ fn addr_len(hrp: Option<&[u8]>, chain_id: Option<&[u8]>) -> usize {
 fn public_key() {
     let mut flags = 0u32;
     let mut tx = 0u32;
-    let rx = 5;
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&[]));
+    let rx = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&[]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -77,13 +76,12 @@ fn public_key() {
 fn public_key_with_hrp() {
     let mut flags = 0u32;
     let mut tx = 0u32;
-    let rx = 5;
     let mut buffer = [0u8; 260];
 
     let hrp = b"address";
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(hrp), Some(&[]));
+    let rx = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(hrp), Some(&[]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -99,13 +97,12 @@ fn public_key_with_hrp() {
 fn public_key_with_too_long_hrp() {
     let mut flags = 0u32;
     let mut tx = 0u32;
-    let rx = 5;
     let mut buffer = [0u8; 260];
 
     let hrp = b"averylonghrpmaybetoolongeven";
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(hrp), Some(&[]));
+    let rx = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(hrp), Some(&[]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -120,13 +117,12 @@ fn public_key_with_too_long_hrp() {
 fn public_key_with_long_hrp() {
     let mut flags = 0u32;
     let mut tx = 0u32;
-    let rx = 5;
     let mut buffer = [0u8; 260];
 
     let hrp = b"exactly24characterlong!";
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(hrp), Some(&[]));
+    let rx = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(hrp), Some(&[]));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -141,13 +137,12 @@ fn public_key_with_long_hrp() {
 fn public_key_with_chainid() {
     let mut flags = 0u32;
     let mut tx = 0u32;
-    let rx = 5;
     let mut buffer = [0u8; 260];
 
     let chain_id = [42u8; 32];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&chain_id));
+    let rx = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&chain_id));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);
@@ -166,13 +161,12 @@ fn public_key_with_chainid() {
 fn public_key_with_bad_chainid() {
     let mut flags = 0u32;
     let mut tx = 0u32;
-    let rx = 5;
     let mut buffer = [0u8; 260];
 
     let chain_id = [42u8; 10];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&chain_id));
+    let rx = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&chain_id));
 
     let out = handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
     assert_error_code!(tx, out, ApduError::Success);

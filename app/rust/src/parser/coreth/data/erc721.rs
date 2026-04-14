@@ -163,6 +163,14 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
         let base = unsafe { &mut *addr_of_mut!((*out).base).cast() };
         let rem = BaseTransfer::from_bytes_into(input, base)?;
 
+        // transferFrom(address,address,uint256) is strictly fixed-arity; any
+        // trailing calldata would be covered by the signing hash without
+        // being reflected in the review UI. The variable-length variant is
+        // `safeTransferFrom(...,bytes)` and goes through a different parser.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
+
         Ok(rem)
     }
 }
@@ -236,6 +244,13 @@ impl<'b> FromBytes<'b> for Approve<'b> {
         let (rem, raw_asset) = take(ETH_ARG_LEN)(rem)?;
         let _ = AssetId::from_bytes_into(raw_asset, asset);
 
+        // approve(address,uint256) is strictly fixed-arity; any trailing
+        // calldata would be covered by the signing hash without being
+        // reflected in the review UI.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
+
         Ok(rem)
     }
 }
@@ -269,6 +284,13 @@ impl<'b> FromBytes<'b> for ApprovalForAll<'b> {
         // Get approval
         let (rem, approval) = take(ETH_ARG_LEN)(rem)?;
         let approve = approval.iter().any(|v| *v == 1);
+
+        // setApprovalForAll(address,bool) is strictly fixed-arity; any
+        // trailing calldata would be covered by the signing hash without
+        // being reflected in the review UI.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
 
         unsafe {
             addr_of_mut!((*out).approve).write(approve);
@@ -539,5 +561,78 @@ impl DisplayableItem for ERC721<'_> {
                 }
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Build calldata args from hex, optionally appending extra bytes.
+    fn args(hex_str: &str, trailing: &[u8]) -> std::vec::Vec<u8> {
+        let mut v = hex::decode(hex_str).unwrap();
+        v.extend_from_slice(trailing);
+        v
+    }
+
+    // transferFrom(address,address,uint256): from, to, token_id.
+    const TRANSFER_FROM_ARGS: &str = concat!(
+        "000000000000000000000000", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "000000000000000000000000", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+    );
+
+    // approve(address,uint256): spender, token_id.
+    const APPROVE_ARGS: &str = concat!(
+        "000000000000000000000000", "dddddddddddddddddddddddddddddddddddddddd",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+    );
+
+    // setApprovalForAll(address,bool): operator, approved.
+    const APPROVAL_FOR_ALL_ARGS: &str = concat!(
+        "000000000000000000000000", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+    );
+
+    #[test]
+    fn erc721_transfer_from_exact_len_ok() {
+        let data = args(TRANSFER_FROM_ARGS, &[]);
+        let mut out = MaybeUninit::<TransferFrom>::uninit();
+        assert!(TransferFrom::from_bytes_into(&data, &mut out).is_ok());
+    }
+
+    #[test]
+    fn erc721_transfer_from_trailing_byte_rejected() {
+        let data = args(TRANSFER_FROM_ARGS, &[0x01]);
+        let mut out = MaybeUninit::<TransferFrom>::uninit();
+        assert!(TransferFrom::from_bytes_into(&data, &mut out).is_err());
+    }
+
+    #[test]
+    fn erc721_approve_exact_len_ok() {
+        let data = args(APPROVE_ARGS, &[]);
+        let mut out = MaybeUninit::<Approve>::uninit();
+        assert!(Approve::from_bytes_into(&data, &mut out).is_ok());
+    }
+
+    #[test]
+    fn erc721_approve_trailing_byte_rejected() {
+        let data = args(APPROVE_ARGS, &[0x01]);
+        let mut out = MaybeUninit::<Approve>::uninit();
+        assert!(Approve::from_bytes_into(&data, &mut out).is_err());
+    }
+
+    #[test]
+    fn erc721_approval_for_all_exact_len_ok() {
+        let data = args(APPROVAL_FOR_ALL_ARGS, &[]);
+        let mut out = MaybeUninit::<ApprovalForAll>::uninit();
+        assert!(ApprovalForAll::from_bytes_into(&data, &mut out).is_ok());
+    }
+
+    #[test]
+    fn erc721_approval_for_all_trailing_byte_rejected() {
+        let data = args(APPROVAL_FOR_ALL_ARGS, &[0x01]);
+        let mut out = MaybeUninit::<ApprovalForAll>::uninit();
+        assert!(ApprovalForAll::from_bytes_into(&data, &mut out).is_err());
     }
 }

@@ -24,7 +24,7 @@ use zemu_sys::ViewError;
 use crate::{
     checked_add,
     handlers::handle_ui_message,
-    parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN, U64_FORMATTED_SIZE},
+    parser::{nano_avax_to_fp_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN, MAX_ADDRESSES, U64_FORMATTED_SIZE},
 };
 
 const AVAX_TO_LEN: usize = 9; //b" AVAX to "
@@ -67,7 +67,13 @@ impl<'b> FromBytes<'b> for SECPTransferOutput<'b> {
         let (rem, (amount, locktime, threshold, addr_len)) =
             tuple((be_u64, be_u64, be_u32, be_u32))(rem)?;
 
-        let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
+        if addr_len > MAX_ADDRESSES {
+            return Err(ParserError::TooManyAddresses.into());
+        }
+        let addresses_len = (addr_len as usize)
+            .checked_mul(ADDRESS_LEN)
+            .ok_or(ParserError::ValueOutOfRange)?;
+        let (rem, addresses) = take(addresses_len)(rem)?;
 
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;
@@ -190,5 +196,21 @@ mod tests {
 
         let output = SECPTransferOutput::from_bytes(&raw_output).unwrap_err();
         assert_eq!(output, ParserError::InvalidThreshold.into());
+    }
+
+    #[test]
+    fn parse_secp256k1_output_rejects_too_many_addresses() {
+        // type_id(4) | amount(8) | locktime(8) | threshold(4) | addr_len(4) = 28 bytes
+        let over_cap = (MAX_ADDRESSES + 1).to_be_bytes();
+        let raw: [u8; 28] = [
+            0, 0, 0, 7, // type_id
+            0, 0, 0, 0, 0, 0, 0, 0, // amount
+            0, 0, 0, 0, 0, 0, 0, 0, // locktime
+            0, 0, 0, 0, // threshold
+            over_cap[0], over_cap[1], over_cap[2], over_cap[3], // addr_len > cap
+        ];
+        // Address bytes deliberately omitted — parser must reject before `take`.
+        let err = SECPTransferOutput::from_bytes(&raw).unwrap_err();
+        assert_eq!(err, ParserError::TooManyAddresses.into());
     }
 }

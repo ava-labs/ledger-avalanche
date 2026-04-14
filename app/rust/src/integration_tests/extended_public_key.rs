@@ -22,11 +22,10 @@ use constants::INS_GET_EXTENDED_PUBLIC_KEY as INS;
 fn extended_public_key() {
     let mut flags = 0u32;
     let mut tx = 0u32;
-    let rx = 5;
     let mut buffer = [0u8; 260];
 
     buffer[..3].copy_from_slice(&[CLA, INS, 0]);
-    prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&[]));
+    let rx = prepare_buffer::<4>(&mut buffer, &[44, 9000, 0, 0], Some(&[]), Some(&[]));
 
     handle_apdu(&mut flags, &mut tx, rx, &mut buffer);
 

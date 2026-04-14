@@ -95,6 +95,13 @@ impl<'b> FromBytes<'b> for Transfer<'b> {
         let (rem, value) = take(ETH_ARG_LEN)(rem)?;
         let value = BorrowedU256::new(value).ok_or(ParserError::InvalidEthMessage)?;
 
+        // transfer(address,uint256) is strictly fixed-arity; any trailing
+        // calldata would be covered by the signing hash without being
+        // reflected in the review UI.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
+
         unsafe {
             addr_of_mut!((*out).value).write(value);
         }
@@ -138,6 +145,13 @@ impl<'b> FromBytes<'b> for TransferFrom<'b> {
         let (rem, value) = take(ETH_ARG_LEN)(rem)?;
         let value = BorrowedU256::new(value).ok_or(ParserError::InvalidEthMessage)?;
 
+        // transferFrom(address,address,uint256) is strictly fixed-arity; any
+        // trailing calldata would be covered by the signing hash without
+        // being reflected in the review UI.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
+
         unsafe {
             addr_of_mut!((*out).value).write(value);
         }
@@ -168,6 +182,13 @@ impl<'b> FromBytes<'b> for Approve<'b> {
         // value
         let (rem, value) = take(ETH_ARG_LEN)(rem)?;
         let value = BorrowedU256::new(value).ok_or(ParserError::InvalidEthMessage)?;
+
+        // approve(address,uint256) is strictly fixed-arity; any trailing
+        // calldata would be covered by the signing hash without being
+        // reflected in the review UI.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
 
         unsafe {
             addr_of_mut!((*out).value).write(value);
@@ -645,4 +666,77 @@ fn add_symbol<'a>(
     buffer[formatted.len() + 1..total_len].copy_from_slice(symbol);
 
     Ok(&buffer[..total_len])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Build calldata args from hex, optionally appending extra bytes.
+    fn args(hex_str: &str, trailing: &[u8]) -> std::vec::Vec<u8> {
+        let mut v = hex::decode(hex_str).unwrap();
+        v.extend_from_slice(trailing);
+        v
+    }
+
+    // Selector arguments for transfer(address,uint256): padded to/value.
+    const TRANSFER_ARGS: &str = concat!(
+        "000000000000000000000000", "cccccccccccccccccccccccccccccccccccccccc",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+    );
+
+    // Selector arguments for transferFrom(address,address,uint256): from, to, value.
+    const TRANSFER_FROM_ARGS: &str = concat!(
+        "000000000000000000000000", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "000000000000000000000000", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+    );
+
+    // Selector arguments for approve(address,uint256): spender/value.
+    const APPROVE_ARGS: &str = concat!(
+        "000000000000000000000000", "dddddddddddddddddddddddddddddddddddddddd",
+        "0000000000000000000000000000000000000000000000000000000000000001",
+    );
+
+    #[test]
+    fn erc20_transfer_exact_len_ok() {
+        let data = args(TRANSFER_ARGS, &[]);
+        let mut out = MaybeUninit::<Transfer>::uninit();
+        assert!(Transfer::from_bytes_into(&data, &mut out).is_ok());
+    }
+
+    #[test]
+    fn erc20_transfer_trailing_byte_rejected() {
+        let data = args(TRANSFER_ARGS, &[0x01]);
+        let mut out = MaybeUninit::<Transfer>::uninit();
+        assert!(Transfer::from_bytes_into(&data, &mut out).is_err());
+    }
+
+    #[test]
+    fn erc20_transfer_from_exact_len_ok() {
+        let data = args(TRANSFER_FROM_ARGS, &[]);
+        let mut out = MaybeUninit::<TransferFrom>::uninit();
+        assert!(TransferFrom::from_bytes_into(&data, &mut out).is_ok());
+    }
+
+    #[test]
+    fn erc20_transfer_from_trailing_byte_rejected() {
+        let data = args(TRANSFER_FROM_ARGS, &[0x01]);
+        let mut out = MaybeUninit::<TransferFrom>::uninit();
+        assert!(TransferFrom::from_bytes_into(&data, &mut out).is_err());
+    }
+
+    #[test]
+    fn erc20_approve_exact_len_ok() {
+        let data = args(APPROVE_ARGS, &[]);
+        let mut out = MaybeUninit::<Approve>::uninit();
+        assert!(Approve::from_bytes_into(&data, &mut out).is_ok());
+    }
+
+    #[test]
+    fn erc20_approve_trailing_byte_rejected() {
+        let data = args(APPROVE_ARGS, &[0x01]);
+        let mut out = MaybeUninit::<Approve>::uninit();
+        assert!(Approve::from_bytes_into(&data, &mut out).is_err());
+    }
 }

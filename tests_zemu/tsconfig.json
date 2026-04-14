@@ -8,7 +8,14 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "allowJs": true
+    "allowJs": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ledgerhq/hw-transport": ["node_modules/@ledgerhq/hw-transport"],
+      "@ledgerhq/hw-transport/*": ["node_modules/@ledgerhq/hw-transport/*"],
+      "@ledgerhq/logs": ["node_modules/@ledgerhq/logs"],
+      "@ledgerhq/logs/*": ["node_modules/@ledgerhq/logs/*"]
+    }
   },
   "exclude": ["node_modules", "./dist/**"]
 }

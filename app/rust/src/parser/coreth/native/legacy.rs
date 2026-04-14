@@ -112,6 +112,13 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
             return Err(ParserError::InvalidChainId.into());
         }
 
+        // The transaction RLP list must be fully consumed after chainID/R/S;
+        // any trailing item would be included in the signing hash without
+        // being surfaced in the review UI.
+        if !rem.is_empty() {
+            return Err(ParserError::UnexpectedData.into());
+        }
+
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);
         }
@@ -218,6 +225,33 @@ mod tests {
         let bytes = hex::decode(deploy).unwrap();
 
         let tx = Legacy::from_bytes(&bytes);
+        assert!(tx.is_err());
+    }
+
+    // Same structure as `parse_legacy_asset_transfer`, but with the outer native
+    // `value` RLP field set to 1 instead of 0. An asset call must not carry a
+    // native AVAX value, so the parser is expected to reject it.
+    #[test]
+    fn parse_legacy_asset_transfer_with_native_value_rejected() {
+        let deploy = "f87c01856d6e2edc00830186a094010000000000000000000000000000000000000201b85441c9cc6fd27e26e70f951869fb09da685a696f0a79d338394f709c6d776d1318765981e69c09f0aa49864d8cc35699545b5e73a00000000000000000000000000000000000000000000000000123456789abcdef82a8688080";
+        let bytes = hex::decode(deploy).unwrap();
+
+        let (_, bytes) = parse_rlp_item(&bytes).unwrap();
+        let tx = Legacy::from_bytes(bytes);
+        assert!(tx.is_err());
+    }
+
+    // Same RLP body as `parse_legacy_tx`, but with an extra `0x01` item appended
+    // inside the transaction list (body length 0x2d → 0x2e, list prefix ed → ee).
+    // The hidden trailing item would still be covered by the signing hash, so
+    // the parser must reject the transaction.
+    #[test]
+    fn parse_legacy_tx_with_trailing_bytes_rejected() {
+        let data = "ee018504e3b292008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a808001";
+        let data = hex::decode(data).unwrap();
+
+        let (_, bytes) = parse_rlp_item(&data).unwrap();
+        let tx = Legacy::from_bytes(bytes);
         assert!(tx.is_err());
     }
 }

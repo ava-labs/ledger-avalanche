@@ -60,7 +60,7 @@ impl<'b> BorrowedU256<'b> {
 
     /// Returns `true` if the number is zero
     pub fn is_zero(&self) -> bool {
-        self.0.iter().all(|v| *v != 0)
+        self.0.iter().all(|v| *v == 0)
     }
 }
 
@@ -1702,5 +1702,36 @@ mod tests {
         fn formatting(a: u64, b: u64, c: u64, d: u64) {
             formatting_impl(u256([a, b, c, d]))
         }
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_empty() {
+        assert!(BorrowedU256::new(&[]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_all_zero_bytes() {
+        assert!(BorrowedU256::new(&[0u8; 32]).unwrap().is_zero());
+        assert!(BorrowedU256::new(&[0u8; 1]).unwrap().is_zero());
+        assert!(BorrowedU256::new(&[0u8; 16]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_single_nonzero_byte() {
+        assert!(!BorrowedU256::new(&[0x01]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0xff]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_all_bytes_nonzero() {
+        assert!(!BorrowedU256::new(&[0xff; 32]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0x0a, 0xff]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_mixed_bytes() {
+        assert!(!BorrowedU256::new(&[0x00, 0x01]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0x01, 0x00]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0x00, 0x00, 0x01, 0x00]).unwrap().is_zero());
     }
 }
