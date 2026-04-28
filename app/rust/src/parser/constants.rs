@@ -23,6 +23,13 @@ pub const NETWORK_ID_DEVNET: u32 = 76;
 pub const ETH_MAINNET_ID: u64 = 1;
 pub const NONE_CHAIN_ID: u64 = 0;
 
+// AVAX C-Chain EVM chain IDs. Anything else (Orange L1, Beam, Dexalot, ...) is
+// "foreign": the device cannot resolve native ticker symbols for it, so the
+// signing UI must render the value with a `???` ticker and the signing flow
+// must require blind-sign mode.
+pub const AVAX_C_CHAIN_MAINNET_ID: u64 = 43114;
+pub const AVAX_C_CHAIN_FUJI_ID: u64 = 43113;
+
 // hrp
 pub const HRP_MAINNET: &str = "avax";
 pub const HRP_TESTNET: &str = "fuji";
