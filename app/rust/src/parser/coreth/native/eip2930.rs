@@ -94,6 +94,9 @@ impl<'b> FromBytes<'b> for Eip2930<'b> {
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);
             addr_of_mut!((*out).access_list).write(access_list);
+            // Backfill the embedded BaseLegacy with the chain_id so its
+            // renderer can pick the right ticker prefix (AVAX vs ???).
+            addr_of_mut!((*out).base.chain_id).write(id_bytes);
         }
 
         Ok(rem)

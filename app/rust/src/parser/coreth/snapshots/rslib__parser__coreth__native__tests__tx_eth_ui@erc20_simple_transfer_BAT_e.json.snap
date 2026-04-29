@@ -1,6 +1,5 @@
 ---
 source: src/parser/coreth/native.rs
-assertion_line: 368
 expression: reduced
 input_file: src/parser/coreth/eth_testvectors/erc20_simple_transfer_BAT_e.json
 ---
