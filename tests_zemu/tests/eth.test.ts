@@ -15,7 +15,7 @@
  ******************************************************************************* */
 
 import Zemu, { ClickNavigation, isTouchDevice } from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions as commonOpts, models } from './common'
+import { ETH_DERIVATION, defaultOptions as commonOpts, defaultOptionsBlindSign, models } from './common'
 import Eth from '@ledgerhq/hw-app-eth'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 import { ec } from 'elliptic'
@@ -23,6 +23,13 @@ import { ec } from 'elliptic'
 const defaultOptions = (model: any) => {
   let opts = commonOpts(model, false)
   return opts
+}
+
+const blindSignOptions = (model: any) => {
+  return {
+    ...defaultOptionsBlindSign,
+    model: model.name,
+  }
 }
 
 type NftInfo = {
@@ -35,6 +42,10 @@ type TestData = {
   name: string
   op: Buffer
   nft_info: NftInfo | undefined
+  // Set when the transaction targets a non-AVAX EVM chain (chain_id not in
+  // {43114, 43113, 43112}). On the device the value field will render as
+  // "???" and signing requires blind-sign mode to be enabled.
+  foreign_chain?: boolean
 }
 
 // copied from python tests
@@ -45,12 +56,14 @@ const EIP712_TRANSACTION = {
 
 const SIGN_TEST_DATA: TestData[] = [
   {
+    // EIP-1559 transfer on chain_id 5 (foreign)
     name: 'transfer',
     op: Buffer.from(
       '02f5058402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0',
       'hex',
     ),
     nft_info: undefined,
+    foreign_chain: true,
   },
   {
     name: 'asset_transfer',
@@ -74,6 +87,7 @@ const SIGN_TEST_DATA: TestData[] = [
     nft_info: undefined,
   },
   {
+    // EIP-1559 ERC-721 safeTransferFrom on chain_id 2 (foreign)
     name: 'erc721_safe_transfer_from',
     op: Buffer.from(
       '02f88d02198459682f00850b68b3c16882caf09434bc797f40df0445c8429d485232874b1556172880b86442842e0e00000000000000000000000077944eed8d4a00c8bd413f77744751a4d04ea34a0000000000000000000000005d4994bccdd28afbbc6388fbcaaec69dd44c04560000000000000000000000000000000000000000000000000000000000000201c0',
@@ -84,8 +98,10 @@ const SIGN_TEST_DATA: TestData[] = [
       token_name: 'Lucid',
       chain_id: 2,
     },
+    foreign_chain: true,
   },
   {
+    // EIP-1559 ERC-721 setApprovalForAll on chain_id 3 (foreign)
     name: 'erc721_approve_for_all',
     op: Buffer.from(
       '02f86f0382034a8459682f00850322d538d182b67094bd3f82a81c3f74542736765ce4fd579d177b6bc580b844a22cb4650000000000000000000000001e0049783f008a0085193e00003d00cd54003c710000000000000000000000000000000000000000000000000000000000000001c0',
@@ -96,6 +112,7 @@ const SIGN_TEST_DATA: TestData[] = [
       token_name: 'PG JIRAVERSE',
       chain_id: 2,
     },
+    foreign_chain: true,
   },
   {
     name: 'erc20_transfer_usdt',
@@ -112,6 +129,21 @@ const SIGN_TEST_DATA: TestData[] = [
       'hex',
     ),
     nft_info: undefined,
+  },
+  {
+    // Real-world reproduction of the JUICE-swap-displays-as-AVAX bug:
+    // EIP-2930 transfer of 2000 JUICE on Orange L1 (chain_id 1510), the
+    // exact tx that prompted this fix. Before the fix the device would
+    // render "Transfer: AVAX 2000" — under the foreign-chain rule it now
+    // renders "Transfer: ??? 2000" and gates signing on blind-sign mode.
+    // Source: https://explorer.avax.network/orange/tx/0x70c7d73020235b715d30f1f6a479915c4a65a2c14e90f67d572849e03c680540
+    name: 'orange_juice_swap_eip2930',
+    op: Buffer.from(
+      '01f906d58205e68085091494c600830687b894fff1e335bccc178de27ad211c1ee4f7ab7ee6938896c6b935b8bbd400000b906a4f3a027a6000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006c6b935b8bbd4000000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000e6370eccca56ca0ff8e9b3a3b31d0a81f3e9bff0000000000000000000000009da1e81b4e0aafdf98e35e15ff8542331702c8cd00000000000000000000000000000000000000000000000000000000000000010000000000000000000000009da1e81b4e0aafdf98e35e15ff8542331702c8cd0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007a12000000000000000000000000000000000000000000000000000000000000001600000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000001c0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000002dc6c000000000000000000000000000000000000000000000000000000000002625a0000000000000000000000000000000000000000000000000000000000000016000000000000000000000000007fe5886dc5397f3d2b0406b1b1de071b5463870000000000000000000000000000000000000000000000000000000000000000100000000000000000000000007fe5886dc5397f3d2b0406b1b1de071b5463870000000000000000000000000b7b1416b9c91efd69c9245958be08b5cad4549540427d4b22a2a78bcddd456742caf91b56badbff985ee19aef14573e7343fd6520000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000027fa6000000000000000000000000000000000000000000000000000000000002059400000000000000000000000000000000000000000000000000000000000000160000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b7b1416b9c91efd69c9245958be08b5cad4549540427d4b22a2a78bcddd456742caf91b56badbff985ee19aef14573e7343fd65200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006c341080bd1fb000000000000000000000000000000000000000000000000000000133db155d1d583b000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000002000000000000000000000000d5d053d5b769383e860d1520da7a908e00919f36000000000000000000000000b31f66aa3c1e785363f0875a1b74e27b85fd66c70000000000000000000000000000000000000000000000000000000000000001000000000000000000000000db66686ac8bea67400cf9e5dd6c8849575b90148c0',
+      'hex',
+    ),
+    nft_info: undefined,
+    foreign_chain: true,
   },
 
 ]
@@ -159,8 +191,15 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
   test.concurrent.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start(defaultOptions(m))
+      // Foreign-chain txs require blind-sign mode: the device cannot resolve
+      // the native ticker symbol so it renders "???" and gates signing on the
+      // blind-sign toggle being on. Mirror the large_tx_sign blind-sign setup.
+      await sim.start(data.foreign_chain ? blindSignOptions(m) : defaultOptions(m))
       const app = new AvalancheApp(sim.getTransport())
+
+      if (data.foreign_chain) {
+        await sim.toggleBlindSigning()
+      }
 
       const msg = data.op
       console.log('name: ', data.name, 'msg:', msg.toString('hex'))
@@ -179,7 +218,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'))
       await sim.waitUntilScreenIsNot(currentScreen, 100000)
-      await sim.compareSnapshotsAndApprove('.', testcase)
+      await sim.compareSnapshotsAndApprove('.', testcase, true, 0, 1500, !!data.foreign_chain)
 
       const resp = await respReq
 
@@ -222,6 +261,28 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
       const data = 'e980856d6e2edc00832dc6c094df073477da421520cf03af261b782282c304ad6684a1bcd40080018080'
 
       await app.signEVMTransaction(ETH_DERIVATION, data)
+    } catch (error) {
+      expect(error).toBeDefined()
+    } finally {
+      await sim.close()
+    }
+  })
+
+  // Foreign-chain transactions must be rejected when blind-sign mode is off,
+  // mirroring how the upstream Ledger Ethereum app refuses to sign on chains
+  // it cannot resolve a ticker for. Same EIP-1559 transfer payload as the
+  // `transfer` SIGN_TEST_DATA entry (chain_id 5).
+  test.concurrent('ForeignChainMustFail', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+
+      const data =
+        '02f5058402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0'
+
+      await app.signEVMTransaction(ETH_DERIVATION, data)
+      throw new Error('signEVMTransaction unexpectedly resolved on a foreign chain without blind-sign')
     } catch (error) {
       expect(error).toBeDefined()
     } finally {
