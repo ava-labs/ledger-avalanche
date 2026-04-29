@@ -22,7 +22,8 @@ use crate::{
     handlers::{eth::u256, handle_ui_message},
     parser::{
         intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ParserError, AVAX_C_CHAIN_FUJI_ID,
-        AVAX_C_CHAIN_MAINNET_ID, EIP1559_TX, EIP2930_TX, U64_FORMATTED_SIZE, U64_SIZE,
+        AVAX_C_CHAIN_LOCAL_ID, AVAX_C_CHAIN_MAINNET_ID, EIP1559_TX, EIP2930_TX, U64_FORMATTED_SIZE,
+        U64_SIZE,
     },
 };
 
@@ -60,10 +61,12 @@ pub fn render_u256(
 }
 
 /// Returns `true` when `chain_id` is one of the AVAX C-Chain EVM IDs
-/// (43114 mainnet, 43113 Fuji). Anything else is treated as a foreign chain
-/// for ticker-symbol and blind-sign decisions.
+/// (43114 mainnet, 43113 Fuji, 43112 local devnet). Anything else is
+/// treated as a foreign chain for ticker-symbol and blind-sign decisions.
 pub fn is_avax_chain(chain_id: u64) -> bool {
-    chain_id == AVAX_C_CHAIN_MAINNET_ID || chain_id == AVAX_C_CHAIN_FUJI_ID
+    chain_id == AVAX_C_CHAIN_MAINNET_ID
+        || chain_id == AVAX_C_CHAIN_FUJI_ID
+        || chain_id == AVAX_C_CHAIN_LOCAL_ID
 }
 
 /// Big-endian RLP byte slice variant of `is_avax_chain`. Returns `false` on
@@ -351,10 +354,11 @@ mod tests {
     fn is_avax_chain_classifies_known_ids() {
         assert!(is_avax_chain(AVAX_C_CHAIN_MAINNET_ID));
         assert!(is_avax_chain(AVAX_C_CHAIN_FUJI_ID));
+        assert!(is_avax_chain(AVAX_C_CHAIN_LOCAL_ID));
         assert!(!is_avax_chain(0)); // NONE
         assert!(!is_avax_chain(1)); // ETH mainnet
-        assert!(!is_avax_chain(2)); // legacy synthetic test value
-        assert!(!is_avax_chain(43112)); // local AVAX test net (not Fuji)
+        assert!(!is_avax_chain(2)); // synthetic test value
+        assert!(!is_avax_chain(5)); // Goerli (foreign)
         assert!(!is_avax_chain(324846)); // Orange L1
     }
 
@@ -364,6 +368,8 @@ mod tests {
         assert!(is_avax_chain_bytes(&[0xa8, 0x6a]));
         // 43113 = 0xA869
         assert!(is_avax_chain_bytes(&[0xa8, 0x69]));
+        // 43112 = 0xA868 (local devnet)
+        assert!(is_avax_chain_bytes(&[0xa8, 0x68]));
         // padded to 8 bytes still works
         assert!(is_avax_chain_bytes(&[0, 0, 0, 0, 0, 0, 0xa8, 0x6a]));
         // 1 = ETH mainnet → foreign

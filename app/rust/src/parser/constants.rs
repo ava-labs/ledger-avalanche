@@ -27,8 +27,13 @@ pub const NONE_CHAIN_ID: u64 = 0;
 // "foreign": the device cannot resolve native ticker symbols for it, so the
 // signing UI must render the value with a `???` ticker and the signing flow
 // must require blind-sign mode.
+//
+// 43112 is the AvalancheGo local devnet's C-Chain ID; it is included so local
+// development tooling (and the existing asset-call test fixtures that target
+// it) keep working without forcing blind-sign.
 pub const AVAX_C_CHAIN_MAINNET_ID: u64 = 43114;
 pub const AVAX_C_CHAIN_FUJI_ID: u64 = 43113;
+pub const AVAX_C_CHAIN_LOCAL_ID: u64 = 43112;
 
 // hrp
 pub const HRP_MAINNET: &str = "avax";

@@ -33,7 +33,7 @@ use crate::{
         RECEIVED_BYTES, SECOND_LAST_PACKET, STREAMING_CHAIN_ID, STREAMING_HASH, STREAMING_HASHER,
         STREAMING_MODE, STREAMING_MODE_USED, STREAMING_TX_TYPE,
     },
-    parser::{bytes_to_u64, DisplayableItem, EthTransaction, FromBytes, U32_SIZE},
+    parser::{bytes_to_u64, is_avax_chain_bytes, DisplayableItem, EthTransaction, FromBytes, U32_SIZE},
     sys,
     utils::{convert_der_to_rs, is_app_mode_blind_sign, ApduBufferRead},
 };
@@ -207,6 +207,14 @@ impl Sign {
         let unsigned_hash = Self::digest(txdata).map_err(|_| Error::DataInvalid)?;
         let tx = unsafe { tx.assume_init() };
 
+        // Foreign EVM chain (not AVAX C-Chain): the device cannot resolve the
+        // native ticker symbol — the value field would render as "???" — so
+        // require blind-sign mode for these, mirroring the streaming-hash
+        // gate at the oversize branch and the upstream Ledger Ethereum app.
+        if !is_avax_chain_bytes(tx.chain_id()) && !is_app_mode_blind_sign() {
+            return Err(Error::ApduCodeConditionsNotSatisfied);
+        }
+
         let ui = SignUI {
             hash: unsigned_hash,
             is_typed: tx.is_typed_tx(),
@@ -240,6 +248,14 @@ impl Sign {
         // let to_hash = &txdata[..to_hash];
         let unsigned_hash = Self::digest(txdata).map_err(|_| ParserError::UnexpectedError)?;
         let tx = unsafe { tx.assume_init() };
+
+        // Foreign EVM chain (not AVAX C-Chain): the device cannot resolve the
+        // native ticker symbol — the value field would render as "???" — so
+        // require blind-sign mode for these, mirroring the streaming-hash
+        // gate at the oversize branch and the upstream Ledger Ethereum app.
+        if !is_avax_chain_bytes(tx.chain_id()) && !is_app_mode_blind_sign() {
+            return Err(ParserError::BlindSignNotEnabled);
+        }
 
         let ui = EthUi::Tx(SignUI {
             hash: unsigned_hash,
