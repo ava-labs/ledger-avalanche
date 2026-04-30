@@ -18,7 +18,7 @@ use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
-use super::{parse_rlp_item, render_u256};
+use super::{is_avax_chain_bytes, parse_rlp_item, render_u256};
 use crate::{
     checked_add,
     handlers::{
@@ -43,8 +43,23 @@ pub struct BaseLegacy<'b> {
     pub to: Option<Address<'b>>,
     pub value: BorrowedU256<'b>,
     pub data: EthData<'b>,
+    // Backfilled by the wrapping Legacy / Eip2930 parser after the outer
+    // chain_id RLP item is read. Defaults to an empty slice as a defense-in-depth
+    // safety net for hypothetical future wrappers — both existing wrappers
+    // already reject empty chain IDs before reaching this backfill, so the
+    // empty default is unreachable on real code paths. If it ever did surface,
+    // `is_avax_chain_bytes` treats it as foreign, which is the safe default.
+    pub chain_id: &'b [u8],
 }
 impl BaseLegacy<'_> {
+    fn currency_prefix(&self) -> &'static [u8] {
+        if is_avax_chain_bytes(self.chain_id) {
+            pic_str!(b"AVAX "!)
+        } else {
+            pic_str!(b"??? "!)
+        }
+    }
+
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
         let f = u256::pic_from_big_endian();
@@ -69,7 +84,7 @@ impl BaseLegacy<'_> {
                 let label = pic_str!(b"Transfer");
                 title[..label.len()].copy_from_slice(label);
 
-                let curr = pic_str!(b"AVAX "!);
+                let curr = self.currency_prefix();
                 let (prefix, message) = message.split_at_mut(curr.len());
                 prefix.copy_from_slice(curr);
 
@@ -176,7 +191,7 @@ impl BaseLegacy<'_> {
                 let label = pic_str!(b"Transfer");
                 title[..label.len()].copy_from_slice(label);
 
-                let curr = pic_str!(b"AVAX "!);
+                let curr = self.currency_prefix();
                 let (prefix, message) = message.split_at_mut(curr.len());
                 prefix.copy_from_slice(curr);
 
@@ -351,6 +366,9 @@ impl<'b> FromBytes<'b> for BaseLegacy<'b> {
             addr_of_mut!((*out).gas_limit).write(gas_limit);
             addr_of_mut!((*out).to).write(address);
             addr_of_mut!((*out).value).write(value);
+            // Wrappers (Legacy / Eip2930) backfill this with the parsed
+            // chain_id RLP slice once they finish reading the outer envelope.
+            addr_of_mut!((*out).chain_id).write(&[]);
         }
 
         Ok(rem)

@@ -18,7 +18,7 @@ use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use zemu_sys::ViewError;
 
-use super::{parse_rlp_item, render_u256};
+use super::{is_avax_chain_bytes, parse_rlp_item, render_u256};
 use crate::{
     checked_add,
     handlers::{
@@ -156,6 +156,14 @@ impl Eip1559<'_> {
         self.chain_id
     }
 
+    fn currency_prefix(&self) -> &'static [u8] {
+        if is_avax_chain_bytes(self.chain_id) {
+            pic_str!(b"AVAX "!)
+        } else {
+            pic_str!(b"??? "!)
+        }
+    }
+
     #[inline(never)]
     fn fee(&self) -> Result<u256, ParserError> {
         let f = u256::pic_from_big_endian();
@@ -184,7 +192,7 @@ impl Eip1559<'_> {
                 let label = pic_str!(b"Transfer");
                 title[..label.len()].copy_from_slice(label);
 
-                let curr = pic_str!(b"AVAX "!);
+                let curr = self.currency_prefix();
                 let (prefix, message) = message.split_at_mut(curr.len());
                 prefix.copy_from_slice(curr);
 
@@ -297,7 +305,7 @@ impl Eip1559<'_> {
                 let label = pic_str!(b"Transfer");
                 title[..label.len()].copy_from_slice(label);
 
-                let curr = pic_str!(b"AVAX "!);
+                let curr = self.currency_prefix();
                 let (prefix, message) = message.split_at_mut(curr.len());
                 prefix.copy_from_slice(curr);
 

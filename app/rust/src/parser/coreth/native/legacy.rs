@@ -121,6 +121,9 @@ impl<'b> FromBytes<'b> for Legacy<'b> {
 
         unsafe {
             addr_of_mut!((*out).chain_id).write(id_bytes);
+            // Backfill the embedded BaseLegacy with the chain_id so its
+            // renderer can pick the right ticker prefix (AVAX vs ???).
+            addr_of_mut!((*out).base.chain_id).write(id_bytes);
         }
 
         Ok(rem)

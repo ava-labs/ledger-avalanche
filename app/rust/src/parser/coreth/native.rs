@@ -21,8 +21,9 @@ use zemu_sys::ViewError;
 use crate::{
     handlers::{eth::u256, handle_ui_message},
     parser::{
-        intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ParserError, EIP1559_TX, EIP2930_TX,
-        U64_SIZE, U64_FORMATTED_SIZE,
+        intstr_to_fpstr_inplace, DisplayableItem, FromBytes, ParserError, AVAX_C_CHAIN_FUJI_ID,
+        AVAX_C_CHAIN_LOCAL_ID, AVAX_C_CHAIN_MAINNET_ID, EIP1559_TX, EIP2930_TX, U64_FORMATTED_SIZE,
+        U64_SIZE,
     },
 };
 
@@ -57,6 +58,23 @@ pub fn render_u256(
         intstr_to_fpstr_inplace(&mut u256_str, decimal_point).map_err(|_| ViewError::Unknown)?;
 
     handle_ui_message(out, message, page)
+}
+
+/// Returns `true` when `chain_id` is one of the AVAX C-Chain EVM IDs
+/// (43114 mainnet, 43113 Fuji, 43112 local devnet). Anything else is
+/// treated as a foreign chain for ticker-symbol and blind-sign decisions.
+pub fn is_avax_chain(chain_id: u64) -> bool {
+    chain_id == AVAX_C_CHAIN_MAINNET_ID
+        || chain_id == AVAX_C_CHAIN_FUJI_ID
+        || chain_id == AVAX_C_CHAIN_LOCAL_ID
+}
+
+/// Big-endian RLP byte slice variant of `is_avax_chain`. Returns `false` on
+/// parse failure (slice longer than 8 bytes), so callers conservatively treat
+/// malformed input as foreign — the safer default for the display + blind-sign
+/// gate.
+pub fn is_avax_chain_bytes(chain_id: &[u8]) -> bool {
+    bytes_to_u64(chain_id).map(is_avax_chain).unwrap_or(false)
 }
 
 // Converts an slice of bytes in big-endian
@@ -330,6 +348,36 @@ mod tests {
         fn reject(&mut self, _: &mut [u8]) -> (usize, u16) {
             (0, 0)
         }
+    }
+
+    #[test]
+    fn is_avax_chain_classifies_known_ids() {
+        assert!(is_avax_chain(AVAX_C_CHAIN_MAINNET_ID));
+        assert!(is_avax_chain(AVAX_C_CHAIN_FUJI_ID));
+        assert!(is_avax_chain(AVAX_C_CHAIN_LOCAL_ID));
+        assert!(!is_avax_chain(0)); // NONE
+        assert!(!is_avax_chain(1)); // ETH mainnet
+        assert!(!is_avax_chain(2)); // synthetic test value
+        assert!(!is_avax_chain(5)); // Goerli (foreign)
+        assert!(!is_avax_chain(324846)); // Orange L1
+    }
+
+    #[test]
+    fn is_avax_chain_bytes_handles_be_slices_and_garbage() {
+        // 43114 = 0xA86A
+        assert!(is_avax_chain_bytes(&[0xa8, 0x6a]));
+        // 43113 = 0xA869
+        assert!(is_avax_chain_bytes(&[0xa8, 0x69]));
+        // 43112 = 0xA868 (local devnet)
+        assert!(is_avax_chain_bytes(&[0xa8, 0x68]));
+        // padded to 8 bytes still works
+        assert!(is_avax_chain_bytes(&[0, 0, 0, 0, 0, 0, 0xa8, 0x6a]));
+        // 1 = ETH mainnet → foreign
+        assert!(!is_avax_chain_bytes(&[1]));
+        // Empty slice → 0 → foreign (conservative default)
+        assert!(!is_avax_chain_bytes(&[]));
+        // 9 bytes → bytes_to_u64 errors → foreign (conservative default)
+        assert!(!is_avax_chain_bytes(&[0, 0, 0, 0, 0, 0, 0, 0xa8, 0x6a]));
     }
 
     #[test]
