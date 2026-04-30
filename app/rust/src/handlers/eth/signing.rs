@@ -42,15 +42,18 @@ use super::utils::get_tx_rlp_len;
 use super::utils::parse_bip32_eth;
 use super::verify_coreth_root_path;
 
-/// Convert a chain ID slice to a fixed-size 8-byte array.
-/// Returns None if the slice is empty, otherwise copies up to 8 bytes.
+/// Right-align a big-endian chain ID slice into a fixed 8-byte array, matching
+/// `bytes_to_u64`'s layout. Right-alignment is required so chain IDs whose low
+/// byte is zero (e.g. 256 = [0x01, 0x00]) survive the round trip — left-aligning
+/// and then trimming trailing zeros would collapse them to a different value.
 fn chain_id_to_array(chain_id_slice: &[u8]) -> Option<[u8; 8]> {
     if chain_id_slice.is_empty() {
         return None;
     }
     let mut array = [0u8; 8];
     let len = core::cmp::min(chain_id_slice.len(), 8);
-    array[..len].copy_from_slice(&chain_id_slice[..len]);
+    let src_start = chain_id_slice.len() - len;
+    array[8 - len..].copy_from_slice(&chain_id_slice[src_start..]);
     Some(array)
 }
 
@@ -79,24 +82,25 @@ fn extract_legacy_chain_id_from_end(data: &[u8]) -> Option<[u8; 8]> {
     let chain_id_end = data.len() - 2;
     let mut chain_id_bytes = [0u8; 8];
 
-    // Look for chain ID patterns
+    // Look for chain ID patterns. Bytes are right-aligned (BE) so the array
+    // matches `chain_id_to_array`'s layout and survives chain IDs whose low
+    // byte is zero.
     // Common Avalanche chain ID: 0xa868 (43112 in decimal)
     // This is encoded as 0x82a868 in RLP (0x82 = prefix for 2-byte string, 0xa868 = value)
     if chain_id_end >= 3 && data[chain_id_end - 3] == 0x82 {
         // Two-byte chain ID with RLP prefix 0x82
-        // Only store the 2 significant bytes, leave rest as zero
-        chain_id_bytes[0] = data[chain_id_end - 2];
-        chain_id_bytes[1] = data[chain_id_end - 1];
+        chain_id_bytes[6] = data[chain_id_end - 2];
+        chain_id_bytes[7] = data[chain_id_end - 1];
         return Some(chain_id_bytes);
     } else if chain_id_end >= 2 && data[chain_id_end - 2] == 0x81 {
         // Single-byte chain ID with RLP prefix 0x81
-        chain_id_bytes[0] = data[chain_id_end - 1];
+        chain_id_bytes[7] = data[chain_id_end - 1];
         return Some(chain_id_bytes);
     } else if chain_id_end > 0 {
         let potential_chain_byte = data[chain_id_end - 1];
         if potential_chain_byte > 0 && potential_chain_byte < 0x80 {
             // Direct single byte chain ID (no RLP prefix needed for values < 0x80)
-            chain_id_bytes[0] = potential_chain_byte;
+            chain_id_bytes[7] = potential_chain_byte;
             return Some(chain_id_bytes);
         }
     }
@@ -209,8 +213,9 @@ impl Sign {
 
         // Foreign EVM chain (not AVAX C-Chain): the device cannot resolve the
         // native ticker symbol — the value field would render as "???" — so
-        // require blind-sign mode for these, mirroring the streaming-hash
-        // gate at the oversize branch and the upstream Ledger Ethereum app.
+        // require blind-sign mode here, matching upstream Ledger Ethereum app
+        // behavior. (Foreign-chain coverage on the streaming/oversize path is
+        // transitive: that branch already gates on blind-sign for any chain.)
         if !is_avax_chain_bytes(tx.chain_id()) && !is_app_mode_blind_sign() {
             return Err(Error::ApduCodeConditionsNotSatisfied);
         }
@@ -251,8 +256,9 @@ impl Sign {
 
         // Foreign EVM chain (not AVAX C-Chain): the device cannot resolve the
         // native ticker symbol — the value field would render as "???" — so
-        // require blind-sign mode for these, mirroring the streaming-hash
-        // gate at the oversize branch and the upstream Ledger Ethereum app.
+        // require blind-sign mode here, matching upstream Ledger Ethereum app
+        // behavior. (Foreign-chain coverage on the streaming/oversize path is
+        // transitive: that branch already gates on blind-sign for any chain.)
         if !is_avax_chain_bytes(tx.chain_id()) && !is_app_mode_blind_sign() {
             return Err(ParserError::BlindSignNotEnabled);
         }
@@ -755,13 +761,15 @@ impl Viewable for SignUI {
                 .chain_id
                 .as_ref()
                 .map(|v| {
-                    // For stored chain_id, find the actual length (skip trailing zeros)
-                    // This matches how normal mode works with tx.chain_id()
-                    let mut len = v.len();
-                    while len > 1 && v[len - 1] == 0 {
-                        len -= 1;
+                    // Stored array is right-aligned BE (see `chain_id_to_array`);
+                    // skip leading zeros to recover the canonical slice. We must
+                    // skip leading rather than trailing zeros so chain IDs whose
+                    // low byte is zero (e.g. 256) are not collapsed to 1.
+                    let mut start = 0;
+                    while start < v.len() - 1 && v[start] == 0 {
+                        start += 1;
                     }
-                    &v[..len]
+                    &v[start..]
                 })
                 .unwrap_or_else(|| self.tx.chain_id());
 
@@ -997,6 +1005,7 @@ pub unsafe extern "C" fn _getItemBlindSign(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::bytes_to_u64;
 
     #[test]
     fn rlp_decoder() {
@@ -1006,5 +1015,36 @@ mod tests {
 
         assert_eq!(read, 3);
         assert_eq!(to_read, 0x78);
+    }
+
+    /// Mirrors the leading-zero strip in `SignUI::accept` so we can round-trip
+    /// `chain_id_to_array` in tests without spinning up a full SignUI.
+    fn strip_leading_zeros(v: &[u8]) -> &[u8] {
+        let mut start = 0;
+        while start < v.len() - 1 && v[start] == 0 {
+            start += 1;
+        }
+        &v[start..]
+    }
+
+    #[test]
+    fn chain_id_round_trip_preserves_low_zero_byte() {
+        // Regression: chain IDs whose low byte is 0x00 (e.g. 256 = [0x01, 0x00])
+        // were collapsed to 1 by the old left-aligned packing + trailing-zero
+        // strip in `accept`.
+        for &expected in &[1u64, 256, 43113, 43114, u64::MAX] {
+            let be = expected.to_be_bytes();
+            // Trim leading zeros to mimic what `tx.chain_id()` returns.
+            let mut i = 0;
+            while i < be.len() - 1 && be[i] == 0 {
+                i += 1;
+            }
+            let slice = &be[i..];
+
+            let array = chain_id_to_array(slice).expect("non-empty slice");
+            let recovered = strip_leading_zeros(&array);
+            let value = bytes_to_u64(recovered).expect("fits in u64");
+            assert_eq!(value, expected, "round trip failed for chain id {expected}");
+        }
     }
 }
