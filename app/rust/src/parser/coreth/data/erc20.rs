@@ -392,7 +392,7 @@ impl<'b> ERC20<'b> {
                 let label = pic_str!(b"Amount");
                 title[..label.len()].copy_from_slice(label);
 
-                format_token_amount(value, contract_address, message, page)
+                format_approve_amount(value, contract_address, message, page)
             }
             _ => Err(ViewError::NoData),
         }
@@ -558,6 +558,45 @@ fn get_token_info(contract_bytes: &[u8; ADDRESS_LEN]) -> Option<(&'static [u8], 
 }
 
 const MAX_BUFFER_SIZE: usize = 64; // TODO : Review macro usage
+
+fn is_max_u256(value: &BorrowedU256) -> bool {
+    value.len() == 32 && value.iter().all(|&b| b == 0xff)
+}
+
+// Variant of `format_token_amount` used by `approve` only: when `value`
+// is MAX_UINT256 (the conventional "infinite allowance" sentinel) the
+// rendered amount becomes `Unlimited <SYMBOL>` (or just `Unlimited` for
+// tokens not in the static allowlist). All other values fall through to
+// the standard decimal rendering.
+fn format_approve_amount(
+    value: &BorrowedU256,
+    contract_address: &Address,
+    message: &mut [u8],
+    page: u8,
+) -> Result<u8, ViewError> {
+    if is_max_u256(value) {
+        let mut buf = [0u8; MAX_BUFFER_SIZE];
+        let prefix = pic_str!(b"Unlimited"!);
+        buf[..prefix.len()].copy_from_slice(prefix);
+        let mut len = prefix.len();
+
+        if let Some((symbol, _decimals)) = get_token_info(contract_address.raw_address()) {
+            // Today the longest symbol in `get_token_info` is 7 bytes
+            // ("1INCH.e" / "ALPHA.e" / "SUSHI.e" / "INFRA.e"); worst-case
+            // total is 17 bytes. Catch a future allowlist entry that would
+            // overflow `buf` at test time rather than via the runtime panic.
+            debug_assert!(len + 1 + symbol.len() <= buf.len());
+            buf[len] = b' ';
+            len += 1;
+            buf[len..len + symbol.len()].copy_from_slice(symbol);
+            len += symbol.len();
+        }
+
+        return handle_ui_message(&buf[..len], message, page);
+    }
+
+    format_token_amount(value, contract_address, message, page)
+}
 
 // Helper function to format token amounts with decimals and symbols
 pub fn format_token_amount(
@@ -738,5 +777,94 @@ mod tests {
         let data = args(APPROVE_ARGS, &[0x01]);
         let mut out = MaybeUninit::<Approve>::uninit();
         assert!(Approve::from_bytes_into(&data, &mut out).is_err());
+    }
+
+    // USDC.e contract address — present in `get_token_info`.
+    const USDC_E_ADDR: [u8; ADDRESS_LEN] = [
+        0xA7, 0xD7, 0x07, 0x9b, 0x0F, 0xEA, 0xD9, 0x1F, 0x3E, 0x65, 0xF8, 0x6E, 0x89, 0x15, 0xCB,
+        0x59, 0xC1, 0xA4, 0xC6, 0x64,
+    ];
+
+    // Arbitrary address NOT in `get_token_info`.
+    const UNKNOWN_TOKEN_ADDR: [u8; ADDRESS_LEN] = [0xee; ADDRESS_LEN];
+
+    fn make_address(bytes: &[u8; ADDRESS_LEN]) -> Address<'_> {
+        let mut out = MaybeUninit::<Address>::uninit();
+        Address::from_bytes_into(bytes, &mut out).unwrap();
+        unsafe { out.assume_init() }
+    }
+
+    fn rendered<'a>(buf: &'a [u8]) -> &'a [u8] {
+        let len = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
+        &buf[..len]
+    }
+
+    #[test]
+    fn erc20_approve_max_uint256_known_token() {
+        let value_bytes = [0xffu8; 32];
+        let value = BorrowedU256::new(&value_bytes).unwrap();
+        let address = make_address(&USDC_E_ADDR);
+
+        let mut message = [0u8; MAX_BUFFER_SIZE];
+        format_approve_amount(&value, &address, &mut message, 0).unwrap();
+
+        assert_eq!(rendered(&message), b"Unlimited USDC.e");
+    }
+
+    #[test]
+    fn erc20_approve_max_uint256_unknown_token() {
+        let value_bytes = [0xffu8; 32];
+        let value = BorrowedU256::new(&value_bytes).unwrap();
+        let address = make_address(&UNKNOWN_TOKEN_ADDR);
+
+        let mut message = [0u8; MAX_BUFFER_SIZE];
+        format_approve_amount(&value, &address, &mut message, 0).unwrap();
+
+        assert_eq!(rendered(&message), b"Unlimited");
+    }
+
+    #[test]
+    fn erc20_approve_just_below_max_renders_normally() {
+        // MAX_UINT256 - 1: trailing byte 0xfe instead of 0xff.
+        let mut value_bytes = [0xffu8; 32];
+        value_bytes[31] = 0xfe;
+        let value = BorrowedU256::new(&value_bytes).unwrap();
+        // Use an unknown-token address (fallback lexical path), NOT USDC.e
+        // as the design suggested. This is **not** a workaround for any
+        // bug introduced by `format_approve_amount`: it sidesteps a
+        // pre-existing limitation where `format_amount_with_token` packs
+        // a 78-digit decimal plus the inserted '.' into the 64-byte
+        // `format_buffer`, returning `ViewError::Unknown`. The
+        // unknown-token path goes straight through `handle_ui_message`,
+        // which paginates. The assertion still proves what matters:
+        // `is_max_u256` returns false for MAX-1, so the "Unlimited"
+        // branch is not entered.
+        let address = make_address(&UNKNOWN_TOKEN_ADDR);
+
+        let mut message = [0u8; MAX_BUFFER_SIZE];
+        format_approve_amount(&value, &address, &mut message, 0).unwrap();
+
+        assert!(
+            !rendered(&message).starts_with(b"Unlimited"),
+            "MAX-1 must not render as Unlimited; got {:?}",
+            rendered(&message)
+        );
+    }
+
+    #[test]
+    fn erc20_approve_max_uint256_page_argument_threaded() {
+        // Output is "Unlimited USDC.e" (16 bytes) — fits in a single
+        // page on every supported device, so `handle_ui_message` takes
+        // the single-chunk branch and ignores `page`. Documents the
+        // current behavior so a future change to `handle_ui_message`'s
+        // paging semantics can't silently regress this path.
+        let value_bytes = [0xffu8; 32];
+        let value = BorrowedU256::new(&value_bytes).unwrap();
+        let address = make_address(&USDC_E_ADDR);
+
+        let mut message = [0u8; MAX_BUFFER_SIZE];
+        assert!(format_approve_amount(&value, &address, &mut message, 0).is_ok());
+        assert!(format_approve_amount(&value, &address, &mut message, 1).is_ok());
+        assert!(format_approve_amount(&value, &address, &mut message, 7).is_ok());
     }
 }
