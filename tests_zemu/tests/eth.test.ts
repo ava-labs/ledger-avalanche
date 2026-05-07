@@ -46,6 +46,14 @@ type TestData = {
   // {43114, 43113, 43112}). On the device the value field will render as
   // "???" and signing requires blind-sign mode to be enabled.
   foreign_chain?: boolean
+  // On Nano X / SP, `compareSnapshotsAndApprove` searches events for the
+  // case-insensitive keyword `/APPROVE/i`. ERC-20 `approve` flows render the
+  // literal word "approve" as the function-name screen, which collides with
+  // that keyword and trips a premature press-and-hold. Set this to the
+  // number of right-clicks needed to reach the final APPROVE button so the
+  // test drives navigation by click count instead. Touch devices (Stax /
+  // Flex / Apex) are unaffected — their keyword is "Hold to sign".
+  nano_clicks?: number
 }
 
 // copied from python tests
@@ -131,6 +139,22 @@ const SIGN_TEST_DATA: TestData[] = [
     nft_info: undefined,
   },
   {
+    // approve(spender, MAX_UINT256) against the USDC.e contract on C-Chain
+    // (43114). Exercises the "Unlimited <SYMBOL>" render branch added in
+    // erc20.rs::format_approve_amount — the device should display the amount
+    // as "Unlimited USDC.e" rather than the 78-digit decimal expansion of
+    // 2^256 - 1. Spender is an arbitrary 20-byte address.
+    name: 'erc20_approve_max_usdc_e',
+    op: Buffer.from(
+      'f86c80850565614c4283014d7694a7d7079b0fead91f3e65f86e8915cb59c1a4c66480b844095ea7b30000000000000000000000005de0f44ca827bf03f87a87985bf08669050c73ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff82a86a8080',
+      'hex',
+    ),
+    nft_info: undefined,
+    // 7 mirrors the existing erc20_transfer snapshot depth (9 frames: initial
+    // + 7 right + 1 both). Bump if the approve flow renders an extra screen.
+    nano_clicks: 7,
+  },
+  {
     // Real-world reproduction of the JUICE-swap-displays-as-AVAX bug:
     // EIP-2930 transfer of 2000 JUICE on Orange L1 (chain_id 1510), the
     // exact tx that prompted this fix. Before the fix the device would
@@ -188,7 +212,7 @@ jest.setTimeout(60000)
 
 // Nanos does not support erc721
 describe.each(models)('EthereumTx [%s]; sign', function (m) {
-  test.concurrent.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
+  test.only.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
       // Foreign-chain txs require blind-sign mode: the device cannot resolve
@@ -218,7 +242,12 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
 
       const respReq = app.signEVMTransaction(ETH_DERIVATION, msg.toString('hex'))
       await sim.waitUntilScreenIsNot(currentScreen, 100000)
-      await sim.compareSnapshotsAndApprove('.', testcase, true, 0, 1500, !!data.foreign_chain)
+      if (data.nano_clicks !== undefined && !isTouchDevice(m.name)) {
+        const nav = new ClickNavigation([data.nano_clicks, 0])
+        await sim.navigateAndCompareSnapshots('.', testcase, nav.schedule)
+      } else {
+        await sim.compareSnapshotsAndApprove('.', testcase, true, 0, 1500, !!data.foreign_chain)
+      }
 
       const resp = await respReq
 
