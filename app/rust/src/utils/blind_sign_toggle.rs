@@ -25,7 +25,8 @@ mod impls {
 
     cfg_if::cfg_if! {
         if #[cfg(any(unix, windows))] {
-            /// Provide a mock for tests
+            /// Provide a mock for tests; symbol name matches the C declaration
+            /// in `app/src/blind_sign_toggle.c` so linking works either way.
             #[allow(non_upper_case_globals)]
             pub static mut blind_sign: BlindSignToggle = BlindSignToggle {
                 toggle: true,
@@ -33,7 +34,8 @@ mod impls {
             };
         } else {
             extern "C" {
-                ///Link to the C code
+                /// Link to the C-side definition; name is fixed by the C ABI.
+                #[allow(non_upper_case_globals)]
                 pub static mut blind_sign: BlindSignToggle;
             }
         }

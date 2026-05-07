@@ -41,7 +41,7 @@ use constants::{
 fn p_create_chain() {
     const NUMBER_OF_SIGNERS: usize = 25500;
     const MAX_N_SIGNERS: usize = u8::MAX as usize;
-    const MAX_COMPONENT: u32 = u32::MAX & !0x8000_0000;
+    const MAX_COMPONENT: u32 = !0x8000_0000_u32;
 
     let paths = (0..NUMBER_OF_SIGNERS)
         .map(|_| {
@@ -68,7 +68,7 @@ fn p_create_chain() {
             counter += 1;
             match v {
                 true => unreachable!(),
-                false => eprintln!("{} verification ok!", signer),
+                false => eprintln!("{signer} verification ok!"),
             }
         });
 

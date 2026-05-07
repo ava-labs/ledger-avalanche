@@ -13,7 +13,6 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-#![allow(unused_imports, dead_code)]
 
 mod eth_public_key;
 mod extended_public_key;
@@ -27,7 +26,7 @@ pub mod prelude {
 
     pub(super) use crate::{
         constants::{self, chain_alias_lookup, ApduError, CLA, CLA_ETH},
-        crypto, rs_handle_apdu, PacketType,
+        PacketType,
     };
     pub use std::convert::TryInto;
 

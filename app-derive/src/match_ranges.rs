@@ -288,7 +288,7 @@ pub fn match_ranges(input: TokenStream) -> TokenStream {
     let arms = input.arms();
 
     quote! {
-        #[allow(unused_variables)]
+        #[allow(unused_variables, clippy::int_plus_one)]
         match #expr {
             #(#arms),*
         }

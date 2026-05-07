@@ -794,7 +794,7 @@ mod tests {
         unsafe { out.assume_init() }
     }
 
-    fn rendered<'a>(buf: &'a [u8]) -> &'a [u8] {
+    fn rendered(buf: &[u8]) -> &[u8] {
         let len = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
         &buf[..len]
     }

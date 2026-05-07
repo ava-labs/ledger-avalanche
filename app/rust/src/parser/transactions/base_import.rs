@@ -107,7 +107,7 @@ where
         self.tx_header.hrp()
     }
 
-    pub fn base_inputs(&self) -> &ObjectList<TransferableInput> {
+    pub fn base_inputs(&self) -> &ObjectList<'_, TransferableInput<'_>> {
         &self.base_tx.inputs
     }
 

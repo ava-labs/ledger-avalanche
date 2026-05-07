@@ -37,7 +37,6 @@ use super::verify_coreth_root_path;
 
 pub struct GetPublicKey;
 
-#[allow(static_mut_refs)]
 impl GetPublicKey {
     /// Retrieve the public key with the given bip32 path
     #[inline(never)]
@@ -96,7 +95,7 @@ impl GetPublicKey {
             Err(ParserError::UnexpectedError)
         } else {
             unsafe {
-                crate::handlers::resources::ETH_UI
+                crate::lock_mut!(crate::handlers::resources::ETH_UI)
                     .lock(EthAccessors::Tx)
                     .replace(ui);
             }

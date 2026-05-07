@@ -13,8 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-#![allow(static_mut_refs)]
-use bolos::{nvm::NVMError, pic::PIC};
+use bolos::nvm::NVMError;
 
 use crate::{
     constants::ApduError,
@@ -27,8 +26,18 @@ use crate::{
 
 use super::ApduBufferRead;
 
-#[bolos::lazy_static]
-static mut INIT_LEN: usize = 0;
+// `bolos::lazy_static!` generates an inner `mod __IMPL_LAZY_INIT_LEN` whose
+// helpers internally take `&mut INIT_LEN`. We can't reach into that generated
+// module to silence the `static_mut_refs` lint, so we wrap the macro
+// invocation in a private module and scope the allow to it.
+#[allow(static_mut_refs)]
+mod init_len_storage {
+    use bolos::pic::PIC;
+
+    #[bolos::lazy_static]
+    pub(super) static mut INIT_LEN: usize = 0;
+}
+use init_len_storage::INIT_LEN;
 
 pub struct Uploader {
     accessor: BUFFERAccessors,
@@ -82,11 +91,11 @@ pub struct UploaderOutput {
 impl Drop for UploaderOutput {
     fn drop(&mut self) {
         unsafe {
-            if let Ok(zbuffer) = BUFFER.acquire(self.accessor) {
+            if let Ok(zbuffer) = crate::lock_mut!(BUFFER).acquire(self.accessor) {
                 zbuffer.reset();
 
                 //we managed to acquire so we should release too
-                let _ = BUFFER.release(self.accessor);
+                let _ = crate::lock_mut!(BUFFER).release(self.accessor);
             }
 
             //couldn't acquire BUFFER so someone is trying to use it
@@ -106,11 +115,11 @@ impl Uploader {
         &mut self,
         buffer: &ApduBufferRead<'_>,
     ) -> Result<Option<UploaderOutput>, UploaderError> {
-        let packet_type =
-            ZPacketType::new(buffer.p1()).map_err(|_| UploaderError::PacketTypeParseError)?;
+        let packet_type = ZPacketType::try_from(buffer.p1())
+            .map_err(|_| UploaderError::PacketTypeParseError)?;
 
         if packet_type.is_init() {
-            let zbuffer = unsafe { BUFFER.lock(self.accessor) };
+            let zbuffer = unsafe { crate::lock_mut!(BUFFER).lock(self.accessor) };
             zbuffer.reset();
 
             zbuffer.write(&[buffer.p2()])?;
@@ -123,7 +132,7 @@ impl Uploader {
 
             Ok(None)
         } else if packet_type.is_next() {
-            let zbuffer = unsafe { BUFFER.acquire(self.accessor)? };
+            let zbuffer = unsafe { crate::lock_mut!(BUFFER).acquire(self.accessor)? };
 
             if let Ok(payload) = buffer.payload() {
                 zbuffer.write(payload)?;
@@ -131,7 +140,7 @@ impl Uploader {
 
             Ok(None)
         } else if packet_type.is_last() {
-            let zbuffer = unsafe { BUFFER.acquire(self.accessor)? };
+            let zbuffer = unsafe { crate::lock_mut!(BUFFER).acquire(self.accessor)? };
 
             if let Ok(payload) = buffer.payload() {
                 zbuffer.write(payload)?;

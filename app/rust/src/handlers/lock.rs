@@ -15,6 +15,25 @@
 ********************************************************************************/
 use crate::constants::ApduError;
 
+/// Reach into a `static mut Lock<T, A>` (or any `static mut` value) via a raw
+/// pointer, avoiding the `static_mut_refs` lint.
+///
+/// Expansion: `&mut *::core::ptr::addr_of_mut!($static)` — semantically the
+/// same `&mut` the lint would have flagged, but going through `addr_of_mut!`
+/// is the documented escape hatch since Rust 1.82.
+///
+/// # Safety
+/// The Ledger app is single-threaded, so no aliasing can occur. Callers must
+/// not hold a second outstanding `&mut` to the same static while using the
+/// returned reference.
+#[macro_export]
+macro_rules! lock_mut {
+    ($static:path) => {
+        // SAFETY: see macro doc.
+        &mut *::core::ptr::addr_of_mut!($static)
+    };
+}
+
 pub struct Lock<T, A> {
     item: T,
     lock: Option<A>,

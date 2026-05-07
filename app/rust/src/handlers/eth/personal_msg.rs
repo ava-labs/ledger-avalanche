@@ -40,12 +40,11 @@ use crate::utils::convert_der_to_rs;
 
 pub struct Sign;
 
-#[allow(static_mut_refs)]
 impl Sign {
     pub const SIGN_HASH_SIZE: usize = Keccak::<32>::DIGEST_LEN;
 
     fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
-        match unsafe { PATH.acquire(Self) } {
+        match unsafe { crate::lock_mut!(PATH).acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
         }
@@ -120,7 +119,7 @@ impl Sign {
         let ui = EthUi::Msg(SignUI { tx });
 
         unsafe {
-            ETH_UI.lock(EthAccessors::Msg).replace(ui);
+            crate::lock_mut!(ETH_UI).lock(EthAccessors::Msg).replace(ui);
         }
         Ok(())
     }
@@ -154,14 +153,14 @@ impl Sign {
                 verify_coreth_root_path(&bip32_path).map_err(|_| ParserError::InvalidPath)?;
 
                 unsafe {
-                    PATH.lock(Self).replace(bip32_path);
+                    crate::lock_mut!(PATH).lock(Self).replace(bip32_path);
                 }
 
                 let (msg, len) =
                     be_u32::<_, ParserError>(rest).map_err(|_| ParserError::UnexpectedBufferEnd)?;
 
                 //write( msg.len and msg) to the swapping buffer so we persist this data
-                let buffer = unsafe { BUFFER.lock(Self) };
+                let buffer = unsafe { crate::lock_mut!(BUFFER).lock(Self) };
                 buffer.reset();
 
                 buffer
@@ -182,7 +181,7 @@ impl Sign {
                     .payload()
                     .map_err(|_| ParserError::UnexpectedBufferEnd)?;
 
-                let buffer = unsafe { BUFFER.acquire(Self).map_err(|_| ParserError::NoData)? };
+                let buffer = unsafe { crate::lock_mut!(BUFFER).acquire(Self).map_err(|_| ParserError::NoData)? };
 
                 buffer
                     .write(payload)
@@ -203,7 +202,6 @@ impl Sign {
     }
 }
 
-#[allow(static_mut_refs)]
 impl ApduHandler for Sign {
     #[inline(never)]
     fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
@@ -231,13 +229,13 @@ impl ApduHandler for Sign {
                 verify_coreth_root_path(&bip32_path)?;
 
                 unsafe {
-                    PATH.lock(Self).replace(bip32_path);
+                    crate::lock_mut!(PATH).lock(Self).replace(bip32_path);
                 }
 
                 let (msg, len) = be_u32::<_, ParserError>(rest).map_err(|_| Error::WrongLength)?;
 
                 //write( msg.len and msg) to the swapping buffer so we persist this data
-                let buffer = unsafe { BUFFER.lock(Self) };
+                let buffer = unsafe { crate::lock_mut!(BUFFER).lock(Self) };
                 buffer.reset();
 
                 buffer.write(rest).map_err(|_| Error::ExecutionError)?;
@@ -253,7 +251,7 @@ impl ApduHandler for Sign {
             0x80 => {
                 let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
 
-                let buffer = unsafe { BUFFER.acquire(Self)? };
+                let buffer = unsafe { crate::lock_mut!(BUFFER).acquire(Self)? };
 
                 buffer.write(payload).map_err(|_| Error::ExecutionError)?;
 
@@ -362,21 +360,20 @@ impl Viewable for SignUI {
     }
 }
 
-#[allow(static_mut_refs)]
 fn cleanup_globals() -> Result<(), Error> {
     unsafe {
-        if let Ok(path) = PATH.acquire(Sign) {
+        if let Ok(path) = crate::lock_mut!(PATH).acquire(Sign) {
             path.take();
 
             //let's release the lock for the future
-            let _ = PATH.release(Sign);
+            let _ = crate::lock_mut!(PATH).release(Sign);
         }
 
-        if let Ok(buffer) = BUFFER.acquire(Sign) {
+        if let Ok(buffer) = crate::lock_mut!(BUFFER).acquire(Sign) {
             buffer.reset();
 
             //let's release the lock for the future
-            let _ = BUFFER.release(Sign);
+            let _ = crate::lock_mut!(BUFFER).release(Sign);
         }
     }
 

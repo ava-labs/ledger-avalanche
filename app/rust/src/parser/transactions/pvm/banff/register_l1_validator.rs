@@ -249,7 +249,7 @@ mod tests {
     fn ui_register_l1_validator() {
         let data = REGISTER_L1_VALIDATOR_DATA;
         println!("-------------------- Register L1 Validator TX ------------------------");
-        let (_, tx) = RegisterL1ValidatorTx::from_bytes(&data).unwrap();
+        let (_, tx) = RegisterL1ValidatorTx::from_bytes(data).unwrap();
 
         let items = tx.num_items().expect("Overflow?");
 
