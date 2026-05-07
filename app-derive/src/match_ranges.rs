@@ -127,10 +127,7 @@ impl Parse for RangeArm {
         };
         let fat_arrow_token = input.parse()?;
         let body = input.parse()?;
-        let comma = match input.parse() {
-            Ok(comma) => Some(comma),
-            Err(_) => None,
-        };
+        let comma = input.parse().ok();
 
         Ok(RangeArm {
             pat,

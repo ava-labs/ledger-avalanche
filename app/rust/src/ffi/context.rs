@@ -35,7 +35,6 @@ use crate::{
 // Mirrors the C layout in app/include/parser.h; name kept in C convention
 // for ABI compatibility.
 #[repr(C)]
-#[allow(non_camel_case_types)]
 pub struct parser_context_t {
     pub buffer: *const u8,
     pub buffer_len: u16,
@@ -51,7 +50,6 @@ pub struct parser_context_t {
 // Mirrors the C layout in app/include/parser.h; name kept in C convention
 // for ABI compatibility.
 #[repr(C)]
-#[allow(non_camel_case_types)]
 pub struct parse_tx_t {
     pub state: *mut u8,
     pub len: u32,
