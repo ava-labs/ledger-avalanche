@@ -127,10 +127,7 @@ impl Parse for RangeArm {
         };
         let fat_arrow_token = input.parse()?;
         let body = input.parse()?;
-        let comma = match input.parse() {
-            Ok(comma) => Some(comma),
-            Err(_) => None,
-        };
+        let comma = input.parse().ok();
 
         Ok(RangeArm {
             pat,
@@ -288,7 +285,7 @@ pub fn match_ranges(input: TokenStream) -> TokenStream {
     let arms = input.arms();
 
     quote! {
-        #[allow(unused_variables)]
+        #[allow(unused_variables, clippy::int_plus_one)]
         match #expr {
             #(#arms),*
         }

@@ -514,8 +514,8 @@ mod tests {
                 .unwrap();
             let t = std::string::String::from_utf8_lossy(&title);
             let v = std::string::String::from_utf8_lossy(&value);
-            std::println!("{}:", t);
-            std::println!("     {}", v);
+            std::println!("{t}:");
+            std::println!("     {v}");
             title.iter_mut().for_each(|b| *b = 0);
             value.iter_mut().for_each(|b| *b = 0);
         }

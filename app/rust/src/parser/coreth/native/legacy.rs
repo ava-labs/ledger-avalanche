@@ -178,7 +178,7 @@ mod tests {
 
         assert!(tx.base.to.is_none());
         assert!(matches!(tx.base.data, EthData::Deploy(..)));
-        assert!(tx.base.value.len() == 0);
+        assert!(tx.base.value.is_empty());
     }
 
     #[test]

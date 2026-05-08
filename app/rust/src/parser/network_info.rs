@@ -65,6 +65,9 @@ impl TryFrom<u32> for NetworkId {
 // chains, although in the protocol there is room for
 // local networks, the current avalanche wallet does
 // not support transactios from/to it
+// Variants follow the Avalanche protocol naming convention (P-Chain, X-Chain,
+// C-Chain) which intentionally shares a `Chain` suffix.
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 #[cfg_attr(test, derive(Debug))]

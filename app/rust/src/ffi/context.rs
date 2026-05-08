@@ -32,8 +32,9 @@ use crate::{
 //     instruction_t ins;
 //     parser_tx_t tx_obj;
 // } parser_context_t;
+// Mirrors the C layout in app/include/parser.h; name kept in C convention
+// for ABI compatibility.
 #[repr(C)]
-#[allow(non_camel_case_types)]
 pub struct parser_context_t {
     pub buffer: *const u8,
     pub buffer_len: u16,
@@ -46,8 +47,9 @@ pub struct parser_context_t {
 //     uint8_t *state;
 //     uint32_t len;
 // } parser_tx_t;
+// Mirrors the C layout in app/include/parser.h; name kept in C convention
+// for ABI compatibility.
 #[repr(C)]
-#[allow(non_camel_case_types)]
 pub struct parse_tx_t {
     pub state: *mut u8,
     pub len: u32,
@@ -96,7 +98,6 @@ impl TryFrom<u8> for Instruction {
     }
 }
 
-#[allow(static_mut_refs)]
 #[no_mangle]
 pub unsafe extern "C" fn _set_root_path(raw_path: *const u8, path_len_bytes: u16) -> u32 {
     let path = core::slice::from_raw_parts(raw_path, path_len_bytes as usize);
@@ -112,12 +113,11 @@ pub unsafe extern "C" fn _set_root_path(raw_path: *const u8, path_len_bytes: u16
     }
 
     // important to use avax::signing::Sign
-    let path_lock = PATH.lock(Sign);
+    let path_lock = crate::lock_mut!(PATH).lock(Sign);
     *path_lock = Some(root_path);
     ParserError::ParserOk as u32
 }
 
-#[allow(static_mut_refs)]
 #[no_mangle]
 pub unsafe extern "C" fn _set_tx_hash(hash: *const u8, hash_len_bytes: u16) -> u16 {
     if hash_len_bytes != Sign::SIGN_HASH_SIZE as u16 {
@@ -130,12 +130,12 @@ pub unsafe extern "C" fn _set_tx_hash(hash: *const u8, hash_len_bytes: u16) -> u
 
     // In this step the transaction has not been signed
     // so store the hash for the next steps
-    let hash_lock = HASH.lock(Sign);
+    let hash_lock = crate::lock_mut!(HASH).lock(Sign);
     *hash_lock = Some(hash);
 
     // next step requires SignHash handler to have
     // access to the path and hash resources that this handler just updated
-    PATH.lock(SignHash);
-    HASH.lock(SignHash);
+    crate::lock_mut!(PATH).lock(SignHash);
+    crate::lock_mut!(HASH).lock(SignHash);
     ZxError::Ok as u16
 }

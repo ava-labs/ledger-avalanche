@@ -39,21 +39,20 @@ use crate::{
 
 pub struct Sign;
 
-#[allow(static_mut_refs)]
 impl Sign {
     // For avax transactions which includes P, C, X chains,
     // sha256 is used
     pub const SIGN_HASH_SIZE: usize = Sha256::DIGEST_LEN;
 
     fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
-        match unsafe { PATH.acquire(Self) } {
+        match unsafe { crate::lock_mut!(PATH).acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
         }
     }
 
     pub fn get_hash() -> Result<&'static [u8; Self::SIGN_HASH_SIZE], Error> {
-        match unsafe { HASH.acquire(Self) } {
+        match unsafe { crate::lock_mut!(HASH).acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
         }
@@ -86,7 +85,7 @@ impl Sign {
         verify_avax_root_path(&root_path).map_err(|_| ParserError::InvalidPath)?;
 
         unsafe {
-            PATH.lock(Self).replace(root_path);
+            crate::lock_mut!(PATH).lock(Self).replace(root_path);
         }
 
         if rem.len() != Self::SIGN_HASH_SIZE {
@@ -97,7 +96,7 @@ impl Sign {
         unsigned_hash.copy_from_slice(rem);
 
         unsafe {
-            HASH.lock(Self).replace(unsigned_hash);
+            crate::lock_mut!(HASH).lock(Self).replace(unsigned_hash);
         }
 
         Ok(())
@@ -113,7 +112,7 @@ impl Sign {
         verify_avax_root_path(&root_path)?;
 
         unsafe {
-            PATH.lock(Self).replace(root_path);
+            crate::lock_mut!(PATH).lock(Self).replace(root_path);
         }
 
         if rem.len() != Self::SIGN_HASH_SIZE {
@@ -167,7 +166,6 @@ impl SignUI {
     }
 }
 
-#[allow(static_mut_refs)]
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
         Ok(1)
@@ -204,7 +202,7 @@ impl Viewable for SignUI {
         // In this step the msg has not been signed
         // so store the hash for the next steps
         unsafe {
-            HASH.lock(Sign).replace(self.hash);
+            crate::lock_mut!(HASH).lock(Sign).replace(self.hash);
         }
 
         (tx, Error::Success as _)
@@ -286,21 +284,20 @@ impl ApduHandler for Sign {
     }
 }
 
-#[allow(static_mut_refs)]
 pub fn cleanup_globals() -> Result<(), Error> {
     unsafe {
-        if let Ok(path) = PATH.acquire(Sign) {
+        if let Ok(path) = crate::lock_mut!(PATH).acquire(Sign) {
             path.take();
 
             //let's release the lock for the future
-            let _ = PATH.release(Sign);
+            let _ = crate::lock_mut!(PATH).release(Sign);
         }
 
-        if let Ok(hash) = HASH.acquire(Sign) {
+        if let Ok(hash) = crate::lock_mut!(HASH).acquire(Sign) {
             hash.take();
 
             //let's release the lock for the future
-            let _ = HASH.release(Sign);
+            let _ = crate::lock_mut!(HASH).release(Sign);
         }
     }
     //if we failed to aquire then someone else is using it anyways

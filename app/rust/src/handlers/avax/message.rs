@@ -33,7 +33,6 @@ use crate::{
 
 pub struct Sign;
 
-#[allow(static_mut_refs)]
 impl Sign {
     // For avax signing which includes P, C, X chains,
     // sha256 is used
@@ -55,7 +54,7 @@ impl Sign {
         verify_avax_root_path(&root_path)?;
 
         unsafe {
-            PATH.lock(Self).replace(root_path);
+            crate::lock_mut!(PATH).lock(Self).replace(root_path);
         }
 
         let digest = Self::sha256_digest(data)?;
@@ -88,7 +87,6 @@ pub(crate) struct SignUI {
     msg: AvaxMessage<'static>,
 }
 
-#[allow(static_mut_refs)]
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
         self.msg.num_items()
@@ -111,12 +109,12 @@ impl Viewable for SignUI {
         // In this step the msg has not been signed
         // so store the hash for the next steps
         unsafe {
-            HASH.lock(Sign).replace(self.hash);
+            crate::lock_mut!(HASH).lock(Sign).replace(self.hash);
 
             // next step requires SignHash handler to have
             // access to the path and hash resources that this handler just updated
-            PATH.lock(SignHash);
-            HASH.lock(SignHash);
+            crate::lock_mut!(PATH).lock(SignHash);
+            crate::lock_mut!(HASH).lock(SignHash);
         }
 
         (tx, Error::Success as _)
@@ -128,21 +126,20 @@ impl Viewable for SignUI {
     }
 }
 
-#[allow(static_mut_refs)]
 fn cleanup_globals() -> Result<(), Error> {
     unsafe {
-        if let Ok(path) = PATH.acquire(Sign) {
+        if let Ok(path) = crate::lock_mut!(PATH).acquire(Sign) {
             path.take();
 
             //let's release the lock for the future
-            let _ = PATH.release(Sign);
+            let _ = crate::lock_mut!(PATH).release(Sign);
         }
 
-        if let Ok(hash) = HASH.acquire(Sign) {
+        if let Ok(hash) = crate::lock_mut!(HASH).acquire(Sign) {
             hash.take();
 
             //let's release the lock for the future
-            let _ = HASH.release(Sign);
+            let _ = crate::lock_mut!(HASH).release(Sign);
         }
     }
     //if we failed to aquire then someone else is using it anyways

@@ -34,10 +34,9 @@ use crate::{
 #[cfg_attr(test, derive(Debug))]
 pub struct ERC721Info;
 
-#[allow(static_mut_refs)]
 impl ERC721Info {
     pub fn get_nft_info() -> Result<&'static NftInfo, ParserError> {
-        match unsafe { NFT_INFO.acquire(Self) } {
+        match unsafe { crate::lock_mut!(NFT_INFO).acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(ParserError::NftInfoNotProvided),
         }
@@ -47,7 +46,7 @@ impl ERC721Info {
     pub fn set_info(info: NftInfo) -> Result<(), ParserError> {
         // store the information use to parse erc721 token
         unsafe {
-            NFT_INFO.lock(Self).replace(info);
+            crate::lock_mut!(NFT_INFO).lock(Self).replace(info);
         }
         Ok(())
     }
@@ -283,7 +282,7 @@ impl<'b> FromBytes<'b> for ApprovalForAll<'b> {
 
         // Get approval
         let (rem, approval) = take(ETH_ARG_LEN)(rem)?;
-        let approve = approval.iter().any(|v| *v == 1);
+        let approve = approval.contains(&1);
 
         // setApprovalForAll(address,bool) is strictly fixed-arity; any
         // trailing calldata would be covered by the signing hash without

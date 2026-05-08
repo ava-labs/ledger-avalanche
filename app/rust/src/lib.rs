@@ -16,16 +16,12 @@
 #![no_std]
 #![no_builtins]
 #![macro_use]
-// later we yan rename enum_variant
-// we have some functions that we might use in the future
-// and some initializations that rust doesn't detect properly
-#![allow(
-    clippy::enum_variant_names,
-    dead_code,
-    clippy::manual_range_contains,
-    clippy::items_after_test_module,
-    dropping_references
-)]
+// This crate is built as `crate-type = ["staticlib"]` and consumed by the C
+// side of the Ledger app. Most of the public Rust surface (extern "C" entry
+// points, parser enum variants populated via #[avalanche_app_derive::enum_init]
+// reflection, FFI helper methods) has no Rust call sites the dead-code lint
+// can see, so it would otherwise flag them as unused.
+#![allow(dead_code)]
 
 extern crate no_std_compat as std;
 #[cfg(all(not(test), not(feature = "clippy")))]

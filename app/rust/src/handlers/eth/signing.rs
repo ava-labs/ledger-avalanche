@@ -112,7 +112,7 @@ fn extract_legacy_chain_id_from_end(data: &[u8]) -> Option<[u8; 8]> {
 fn extract_tx_metadata_for_streaming(data: &[u8]) -> (bool, Option<[u8; 8]>) {
     // Try to parse transaction using same logic as normal mode
     let mut temp_tx = MaybeUninit::uninit();
-    if let Ok(_) = EthTransaction::from_bytes_into(data, &mut temp_tx) {
+    if EthTransaction::from_bytes_into(data, &mut temp_tx).is_ok() {
         let temp_tx = unsafe { temp_tx.assume_init() };
 
         let is_typed = temp_tx.is_typed_tx();
@@ -125,13 +125,12 @@ fn extract_tx_metadata_for_streaming(data: &[u8]) -> (bool, Option<[u8; 8]>) {
     }
 }
 
-#[allow(static_mut_refs)]
 impl Sign {
     pub const SIGN_HASH_SIZE: usize = Keccak::<32>::DIGEST_LEN;
     pub const BUFFER_CAPACITY: usize = 16384; // device max flash length
 
     fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
-        match unsafe { PATH.acquire(Self) } {
+        match unsafe { crate::lock_mut!(PATH).acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
         }
@@ -144,7 +143,7 @@ impl Sign {
         // data: &[u8],
     ) -> Result<(ECCInfoFlags, usize, [u8; 100]), Error> {
         let sk = Curve.to_secret(path);
-        let buffer = unsafe { BUFFER.acquire(Self)? };
+        let buffer = unsafe { crate::lock_mut!(BUFFER).acquire(Self)? };
         let data = Self::digest(buffer.read_exact())?;
 
         let mut out = [0; 100];
@@ -191,7 +190,7 @@ impl Sign {
         // also during the review part
         #[cfg(feature = "erc721")]
         unsafe {
-            crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
+            crate::lock_mut!(crate::handlers::resources::NFT_INFO).lock(crate::parser::ERC721Info)
         };
 
         // now parse the transaction
@@ -236,7 +235,7 @@ impl Sign {
         // also during the review part
         #[cfg(feature = "erc721")]
         unsafe {
-            crate::handlers::resources::NFT_INFO.lock(crate::parser::ERC721Info)
+            crate::lock_mut!(crate::handlers::resources::NFT_INFO).lock(crate::parser::ERC721Info)
         };
 
         // now parse the transaction
@@ -271,7 +270,7 @@ impl Sign {
         });
 
         unsafe {
-            ETH_UI.lock(EthAccessors::Tx).replace(ui);
+            crate::lock_mut!(ETH_UI).lock(EthAccessors::Tx).replace(ui);
         }
         Ok(())
     }
@@ -279,7 +278,7 @@ impl Sign {
     #[inline(never)]
     fn finalize_streaming_hash() -> Result<(), ParserError> {
         let hasher = unsafe {
-            STREAMING_HASHER
+            crate::lock_mut!(STREAMING_HASHER)
                 .acquire(StreamingAccessors::EthSign)
                 .map_err(|_| ParserError::UnexpectedError)?
                 .take()
@@ -292,8 +291,8 @@ impl Sign {
 
         // Mark that streaming mode was used for this transaction and store the hash
         unsafe {
-            *STREAMING_MODE_USED.lock(StreamingAccessors::EthSign) = true;
-            *STREAMING_HASH.lock(StreamingAccessors::EthSign) = Some(hash);
+            *crate::lock_mut!(STREAMING_MODE_USED).lock(StreamingAccessors::EthSign) = true;
+            *crate::lock_mut!(STREAMING_HASH).lock(StreamingAccessors::EthSign) = Some(hash);
         }
 
         // Create a minimal SignUI with the pre-computed hash for blind signing
@@ -304,18 +303,18 @@ impl Sign {
 
         // Retrieve stored transaction metadata for V calculation
         let is_typed = unsafe {
-            let stored_is_typed = *STREAMING_TX_TYPE.lock(StreamingAccessors::EthSign);
+            let stored_is_typed = *crate::lock_mut!(STREAMING_TX_TYPE).lock(StreamingAccessors::EthSign);
             stored_is_typed
         };
 
         // Extract chain ID - for legacy transactions, extract from buffered packets
         let chain_id = unsafe {
-            let is_legacy = *IS_LEGACY_TX.lock(StreamingAccessors::EthSign);
+            let is_legacy = *crate::lock_mut!(IS_LEGACY_TX).lock(StreamingAccessors::EthSign);
 
             if is_legacy {
                 // Try to extract chain ID from buffered packets
-                let last = LAST_PACKET.lock(StreamingAccessors::EthSign);
-                let second_last = SECOND_LAST_PACKET.lock(StreamingAccessors::EthSign);
+                let last = crate::lock_mut!(LAST_PACKET).lock(StreamingAccessors::EthSign);
+                let second_last = crate::lock_mut!(SECOND_LAST_PACKET).lock(StreamingAccessors::EthSign);
 
                 // Combine last two packets if available
                 let chain_id_from_end = if let (Some(last_packet), Some(second_last_packet)) =
@@ -347,15 +346,15 @@ impl Sign {
 
                 // If we found chain ID in legacy packets, store it
                 if let Some(chain_id_bytes) = chain_id_from_end {
-                    *STREAMING_CHAIN_ID.lock(StreamingAccessors::EthSign) = Some(chain_id_bytes);
+                    *crate::lock_mut!(STREAMING_CHAIN_ID).lock(StreamingAccessors::EthSign) = Some(chain_id_bytes);
                     Some(chain_id_bytes)
                 } else {
                     // Fallback to stored value (should be None for legacy)
-                    *STREAMING_CHAIN_ID.lock(StreamingAccessors::EthSign)
+                    *crate::lock_mut!(STREAMING_CHAIN_ID).lock(StreamingAccessors::EthSign)
                 }
             } else {
                 // For typed transactions, use previously extracted chain ID
-                *STREAMING_CHAIN_ID.lock(StreamingAccessors::EthSign)
+                *crate::lock_mut!(STREAMING_CHAIN_ID).lock(StreamingAccessors::EthSign)
             }
         };
 
@@ -369,20 +368,20 @@ impl Sign {
 
         // Store the UI for later signing
         unsafe {
-            ETH_UI.lock(EthAccessors::Tx).replace(ui);
+            crate::lock_mut!(ETH_UI).lock(EthAccessors::Tx).replace(ui);
         }
 
         // Clean up streaming state
         unsafe {
-            *STREAMING_MODE.lock(StreamingAccessors::EthSign) = false;
-            let _ = STREAMING_HASHER.release(StreamingAccessors::EthSign);
-            *EXPECTED_BYTES.lock(StreamingAccessors::EthSign) = 0;
-            *RECEIVED_BYTES.lock(StreamingAccessors::EthSign) = 0;
+            *crate::lock_mut!(STREAMING_MODE).lock(StreamingAccessors::EthSign) = false;
+            let _ = crate::lock_mut!(STREAMING_HASHER).release(StreamingAccessors::EthSign);
+            *crate::lock_mut!(EXPECTED_BYTES).lock(StreamingAccessors::EthSign) = 0;
+            *crate::lock_mut!(RECEIVED_BYTES).lock(StreamingAccessors::EthSign) = 0;
 
             // Clean up legacy-specific resources
-            *IS_LEGACY_TX.lock(StreamingAccessors::EthSign) = false;
-            *LAST_PACKET.lock(StreamingAccessors::EthSign) = None;
-            *SECOND_LAST_PACKET.lock(StreamingAccessors::EthSign) = None;
+            *crate::lock_mut!(IS_LEGACY_TX).lock(StreamingAccessors::EthSign) = false;
+            *crate::lock_mut!(LAST_PACKET).lock(StreamingAccessors::EthSign) = None;
+            *crate::lock_mut!(SECOND_LAST_PACKET).lock(StreamingAccessors::EthSign) = None;
         }
 
         // Return Ok - the hash has been computed successfully
@@ -416,7 +415,7 @@ impl Sign {
                 verify_coreth_root_path(&bip32_path).map_err(|_| ParserError::InvalidPath)?;
 
                 unsafe {
-                    PATH.lock(Self).replace(bip32_path);
+                    crate::lock_mut!(PATH).lock(Self).replace(bip32_path);
                 }
 
                 //parse the length of the RLP message
@@ -456,27 +455,27 @@ impl Sign {
                     unsafe {
                         use crate::handlers::resources::{STREAMING_CHAIN_ID, STREAMING_TX_TYPE};
 
-                        STREAMING_HASHER
+                        crate::lock_mut!(STREAMING_HASHER)
                             .lock(StreamingAccessors::EthSign)
                             .replace(hasher);
-                        *STREAMING_MODE.lock(StreamingAccessors::EthSign) = true;
-                        *EXPECTED_BYTES.lock(StreamingAccessors::EthSign) = to_read;
-                        *RECEIVED_BYTES.lock(StreamingAccessors::EthSign) =
+                        *crate::lock_mut!(STREAMING_MODE).lock(StreamingAccessors::EthSign) = true;
+                        *crate::lock_mut!(EXPECTED_BYTES).lock(StreamingAccessors::EthSign) = to_read;
+                        *crate::lock_mut!(RECEIVED_BYTES).lock(StreamingAccessors::EthSign) =
                             (len as u64).saturating_sub(read as u64);
 
                         // Store transaction metadata for V calculation
-                        *STREAMING_TX_TYPE.lock(StreamingAccessors::EthSign) = is_typed;
-                        *STREAMING_CHAIN_ID.lock(StreamingAccessors::EthSign) = chain_id_bytes;
+                        *crate::lock_mut!(STREAMING_TX_TYPE).lock(StreamingAccessors::EthSign) = is_typed;
+                        *crate::lock_mut!(STREAMING_CHAIN_ID).lock(StreamingAccessors::EthSign) = chain_id_bytes;
 
                         // Track if this is a legacy transaction
-                        *IS_LEGACY_TX.lock(StreamingAccessors::EthSign) = is_legacy;
+                        *crate::lock_mut!(IS_LEGACY_TX).lock(StreamingAccessors::EthSign) = is_legacy;
 
                         // For legacy, store first packet for potential single-packet case
                         if is_legacy && len <= 254 {
                             let mut first_packet = [0u8; 255];
                             first_packet[0] = len as u8; // Store actual length
                             first_packet[1..=len].copy_from_slice(&rest[..len]);
-                            LAST_PACKET
+                            crate::lock_mut!(LAST_PACKET)
                                 .lock(StreamingAccessors::EthSign)
                                 .replace(first_packet);
                         }
@@ -493,7 +492,7 @@ impl Sign {
 
                 // Normal path for small transactions
                 let len = core::cmp::min(total_size, rest.len());
-                let buffer = unsafe { BUFFER.lock(Self) };
+                let buffer = unsafe { crate::lock_mut!(BUFFER).lock(Self) };
                 buffer.reset();
 
                 buffer
@@ -517,17 +516,17 @@ impl Sign {
                 let payload = buffer.payload().map_err(|_| ParserError::NoData)?;
 
                 // Check if we're in streaming mode
-                let streaming = unsafe { *STREAMING_MODE.lock(StreamingAccessors::EthSign) };
+                let streaming = unsafe { *crate::lock_mut!(STREAMING_MODE).lock(StreamingAccessors::EthSign) };
 
                 if streaming {
                     // For legacy transactions, buffer packets for chain ID extraction
-                    let is_legacy = unsafe { *IS_LEGACY_TX.lock(StreamingAccessors::EthSign) };
+                    let is_legacy = unsafe { *crate::lock_mut!(IS_LEGACY_TX).lock(StreamingAccessors::EthSign) };
 
-                    if is_legacy && payload.len() > 0 {
+                    if is_legacy && !payload.is_empty() {
                         // Rotate packet buffers: last -> second_last, current -> last
                         unsafe {
-                            let last = LAST_PACKET.lock(StreamingAccessors::EthSign);
-                            let second_last = SECOND_LAST_PACKET.lock(StreamingAccessors::EthSign);
+                            let last = crate::lock_mut!(LAST_PACKET).lock(StreamingAccessors::EthSign);
+                            let second_last = crate::lock_mut!(SECOND_LAST_PACKET).lock(StreamingAccessors::EthSign);
 
                             // Move last to second_last (if it exists)
                             *second_last = *last;
@@ -544,7 +543,7 @@ impl Sign {
 
                     // Update hash with new data
                     unsafe {
-                        if let Some(hasher) = STREAMING_HASHER
+                        if let Some(hasher) = crate::lock_mut!(STREAMING_HASHER)
                             .acquire(StreamingAccessors::EthSign)
                             .map_err(|_| ParserError::UnexpectedError)?
                         {
@@ -558,11 +557,11 @@ impl Sign {
 
                     // Update received bytes counter
                     let received_bytes =
-                        unsafe { RECEIVED_BYTES.lock(StreamingAccessors::EthSign) };
+                        unsafe { crate::lock_mut!(RECEIVED_BYTES).lock(StreamingAccessors::EthSign) };
                     *received_bytes = received_bytes.saturating_add(payload.len() as u64);
 
                     let expected_bytes =
-                        unsafe { *EXPECTED_BYTES.lock(StreamingAccessors::EthSign) };
+                        unsafe { *crate::lock_mut!(EXPECTED_BYTES).lock(StreamingAccessors::EthSign) };
 
                     if *received_bytes >= expected_bytes {
                         Self::finalize_streaming_hash()?;
@@ -574,7 +573,7 @@ impl Sign {
 
                 // Normal buffer append path
                 let buffer = unsafe {
-                    BUFFER
+                    crate::lock_mut!(BUFFER)
                         .acquire(Self)
                         .map_err(|_| ParserError::UnexpectedError)?
                 };
@@ -610,7 +609,6 @@ impl Sign {
     }
 }
 
-#[allow(static_mut_refs)]
 impl ApduHandler for Sign {
     #[inline(never)]
     fn handle(flags: &mut u32, tx: &mut u32, buffer: ApduBufferRead<'_>) -> Result<(), Error> {
@@ -641,7 +639,7 @@ impl ApduHandler for Sign {
                 verify_coreth_root_path(&bip32_path)?;
 
                 unsafe {
-                    PATH.lock(Self).replace(bip32_path);
+                    crate::lock_mut!(PATH).lock(Self).replace(bip32_path);
                 }
 
                 //parse the length of the RLP message
@@ -649,7 +647,7 @@ impl ApduHandler for Sign {
                 let len = core::cmp::min((to_read as usize).saturating_add(read), rest.len());
 
                 //write the rest to the swapping buffer so we persist this data
-                let buffer = unsafe { BUFFER.lock(Self) };
+                let buffer = unsafe { crate::lock_mut!(BUFFER).lock(Self) };
                 buffer.reset();
 
                 buffer
@@ -670,7 +668,7 @@ impl ApduHandler for Sign {
             0x80 => {
                 let payload = buffer.payload().map_err(|_| Error::WrongLength)?;
 
-                let buffer = unsafe { BUFFER.acquire(Self)? };
+                let buffer = unsafe { crate::lock_mut!(BUFFER).acquire(Self)? };
 
                 //we could unwrap here as this data should be guaranteed correct
                 // we read back what we wrote to see how many bytes we expect
@@ -838,39 +836,38 @@ impl Viewable for SignUI {
     }
 }
 
-#[allow(static_mut_refs)]
 pub fn cleanup_globals() -> Result<(), Error> {
     unsafe {
-        if let Ok(path) = PATH.acquire(Sign) {
+        if let Ok(path) = crate::lock_mut!(PATH).acquire(Sign) {
             path.take();
 
             //let's release the lock for the future
-            let _ = PATH.release(Sign);
+            let _ = crate::lock_mut!(PATH).release(Sign);
         }
 
-        if let Ok(buffer) = BUFFER.acquire(Sign) {
+        if let Ok(buffer) = crate::lock_mut!(BUFFER).acquire(Sign) {
             buffer.reset();
 
             //let's release the lock for the future
-            let _ = BUFFER.release(Sign);
+            let _ = crate::lock_mut!(BUFFER).release(Sign);
         }
 
         // Reset streaming mode used flag, hash, and metadata
         use crate::handlers::resources::{
             STREAMING_CHAIN_ID, STREAMING_HASH, STREAMING_MODE_USED, STREAMING_TX_TYPE,
         };
-        *STREAMING_MODE_USED.lock(StreamingAccessors::EthSign) = false;
-        *STREAMING_HASH.lock(StreamingAccessors::EthSign) = None;
-        *STREAMING_TX_TYPE.lock(StreamingAccessors::EthSign) = false;
-        *STREAMING_CHAIN_ID.lock(StreamingAccessors::EthSign) = None;
+        *crate::lock_mut!(STREAMING_MODE_USED).lock(StreamingAccessors::EthSign) = false;
+        *crate::lock_mut!(STREAMING_HASH).lock(StreamingAccessors::EthSign) = None;
+        *crate::lock_mut!(STREAMING_TX_TYPE).lock(StreamingAccessors::EthSign) = false;
+        *crate::lock_mut!(STREAMING_CHAIN_ID).lock(StreamingAccessors::EthSign) = None;
 
         // Forcefully acquire the resource as it is not longer in use
         // transaction was rejected.
         #[cfg(feature = "erc721")]
         {
-            crate::handlers::resources::NFT_INFO.lock(Sign).take();
+            crate::lock_mut!(crate::handlers::resources::NFT_INFO).lock(Sign).take();
             //let's release the lock for the future
-            _ = crate::handlers::resources::NFT_INFO.release(Sign);
+            _ = crate::lock_mut!(crate::handlers::resources::NFT_INFO).release(Sign);
         }
     }
 
@@ -883,7 +880,7 @@ pub fn cleanup_globals() -> Result<(), Error> {
 pub unsafe extern "C" fn rs_eth_was_streaming_mode_used() -> bool {
     use crate::handlers::resources::STREAMING_MODE_USED;
 
-    *STREAMING_MODE_USED.lock(StreamingAccessors::EthSign)
+    *crate::lock_mut!(STREAMING_MODE_USED).lock(StreamingAccessors::EthSign)
 }
 
 /// Get the computed hash from streaming mode (returns true if hash is available)
@@ -895,7 +892,7 @@ pub unsafe extern "C" fn rs_eth_get_streaming_hash(hash_buffer: *mut u8, buffer_
         return false;
     }
 
-    let hash_option = *STREAMING_HASH.lock(StreamingAccessors::EthSign);
+    let hash_option = *crate::lock_mut!(STREAMING_HASH).lock(StreamingAccessors::EthSign);
     if let Some(hash) = hash_option {
         let buffer_slice = std::slice::from_raw_parts_mut(hash_buffer, 32);
         buffer_slice.copy_from_slice(&hash);

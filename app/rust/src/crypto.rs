@@ -66,8 +66,6 @@ impl TryFrom<sys::crypto::Curve> for Curve {
 
         match ccrv {
             CCurve::Secp256K1 => Ok(Self),
-            #[allow(unreachable_patterns)]
-            //this isn't actually unreachable because CCurve mock is just incomplete
             _ => Err(()),
         }
     }
