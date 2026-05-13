@@ -17,7 +17,7 @@
 //! and afterwards has been refactored to remove unwanted functionality
 //! and provide alternative implementations for some items
 
-#![allow(non_camel_case_types, non_upper_case_globals, unused_comparisons)]
+
 
 use core::cmp::{Ord, Ordering};
 use core::iter::{Product, Sum};
@@ -60,7 +60,7 @@ impl<'b> BorrowedU256<'b> {
 
     /// Returns `true` if the number is zero
     pub fn is_zero(&self) -> bool {
-        self.0.iter().all(|v| *v != 0)
+        self.0.iter().all(|v| *v == 0)
     }
 }
 
@@ -335,8 +335,7 @@ impl u256 {
     }
 
     fn div_mod_knuth(self, mut v: Self, n: usize, m: usize) -> (Self, Self) {
-        #![allow(clippy::nonminimal_bool)]
-        if !(self.bits() >= v.bits() && !v.fits_word()) {
+        if self.bits() < v.bits() || v.fits_word() {
             panic!("assertion failed: self.bits() >= v.bits() && !v.fits_word()",)
         }
         if n + m > 4 {
@@ -419,7 +418,7 @@ impl u256 {
             return this;
         }
 
-        let shift: u32 = (this.bits() as u32 + 1) / 2;
+        let shift: u32 = (this.bits() as u32).div_ceil(2);
         let mut x_prev = one << shift;
         loop {
             let x = (x_prev + this / x_prev) >> 1usize;
@@ -520,7 +519,7 @@ impl u256 {
             const ASSERT: bool = isize::MAX as usize / core::mem::size_of::<u64>() > 4;
 
             {
-                const i: usize = 0;
+                let i: usize = 0;
                 {
                     if carry != 0 {
                         let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
@@ -535,7 +534,7 @@ impl u256 {
                 }
             }
             {
-                const i: usize = 1;
+                let i: usize = 1;
                 if carry != 0 {
                     let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
                     let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
@@ -548,7 +547,7 @@ impl u256 {
                 }
             }
             {
-                const i: usize = 2;
+                let i: usize = 2;
                 if carry != 0 {
                     let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
                     let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
@@ -561,7 +560,7 @@ impl u256 {
                 }
             }
             {
-                const i: usize = 3;
+                let i: usize = 3;
                 if carry != 0 {
                     let (res1, overflow1) = (u64::overflowing_add)(me[i], you[i]);
                     let (res2, overflow2) = (u64::overflowing_add)(res1, carry);
@@ -606,7 +605,7 @@ impl u256 {
             const ASSERT: bool = isize::MAX as usize / core::mem::size_of::<u64>() > 4;
 
             {
-                const i: usize = 0;
+                let i: usize = 0;
                 if carry != 0 {
                     let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
                     let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
@@ -619,7 +618,7 @@ impl u256 {
                 }
             }
             {
-                const i: usize = 1;
+                let i: usize = 1;
                 if carry != 0 {
                     let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
                     let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
@@ -632,7 +631,7 @@ impl u256 {
                 }
             }
             {
-                const i: usize = 2;
+                let i: usize = 2;
                 if carry != 0 {
                     let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
                     let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
@@ -645,7 +644,7 @@ impl u256 {
                 }
             }
             {
-                const i: usize = 3;
+                let i: usize = 3;
                 if carry != 0 {
                     let (res1, overflow1) = (u64::overflowing_sub)(me[i], you[i]);
                     let (res2, overflow2) = (u64::overflowing_sub)(res1, carry);
@@ -688,13 +687,13 @@ impl u256 {
                 let mut ret = [0u64; 4 * 2];
 
                 {
-                    const i: usize = 0;
+                    let i: usize = 0;
 
                     let mut carry = 0u64;
                     let b = you[i];
 
                     {
-                        const j: usize = 0;
+                        let j: usize = 0;
 
                         let a = me[j];
                         let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -714,7 +713,7 @@ impl u256 {
                         }
                     }
                     {
-                        const j: usize = 1;
+                        let j: usize = 1;
 
                         let a = me[j];
                         let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -734,7 +733,7 @@ impl u256 {
                         }
                     }
                     {
-                        const j: usize = 2;
+                        let j: usize = 2;
 
                         let a = me[j];
                         let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -754,7 +753,7 @@ impl u256 {
                         }
                     }
                     {
-                        const j: usize = 3;
+                        let j: usize = 3;
 
                         let a = me[j];
                         let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -775,14 +774,14 @@ impl u256 {
                     }
                 }
                 {
-                    const i: usize = 1;
+                    let i: usize = 1;
 
                     let mut carry = 0u64;
                     let b = you[i];
 
                     {
                         {
-                            const j: usize = 0;
+                            let j: usize = 0;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -802,7 +801,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 1;
+                            let j: usize = 1;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -822,7 +821,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 2;
+                            let j: usize = 2;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -842,7 +841,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 3;
+                            let j: usize = 3;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -864,14 +863,14 @@ impl u256 {
                     }
                 }
                 {
-                    const i: usize = 2;
+                    let i: usize = 2;
 
                     let mut carry = 0u64;
                     let b = you[i];
 
                     {
                         {
-                            const j: usize = 0;
+                            let j: usize = 0;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -891,7 +890,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 1;
+                            let j: usize = 1;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -911,7 +910,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 2;
+                            let j: usize = 2;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -931,7 +930,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 3;
+                            let j: usize = 3;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -953,14 +952,14 @@ impl u256 {
                     }
                 }
                 {
-                    const i: usize = 3;
+                    let i: usize = 3;
 
                     let mut carry = 0u64;
                     let b = you[i];
 
                     {
                         {
-                            const j: usize = 0;
+                            let j: usize = 0;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -980,7 +979,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 1;
+                            let j: usize = 1;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -1000,7 +999,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 2;
+                            let j: usize = 2;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -1020,7 +1019,7 @@ impl u256 {
                             }
                         }
                         {
-                            const j: usize = 3;
+                            let j: usize = 3;
 
                             let a = me[j];
                             let (hi, low) = Self::split_u128(a as u128 * b as u128);
@@ -1702,5 +1701,36 @@ mod tests {
         fn formatting(a: u64, b: u64, c: u64, d: u64) {
             formatting_impl(u256([a, b, c, d]))
         }
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_empty() {
+        assert!(BorrowedU256::new(&[]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_all_zero_bytes() {
+        assert!(BorrowedU256::new(&[0u8; 32]).unwrap().is_zero());
+        assert!(BorrowedU256::new(&[0u8; 1]).unwrap().is_zero());
+        assert!(BorrowedU256::new(&[0u8; 16]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_single_nonzero_byte() {
+        assert!(!BorrowedU256::new(&[0x01]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0xff]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_all_bytes_nonzero() {
+        assert!(!BorrowedU256::new(&[0xff; 32]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0x0a, 0xff]).unwrap().is_zero());
+    }
+
+    #[test]
+    fn borrowed_u256_is_zero_mixed_bytes() {
+        assert!(!BorrowedU256::new(&[0x00, 0x01]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0x01, 0x00]).unwrap().is_zero());
+        assert!(!BorrowedU256::new(&[0x00, 0x00, 0x01, 0x00]).unwrap().is_zero());
     }
 }

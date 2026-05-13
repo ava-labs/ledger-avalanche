@@ -82,6 +82,9 @@ impl DisplayableItem for TransferableOp<'_> {
 // Important: do not change the repr attribute,
 // as this type is use as the tag field
 // for the Operation enum which has the same representation
+// Variants share an `Op` suffix to mirror the Avalanche protocol op-codes
+// (SECPMintOp, NFTTransferOp, NFTMintOp).
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(test, derive(Debug))]
 #[repr(u8)]

@@ -24,7 +24,7 @@ const defaultOptions = (model: any) => {
   return {
     ...commonOpts(model, true),
     approveKeyword: isTouchDevice(model.name) ? 'Confirm' : '',
-    approveAction: ButtonKind.DynamicTapButton,
+    approveAction: ButtonKind.ApproveTapButton,
   }
 }
 

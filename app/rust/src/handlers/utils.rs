@@ -13,7 +13,6 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use core::convert::TryFrom;
 use zemu_sys::ViewError;
 
 #[repr(u8)]
@@ -43,11 +42,6 @@ impl From<ZPacketType> for u8 {
 }
 
 impl ZPacketType {
-    #[allow(clippy::result_unit_err)]
-    pub fn new(p1: u8) -> Result<Self, ()> {
-        Self::try_from(p1)
-    }
-
     pub fn is_init(&self) -> bool {
         matches!(self, Self::Init)
     }

@@ -24,11 +24,11 @@ use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{
-        ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
+        ApduError as Error, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
     },
     dispatcher::ApduHandler,
     handlers::{
-        avax::sign_hash::Sign as SignHash,
+        avax::{sign_hash::Sign as SignHash, verify_avax_root_path},
         resources::{HASH, PATH},
     },
     parser::{DisplayableItem, ObjectList, ParserError, PathWrapper, Transaction},
@@ -38,14 +38,13 @@ use crate::{
 
 pub struct Sign;
 
-#[allow(static_mut_refs)]
 impl Sign {
     // For avax transactions which includes P, C, X chains,
     // sha256 is used
     pub const SIGN_HASH_SIZE: usize = Sha256::DIGEST_LEN;
 
     fn get_derivation_info() -> Result<&'static BIP32Path<MAX_BIP32_PATH_DEPTH>, Error> {
-        match unsafe { PATH.acquire(Self) } {
+        match unsafe { crate::lock_mut!(PATH).acquire(Self) } {
             Ok(Some(some)) => Ok(some),
             _ => Err(Error::ApduCodeConditionsNotSatisfied),
         }
@@ -85,10 +84,8 @@ impl Sign {
         // get root path
         let path_root = Self::get_derivation_info()?;
 
-        //We expect a path prefix of the form x'/x'/x'
-        if path_root.components().len() != BIP32_PATH_PREFIX_DEPTH {
-            return Err(Error::WrongLength);
-        }
+        // The root must be a canonical AVAX signing prefix (m/44'/9000'/account').
+        verify_avax_root_path(path_root)?;
 
         let mut path_wrapper: MaybeUninit<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>> =
             MaybeUninit::uninit();
@@ -129,13 +126,10 @@ impl Sign {
         // signing process and diseabling outputs we use it
         // to get a full path: root_path + path_suffix
         let root_path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
-        //We expect a path prefix of the form x'/x'/x'
-        if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
-            return Err(Error::WrongLength);
-        }
+        verify_avax_root_path(&root_path)?;
 
         unsafe {
-            PATH.lock(Self).replace(root_path);
+            crate::lock_mut!(PATH).lock(Self).replace(root_path);
         }
 
         // then, get the change_path list.
@@ -184,7 +178,6 @@ pub(crate) struct SignUI {
     transaction: Transaction<'static>,
 }
 
-#[allow(static_mut_refs)]
 impl Viewable for SignUI {
     fn num_items(&mut self) -> Result<u8, ViewError> {
         self.transaction.num_items()
@@ -207,12 +200,12 @@ impl Viewable for SignUI {
         // In this step the transaction has not been signed
         // so store the hash for the next steps
         unsafe {
-            HASH.lock(Sign).replace(self.hash);
+            crate::lock_mut!(HASH).lock(Sign).replace(self.hash);
 
             // next step requires SignHash handler to have
             // access to the path and hash resources that this handler just updated
-            PATH.lock(SignHash);
-            HASH.lock(SignHash);
+            crate::lock_mut!(PATH).lock(SignHash);
+            crate::lock_mut!(HASH).lock(SignHash);
         }
 
         (tx, Error::Success as _)
@@ -224,14 +217,13 @@ impl Viewable for SignUI {
     }
 }
 
-#[allow(static_mut_refs)]
 fn cleanup_globals() -> Result<(), Error> {
     unsafe {
-        if let Ok(path) = PATH.acquire(Sign) {
+        if let Ok(path) = crate::lock_mut!(PATH).acquire(Sign) {
             path.take();
 
             //let's release the lock for the future
-            let _ = PATH.release(Sign);
+            let _ = crate::lock_mut!(PATH).release(Sign);
         }
     }
     //if we failed to aquire then someone else is using it anyways

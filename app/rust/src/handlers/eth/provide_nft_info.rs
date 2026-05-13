@@ -18,7 +18,6 @@ use crate::{constants::ApduError as Error, dispatcher::ApduHandler, sys, utils::
 pub struct Info;
 
 #[cfg(feature = "erc721")]
-#[allow(static_mut_refs)]
 impl Info {
     pub fn process(input: &[u8]) -> Result<(), Error> {
         crate::zlog("NftInfo::process\x00");
@@ -34,7 +33,7 @@ impl Info {
 
         // store the information use to parse erc721 token
         unsafe {
-            crate::handlers::resources::NFT_INFO
+            crate::lock_mut!(crate::handlers::resources::NFT_INFO)
                 .lock(super::signing::Sign)
                 .replace(nft_info);
         }

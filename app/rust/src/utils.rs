@@ -13,7 +13,6 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-#![allow(dead_code, unused_macros)]
 
 use bolos::PIC;
 
@@ -155,6 +154,50 @@ pub fn read_slice(input: &[u8]) -> Option<(usize, &[u8])> {
     input.get(1..1 + len).map(|bytes| (1 + len, bytes))
 }
 
+#[macro_export]
+/// Convert the return of Show::show into something more usable for apdu handlers
+///
+/// sets `tx` to the amount returned if given,
+/// otherwise tx is returned only on success and discarded on failure
+macro_rules! show_ui {
+    ($show:expr, $tx:ident) => {{
+        let result = $show;
+        match result {
+            Ok((size, err)) if err == $crate::constants::ApduError::Success as u16 => {
+                let size = size as _;
+                *$tx = size;
+                Ok(())
+            }
+            Ok((size, err)) => {
+                use core::convert::TryInto;
+                let size = size as _;
+                *$tx = size;
+
+                match err.try_into() {
+                    Ok(err) => Err(err),
+                    Err(_) => Err($crate::constants::ApduError::ExecutionError),
+                }
+            }
+            Err(_) => Err($crate::constants::ApduError::ExecutionError),
+        }
+    }};
+    ($show:expr) => {{
+        let result = $show;
+        match result {
+            Ok((size, err)) if err == $crate::constants::ApduError::Success as u16 => Ok(size as _),
+            Ok((_, err)) => {
+                use core::convert::TryInto;
+
+                match err.try_into() {
+                    Ok(err) => Err(err),
+                    Err(_) => Err($crate::constants::ApduError::ExecutionError),
+                }
+            }
+            Err(_) => Err($crate::constants::ApduError::ExecutionError),
+        }
+    }};
+}
+
 #[cfg(test)]
 mod maybe_null_terminated_to_string {
     use core::str::Utf8Error;
@@ -205,48 +248,4 @@ mod maybe_null_terminated_to_string {
             (&self[..]).to_string_with_check_null()
         }
     }
-}
-
-#[macro_export]
-/// Convert the return of Show::show into something more usable for apdu handlers
-///
-/// sets `tx` to the amount returned if given,
-/// otherwise tx is returned only on success and discarded on failure
-macro_rules! show_ui {
-    ($show:expr, $tx:ident) => {{
-        let result = $show;
-        match result {
-            Ok((size, err)) if err == $crate::constants::ApduError::Success as u16 => {
-                let size = size as _;
-                *$tx = size;
-                Ok(())
-            }
-            Ok((size, err)) => {
-                use core::convert::TryInto;
-                let size = size as _;
-                *$tx = size;
-
-                match err.try_into() {
-                    Ok(err) => Err(err),
-                    Err(_) => Err($crate::constants::ApduError::ExecutionError),
-                }
-            }
-            Err(_) => Err($crate::constants::ApduError::ExecutionError),
-        }
-    }};
-    ($show:expr) => {{
-        let result = $show;
-        match result {
-            Ok((size, err)) if err == $crate::constants::ApduError::Success as u16 => Ok(size as _),
-            Ok((_, err)) => {
-                use core::convert::TryInto;
-
-                match err.try_into() {
-                    Ok(err) => Err(err),
-                    Err(_) => Err($crate::constants::ApduError::ExecutionError),
-                }
-            }
-            Err(_) => Err($crate::constants::ApduError::ExecutionError),
-        }
-    }};
 }

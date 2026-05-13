@@ -26,7 +26,7 @@ use crate::{
     handlers::handle_ui_message,
     parser::{
         u64_to_str, Address, DisplayableItem, FromBytes, ParserError, ADDRESS_LEN,
-        MAX_ADDRESS_ENCODED_LEN, U64_FORMATTED_SIZE
+        MAX_ADDRESSES, MAX_ADDRESS_ENCODED_LEN, U64_FORMATTED_SIZE
     },
 };
 
@@ -87,7 +87,13 @@ impl<'b> FromBytes<'b> for SECPOutputOwners<'b> {
 
         let (rem, (locktime, threshold, addr_len)) = tuple((be_u64, be_u32, be_u32))(rem)?;
 
-        let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
+        if addr_len > MAX_ADDRESSES {
+            return Err(ParserError::TooManyAddresses.into());
+        }
+        let addresses_len = (addr_len as usize)
+            .checked_mul(ADDRESS_LEN)
+            .ok_or(ParserError::ValueOutOfRange)?;
+        let (rem, addresses) = take(addresses_len)(rem)?;
         // Check for invariants
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;

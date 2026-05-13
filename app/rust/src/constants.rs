@@ -136,6 +136,8 @@ pub(crate) mod evm_instructions {
 
 pub const BIP32_PATH_ROOT_0: u32 = 0x8000_0000 + 44;
 pub const BIP32_PATH_ROOT_1: u32 = 0x8000_0000 + 9000;
+// Coin type for Coreth / Ethereum-compatible derivations (m/44'/60'/...).
+pub const BIP32_PATH_ROOT_COIN_ETH: u32 = 0x8000_0000 + 60;
 pub const MAX_BIP32_PATH_DEPTH: usize = 6;
 // path prefix for signer_list and change_path lists
 // It is the same for both and has 3 components m/44'/9000'/0'/

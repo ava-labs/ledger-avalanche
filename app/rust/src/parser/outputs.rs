@@ -199,7 +199,7 @@ impl<'b> Output<'b> {
         }
     }
 
-    pub fn secp_transfer(&self) -> Option<&SECPTransferOutput> {
+    pub fn secp_transfer(&self) -> Option<&SECPTransferOutput<'_>> {
         if let Self::SECPTransfer(ref secp) = self {
             Some(secp)
         } else {

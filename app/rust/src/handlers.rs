@@ -26,6 +26,10 @@ pub mod eth;
 mod utils;
 pub use utils::*;
 
+// `bolos::lazy_static!` expands into the legacy `static mut` access pattern
+// that triggers `static_mut_refs`; the allow lives at the macro invocation
+// scope. All call sites of these statics use `crate::lock_mut!()` so this is
+// the only place we need the suppression.
 #[allow(static_mut_refs)]
 pub mod resources {
     use crate::constants::MAX_BIP32_PATH_DEPTH;

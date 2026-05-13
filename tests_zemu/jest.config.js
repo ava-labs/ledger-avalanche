@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  transformIgnorePatterns: ['node_modules/(?!(@ethereumjs|@noble)/)'],
+  transformIgnorePatterns: ['node_modules/(?!(@ethereumjs|@noble|get-port)/)'],
   transform: {
     '^.+\\.[jt]sx?$': 'ts-jest',
   },
