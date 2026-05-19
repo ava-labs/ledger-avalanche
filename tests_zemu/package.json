@@ -19,7 +19,7 @@
     "@ethersproject/wallet": "^5.8.0",
     "@types/node": "^25.6.0",
     "@zondax/ledger-avalanche-app": "link:../js",
-    "@zondax/zemu": "0.67.2",
+    "@zondax/zemu": "0.67.4",
     "ethers": "^6.16.0"
   },
   "devDependencies": {
@@ -55,8 +55,5 @@
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  },
-  "resolutions": {
-    "flatted": "^3.4.2"
   }
 }
