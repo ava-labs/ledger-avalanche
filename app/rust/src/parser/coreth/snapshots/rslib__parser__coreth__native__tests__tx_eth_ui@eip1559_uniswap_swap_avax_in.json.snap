@@ -1,0 +1,14 @@
+---
+source: src/parser/coreth/native.rs
+assertion_line: 416
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/eip1559_uniswap_swap_avax_in.json
+---
+[
+    "Chain ID": "43114",
+    "Contract": "Call",
+    "Transfer": "AVAX 0.393358839512525916",
+    "To": "0x8b844f885672f333bc0042cb669255f93a4c1e6b",
+    "Contract Data: ": "0x3593564c0000000000000000000000000000000000000000000000000000...",
+    "Maximun Fee(GWEI)": "7607.523082796",
+]
