@@ -21,23 +21,31 @@ pub mod signing;
 use bolos::crypto::bip32::BIP32Path;
 
 use crate::constants::{
-    ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_ROOT_0, BIP32_PATH_ROOT_1,
+    ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_ROOT_0, BIP32_PATH_ROOT_COIN_ETH,
+    BIP32_PATH_ROOT_1,
 };
 
-/// Verify that a BIP32 path is a valid AVAX signing root of the form
-/// `m/44'/9000'/account'`.
+/// Verify that a BIP32 path is a valid AVAX signing root.
 ///
-/// Every AVAX-side signing entry (transaction, hash, personal message) derives
-/// its keys from this prefix plus a 2-component non-hardened suffix. Accepting
-/// a different prefix — for example `m/44'/60'/0'` (Ethereum) or `m/0/0/0`
-/// (unhardened) — lets a malicious host show a normal-looking Avalanche
-/// review while signing with a key from an unrelated namespace, so depth
-/// alone is not a sufficient check.
+/// The AVAX signing INS carries Avalanche-native transactions whose payload
+/// determines which chain owns the funds being moved:
 ///
-/// The check enforces:
+/// - `AvmExport/Import` and `PvmExport/Import` move funds on X/P chain, where
+///   the signing key lives under `m/44'/9000'/account'` ([`BIP32_PATH_ROOT_1`]).
+/// - `EvmExport/Import` (CoreEth atomic transactions) move funds on C-chain,
+///   where the signing key lives under `m/44'/60'/account'`
+///   ([`BIP32_PATH_ROOT_COIN_ETH`]) — the same root used by the embedded ETH
+///   handler for C-chain EVM transactions.
+///
+/// Both prefixes are legitimate at the root level; which one is required
+/// depends on the parsed transaction type and is enforced at the call site
+/// (see `signing.rs`). The helper here keeps the structural guarantees that
+/// are always true regardless of tx type:
+///
 /// - depth == [`BIP32_PATH_PREFIX_DEPTH`] (3 components)
-/// - components 0 and 1 equal [`BIP32_PATH_ROOT_0`] (44') and
-///   [`BIP32_PATH_ROOT_1`] (9000') respectively
+/// - component 0 equals [`BIP32_PATH_ROOT_0`] (44')
+/// - component 1 equals one of [`BIP32_PATH_ROOT_1`] (9000') or
+///   [`BIP32_PATH_ROOT_COIN_ETH`] (60')
 /// - every component is hardened
 pub fn verify_avax_root_path<const LEN: usize>(path: &BIP32Path<LEN>) -> Result<(), Error> {
     const HARDENED: u32 = 0x8000_0000;
@@ -46,7 +54,10 @@ pub fn verify_avax_root_path<const LEN: usize>(path: &BIP32Path<LEN>) -> Result<
     if components.len() != BIP32_PATH_PREFIX_DEPTH {
         return Err(Error::WrongLength);
     }
-    if components[0] != BIP32_PATH_ROOT_0 || components[1] != BIP32_PATH_ROOT_1 {
+    if components[0] != BIP32_PATH_ROOT_0 {
+        return Err(Error::DataInvalid);
+    }
+    if components[1] != BIP32_PATH_ROOT_1 && components[1] != BIP32_PATH_ROOT_COIN_ETH {
         return Err(Error::DataInvalid);
     }
     if components.iter().any(|c| c & HARDENED == 0) {
@@ -61,6 +72,7 @@ mod tests {
 
     const P44H: u32 = BIP32_PATH_ROOT_0;
     const P9000H: u32 = BIP32_PATH_ROOT_1;
+    const P60H: u32 = BIP32_PATH_ROOT_COIN_ETH;
     const P0H: u32 = 0x8000_0000;
 
     fn path<const LEN: usize>(components: &[u32]) -> BIP32Path<LEN> {
@@ -68,8 +80,16 @@ mod tests {
     }
 
     #[test]
-    fn accepts_canonical_root() {
+    fn accepts_xp_root() {
+        // m/44'/9000'/0' — canonical X/P-chain root.
         assert!(verify_avax_root_path(&path::<3>(&[P44H, P9000H, P0H])).is_ok());
+    }
+
+    #[test]
+    fn accepts_coreth_atomic_root() {
+        // m/44'/60'/0' — canonical C-chain root, used by EvmExport / EvmImport
+        // CoreEth atomic transactions whose funds live in a C-chain account.
+        assert!(verify_avax_root_path(&path::<3>(&[P44H, P60H, P0H])).is_ok());
     }
 
     #[test]
@@ -83,9 +103,9 @@ mod tests {
     }
 
     #[test]
-    fn rejects_wrong_coin_type() {
-        // m/44'/60'/0' — Ethereum root, must not be accepted as AVAX.
-        assert!(verify_avax_root_path(&path::<3>(&[P44H, 0x8000_0000 + 60, P0H])).is_err());
+    fn rejects_unrelated_coin_type() {
+        // m/44'/61'/0' — neither X/P (9000') nor C-chain (60').
+        assert!(verify_avax_root_path(&path::<3>(&[P44H, 0x8000_0000 + 61, P0H])).is_err());
     }
 
     #[test]
@@ -110,5 +130,11 @@ mod tests {
     fn rejects_unhardened_coin_type() {
         // m/44'/9000/0' — coin type must be hardened.
         assert!(verify_avax_root_path(&path::<3>(&[P44H, 9000, P0H])).is_err());
+    }
+
+    #[test]
+    fn rejects_unhardened_coreth_coin_type() {
+        // m/44'/60/0' — coin type must be hardened, even for the C-chain root.
+        assert!(verify_avax_root_path(&path::<3>(&[P44H, 60, P0H])).is_err());
     }
 }
