@@ -40,7 +40,6 @@ use crate::{
 
 use super::utils::get_tx_rlp_len;
 use super::utils::parse_bip32_eth;
-use super::verify_coreth_root_path;
 
 /// Right-align a big-endian chain ID slice into a fixed 8-byte array, matching
 /// `bytes_to_u64`'s layout. Right-alignment is required so chain IDs whose low
@@ -412,7 +411,6 @@ impl Sign {
                 //parse path to verify it's the data we expect
                 let (rest, bip32_path) =
                     parse_bip32_eth(payload).map_err(|_| ParserError::InvalidPath)?;
-                verify_coreth_root_path(&bip32_path).map_err(|_| ParserError::InvalidPath)?;
 
                 unsafe {
                     crate::lock_mut!(PATH).lock(Self).replace(bip32_path);
@@ -636,7 +634,6 @@ impl ApduHandler for Sign {
                 //parse path to verify it's the data we expect
                 let (rest, bip32_path) =
                     parse_bip32_eth(payload).map_err(|_| Error::DataInvalid)?;
-                verify_coreth_root_path(&bip32_path)?;
 
                 unsafe {
                     crate::lock_mut!(PATH).lock(Self).replace(bip32_path);
