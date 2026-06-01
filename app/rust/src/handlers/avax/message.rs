@@ -20,10 +20,10 @@ use bolos::{
 use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
-    constants::ApduError as Error,
+    constants::{ApduError as Error, BIP32_PATH_PREFIX_DEPTH},
     dispatcher::ApduHandler,
     handlers::{
-        avax::{sign_hash::Sign as SignHash, verify_avax_root_path},
+        avax::sign_hash::Sign as SignHash,
         resources::{HASH, PATH},
     },
     parser::{AvaxMessage, DisplayableItem},
@@ -50,8 +50,11 @@ impl Sign {
         flags: &mut u32,
     ) -> Result<u32, Error> {
         let root_path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
-        // Must be a canonical AVAX signing root (m/44'/9000'/account').
-        verify_avax_root_path(&root_path)?;
+
+        //We expect a path prefix of the form x'/x'/x'
+        if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
+            return Err(Error::WrongLength);
+        }
 
         unsafe {
             crate::lock_mut!(PATH).lock(Self).replace(root_path);
