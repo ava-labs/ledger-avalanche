@@ -24,11 +24,11 @@ use zemu_sys::{Show, ViewError, Viewable};
 
 use crate::{
     constants::{
-        ApduError as Error, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
+        ApduError as Error, BIP32_PATH_PREFIX_DEPTH, BIP32_PATH_SUFFIX_DEPTH, MAX_BIP32_PATH_DEPTH,
     },
     dispatcher::ApduHandler,
     handlers::{
-        avax::{sign_hash::Sign as SignHash, verify_avax_root_path},
+        avax::sign_hash::Sign as SignHash,
         resources::{HASH, PATH},
     },
     parser::{DisplayableItem, ObjectList, ParserError, PathWrapper, Transaction},
@@ -84,8 +84,10 @@ impl Sign {
         // get root path
         let path_root = Self::get_derivation_info()?;
 
-        // The root must be a canonical AVAX signing prefix (m/44'/9000'/account').
-        verify_avax_root_path(path_root)?;
+        //We expect a path prefix of the form x'/x'/x'
+        if path_root.components().len() != BIP32_PATH_PREFIX_DEPTH {
+            return Err(Error::WrongLength);
+        }
 
         let mut path_wrapper: MaybeUninit<PathWrapper<BIP32_PATH_SUFFIX_DEPTH>> =
             MaybeUninit::uninit();
@@ -126,7 +128,11 @@ impl Sign {
         // signing process and diseabling outputs we use it
         // to get a full path: root_path + path_suffix
         let root_path = BIP32Path::read(init_data).map_err(|_| Error::DataInvalid)?;
-        verify_avax_root_path(&root_path)?;
+
+        //We expect a path prefix of the form x'/x'/x'
+        if root_path.components().len() != BIP32_PATH_PREFIX_DEPTH {
+            return Err(Error::WrongLength);
+        }
 
         unsafe {
             crate::lock_mut!(PATH).lock(Self).replace(root_path);
