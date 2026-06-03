@@ -87,10 +87,16 @@ pub fn apdu_dispatch(
         (CLA_ETH, INS_ETH_SIGN) => EthSign::handle(flags, tx, apdu_buffer),
         (CLA_ETH, INS_SIGN_ETH_MSG) => EthSignMsg::handle(flags, tx, apdu_buffer),
 
-        #[cfg(feature = "dev")]
-        _ => Debug::handle(flags, tx, apdu_buffer),
-        #[allow(unreachable_patterns)] //not unrechable for all feature configurations
-        _ => Err(ApduError::CommandNotAllowed),
+        _ => {
+            #[cfg(feature = "dev")]
+            {
+                Debug::handle(flags, tx, apdu_buffer)
+            }
+            #[cfg(not(feature = "dev"))]
+            {
+                Err(ApduError::CommandNotAllowed)
+            }
+        }
     }
 }
 

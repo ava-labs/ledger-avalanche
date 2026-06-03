@@ -43,10 +43,12 @@ impl<'b> FromBytes<'b> for AddressedCall<'b> {
         let (rem, source_address) = take(source_address_size as usize)(rem)?;
 
         // payload_size (4 bytes)
-        let (rem, _) = be_u32(rem)?;
+        let (rem, payload_size) = be_u32(rem)?;
 
-        // payload (remaining bytes) - parse as AddressedCallPayload
-        let payload = AddressedCallPayload::from_payload(rem)?;
+        // payload — slice exactly the declared region so a malformed message
+        // cannot smuggle trailing bytes that would be hashed but not shown.
+        let (outer_rem, payload_bytes) = take(payload_size as usize)(rem)?;
+        let payload = AddressedCallPayload::from_payload(payload_bytes)?;
 
         unsafe {
             core::ptr::addr_of_mut!((*out).source_address_size).write(source_address_size);
@@ -54,6 +56,6 @@ impl<'b> FromBytes<'b> for AddressedCall<'b> {
             core::ptr::addr_of_mut!((*out).payload).write(payload);
         }
 
-        Ok(&[]) // All bytes consumed
+        Ok(outer_rem)
     }
 }

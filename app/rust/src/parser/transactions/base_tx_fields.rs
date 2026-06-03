@@ -104,7 +104,7 @@ where
         &self.outputs
     }
 
-    pub fn inputs(&self) -> &ObjectList<TransferableInput> {
+    pub fn inputs(&self) -> &ObjectList<'_, TransferableInput<'_>> {
         &self.inputs
     }
 

@@ -15,7 +15,7 @@
  ******************************************************************************* */
 
 import Zemu from '@zondax/zemu'
-import { ETH_DERIVATION, defaultOptions as commonOpts, models } from './common'
+import { ETH_DERIVATION, defaultOptions as commonOpts, defaultOptionsBlindSign, models } from './common'
 import AvalancheApp from '@zondax/ledger-avalanche-app'
 
 import { createLegacyTx, createLegacyTxFromBytesArray } from '@ethereumjs/tx'
@@ -26,6 +26,13 @@ import { RLP } from '@ethereumjs/rlp'
 const defaultOptions = (model: any) => {
   let opts = commonOpts(model, false)
   return opts
+}
+
+const blindSignOptions = (model: any) => {
+  return {
+    ...defaultOptionsBlindSign,
+    model: model.name,
+  }
 }
 
 jest.setTimeout(90000)
@@ -129,13 +136,23 @@ function check_legacy_signature(hexTx: string, signature: any, chainId: number |
   return ethTxObj.verifySignature()
 }
 
+const requires_blind_sign = (chainId: number | undefined): boolean => {
+  const effective = chainId ?? 2
+  return effective !== 43114 && effective !== 43113 && effective !== 43112
+}
+
 describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
   test.each(SIGN_TEST_DATA)('sign legacy:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
-      await sim.start(defaultOptions(m))
+      const blind = requires_blind_sign(data.chainId)
+      await sim.start(blind ? blindSignOptions(m) : defaultOptions(m))
 
       const app = new AvalancheApp(sim.getTransport())
+
+      if (blind) {
+        await sim.toggleBlindSigning()
+      }
 
       const testcase = `${m.prefix.toLowerCase()}-eth-sign-${data.name}`
 
@@ -145,7 +162,7 @@ describe.each(models)('EthereumLegacy [%s]; sign', function (m) {
       const respReq = app.signEVMTransaction(ETH_DERIVATION, Buffer.from(msg).toString('hex'), null)
       await sim.waitUntilScreenIsNot(currentScreen, 60000)
 
-      await sim.compareSnapshotsAndApprove('.', `${testcase}`)
+      await sim.compareSnapshotsAndApprove('.', `${testcase}`, true, 0, 1500, blind)
 
       const resp = await respReq
 

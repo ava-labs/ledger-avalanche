@@ -25,7 +25,7 @@ export const defaultOptions = (m: IDeviceModel, is_address = false) => {
 
   if (isTouchDevice(m.name) && is_address) {
     approveKeyword = 'Confirm'
-    approveAction = ButtonKind.DynamicTapButton
+    approveAction = ButtonKind.ApproveTapButton
   }
 
   return {

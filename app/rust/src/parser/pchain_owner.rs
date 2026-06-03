@@ -16,7 +16,7 @@
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{bytes::complete::take, number::complete::be_u32, sequence::tuple};
 
-use crate::parser::{FromBytes, ParserError, ADDRESS_LEN};
+use crate::parser::{FromBytes, ParserError, ADDRESS_LEN, MAX_ADDRESSES};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -33,7 +33,13 @@ impl<'b> FromBytes<'b> for PchainOwner<'b> {
     ) -> Result<&'b [u8], nom::Err<ParserError>> {
         let (rem, (threshold, addr_len)) = tuple((be_u32, be_u32))(input)?;
 
-        let (rem, addresses) = take(addr_len as usize * ADDRESS_LEN)(rem)?;
+        if addr_len > MAX_ADDRESSES {
+            return Err(ParserError::TooManyAddresses.into());
+        }
+        let addresses_len = (addr_len as usize)
+            .checked_mul(ADDRESS_LEN)
+            .ok_or(ParserError::ValueOutOfRange)?;
+        let (rem, addresses) = take(addresses_len)(rem)?;
         // Check for invariants
         let addresses =
             bytemuck::try_cast_slice(addresses).map_err(|_| ParserError::InvalidAddressLength)?;

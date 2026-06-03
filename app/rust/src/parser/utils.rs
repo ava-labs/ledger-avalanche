@@ -292,7 +292,7 @@ mod tests {
         (0..200)
             .map(|_| {
                 let num = rng.random_range(0..u64::MAX);
-                let string = format!("{}", num);
+                let string = format!("{num}");
                 (num, string)
             })
             .collect::<Vec<(u64, String)>>()

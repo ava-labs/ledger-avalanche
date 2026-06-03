@@ -23,6 +23,18 @@ pub const NETWORK_ID_DEVNET: u32 = 76;
 pub const ETH_MAINNET_ID: u64 = 1;
 pub const NONE_CHAIN_ID: u64 = 0;
 
+// AVAX C-Chain EVM chain IDs. Anything else (Orange L1, Beam, Dexalot, ...) is
+// "foreign": the device cannot resolve native ticker symbols for it, so the
+// signing UI must render the value with a `???` ticker and the signing flow
+// must require blind-sign mode.
+//
+// 43112 is the AvalancheGo local devnet's C-Chain ID; it is included so local
+// development tooling (and the existing asset-call test fixtures that target
+// it) keep working without forcing blind-sign.
+pub const AVAX_C_CHAIN_MAINNET_ID: u64 = 43114;
+pub const AVAX_C_CHAIN_FUJI_ID: u64 = 43113;
+pub const AVAX_C_CHAIN_LOCAL_ID: u64 = 43112;
+
 // hrp
 pub const HRP_MAINNET: &str = "avax";
 pub const HRP_TESTNET: &str = "fuji";
@@ -49,6 +61,10 @@ pub const PVM_REGISTER_L1_VALIDATOR: u32 = 0x00000024;
 pub const PVM_SET_L1_VALIDATOR_WEIGHT: u32 = 0x00000025;
 pub const PVM_DISABLE_L1_VALIDATOR: u32 = 0x00000027;
 pub const PVM_INCREASE_L1_VALIDATOR_BALANCE: u32 = 0x00000026;
+
+// ACP-236: Auto-renewed staking (placeholder TypeID)
+pub const PVM_ADD_AUTO_RENEWED_VALIDATOR: u32 = 0x00000028;
+pub const PVM_SET_AUTO_RENEWED_VALIDATOR_CONFIG: u32 = 0x00000029;
 
 //  base tx for p-chain which collides with evm import tx.
 //  we should check chain-id

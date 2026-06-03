@@ -62,7 +62,6 @@ impl From<AddrUIInitError> for Error {
     }
 }
 
-#[allow(static_mut_refs)]
 impl<'ui> AddrUIInitializer<'ui> {
     /// Create a new `AddrUI` initialized
     pub fn new(ui: &'ui mut MaybeUninit<AddrUI>) -> Self {
@@ -103,7 +102,7 @@ impl<'ui> AddrUIInitializer<'ui> {
     /// Initialie the path with the given one
     pub fn with_path(&mut self, path: BIP32Path<MAX_BIP32_PATH_DEPTH>) -> &mut Self {
         unsafe {
-            PATH.lock(super::GetPublicKey).replace(path);
+            crate::lock_mut!(PATH).lock(super::GetPublicKey).replace(path);
         }
 
         self.path_init = true;
@@ -191,7 +190,6 @@ pub struct AddrUI {
     hrp: [u8; ASCII_HRP_MAX_SIZE + 1], //+1 to null terminate just in case
 }
 
-#[allow(static_mut_refs)]
 impl AddrUI {
     //36 (32 + 4 checksum) * log(2, 256) / log(2, 58) ~ 49.1
     // so we round up to 50
@@ -230,7 +228,7 @@ impl AddrUI {
     ) -> Result<crypto::PublicKey, Error> {
         let mut out = MaybeUninit::uninit();
 
-        let path = unsafe { PATH.acquire(super::GetPublicKey) }?
+        let path = unsafe { crate::lock_mut!(PATH).acquire(super::GetPublicKey) }?
             .as_ref()
             .ok_or(Error::ExecutionError)?;
 

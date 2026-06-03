@@ -1,0 +1,13 @@
+---
+source: src/parser/coreth/native.rs
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/eip2930_juice_swap_orange.json
+---
+[
+    "Chain ID": "1510",
+    "Contract": "Call",
+    "Transfer": "??? 2000",
+    "To": "0xfff1e335bccc178de27ad211c1ee4f7ab7ee6938",
+    "Contract Data: ": "0xf3a027a60000000000000000000000000000000000000000000000000000...",
+    "Maximun Fee(GWEI)": "16690440",
+]

@@ -5,9 +5,16 @@ use crate::constants::{
 /// Wraps an apdu_buffer and provides utility methods
 pub struct ApduBufferRead<'apdu> {
     inner: &'apdu mut [u8],
+    // Number of bytes actually received in the APDU. The backing `inner`
+    // buffer can be larger than the APDU (e.g. Ledger's SDK reuses a single
+    // buffer for both request and response), so all reads of APDU data must
+    // be bounded by `rx` instead of `inner.len()`. `write()` keeps access to
+    // the full buffer because responses may legitimately exceed `rx`.
+    rx: usize,
 }
 
 #[derive(PartialEq, Eq)]
+#[cfg_attr(test, derive(Debug))]
 pub enum ApduBufferReadError {
     /// The provided buffer was not long enough
     ///
@@ -65,7 +72,10 @@ impl<'apdu> ApduBufferRead<'apdu> {
         //check buf is at least rx
         Self::check_min_len(buf.len(), rx as usize, None)?;
 
-        Ok(Self { inner: buf })
+        Ok(Self {
+            inner: buf,
+            rx: rx as usize,
+        })
     }
 
     /// Alias to idx APDU_INDEX_CLA
@@ -91,11 +101,15 @@ impl<'apdu> ApduBufferRead<'apdu> {
     /// Return the remaining part of the buffer if present
     ///
     /// It's expected the buffer to have the prepended len at idx APDU_INDEX_LEN,
-    /// thus the data would start at idx 5 until len - 5
+    /// thus the data would start at idx 5 until len - 5.
+    ///
+    /// The advertised payload length (`Lc`) is validated against `rx`, the
+    /// number of bytes actually received, so a host cannot make the reader
+    /// hand out stale bytes that live past the end of the received APDU.
     pub fn payload(&self) -> Result<&[u8], ApduBufferReadError> {
         let plen = self.inner[APDU_INDEX_LEN] as usize;
-        //check that the buffer is long enough for the payload
-        Self::check_min_len(self.inner.len(), plen, APDU_MIN_LENGTH as usize)
+        //check that the received APDU is long enough for the payload
+        Self::check_min_len(self.rx, plen, APDU_MIN_LENGTH as usize)
             .map_err(|err| err.length_to_payload())?;
 
         Ok(&self.inner[APDU_MIN_LENGTH as usize..APDU_MIN_LENGTH as usize + plen])
@@ -105,5 +119,91 @@ impl<'apdu> ApduBufferRead<'apdu> {
     /// Discard the structure to obtain the inner slice for writing
     pub fn write(self) -> &'apdu mut [u8] {
         self.inner
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MIN: usize = APDU_MIN_LENGTH as usize;
+
+    fn header(lc: u8) -> [u8; MIN] {
+        // CLA, INS, P1, P2, Lc
+        [0xEE, 0x01, 0x00, 0x00, lc]
+    }
+
+    // Exact-fit: the advertised Lc equals rx - APDU_MIN_LENGTH. Payload is
+    // returned with the expected length.
+    #[test]
+    fn payload_bounded_exact_fit() {
+        let mut buf = [0u8; 64];
+        buf[..MIN].copy_from_slice(&header(3));
+        buf[MIN..MIN + 3].copy_from_slice(&[0xAA, 0xBB, 0xCC]);
+        let rx = (MIN + 3) as u32;
+
+        let reader = ApduBufferRead::new(&mut buf, rx).expect("new");
+        assert_eq!(reader.payload().unwrap(), &[0xAA, 0xBB, 0xCC]);
+    }
+
+    // The backing buffer is larger than rx. An honest APDU with Lc that fits
+    // within rx must still parse.
+    #[test]
+    fn payload_bounded_smaller_rx_ok() {
+        let mut buf = [0u8; 260];
+        buf[..MIN].copy_from_slice(&header(2));
+        buf[MIN..MIN + 2].copy_from_slice(&[0x11, 0x22]);
+        // Deliberately dirty the stale tail to catch any over-read.
+        for slot in &mut buf[MIN + 2..] {
+            *slot = 0xFE;
+        }
+        let rx = (MIN + 2) as u32;
+
+        let reader = ApduBufferRead::new(&mut buf, rx).expect("new");
+        assert_eq!(reader.payload().unwrap(), &[0x11, 0x22]);
+    }
+
+    // Host advertises Lc that extends past rx. The reader must reject without
+    // handing out any of the stale backing-buffer bytes past position rx.
+    #[test]
+    fn payload_bounded_rejects_stale_read() {
+        let mut buf = [0u8; 260];
+        buf[..MIN].copy_from_slice(&header(200));
+        for slot in &mut buf[MIN..] {
+            *slot = 0xFE;
+        }
+        // Received APDU is only 5 bytes (header only); Lc = 200 is a lie.
+        let rx = MIN as u32;
+
+        let reader = ApduBufferRead::new(&mut buf, rx).expect("new");
+        assert!(matches!(
+            reader.payload(),
+            Err(ApduBufferReadError::NotEnoughPayload { .. })
+        ));
+    }
+
+    // Host advertises Lc exactly one byte past rx. Must also be rejected.
+    #[test]
+    fn payload_bounded_rejects_off_by_one() {
+        let mut buf = [0u8; 64];
+        buf[..MIN].copy_from_slice(&header(4));
+        let rx = (MIN + 3) as u32;
+
+        let reader = ApduBufferRead::new(&mut buf, rx).expect("new");
+        assert!(matches!(
+            reader.payload(),
+            Err(ApduBufferReadError::NotEnoughPayload { .. })
+        ));
+    }
+
+    // Minimum APDU (no Lc data): Lc = 0 is always valid.
+    #[test]
+    fn payload_bounded_empty_payload() {
+        let mut buf = [0u8; 64];
+        buf[..MIN].copy_from_slice(&header(0));
+        let rx = MIN as u32;
+
+        let reader = ApduBufferRead::new(&mut buf, rx).expect("new");
+        assert!(reader.payload().unwrap().is_empty());
     }
 }

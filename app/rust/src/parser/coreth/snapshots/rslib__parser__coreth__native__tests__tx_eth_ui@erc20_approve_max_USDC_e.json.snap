@@ -1,0 +1,13 @@
+---
+source: src/parser/coreth/native.rs
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/erc20_approve_max_USDC_e.json
+---
+[
+    "Chain ID": "38",
+    "ERC-20": "approve",
+    "To": "0x945de0f44ca827bf03f87a87985bf08669050c73",
+    "Amount": "Unlimited USDC.e",
+    "Contract": "0xa7d7079b0fead91f3e65f86e8915cb59c1a4c664",
+    "Maximun Fee(GWEI)": "256874.44874",
+]
