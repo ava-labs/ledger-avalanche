@@ -47,6 +47,11 @@ export const defaultOptionsBlindSign = {
 
 
 export const ROOT_PATH = "m/44'/9000'/0'"
+// Canonical signing root for CoreEth atomic transactions (EvmExport / EvmImport).
+// The funds being moved live in a C-chain account whose key is derived under
+// coin type 60', so the wallet sends this root via the AVAX signing INS
+// (CLA=0x80 INS=0x05) when signing C-chain ImportTx / ExportTx.
+export const C_CHAIN_ROOT_PATH = "m/44'/60'/0'"
 export const APP_DERIVATION = "m/44'/9000'/0'/0/0"
 export const ETH_DERIVATION = "m/44'/60'/0'/0'"
 export const BTC_PATH = "m/44'/60'/0'"
