@@ -50,7 +50,13 @@ pub enum ParserError {
     InvalidCodecId,
     InvalidLength,
     InvalidSourceAddressSize,
-    BlindSignNotEnabled,
+    // Pinned discriminant: the C side (parser_common.h: parser_blind_sign_not_enabled)
+    // compares against this exact value to decide whether to show the blind-sign
+    // warning screen, and the FFI passes it through verbatim (dispatcher.rs: `e as
+    // u32`). Keep the two in lockstep. Pinning also turns inserting a variant above
+    // this line into a hard compile error (duplicate discriminant) instead of a
+    // silent drift that breaks the warning screen.
+    BlindSignNotEnabled = 42,
 }
 
 impl From<ErrorKind> for ParserError {
