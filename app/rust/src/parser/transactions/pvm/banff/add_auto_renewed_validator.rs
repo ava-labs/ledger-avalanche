@@ -15,7 +15,10 @@
 ********************************************************************************/
 use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
-use nom::{bytes::complete::tag, number::complete::{be_u32, be_u64}};
+use nom::{
+    bytes::complete::{tag, take},
+    number::complete::{be_u32, be_u64},
+};
 use zemu_sys::ViewError;
 
 use crate::{
@@ -48,7 +51,6 @@ pub struct AddAutoRenewedValidatorTx<'b> {
     pub delegator_rewards_owner: SECPOutputOwners<'b>,
     pub owner: SECPOutputOwners<'b>,
     pub delegation_shares: u32,
-    pub weight: u64,
     pub auto_compound_reward_shares: u32,
     pub period: u64,
 }
@@ -75,7 +77,9 @@ impl<'b> FromBytes<'b> for AddAutoRenewedValidatorTx<'b> {
         let rem = BaseTxFields::<PvmOutput>::from_bytes_into(rem, base_tx)?;
         crate::sys::zemu_log_stack("AutoRenewed::base_tx ok\x00");
 
-        // node_id (standalone, 20 bytes)
+        // node_id: avalanchego types it as a JSONByteSlice ([]byte), so the codec
+        // emits a 4-byte length prefix before the 20-byte id. Skip it, like L1Validator.
+        let (rem, _) = take(4usize)(rem)?;
         let node_id = unsafe { &mut *addr_of_mut!((*out).node_id).cast() };
         let rem = NodeId::from_bytes_into(rem, node_id)?;
         crate::sys::zemu_log_stack("AutoRenewed::node_id ok\x00");
@@ -115,17 +119,6 @@ impl<'b> FromBytes<'b> for AddAutoRenewedValidatorTx<'b> {
         // delegation_shares
         let (rem, delegation_shares) = be_u32(rem)?;
 
-        // weight
-        let (rem, weight) = be_u64(rem)?;
-
-        // validate: stake outputs total == weight
-        let staked_list = unsafe { &*stake.as_ptr() };
-        let stake_sum = Self::sum_stake_outputs_amount(staked_list)?;
-        if weight != stake_sum {
-            return Err(ParserError::InvalidStakingAmount.into());
-        }
-        crate::sys::zemu_log_stack("AutoRenewed::weight ok\x00");
-
         // auto_compound_reward_shares
         let (rem, auto_compound_reward_shares) = be_u32(rem)?;
 
@@ -135,7 +128,6 @@ impl<'b> FromBytes<'b> for AddAutoRenewedValidatorTx<'b> {
 
         unsafe {
             addr_of_mut!((*out).delegation_shares).write(delegation_shares);
-            addr_of_mut!((*out).weight).write(weight);
             addr_of_mut!((*out).auto_compound_reward_shares).write(auto_compound_reward_shares);
             addr_of_mut!((*out).period).write(period);
             // by default all outputs are renderable
@@ -157,10 +149,10 @@ impl DisplayableItem for AddAutoRenewedValidatorTx<'_> {
 
         // 1(header) + base + 1(node_id) + signer + stake
         // + validator_rewards + delegator_rewards + owner_addresses
-        // + 1(delegation_fee) + 1(weight) + 1(auto_compound) + 1(period) + 1(fee)
+        // + 1(delegation_fee) + 1(auto_compound) + 1(period) + 1(fee)
         checked_add!(
             ViewError::Unknown,
-            7u8,
+            6u8,
             base,
             signer,
             stake,
@@ -406,13 +398,6 @@ impl<'b> AddAutoRenewedValidatorTx<'b> {
                     handle_ui_message(buffer, message, page)
                 }
                 until 1 => {
-                    let label = pic_str!(b"Stake weight");
-                    title[..label.len()].copy_from_slice(label);
-                    let weight_buff = nano_avax_to_fp_str(self.weight, &mut buffer[..])
-                        .map_err(|_| ViewError::Unknown)?;
-                    handle_ui_message(weight_buff, message, page)
-                }
-                until 1 => {
                     let label = pic_str!(b"AutoCompound(%)");
                     title[..label.len()].copy_from_slice(label);
                     u64_to_str(self.auto_compound_reward_shares as _, &mut buffer[..])
@@ -494,7 +479,6 @@ mod tests {
         let (_, tx) =
             AddAutoRenewedValidatorTx::from_bytes(SIMPLE_ADD_AUTO_RENEWED_VALIDATOR).unwrap();
         assert_eq!(tx.delegation_shares, 20_000);
-        assert_eq!(tx.weight, 1000000000);
         assert_eq!(tx.auto_compound_reward_shares, 500_000);
         assert_eq!(tx.period, 604800);
         assert!(matches!(tx.signer, BLSSigner::Proof(_)));

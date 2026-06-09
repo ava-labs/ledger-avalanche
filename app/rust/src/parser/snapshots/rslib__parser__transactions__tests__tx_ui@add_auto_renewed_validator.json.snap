@@ -1,6 +1,5 @@
 ---
 source: src/parser/transactions.rs
-assertion_line: 603
 expression: reduced
 input_file: src/parser/testvectors/add_auto_renewed_validator.json
 ---
@@ -16,7 +15,6 @@ input_file: src/parser/testvectors/add_auto_renewed_validator.json
     "Delega rewards to": "fuji1quqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqhlu8gk",
     "Owner address": "fuji1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq4jm9ac",
     "Delegate fee(%)": "2",
-    "Stake weight": "1",
     "AutoCompound(%)": "50",
     "Period(seconds)": "604800",
     "Fee(AVAX)": "0",
