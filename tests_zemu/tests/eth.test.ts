@@ -312,7 +312,8 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
     const sim = new Zemu(m.path)
     // signEVMTransaction is deferred (IO_ASYNCH_REPLY) once the warning shows and
     // only settles when the screen is dismissed — here, when the container closes.
-    let signReq: Promise<unknown> | undefined
+    // Definite assignment: it is always set in the try below before any use.
+    let signReq!: Promise<unknown>
     try {
       await sim.start(defaultOptions(m)) // blind signing OFF
       const app = new AvalancheApp(sim.getTransport())
