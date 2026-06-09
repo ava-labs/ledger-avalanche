@@ -16,7 +16,7 @@
 use bolos::{pic_str, PIC};
 use core::{mem::MaybeUninit, ptr::addr_of_mut};
 use nom::{
-    bytes::complete::{tag, take},
+    bytes::complete::tag,
     number::complete::{be_u32, be_u64},
 };
 use zemu_sys::ViewError;
@@ -28,7 +28,7 @@ use crate::{
         intstr_to_fpstr_inplace, nano_avax_to_fp_str, proof_of_possession::BLSSigner, u64_to_str,
         BaseTxFields, DisplayableItem, FromBytes, Header, NodeId, ObjectList, OutputIdx,
         ParserError, PvmOutput, SECPOutputOwners, TransferableOutput, DELEGATION_FEE_DIGITS,
-        MAX_ADDRESS_ENCODED_LEN, PVM_ADD_AUTO_RENEWED_VALIDATOR, U64_FORMATTED_SIZE,
+        MAX_ADDRESS_ENCODED_LEN, NODE_ID_LEN, PVM_ADD_AUTO_RENEWED_VALIDATOR, U64_FORMATTED_SIZE,
     },
 };
 
@@ -78,8 +78,13 @@ impl<'b> FromBytes<'b> for AddAutoRenewedValidatorTx<'b> {
         crate::sys::zemu_log_stack("AutoRenewed::base_tx ok\x00");
 
         // node_id: avalanchego types it as a JSONByteSlice ([]byte), so the codec
-        // emits a 4-byte length prefix before the 20-byte id. Skip it, like L1Validator.
-        let (rem, _) = take(4usize)(rem)?;
+        // emits a 4-byte big-endian length prefix before the 20-byte id. Validate the
+        // prefix equals NODE_ID_LEN; a mismatched length would otherwise misalign the
+        // rest of the parse and let us display a node_id that differs from what is signed.
+        let (rem, node_id_len) = be_u32(rem)?;
+        if node_id_len as usize != NODE_ID_LEN {
+            return Err(ParserError::InvalidLength.into());
+        }
         let node_id = unsafe { &mut *addr_of_mut!((*out).node_id).cast() };
         let rem = NodeId::from_bytes_into(rem, node_id)?;
         crate::sys::zemu_log_stack("AutoRenewed::node_id ok\x00");
