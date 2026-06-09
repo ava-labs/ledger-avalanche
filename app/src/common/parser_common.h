@@ -70,7 +70,7 @@ typedef enum {
     parser_nft_info_not_provided = 35,
     parser_invalid_contract_address = 36,
     parser_context_unexpected_size = 37,
-    parser_blind_sign_not_enabled = 41,
+    parser_blind_sign_not_enabled = 42,
 } parser_error_t;
 #include <stdint.h>
 
