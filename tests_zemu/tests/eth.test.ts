@@ -212,7 +212,7 @@ jest.setTimeout(60000)
 
 // Nanos does not support erc721
 describe.each(models)('EthereumTx [%s]; sign', function (m) {
-  test.only.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
+  test.each(SIGN_TEST_DATA)('sign transaction:  $name', async function (data) {
     const sim = new Zemu(m.path)
     try {
       // Foreign-chain txs require blind-sign mode: the device cannot resolve
@@ -301,22 +301,41 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
   // mirroring how the upstream Ledger Ethereum app refuses to sign on chains
   // it cannot resolve a ticker for. Same EIP-1559 transfer payload as the
   // `transfer` SIGN_TEST_DATA entry (chain_id 5).
+  //
+  // Regression guard: the app must SHOW the blind-sign warning screen, not just
+  // reject. A Rust/C enum mismatch (ParserError::BlindSignNotEnabled = 42 vs
+  // parser_blind_sign_not_enabled = 41) once made the device skip
+  // view_blindsign_error_show() and return a bare 0x6984 with no screen. We
+  // assert the warning text appears: it never does on the buggy build (the call
+  // rejects immediately with no UI), so waitForText times out and the test fails.
   test.concurrent('ForeignChainMustFail', async function () {
     const sim = new Zemu(m.path)
+    // signEVMTransaction is deferred (IO_ASYNCH_REPLY) once the warning shows and
+    // only settles when the screen is dismissed — here, when the container closes.
+    // Definite assignment: it is always set in the try below before any use.
+    let signReq!: Promise<unknown>
     try {
-      await sim.start(defaultOptions(m))
+      await sim.start(defaultOptions(m)) // blind signing OFF
       const app = new AvalancheApp(sim.getTransport())
 
       const data =
         '02f5058402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0'
 
-      await app.signEVMTransaction(ETH_DERIVATION, data)
-      throw new Error('signEVMTransaction unexpectedly resolved on a foreign chain without blind-sign')
-    } catch (error) {
-      expect(error).toBeDefined()
+      // Explicit null resolution: skip hw-app-eth's client-side token lookup so
+      // the raw tx reaches the device and its own blind-sign gate decides.
+      signReq = app.signEVMTransaction(ETH_DERIVATION, data, null)
+      signReq.catch(() => {}) // pre-attach: avoid unhandled rejection on teardown
+
+      // Touch devices render "This transaction cannot be clear-signed"; Nano
+      // devices render "Blind signing must be enabled in Settings".
+      const warning = isTouchDevice(m.name) ? /clear-signed/i : /Blind signing must be/i
+      await sim.waitForText(warning, 20000)
     } finally {
       await sim.close()
     }
+
+    // It must have refused to sign (rejected), never produced a signature.
+    await expect(signReq).rejects.toBeDefined()
   })
 })
 
