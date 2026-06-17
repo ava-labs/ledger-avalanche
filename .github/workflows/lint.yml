@@ -16,3 +16,6 @@ jobs:
     with:
       runs-on: ${{ github.repository_owner == 'zondax' && 'zondax-runners' || 'ubuntu-latest' }}
       check_rust: true
+      # Build the rust in the new (nightly) builder, not the legacy 1.88.0 image,
+      # so `-Cpanic=immediate-abort` is a valid panic strategy.
+      use_latest_builder: true

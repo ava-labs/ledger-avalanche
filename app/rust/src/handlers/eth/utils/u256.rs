@@ -1194,7 +1194,7 @@ impl u256 {
 
     /// Retrieve the function used to convert a slice of BE bytes into u256
     pub fn pic_from_big_endian() -> fn(&[u8]) -> Self {
-        let to_pic = Self::from_big_endian as usize;
+        let to_pic = Self::from_big_endian as *const () as usize;
 
         //we go thru "data" pointer here to force provenance
         let picced = unsafe { PIC::manual(to_pic) } as *const ();
