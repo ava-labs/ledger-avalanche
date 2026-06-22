@@ -59,7 +59,7 @@ APP_CUSTOM_LINK_DEPENDENCIES = rust
 .PHONY: rust
 rust:
 	cd rust && RUSTC_BOOTSTRAP=1 CARGO_HOME="$(CURDIR)/rust/.cargo" TARGET_NAME=$(RUST_TARGET_NAME) ZEMU_LOGGING=$(ZEMU_LOGGING) \
-	cargo build --release --target $(RUST_TARGET) \
+	cargo build -Z build-std=core --release --target $(RUST_TARGET) \
 	--no-default-features $(RUST_FEATURES)
 
 .PHONY: rust_clean
