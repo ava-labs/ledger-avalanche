@@ -1,3 +1,5 @@
+cargo-features = ["panic-immediate-abort"]
+
 [package]
 name = "avalanche-app"
 version = "0.1.0"
@@ -85,4 +87,4 @@ codegen-units = 1
 debug = false
 opt-level = "z"
 overflow-checks = true
-panic = "abort"
+panic = "immediate-abort"

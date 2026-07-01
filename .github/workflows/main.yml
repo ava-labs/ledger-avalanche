@@ -18,4 +18,6 @@ jobs:
       has-nanos: false
       has-cpp-tests: false
       node-version: "22"
-      rust-version: "1.88.0"
+      # Match the builder's RUSTUP_TOOLCHAIN so build_ledger/build_package install
+      # rust-src for the nightly the device build actually uses (-Zbuild-std).
+      rust-version: "nightly-2025-12-05"

@@ -1,6 +1,5 @@
 ---
 source: src/parser/transactions/pvm/banff/add_auto_renewed_validator.rs
-assertion_line: 518
 expression: reduced
 ---
 [
@@ -15,7 +14,6 @@ expression: reduced
     "Delega rewards to": "avax1quqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqmdccyf",
     "Owner address": "avax1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqeql638",
     "Delegate fee(%)": "2",
-    "Stake weight": "1",
     "AutoCompound(%)": "50",
     "Period(seconds)": "604800",
     "Fee(AVAX)": "0",
