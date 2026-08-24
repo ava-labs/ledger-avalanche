@@ -16,6 +16,7 @@
 #pragma once
 
 #include <os_io_seproxyhal.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "apdu_codes.h"
@@ -30,6 +31,21 @@
 extern uint16_t action_addrResponseLen;
 extern uint16_t action_txResponseLen;
 extern uint16_t G_error_message_offset;
+
+// Set while a user review owns the device. handleApdu refuses incoming APDUs
+// for as long as it is set, so the request being reviewed is the one that gets
+// answered: the tx buffer, hdPath and parsed context cannot be replaced between
+// the moment the review is drawn and the moment the user approves it.
+//
+// Armed only where a review is actually shown, never on the plain
+// IO_ASYNCH_REPLY sites -- the ethereum plugin and EIP-712 flows are async
+// without being reviews, and must keep streaming. Cleared by every terminal
+// callback below.
+extern volatile bool g_review_pending;
+
+__Z_INLINE bool review_is_pending(void) { return g_review_pending; }
+__Z_INLINE void review_mark_pending(void) { g_review_pending = true; }
+__Z_INLINE void review_clear_pending(void) { g_review_pending = false; }
 
 __Z_INLINE void clean_up_hash_globals() { _clean_up_hash(); }
 
@@ -122,6 +138,7 @@ __Z_INLINE void app_sign(uint16_t offset) {
 
 __Z_INLINE void app_sign_tx() {
     zemu_log_stack("app_sign_tx");
+    review_clear_pending();
 
     // needs to remove the change_path list
     const uint8_t *data = tx_get_buffer();
@@ -142,6 +159,7 @@ __Z_INLINE void app_sign_tx() {
 
 __Z_INLINE void app_sign_msg() {
     zemu_log_stack("app_sign");
+    review_clear_pending();
 
     // no change paths list at the begining
     app_sign(0);
@@ -150,6 +168,7 @@ __Z_INLINE void app_sign_msg() {
 // no change paths list at the begining
 __Z_INLINE void app_sign_hash_review() {
     zemu_log_stack("app_sign_hash_review");
+    review_clear_pending();
 
     // we are just returning the CODE_OK
     // the hash signature would be returned in the next stage.
@@ -158,22 +177,26 @@ __Z_INLINE void app_sign_hash_review() {
 }
 
 __Z_INLINE void app_reject() {
+    review_clear_pending();
     MEMZERO(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     set_code(G_io_apdu_buffer, 0, APDU_CODE_COMMAND_NOT_ALLOWED);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
 }
 
 __Z_INLINE void app_reply_address() {
+    review_clear_pending();
     set_code(G_io_apdu_buffer, action_addrResponseLen, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, action_addrResponseLen + 2);
 }
 
 __Z_INLINE void wallet_reply() {
+    review_clear_pending();
     set_code(G_io_apdu_buffer, action_addrResponseLen, APDU_CODE_OK);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, action_addrResponseLen + 2);
 }
 
 __Z_INLINE void app_reply_error() {
+    review_clear_pending();
     // Use the stored offset to place the error code after the error message
     set_code(G_io_apdu_buffer, G_error_message_offset, APDU_CODE_DATA_INVALID);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, G_error_message_offset + 2);
@@ -181,6 +204,7 @@ __Z_INLINE void app_reply_error() {
 
 __Z_INLINE void app_sign_eth() {
     zemu_log_stack("app_sign_eth");
+    review_clear_pending();
 
     uint16_t ret = _accept_eth_tx(&action_txResponseLen, G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
 
