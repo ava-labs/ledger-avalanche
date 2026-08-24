@@ -609,18 +609,17 @@ __Z_INLINE void eth_dispatch(volatile uint32_t *flags, volatile uint32_t *tx, ui
 
     switch (G_io_apdu_buffer[OFFSET_INS]) {
 #if defined(FEATURE_ETH)
+        // All four reach the same handler, one of them to produce a signature,
+        // so they take the same device-unlocked check as every other
+        // instruction in this dispatch.
         case INS_SIGN_EIP_712_MESSAGE:
-            handle_eip712(flags, tx, rx);
-            break;
         case INS_EIP712_STRUCT_DEF:
-            handle_eip712(flags, tx, rx);
-            break;
         case INS_EIP712_STRUCT_IMPL:
+        case INS_EIP712_FILTERING: {
+            CHECK_PIN_VALIDATED()
             handle_eip712(flags, tx, rx);
             break;
-        case INS_EIP712_FILTERING:
-            handle_eip712(flags, tx, rx);
-            break;
+        }
 #endif
         case INS_ETH_GET_APP_CONFIGURATION: {
             CHECK_PIN_VALIDATED()
