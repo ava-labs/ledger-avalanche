@@ -138,8 +138,17 @@ impl BaseLegacy<'_> {
                 title[..label.len()].copy_from_slice(label);
                 render_u256(&self.value, WEI_NAVAX_DIGITS, message, page)
             }
-            3 => self.data.render_item(0, title, message, page),
-            4 => {
+            // A deploy with no value contributes no "Funding Contract" screen,
+            // so everything after it moves down one index. Deriving the last
+            // index from num_items keeps the arms and the count in step for
+            // both shapes; fixed indices left a hole at item 2 in the
+            // no-value case, and a hole reads as end-of-items to the review
+            // loop, which would end the review before the data and fee
+            // screens. This mirrors the EIP-1559 renderer.
+            x @ 2.. if !render_funding && x == 2 || render_funding && x == 3 => {
+                self.data.render_item(0, title, message, page)
+            }
+            x @ 3.. if x == self.num_items()? - 1 => {
                 let label = pic_str!(b"Maximum Fee(GWEI)");
                 title[..label.len()].copy_from_slice(label);
                 self.render_fee(message, page)
