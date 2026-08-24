@@ -447,7 +447,7 @@ fn get_token_info(contract_bytes: &[u8; ADDRESS_LEN]) -> Option<(&'static [u8], 
         }
         // EURC
         [0xC8, 0x91, 0xEB, 0x4C, 0xBD, 0xEF, 0xF6, 0xE0, 0x73, 0xE8, 0x59, 0xE9, 0x87, 0x81, 0x5E, 0xD1, 0x50, 0x5C, 0x2A, 0xCD] => {
-            Some((b"EURC", 18))
+            Some((b"EURC", 6))
         }
         // USDT
         [0x97, 0x02, 0x23, 0x0A, 0x8E, 0xA5, 0x36, 0x01, 0xF5, 0xCD, 0x2D, 0xC0, 0x0F, 0xDB, 0xC1, 0x3D, 0x4D, 0xF4, 0xA8, 0xC7] => {
@@ -785,6 +785,18 @@ mod tests {
         0x59, 0xC1, 0xA4, 0xC6, 0x64,
     ];
 
+    // USDC contract address — present in `get_token_info`.
+    const USDC_ADDR: [u8; ADDRESS_LEN] = [
+        0xB9, 0x7E, 0xF9, 0xEF, 0x87, 0x34, 0xC7, 0x19, 0x04, 0xD8, 0x00, 0x2F, 0x8B, 0x6B, 0xC6,
+        0x6D, 0xD9, 0xC4, 0x8A, 0x6E,
+    ];
+
+    // EURC contract address — present in `get_token_info`.
+    const EURC_ADDR: [u8; ADDRESS_LEN] = [
+        0xC8, 0x91, 0xEB, 0x4C, 0xBD, 0xEF, 0xF6, 0xE0, 0x73, 0xE8, 0x59, 0xE9, 0x87, 0x81, 0x5E,
+        0xD1, 0x50, 0x5C, 0x2A, 0xCD,
+    ];
+
     // Arbitrary address NOT in `get_token_info`.
     const UNKNOWN_TOKEN_ADDR: [u8; ADDRESS_LEN] = [0xee; ADDRESS_LEN];
 
@@ -866,5 +878,28 @@ mod tests {
         assert!(format_approve_amount(&value, &address, &mut message, 0).is_ok());
         assert!(format_approve_amount(&value, &address, &mut message, 1).is_ok());
         assert!(format_approve_amount(&value, &address, &mut message, 7).is_ok());
+    }
+
+    #[test]
+    fn erc20_circle_assets_use_six_decimals() {
+        // The scale in this table is what every rendered amount for these
+        // contracts is divided by, so a wrong entry misstates the amount on
+        // the review screen by orders of magnitude. Circle issues USDC, EURC
+        // and USDT-equivalents with six decimals on C-Chain; pinned here so
+        // the table is checked directly rather than only through a
+        // hand-authored transaction vector.
+        const CIRCLE_ASSETS: &[(&[u8; ADDRESS_LEN], &[u8])] = &[
+            (&USDC_ADDR, b"USDC"),
+            (&USDC_E_ADDR, b"USDC.e"),
+            (&EURC_ADDR, b"EURC"),
+        ];
+
+        for (addr, symbol) in CIRCLE_ASSETS {
+            let info = get_token_info(addr);
+            assert!(info.is_some(), "{:?} missing from the table", symbol);
+            let (found_symbol, decimals) = info.unwrap();
+            assert_eq!(&found_symbol, symbol);
+            assert_eq!(decimals, 6, "{:?} has the wrong decimal scale", symbol);
+        }
     }
 }
