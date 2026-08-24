@@ -178,6 +178,16 @@ __Z_INLINE void app_sign_hash_review() {
 
 __Z_INLINE void app_reject() {
     review_clear_pending();
+
+    // Drop any path/hash the sign-hash flow stored while preparing this
+    // review. That flow records them when the request is parsed, before the
+    // user answers, so releasing them here is what makes a following
+    // INS_SIGN_HASH message report an error instead of returning a signature
+    // over the hash that was just refused. Flows that do not own these
+    // resources are untouched -- the cleanup only clears them while the
+    // sign-hash handler holds the lock.
+    clean_up_hash_globals();
+
     MEMZERO(G_io_apdu_buffer, IO_APDU_BUFFER_SIZE);
     set_code(G_io_apdu_buffer, 0, APDU_CODE_COMMAND_NOT_ALLOWED);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
