@@ -44,9 +44,6 @@ static bool tx_initialized = false;
 // Global variable to store error message offset for custom error display
 uint16_t G_error_message_offset = 0;
 
-// Declared in common/actions.h.
-volatile bool g_review_pending = false;
-
 bool is_eth_path(uint32_t rx, uint32_t offset) {
     uint32_t path_len = *(G_io_apdu_buffer + offset);
 
@@ -197,7 +194,6 @@ __Z_INLINE void handleGetAddr(volatile uint32_t *flags, volatile uint32_t *tx, u
                 break;
         }
         view_review_show(REVIEW_ADDRESS);
-        review_mark_pending();
         *flags |= IO_ASYNCH_REPLY;
         return;
     }
@@ -217,7 +213,6 @@ __Z_INLINE void handleGetXAddr(volatile uint32_t *flags, volatile uint32_t *tx, 
     if (requireConfirmation) {
         view_review_init(xaddr_getItem, xaddr_getNumItems, app_reply_address);
         view_review_show(REVIEW_ADDRESS);
-        review_mark_pending();
         *flags |= IO_ASYNCH_REPLY;
         return;
     }
@@ -239,7 +234,6 @@ __Z_INLINE void handleGetWalletId(volatile uint32_t *flags, volatile uint32_t *t
     if (requireConfirmation) {
         view_review_init(wallet_getItem, wallet_getNumItems, wallet_reply);
         view_review_show(REVIEW_ADDRESS);
-        review_mark_pending();
         *flags |= IO_ASYNCH_REPLY;
         return;
     }
@@ -270,7 +264,6 @@ __Z_INLINE void handleSignAvaxTx(volatile uint32_t *flags, volatile uint32_t *tx
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_tx);
     view_review_show(REVIEW_TXN);
-    review_mark_pending();
     *flags |= IO_ASYNCH_REPLY;
 }
 
@@ -311,7 +304,6 @@ __Z_INLINE void handleSignAvaxHash(volatile uint32_t *flags, volatile uint32_t *
 
         view_review_init(tx_getItem, tx_getNumItems, app_sign_hash_review);
         view_review_show(REVIEW_TXN);
-        review_mark_pending();
     }
 
     *flags |= IO_ASYNCH_REPLY;
@@ -339,7 +331,6 @@ __Z_INLINE void handleSignAvaxMsg(volatile uint32_t *flags, volatile uint32_t *t
 
     view_review_init(tx_getItem, tx_getNumItems, app_sign_msg);
     view_review_show(REVIEW_MSG);
-    review_mark_pending();
     *flags |= IO_ASYNCH_REPLY;
 }
 
@@ -513,7 +504,6 @@ __Z_INLINE void handleSignEthMsg(volatile uint32_t *flags, volatile uint32_t *tx
     view_review_init_progressive(tx_getItem, tx_getNumItems, app_sign_eth);
     view_review_show(REVIEW_MSG);
 
-    review_mark_pending();
     *flags |= IO_ASYNCH_REPLY;
 }
 
@@ -543,7 +533,6 @@ __Z_INLINE void handleGetAddrEth(volatile uint32_t *flags, volatile uint32_t *tx
     if (requireConfirmation) {
         view_review_init(tx_getItem, tx_getNumItems, app_reply_address);
         view_review_show(REVIEW_ADDRESS);
-        review_mark_pending();
         *flags |= IO_ASYNCH_REPLY;
         return;
     }
@@ -592,7 +581,6 @@ __Z_INLINE void handleSignEthTx(volatile uint32_t *flags, volatile uint32_t *tx,
 
     view_review_show(REVIEW_TXN);
 
-    review_mark_pending();
     *flags |= IO_ASYNCH_REPLY;
 }
 
@@ -683,7 +671,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
             // everything else meanwhile, ahead of any other check, so no
             // incoming APDU can reach a handler and replace the tx buffer,
             // hdPath or parsed context behind the screen the user is reading.
-            if (review_is_pending()) {
+            if (view_review_is_pending()) {
                 THROW(APDU_CODE_COMMAND_NOT_ALLOWED);
             }
 
@@ -716,10 +704,7 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
                     THROW(APDU_CODE_INS_NOT_SUPPORTED);
             }
         }
-        CATCH(EXCEPTION_IO_RESET) {
-            review_clear_pending();
-            THROW(EXCEPTION_IO_RESET);
-        }
+        CATCH(EXCEPTION_IO_RESET) { THROW(EXCEPTION_IO_RESET); }
         CATCH_OTHER(e) {
             switch (e & 0xF000) {
                 case 0x6000:
@@ -729,12 +714,6 @@ void handleApdu(volatile uint32_t *flags, volatile uint32_t *tx, uint32_t rx) {
                 default:
                     sw = 0x6800 | (e & 0x7FF);
                     break;
-            }
-            // Errors end whatever request raised them, so the lock goes with
-            // them -- except the rejection above, which is raised *by* a live
-            // review that must keep its lock.
-            if (e != APDU_CODE_COMMAND_NOT_ALLOWED) {
-                review_clear_pending();
             }
             G_io_apdu_buffer[*tx] = sw >> 8;
             G_io_apdu_buffer[*tx + 1] = sw & 0xFF;
