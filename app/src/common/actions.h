@@ -158,7 +158,6 @@ __Z_INLINE void app_sign_hash_review() {
 }
 
 __Z_INLINE void app_reject() {
-
     // Drop any path/hash the sign-hash flow stored while preparing this
     // review. That flow records them when the request is parsed, before the
     // user answers, so releasing them here is what makes a following
