@@ -183,7 +183,6 @@ const SIGN_TEST_DATA: TestData[] = [
     nft_info: undefined,
     foreign_chain: true,
   },
-
 ]
 
 const ETH_MSG_RAW: number[] = [
@@ -332,8 +331,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
       await sim.start(defaultOptions(m)) // blind signing OFF
       const app = new AvalancheApp(sim.getTransport())
 
-      const data =
-        '02f5058402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0'
+      const data = '02f5058402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0'
 
       // Explicit null resolution: skip hw-app-eth's client-side token lookup so
       // the raw tx reaches the device and its own blind-sign gate decides.

@@ -37,7 +37,6 @@ const rejectCurrentReview = async (sim: Zemu, model: (typeof models)[number]) =>
     return
   }
 
-  await sim.navigateUntilText('.', 'unused', 'Cancel', true, false, 0, 15000, false)
   const nav = new TouchNavigation(model.name, [ButtonKind.RejectButton, ButtonKind.ConfirmYesButton])
   await sim.navigate('.', 'unused', nav.schedule, true, false)
 }
@@ -216,9 +215,9 @@ describe.each(REJECTION_REGRESSION_MODELS)('signHash rejection [%s]', function (
       const rejection = await reviewRequest
       expect(rejection.returnCode).toEqual(LedgerError.TransactionRejected)
 
-      const response = await sim.getTransport().send(0x80, 0x04, 0x02, 0x00, pathSuffix(0, 0), [LedgerError.ExecutionError])
-
-      expect(response).toEqual(Buffer.from([0x64, 0x00]))
+      await expect(sim.getTransport().send(0x80, 0x04, 0x02, 0x00, pathSuffix(0, 0))).rejects.toMatchObject({
+        statusCode: LedgerError.ExecutionError,
+      })
     } finally {
       await sim.close()
     }
