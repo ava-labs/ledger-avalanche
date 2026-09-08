@@ -56,6 +56,9 @@ type TestData = {
   nano_clicks?: number
 }
 
+const EIP2930_CONTRACT_DEPLOY_NO_VALUE: number[] = require('../../app/rust/src/parser/coreth/eth_testvectors/eip2930_contract_deploy_no_value.json')
+const ERC20_SIMPLE_TRANSFER_EURC: number[] = require('../../app/rust/src/parser/coreth/eth_testvectors/erc20_simple_transfer_EURC.json')
+
 // copied from python tests
 const EIP712_TRANSACTION = {
   domain_hash: 'c24f499b8c957196651b13edd64aaccc3980009674b2aea0966c8a56ba81278e',
@@ -93,6 +96,12 @@ const SIGN_TEST_DATA: TestData[] = [
     name: 'legacy_transfer',
     op: Buffer.from('ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex'),
     nft_info: undefined,
+  },
+  {
+    name: 'eip2930_contract_deploy_no_value',
+    op: Buffer.from(EIP2930_CONTRACT_DEPLOY_NO_VALUE),
+    nft_info: undefined,
+    foreign_chain: true,
   },
   {
     // EIP-1559 ERC-721 safeTransferFrom on chain_id 2 (foreign)
@@ -136,6 +145,11 @@ const SIGN_TEST_DATA: TestData[] = [
       'f86e820f588502fed078ac83014d7694d501281565bf7789224523144fe5d98e8b28f26780b844a9059cbb0000000000000000000000002a1f67dd9e32d4b7d306d1343bf359809ca334e500000000000000000000000000000000000000000000000627521c2ad387400082a86a8080',
       'hex',
     ),
+    nft_info: undefined,
+  },
+  {
+    name: 'erc20_transfer_eurc',
+    op: Buffer.from(ERC20_SIMPLE_TRANSFER_EURC),
     nft_info: undefined,
   },
   {

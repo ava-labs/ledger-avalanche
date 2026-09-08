@@ -14,12 +14,33 @@
  *  limitations under the License.
  ******************************************************************************* */
 
-import Zemu from '@zondax/zemu'
+import Zemu, { ButtonKind, TouchNavigation, isTouchDevice } from '@zondax/zemu'
 import { ROOT_PATH, defaultOptions, models } from './common'
-import AvalancheApp from '@zondax/ledger-avalanche-app'
+import AvalancheApp, { LedgerError } from '@zondax/ledger-avalanche-app'
 import { SIMPLE_TRANSFER_DATA } from './common_sign_vectors'
 
 const sha256 = require('js-sha256').sha256
+
+const REJECTION_REGRESSION_MODELS = models.filter(({ name }) => name === 'nanox' || name === 'stax')
+
+const pathSuffix = (account: number, index: number) => {
+  const out = Buffer.alloc(9)
+  out.writeUInt8(2, 0)
+  out.writeUInt32BE(account, 1)
+  out.writeUInt32BE(index, 5)
+  return out
+}
+
+const rejectCurrentReview = async (sim: Zemu, model: (typeof models)[number]) => {
+  if (!isTouchDevice(model.name)) {
+    await sim.navigateUntilText('.', 'unused', 'REJECT', true, false)
+    return
+  }
+
+  await sim.navigateUntilText('.', 'unused', 'Cancel', true, false, 0, 15000, false)
+  const nav = new TouchNavigation(model.name, [ButtonKind.RejectButton, ButtonKind.ConfirmYesButton])
+  await sim.navigate('.', 'unused', nav.schedule, true, false)
+}
 
 // @ts-ignore
 import secp256k1 from 'secp256k1/elliptic'
@@ -174,6 +195,30 @@ describe.each(models)('signHash [%s]', function (m) {
         const signatureOk = secp256k1.ecdsaVerify(signatureRS, msgHash, pk)
         expect(signatureOk).toEqual(true)
       }
+    } finally {
+      await sim.close()
+    }
+  })
+})
+
+describe.each(REJECTION_REGRESSION_MODELS)('signHash rejection [%s]', function (m) {
+  test('cannot sign the rejected hash through a suffix APDU', async function () {
+    const sim = new Zemu(m.path)
+    try {
+      await sim.start(defaultOptions(m))
+      const app = new AvalancheApp(sim.getTransport())
+      const hash = Buffer.from(sha256('Rejected Avalanche hash'), 'hex')
+
+      const reviewRequest = app.signHash(ROOT_PATH, ['0/0'], hash)
+      await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
+      await rejectCurrentReview(sim, m)
+
+      const rejection = await reviewRequest
+      expect(rejection.returnCode).toEqual(LedgerError.TransactionRejected)
+
+      const response = await sim.getTransport().send(0x80, 0x04, 0x02, 0x00, pathSuffix(0, 0), [LedgerError.ExecutionError])
+
+      expect(response).toEqual(Buffer.from([0x64, 0x00]))
     } finally {
       await sim.close()
     }
