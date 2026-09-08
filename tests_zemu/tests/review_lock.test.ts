@@ -21,6 +21,23 @@ import { ROOT_PATH, defaultOptions, models } from './common'
 const sha256 = require('js-sha256').sha256
 
 const REVIEW_LOCK_MODELS = models.filter(({ name }) => name === 'nanox' || name === 'stax')
+const GET_VERSION_APDU = '8000000000'
+
+const exchangeThroughSpeculos = async (sim: Zemu, apdu: string): Promise<number> => {
+  const response = await fetch(`http://127.0.0.1:${sim.speculosApiPort}/apdu`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: apdu }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Speculos APDU request failed with HTTP ${response.status}`)
+  }
+
+  const { data } = (await response.json()) as { data: string }
+  const responseBuffer = Buffer.from(data, 'hex')
+  return responseBuffer.readUInt16BE(responseBuffer.length - 2)
+}
 
 const rejectCurrentReview = async (sim: Zemu, model: (typeof models)[number]) => {
   if (!isTouchDevice(model.name)) {
@@ -28,9 +45,9 @@ const rejectCurrentReview = async (sim: Zemu, model: (typeof models)[number]) =>
     return
   }
 
-  await sim.navigateUntilText('.', 'unused', 'Cancel', true, false, 0, 15000, false)
   const nav = new TouchNavigation(model.name, [ButtonKind.RejectButton, ButtonKind.ConfirmYesButton])
   await sim.navigate('.', 'unused', nav.schedule, true, false)
+  await sim.waitUntilScreenIs(sim.getMainMenuSnapshot())
 }
 
 jest.setTimeout(200000)
@@ -47,14 +64,15 @@ describe.each(REVIEW_LOCK_MODELS)('review lock [%s]', function (m) {
       await sim.waitUntilScreenIsNot(sim.getMainMenuSnapshot())
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        await expect(sim.getTransport().send(0x80, 0x00, 0x00, 0x00)).rejects.toMatchObject({
-          statusCode: LedgerError.TransactionRejected,
-        })
+        await expect(exchangeThroughSpeculos(sim, GET_VERSION_APDU)).resolves.toEqual(LedgerError.TransactionRejected)
       }
 
-      await rejectCurrentReview(sim, m)
+      // Speculos delivers the first interleaved response to both APDU clients.
+      // The app review remains active, which the second rejection proves.
       const rejection = await reviewRequest
       expect(rejection.returnCode).toEqual(LedgerError.TransactionRejected)
+
+      await rejectCurrentReview(sim, m)
 
       const version = await app.getVersion()
       expect(version.returnCode).toEqual(LedgerError.NoErrors)
