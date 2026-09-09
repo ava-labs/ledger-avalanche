@@ -1,0 +1,12 @@
+---
+source: src/parser/coreth/native.rs
+expression: reduced
+input_file: src/parser/coreth/eth_testvectors/legacy_contract_deploy_no_value.json
+---
+[
+    "Chain ID": "5",
+    "Contract": "Creation",
+    "Gas Limit": "3000000",
+    "Data: ": "0x1a8451e60000000000000000000000000000000000000000000000000000...",
+    "Maximum Fee(GWEI)": "1410000000",
+]
