@@ -282,7 +282,19 @@ impl<'b> FromBytes<'b> for ApprovalForAll<'b> {
 
         // Get approval
         let (rem, approval) = take(ETH_ARG_LEN)(rem)?;
-        let approve = approval.contains(&1);
+
+        // An ABI bool is a 32-byte word holding exactly 0 or 1, and Solidity's
+        // decoder reverts on anything else. Read the whole word rather than
+        // looking for a 0x01 byte anywhere in it: a byte-wise search reports
+        // false for words like 0x00..02 and true for words like 0x00..0100,
+        // either of which would put a label on the screen that does not match
+        // what the word encodes. Words that are not a bool at all are refused
+        // here instead of being shown as one.
+        let (padding, flag) = approval.split_at(ETH_ARG_LEN - 1);
+        if !padding.iter().all(|b| *b == 0) || flag[0] > 1 {
+            return Err(ParserError::ValueOutOfRange.into());
+        }
+        let approve = flag[0] == 1;
 
         // setApprovalForAll(address,bool) is strictly fixed-arity; any
         // trailing calldata would be covered by the signing hash without
@@ -633,5 +645,71 @@ mod tests {
         let data = args(APPROVAL_FOR_ALL_ARGS, &[0x01]);
         let mut out = MaybeUninit::<ApprovalForAll>::uninit();
         assert!(ApprovalForAll::from_bytes_into(&data, &mut out).is_err());
+    }
+
+    // setApprovalForAll(address,bool) with an arbitrary 32-byte `approved` word.
+    fn approval_for_all_with(approved: &str) -> std::vec::Vec<u8> {
+        let mut hex_str = std::string::String::from(concat!(
+            "000000000000000000000000",
+            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        ));
+        hex_str.push_str(approved);
+        args(&hex_str, &[])
+    }
+
+    fn parse_approval_for_all(approved: &str) -> Result<bool, ()> {
+        let data = approval_for_all_with(approved);
+        let mut out = MaybeUninit::<ApprovalForAll>::uninit();
+        ApprovalForAll::from_bytes_into(&data, &mut out).map_err(|_| ())?;
+        Ok(unsafe { out.assume_init() }.approve)
+    }
+
+    #[test]
+    fn erc721_approval_for_all_canonical_words_decode() {
+        assert_eq!(
+            parse_approval_for_all(
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            Ok(false)
+        );
+        assert_eq!(
+            parse_approval_for_all(
+                "0000000000000000000000000000000000000000000000000000000000000001"
+            ),
+            Ok(true)
+        );
+    }
+
+    #[test]
+    fn erc721_approval_for_all_non_canonical_words_rejected() {
+        // Words a byte-wise search would read as `false` and label "Revoke",
+        // while a decoder that treats any non-zero value as true grants the
+        // operator. Refused rather than displayed.
+        for word in [
+            "0000000000000000000000000000000000000000000000000000000000000002",
+            "0202020202020202020202020202020202020202020202020202020202020202",
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        ] {
+            assert_eq!(
+                parse_approval_for_all(word),
+                Err(()),
+                "word {} accepted",
+                word
+            );
+        }
+
+        // Words containing a 0x01 byte outside the low position, which a
+        // byte-wise search would read as `true` and label "Allow".
+        for word in [
+            "0000000000000000000000000000000000000000000000000000000000000100",
+            "0100000000000000000000000000000000000000000000000000000000000000",
+        ] {
+            assert_eq!(
+                parse_approval_for_all(word),
+                Err(()),
+                "word {} accepted",
+                word
+            );
+        }
     }
 }

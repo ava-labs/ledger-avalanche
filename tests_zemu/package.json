@@ -10,7 +10,7 @@
     "Ledger"
   ],
   "scripts": {
-    "test": "jest --testPathIgnorePatterns='dev.*|testvectors.*|btc.*'",
+    "test": "jest --testPathIgnorePatterns='(^|/)(dev.*|testvectors.*|btc.*)$'",
     "test_dev": "jest",
     "try": "ts-node try.ts",
     "debug": "node debug/debug.mjs debug"

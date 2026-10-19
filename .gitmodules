@@ -10,9 +10,6 @@
 [submodule "deps/ethereum"]
 	path = deps/ethereum
 	url = https://github.com/Zondax/app-ethereum.git
-[submodule "deps/ledger-secure-sdk"]
-	path = deps/ledger-secure-sdk
-	url = https://github.com/LedgerHQ/ledger-secure-sdk
 [submodule "js"]
 	path = js
 	url = https://github.com/ava-labs/ledger-avalanche-js.git

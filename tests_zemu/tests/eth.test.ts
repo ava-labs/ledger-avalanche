@@ -56,6 +56,9 @@ type TestData = {
   nano_clicks?: number
 }
 
+const EIP2930_CONTRACT_DEPLOY_NO_VALUE: number[] = require('../../app/rust/src/parser/coreth/eth_testvectors/eip2930_contract_deploy_no_value.json')
+const ERC20_SIMPLE_TRANSFER_EURC: number[] = require('../../app/rust/src/parser/coreth/eth_testvectors/erc20_simple_transfer_EURC.json')
+
 // copied from python tests
 const EIP712_TRANSACTION = {
   domain_hash: 'c24f499b8c957196651b13edd64aaccc3980009674b2aea0966c8a56ba81278e',
@@ -93,6 +96,12 @@ const SIGN_TEST_DATA: TestData[] = [
     name: 'legacy_transfer',
     op: Buffer.from('ed01856d6e2edc008252089428ee52a8f3d6e5d15f8b131996950d7f296c7952872bd72a248740008082a86a8080', 'hex'),
     nft_info: undefined,
+  },
+  {
+    name: 'eip2930_contract_deploy_no_value',
+    op: Buffer.from(EIP2930_CONTRACT_DEPLOY_NO_VALUE),
+    nft_info: undefined,
+    foreign_chain: true,
   },
   {
     // EIP-1559 ERC-721 safeTransferFrom on chain_id 2 (foreign)
@@ -139,6 +148,11 @@ const SIGN_TEST_DATA: TestData[] = [
     nft_info: undefined,
   },
   {
+    name: 'erc20_transfer_eurc',
+    op: Buffer.from(ERC20_SIMPLE_TRANSFER_EURC),
+    nft_info: undefined,
+  },
+  {
     // approve(spender, MAX_UINT256) against the USDC.e contract on C-Chain
     // (43114). Exercises the "Unlimited <SYMBOL>" render branch added in
     // erc20.rs::format_approve_amount — the device should display the amount
@@ -169,7 +183,6 @@ const SIGN_TEST_DATA: TestData[] = [
     nft_info: undefined,
     foreign_chain: true,
   },
-
 ]
 
 const ETH_MSG_RAW: number[] = [
@@ -318,8 +331,7 @@ describe.each(models)('EthereumTx [%s]; sign', function (m) {
       await sim.start(defaultOptions(m)) // blind signing OFF
       const app = new AvalancheApp(sim.getTransport())
 
-      const data =
-        '02f5058402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0'
+      const data = '02f5058402a8af41843b9aca00850d8c7b50e68303d090944a2962ac08962819a8a17661970e3c0db765565e8817addd0864728ae780c0'
 
       // Explicit null resolution: skip hw-app-eth's client-side token lookup so
       // the raw tx reaches the device and its own blind-sign gate decides.
