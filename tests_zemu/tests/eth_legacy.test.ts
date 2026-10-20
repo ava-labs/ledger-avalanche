@@ -72,6 +72,14 @@ const SIGN_TEST_DATA: TestData[] = [
     chainId: 5,
   },
   {
+    name: 'legacy_contract_deploy_no_value',
+    op: {
+      value: '0',
+      data: '1a8451e600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+    },
+    chainId: 5,
+  },
+  {
     name: 'legacy_contract_call',
     op: {
       to: '62650ae5c5777d1660cc17fcd4f48f6a66b9a4c2',
