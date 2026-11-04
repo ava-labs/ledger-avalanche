@@ -10,12 +10,13 @@ on:
       - master
       - dev
 
-permissions:
-  contents: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   ledger-lint:
+    permissions:
+      contents: read
+      pull-requests: write
     uses: Zondax/_workflows/.github/workflows/_ledger_lint.yml@v3
     with:
       runs-on: ${{ github.repository_owner == 'zondax' && 'zondax-runners' || 'ubuntu-latest' }}

@@ -10,13 +10,14 @@ on:
       - master
       - dev
 
-permissions:
-  actions: write
-  contents: read
-  pull-requests: write
+permissions: {}
 
 jobs:
   build_application:
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: write
     name: Build application using the reusable workflow
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@v1
     with:
